@@ -1,0 +1,43 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "nec1-toshiba",
+  "name": "NEC1 with one minimum repeat (Toshiba 32 Bit)",
+  "modulation": {"kind": "carrier", "carrier_hz": 38000, "duty_cycle": 0.333333},
+  "parameters": {"address": {"bits": 8}, "command": {"bits": 8}},
+  "bursts": {
+    "leader": [8990, -4490],
+    "zero": [568, -552],
+    "one": [568, -1662],
+    "trailer": [568],
+    "repeat_leader": [8990, -2230]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "press": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "address", "order": "lsb"},
+        {"field": "address", "order": "lsb", "transform": "invert"},
+        {"field": "command", "order": "lsb"},
+        {"field": "command", "order": "lsb", "transform": "invert"},
+        {"burst": "trailer"}
+      ],
+      "minimum_period_us": 107870
+    },
+    "repeat": {
+      "segments": [{"burst": "repeat_leader"}, {"burst": "trailer"}],
+      "minimum_period_us": 107870
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "press"}, {"frame": "repeat"}],
+    "hold": [{"frame": "repeat"}],
+    "release": []
+  },
+  "provenance": {
+    "kind": "protocol-definition",
+    "source": "Logitech Toshiba 32 Bit protocol id 2; its PressMinimumRepeats=1 places one NEC repeat frame in the initial transmission before the held-key repeat section"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "nec2-ext",
+  "name": "NEC2 extended address (full-frame repeat)",
+  "modulation": {"kind": "carrier", "carrier_hz": 38000, "duty_cycle": 0.333333},
+  "parameters": {
+    "address_low": {"bits": 8},
+    "address_high": {"bits": 8},
+    "command": {"bits": 8}
+  },
+  "bursts": {
+    "leader": [9000, -4500],
+    "zero": [562, -562],
+    "one": [562, -1686],
+    "trailer": [562]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "data": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "address_low", "order": "lsb"},
+        {"field": "address_high", "order": "lsb"},
+        {"field": "command", "order": "lsb"},
+        {"field": "command", "order": "lsb", "transform": "invert"},
+        {"burst": "trailer"}
+      ],
+      "minimum_period_us": 95000
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "data"}],
+    "hold": [{"frame": "data"}],
+    "release": []
+  }
+}

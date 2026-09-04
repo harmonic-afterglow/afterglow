@@ -1,0 +1,45 @@
+# Line endings, and why this file has to exist.
+#
+# Git for Windows defaults to `core.autocrlf=true`, so without an instruction here it
+# converts every file it thinks is text to CRLF on checkout. Most of this repository would
+# not care. Two parts of it care a great deal, and both end up **inside a configuration
+# that is flashed to a remote**:
+#
+#   scaffolds/**   the platform state every build starts from. `.preinstall` and
+#                  `.postinstall` are shell scripts the remote *executes* during install:
+#                  with CRLF the shebang reads `#!/bin/sh\r`, an interpreter that does not
+#                  exist, and the remote rejects the configuration. The `platformconfig`
+#                  `.dat` files are parsed line by line, so a trailing `\r` corrupts every
+#                  value in them.
+#
+#   linux/*.sh     the USB link helper, run with `sudo` on the user's machine. A bash
+#                  script with CRLF fails the same way.
+#
+# This was not theoretical: a configuration built on Windows on 2026-09-03 was rejected by
+# the remote, and the only difference from the working original was `\n` becoming `\r\n` in
+# six scaffold files. The builder copies bytes and was blameless - the conversion happened
+# at `git checkout`.
+#
+# `-text` rather than `eol=lf`: these are byte-exact artefacts destined for another device,
+# and the correct instruction is that Git must not interpret them as text at all. The
+# project's `unpack -> pack` byte-identity rule depends on it.
+# Later patterns win, so the catch-all comes first and the exceptions follow it.
+*        text=auto
+
+# Data that must never be touched.
+*.png    binary
+*.bin    binary
+*.ezhex  binary
+*.gz     binary
+*.zip    binary
+
+# Byte-exact artefacts for another device. `-text` rather than `eol=lf` because the
+# remote's own configuration *mixes* endings deliberately - `.preinstall`, `.postinstall`
+# and every `platformconfig` file are LF, while `.version` and `META-INF/MANIFEST.MF` are
+# CRLF - so the instruction is not "use LF", it is "do not interpret these as text".
+# A pattern containing a slash is anchored to this file's directory, so
+# `scaffolds/**` alone matched nothing - the scaffold lives under `src/afterglow/`.
+**/scaffolds/** -text
+
+# Scripts run through a shell, here and on the remote.
+*.sh         text eol=lf

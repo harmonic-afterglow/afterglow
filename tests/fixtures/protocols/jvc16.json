@@ -1,0 +1,35 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "jvc16",
+  "name": "JVC 16-bit",
+  "modulation": {"kind": "carrier", "carrier_hz": 38000},
+  "parameters": {"code": {"bits": 16}},
+  "bursts": {
+    "leader": [8400, -4200],
+    "data_header": [500],
+    "zero": [-500, 500],
+    "one": [-1600, 500]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "leader": {"segments": [{"burst": "leader"}]},
+    "data": {
+      "segments": [
+        {"burst": "data_header"},
+        {"field": "code", "order": "msb"}
+      ],
+      "minimum_period_us": 45000
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "leader"}, {"frame": "data"}],
+    "hold": [{"frame": "data"}],
+    "release": []
+  },
+  "provenance": {
+    "kind": "protocol-definition",
+    "source": "Logitech protocol JVC 16 Bit (id 9); cross-checked against its derived IRP"
+  }
+}

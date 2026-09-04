@@ -1,0 +1,265 @@
+{
+  "_comment": "What each property IS: its type, how the remote spells its booleans, and what it means. Shared, because AlwaysOn is the same idea on any Harmony. WHICH properties a given model has - and what its firmware does with them - is per model and lives in library/remotes/<model>.json, because the sets differ: a remote can have options the 900 does not, and the 900 has options it does not.",
+  "activity": {
+    "ActivityStartPage": {
+      "description": "Which touchscreen page the activity opens on.",
+      "label": "Start page",
+      "type": "enum",
+      "values": [
+        "GameController",
+        "Numbers",
+        "Transport"
+      ]
+    },
+    "ChannelButtonBehaviour": {
+      "description": "What the channel buttons do in this activity.",
+      "label": "Channel buttons",
+      "type": "enum",
+      "values": [
+        "BasicChannels"
+      ]
+    },
+    "ControlGroup_Hard Buttons": {
+      "casing": "title",
+      "description": "Show the physical-button group.",
+      "label": "Show hard buttons",
+      "type": "bool"
+    },
+    "ControlGroup_Soft Buttons": {
+      "casing": "title",
+      "description": "Show the on-screen button group.",
+      "label": "Show soft buttons",
+      "type": "bool"
+    },
+    "EnableSmartMenu": {
+      "casing": "title",
+      "description": "Offer the menu shortcut.",
+      "label": "Smart menu",
+      "type": "bool"
+    },
+    "EnableSmartZoom": {
+      "casing": "title",
+      "description": "Offer the aspect/zoom shortcut.",
+      "label": "Smart zoom",
+      "type": "bool"
+    },
+    "GuideButtonMode": {
+      "description": "What the Guide button opens.",
+      "label": "Guide button",
+      "type": "enum",
+      "values": [
+        "TunerProgramGuide"
+      ]
+    },
+    "HideModeControl": {
+      "casing": "title",
+      "description": "Hide the Control page in this activity.",
+      "label": "Hide Control page",
+      "type": "bool"
+    },
+    "HideModeNavigate": {
+      "casing": "title",
+      "description": "Hide the Navigate page.",
+      "label": "Hide Navigate page",
+      "type": "bool"
+    },
+    "HideModePlay": {
+      "casing": "title",
+      "description": "Hide the Play page.",
+      "label": "Hide Play page",
+      "type": "bool"
+    },
+    "HideModePlayMode": {
+      "casing": "title",
+      "description": "Hide the play-mode page.",
+      "label": "Hide Play-mode page",
+      "type": "bool"
+    },
+    "HideSurfAllChannels": {
+      "casing": "title",
+      "description": "Hide the full channel list.",
+      "label": "Hide all-channels list",
+      "type": "bool"
+    },
+    "HideSurfAllShows": {
+      "casing": "title",
+      "description": "Hide the full show list.",
+      "label": "Hide all shows",
+      "type": "bool"
+    },
+    "HideSurfFavoriteChannels": {
+      "casing": "title",
+      "description": "Hide the favourites list.",
+      "label": "Hide favourite channels",
+      "type": "bool"
+    },
+    "HideSurfFavoriteShows": {
+      "casing": "title",
+      "description": "Hide the favourite-show list.",
+      "label": "Hide favourite shows",
+      "type": "bool"
+    },
+    "MaxTvContentDays": {
+      "description": "How many days of programme guide to keep.",
+      "label": "Guide days",
+      "type": "int"
+    },
+    "MediaButtonMode": {
+      "description": "What the Media button opens.",
+      "label": "Media button",
+      "type": "enum",
+      "values": [
+        "ShowMedia"
+      ]
+    },
+    "PlayOnEnter": {
+      "casing": "title",
+      "description": "Send Play when the activity starts.",
+      "label": "Play on start",
+      "type": "bool"
+    },
+    "PowerOffUnusedDevices": {
+      "casing": "title",
+      "description": "Turn off devices this activity does not use.",
+      "label": "Power off unused devices",
+      "type": "bool"
+    },
+    "RetainStop": {
+      "casing": "title",
+      "description": "Keep the stopped state when leaving.",
+      "label": "Retain stop",
+      "type": "bool"
+    },
+    "ScrollChannelsByPage": {
+      "casing": "title",
+      "description": "Page through channels instead of one at a time.",
+      "label": "Scroll channels by page",
+      "type": "bool"
+    },
+    "ScrollShowsByPage": {
+      "casing": "title",
+      "description": "Page through shows instead of one at a time.",
+      "label": "Scroll shows by page",
+      "type": "bool"
+    },
+    "StopOnExit": {
+      "casing": "title",
+      "description": "Send Stop when the activity ends.",
+      "label": "Stop on exit",
+      "type": "bool"
+    },
+    "TrainingWheels": {
+      "casing": "title",
+      "description": "Show the remote's built-in help prompts in this activity.",
+      "label": "Show help prompts",
+      "type": "bool"
+    },
+    "UnusedDevicesHelp": {
+      "casing": "title",
+      "description": "Offer help about devices this activity does not use.",
+      "label": "Unused-device help",
+      "type": "bool"
+    }
+  },
+  "device": {
+    "AlwaysOn": {
+      "casing": "lower",
+      "description": "You keep this device switched on. Activities will not touch its power at all. Set on the Timing page, beside the other power settings.",
+      "edited_on": "Timing",
+      "label": "Always on",
+      "type": "bool"
+    },
+    "Dimmer": {
+      "casing": "lower",
+      "description": "The lighting controller supports dimming, not just on/off.",
+      "label": "Has a dimmer",
+      "type": "bool"
+    },
+    "HasBands": {
+      "casing": "lower",
+      "description": "The tuner has switchable bands (AM/FM).",
+      "label": "Has bands",
+      "type": "bool"
+    },
+    "HasPresets": {
+      "casing": "lower",
+      "description": "The tuner supports preset stations.",
+      "label": "Has presets",
+      "type": "bool"
+    },
+    "IsDisplayDevice": {
+      "casing": "lower",
+      "description": "This device is a screen, so activities can use it in the DISPLAY role.",
+      "label": "Is a display",
+      "type": "bool"
+    },
+    "IsNewDevice": {
+      "casing": "lower",
+      "description": "Set when a device has just been added; the remote clears it itself. Not a setting - it is written for you.",
+      "label": "Newly added",
+      "transient": true,
+      "type": "bool"
+    },
+    "ManualPower": {
+      "casing": "lower",
+      "description": "The remote has no way to switch this device, so it asks you instead of trying.",
+      "label": "Manual power",
+      "type": "bool"
+    },
+    "MenuOnDevice": {
+      "casing": "lower",
+      "description": "The device has its own on-screen menu.",
+      "label": "Menu on device",
+      "type": "bool"
+    },
+    "NumCassettes": {
+      "description": "How many cassettes the changer holds.",
+      "label": "Cassette slots",
+      "type": "int"
+    },
+    "NumDiscs": {
+      "description": "How many discs the changer holds.",
+      "label": "Disc slots",
+      "type": "int"
+    },
+    "NumLights": {
+      "description": "How many lights this controller drives.",
+      "label": "Lights",
+      "type": "int"
+    },
+    "OnScreenGuide": {
+      "casing": "lower",
+      "description": "The device provides a programme guide.",
+      "label": "On-screen guide",
+      "type": "bool"
+    },
+    "PvrType": {
+      "description": "Which recorder behaviour the remote assumes.",
+      "label": "Recorder type",
+      "type": "enum",
+      "values": [
+        "Generic"
+      ]
+    },
+    "RecordMedia Fixed Disc": {
+      "casing": "lower",
+      "description": "The recorder writes to a built-in disc.",
+      "label": "Records to disc",
+      "type": "bool"
+    },
+    "Scart": {
+      "casing": "lower",
+      "help": "This device is connected by SCART, so switching it on makes the television switch to it by itself. The remote powers SCART devices first and waits for them to settle before running the rest of the activity.",
+      "label": "SCART auto-switching",
+      "type": "bool"
+    },
+    "TunerInput": {
+      "description": "Always the word \"Tuner\" in every configuration seen, and on most devices it does not name any input they actually have. Read by the touchscreen, not by the remote's behaviour. What it changes has not been established.",
+      "label": "Tuner input",
+      "type": "enum",
+      "values": [
+        "Tuner"
+      ]
+    }
+  }
+}

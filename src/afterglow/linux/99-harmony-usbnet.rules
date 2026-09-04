@@ -1,0 +1,10 @@
+# Harmony 900/1000/1100 (Logitech RNDIS, USB 046d:c11f) auto-DHCP for concordance.
+# When the remote's USB network interface appears, launch harmony_net.sh bound to it as a
+# transient systemd service (systemd-run returns immediately so udev isn't blocked). The service
+# takes the interface from NetworkManager, gives the host a link-local IP, and runs dnsmasq to
+# lease the remote 169.254.1.2 -- ready before the remote's first DHCP request. When the remote is
+# unplugged the interface disappears, dnsmasq exits and the transient unit ends on its own.
+#
+# Install: see install_harmony_udev.sh  (copies harmony_net.sh to /usr/local/bin and this rule to
+# /etc/udev/rules.d, then reloads udev).  Requires: dnsmasq, iproute2, systemd.
+SUBSYSTEM=="net", ACTION=="add", ENV{ID_VENDOR_ID}=="046d", ENV{ID_MODEL_ID}=="c11f", RUN+="/usr/bin/systemd-run --unit=harmony-net-%k --collect /usr/local/bin/harmony_net.sh %k"

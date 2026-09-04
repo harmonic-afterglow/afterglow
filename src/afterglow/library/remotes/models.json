@@ -1,0 +1,345 @@
+{
+  "schema": "afterglow-remote-models/1",
+  "source": "Concordance libconcord/remote_info.h (GPL-3.0) - the table is indexed by SKIN id",
+  "models": {
+    "0": {
+      "model": "0",
+      "manufacturer": "UNK"
+    },
+    "1": {
+      "model": "1",
+      "manufacturer": "UNK"
+    },
+    "2": {
+      "model": "Harmony 745",
+      "manufacturer": "HAR"
+    },
+    "3": {
+      "model": "Harmony 768",
+      "manufacturer": "HAR"
+    },
+    "4": {
+      "model": "4",
+      "manufacturer": "UNK"
+    },
+    "5": {
+      "model": "5",
+      "manufacturer": "UNK"
+    },
+    "6": {
+      "model": "6",
+      "manufacturer": "UNK"
+    },
+    "7": {
+      "model": "Harmony 748",
+      "manufacturer": "HAR"
+    },
+    "8": {
+      "model": "8",
+      "manufacturer": "UNK"
+    },
+    "9": {
+      "model": "Harmony 659",
+      "manufacturer": "HAR"
+    },
+    "10": {
+      "model": "Harmony 688",
+      "manufacturer": "HAR"
+    },
+    "11": {
+      "model": "Harmony 655",
+      "manufacturer": "HAR"
+    },
+    "12": {
+      "model": "Harmony 676",
+      "manufacturer": "HAR"
+    },
+    "13": {
+      "model": "Harmony 628",
+      "manufacturer": "HAR"
+    },
+    "14": {
+      "model": "Harmony 680",
+      "manufacturer": "HAR"
+    },
+    "15": {
+      "model": "Harmony 880",
+      "manufacturer": "HAR",
+      "codename": "Espresso"
+    },
+    "16": {
+      "model": "Harmony 675",
+      "manufacturer": "HAR"
+    },
+    "17": {
+      "model": "Harmony 885",
+      "manufacturer": "HAR",
+      "codename": "Espresso"
+    },
+    "18": {
+      "model": "Harmony 520",
+      "manufacturer": "HAR",
+      "codename": "Mocha Decaf"
+    },
+    "19": {
+      "model": "Harmony 890",
+      "manufacturer": "HAR",
+      "codename": "Cappuccino"
+    },
+    "20": {
+      "model": "Harmony 891",
+      "manufacturer": "HAR",
+      "codename": "Whisky"
+    },
+    "21": {
+      "model": "Harmony 892",
+      "manufacturer": "HAR",
+      "codename": "Sugar"
+    },
+    "22": {
+      "model": "Harmony 525",
+      "manufacturer": "HAR",
+      "codename": "Mocha Decaf"
+    },
+    "23": {
+      "model": "Harmony 895",
+      "manufacturer": "HAR",
+      "codename": "Cappuccino"
+    },
+    "24": {
+      "model": "Harmony 896",
+      "manufacturer": "HAR",
+      "codename": "Whisky"
+    },
+    "25": {
+      "model": "Harmony 897",
+      "manufacturer": "HAR",
+      "codename": "Sugar"
+    },
+    "26": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Godzilla"
+    },
+    "27": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Whisky"
+    },
+    "28": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Sugar"
+    },
+    "29": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Godzilla"
+    },
+    "30": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Whisky"
+    },
+    "31": {
+      "model": "AVL-300",
+      "manufacturer": "MON",
+      "codename": "Sugar"
+    },
+    "32": {
+      "model": "AVL-200",
+      "manufacturer": "MON",
+      "codename": "Godzilla"
+    },
+    "33": {
+      "model": "AVL-200",
+      "manufacturer": "MON",
+      "codename": "Godzilla"
+    },
+    "34": {
+      "model": "TC-30",
+      "manufacturer": "HK"
+    },
+    "35": {
+      "model": "TC-30",
+      "manufacturer": "HK"
+    },
+    "36": {
+      "model": "Harmony XBOX360",
+      "manufacturer": "HAR",
+      "codename": "Mountain Dew"
+    },
+    "37": {
+      "model": "AV-100",
+      "manufacturer": "MON"
+    },
+    "38": {
+      "model": "AV-100",
+      "manufacturer": "MON"
+    },
+    "39": {
+      "model": "Harmony 880 Pro",
+      "manufacturer": "HAR",
+      "codename": "Espresso"
+    },
+    "40": {
+      "model": "Harmony 890 Pro",
+      "manufacturer": "HAR",
+      "codename": "Cappuccino"
+    },
+    "41": {
+      "model": "Harmony 550",
+      "manufacturer": "HAR",
+      "codename": "Mocha Grande"
+    },
+    "42": {
+      "model": "TC-30",
+      "manufacturer": "HK"
+    },
+    "43": {
+      "model": "TC-30",
+      "manufacturer": "HK"
+    },
+    "44": {
+      "model": "Harmony 720",
+      "manufacturer": "HAR",
+      "codename": "Corona"
+    },
+    "45": {
+      "model": "Harmony 785",
+      "manufacturer": "HAR",
+      "codename": "Corona"
+    },
+    "46": {
+      "model": "Harmony 522",
+      "manufacturer": "HAR",
+      "codename": "Mocha Decaf"
+    },
+    "47": {
+      "model": "Harmony 882",
+      "manufacturer": "COOL",
+      "codename": "Espresso"
+    },
+    "48": {
+      "model": "Harmony 555",
+      "manufacturer": "HAR",
+      "codename": "Mocha Grande"
+    },
+    "49": {
+      "model": "Harmony 1000",
+      "manufacturer": "HAR",
+      "codename": "Cognac"
+    },
+    "50": {
+      "model": "Harmony 670",
+      "manufacturer": "HAR"
+    },
+    "51": {
+      "model": "Harmony 552",
+      "manufacturer": "COOL",
+      "codename": "Mocha Grande"
+    },
+    "52": {
+      "model": "Harmony 1000i",
+      "manufacturer": "HAR",
+      "codename": "Cognac"
+    },
+    "54": {
+      "model": "Harmony One",
+      "manufacturer": "HAR"
+    },
+    "61": {
+      "model": "Harmony 900",
+      "manufacturer": "HAR"
+    },
+    "63": {
+      "model": "Harmony 1100",
+      "manufacturer": "HAR"
+    },
+    "66": {
+      "model": "Harmony 700",
+      "manufacturer": "HAR",
+      "codename": "Molson"
+    },
+    "67": {
+      "model": "Harmony 515",
+      "manufacturer": "HAR"
+    },
+    "69": {
+      "model": "Harmony 700i",
+      "manufacturer": "HAR"
+    },
+    "71": {
+      "model": "Harmony 600",
+      "manufacturer": "HAR"
+    },
+    "72": {
+      "model": "Harmony 650",
+      "manufacturer": "HAR"
+    },
+    "73": {
+      "model": "Harmony 600i",
+      "manufacturer": "HAR"
+    },
+    "74": {
+      "model": "Harmony 650i",
+      "manufacturer": "HAR"
+    },
+    "75": {
+      "model": "Harmony 665",
+      "manufacturer": "HAR"
+    },
+    "78": {
+      "model": "Harmony 300",
+      "manufacturer": "HAR"
+    },
+    "79": {
+      "model": "Harmony 300i",
+      "manufacturer": "HAR"
+    },
+    "80": {
+      "model": "Harmony 200",
+      "manufacturer": "HAR"
+    },
+    "81": {
+      "model": "Harmony 200i",
+      "manufacturer": "HAR"
+    },
+    "82": {
+      "model": "Harmony Link",
+      "manufacturer": "HAR"
+    },
+    "83": {
+      "model": "Harmony Link (EMEA)",
+      "manufacturer": "HAR"
+    },
+    "97": {
+      "model": "Harmony Ultimate Hub",
+      "manufacturer": "HAR"
+    },
+    "99": {
+      "model": "Harmony Touch",
+      "manufacturer": "HAR"
+    },
+    "100": {
+      "model": "Harmony Ultimate",
+      "manufacturer": "HAR"
+    },
+    "102": {
+      "model": "Harmony Ultimate One",
+      "manufacturer": "HAR"
+    },
+    "104": {
+      "model": "Harmony 350",
+      "manufacturer": "HAR"
+    },
+    "106": {
+      "model": "Harmony Home Hub",
+      "manufacturer": "HAR"
+    },
+    "112": {
+      "model": "Harmony 950",
+      "manufacturer": "HAR"
+    }
+  }
+}

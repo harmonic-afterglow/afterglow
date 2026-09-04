@@ -1,0 +1,401 @@
+# Build a standalone Afterglow executable, with libconcord built from source.
+#
+# Separate from `ci.yml` on purpose: that runs the suite on every push across three
+# operating systems and must stay fast. This compiles a C library and packs a bundle, so
+# it runs on a tag, or by hand.
+#
+# ## Why libconcord is built here rather than installed
+#
+# The distribution packages are far behind upstream, so the build follows the default
+# branch of `jaymzh/concordance`. That is a deliberate trade: it tracks fixes that have
+# not been released, and it means a broken upstream commit breaks this workflow rather
+# than a user's remote. The commit that was built is recorded in the artifact.
+#
+# `concord.py` loads the library through `ctypes` by name, which PyInstaller cannot see,
+# so `AFTERGLOW_BUNDLE_LIBCONCORD` names the file explicitly and `concord._load()` looks
+# in the bundle before the system.
+#
+# ## What has and has not been verified
+#
+# The **Linux PyInstaller half is proven**: built locally against this spec, and the
+# resulting 80 MB executable passes `--self-check` and imports a real configuration
+# (5 devices, 279 protocol signals, nothing unconverted) under `env -i`, with no
+# PYTHONPATH, no virtualenv and a scrubbed HOME.
+#
+# The **libconcord build is proven too**, on Linux: `autoreconf --install --force`,
+# `configure`, `make`, `make install` against commit 2ead943, bundled, and loaded from
+# inside the executable (`--concord-check` reports the path under the extraction
+# directory, not the system one).
+#
+# Not run here: **anything on Windows**. PyInstaller cannot cross-compile - it freezes
+# the interpreter it is running under - so a Windows executable has to be built on
+# Windows, by this workflow or by hand.
+#
+# ## What the CI runs corrected
+#
+# * Linux built, bundled and reported libconcord *missing*. PyInstaller had kept the name
+#   `libconcord.so.6.0.0` where locally it renamed it to the SONAME `libconcord.so.6`, and
+#   the lookup matched `LIBRARY_NAMES` exactly. `concord._bundled_candidates` globs now.
+# * Windows failed installing PyQt6 under MSYS2's Python, which has no wheel for it, so
+#   pip tried to build from source and stopped at "specify a working qmake". The job uses
+#   two toolchains now: MSYS2 for the C library, native `setup-python` for everything
+#   Python.
+# * Run two: Linux passed end to end. Windows built `libconcord-6.dll`, built the bundle
+#   and printed "self-check OK" - and the job failed anyway, because `$LASTEXITCODE` is
+#   only set for console applications and this is a GUI-subsystem executable, so it held
+#   a stale value. `Start-Process -Wait -PassThru` reads the real one.
+# * Run three: Windows reported `libconcord: NOT available`. The DLL was bundled; two of
+#   its dependencies were not, because `setup-msys2` does not install to a fixed place -
+#   this runner used `D:\a\_temp\msys64` - and the hardcoded `C:\msys64\mingw64\bin`
+#   put nothing on PATH, so PyInstaller could not resolve `libzip.dll` or
+#   `libhidapi-0.dll`. It said so, in a warning nothing was reading. The path comes from
+#   `cygpath` now, and an unresolved dependency fails the build where the cause is
+#   visible rather than three steps later.
+name: Bundle
+
+on:
+  push:
+    tags: ["v*"]
+    # Also on main, so a build of any commit is downloadable without cutting a tag.
+    # Same ignore list as `ci.yml`, and for the same reason: it names only files no test
+    # reads. This job compiles a C library, so a documentation push should not start it.
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      - "CHANGELOG.md"
+      - "CONTRIBUTING.md"
+      - "AGENTS.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "docs/**"
+  workflow_dispatch:
+
+# A tag and a branch build are different things and must not cancel each other, so the
+# group includes the ref. Superseded builds of the same ref are cancelled; a tag never
+# is, because its artifacts become a release.
+concurrency:
+  group: bundle-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  CONCORDANCE_REPO: https://github.com/jaymzh/concordance
+
+jobs:
+  # What this build calls itself, and what its artifacts are named. A tag build is the
+  # tag; anything else is the declared version plus the commit, so a downloaded
+  # executable can always be traced back to a commit.
+  identify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.name.outputs.version }}
+      suffix: ${{ steps.name.outputs.suffix }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: name
+        run: |
+          set -euo pipefail
+          short="$(git rev-parse --short HEAD)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME}"
+            suffix=""
+          else
+            declared="$(python3 -c "import tomllib,pathlib;\
+              print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+            version="${declared}+g${short}"
+            suffix="-${short}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
+          echo "building ${version}"
+
+  linux:
+    needs: identify
+    runs-on: ubuntu-latest
+    outputs:
+      libconcord: ${{ steps.libconcord.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install build and runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake libtool pkg-config \
+            libusb-1.0-0-dev libzip-dev libcurl4-openssl-dev libhidapi-dev \
+            libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3
+
+      - name: Build libconcord from the default branch
+        id: libconcord
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 "$CONCORDANCE_REPO" /tmp/concordance
+          echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cd /tmp/concordance/libconcord
+          # Concordance ships autotools input, not a configure script.
+          autoreconf --install --force
+          ./configure --prefix=/tmp/libconcord-install
+          make -j"$(nproc)"
+          make install
+          # The versioned SONAME is what `concord.LIBRARY_NAMES` looks for first.
+          ls -l /tmp/libconcord-install/lib/
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # `.[gui]`, not `.`: PyQt6 is an optional extra, and installing the bare
+          # package produces a bundle with no interface toolkit in it at all.
+          pip install -e ".[gui]"
+          pip install pyinstaller
+
+      - name: Stamp the build version
+        run: |
+          set -euo pipefail
+          # A frozen build has no dist-info, so this file is the only way it can name
+          # itself. Written, never committed - see .gitignore.
+          printf 'VERSION = "%s"\n' '${{ needs.identify.outputs.version }}' \
+            > src/afterglow/_build.py
+          cat src/afterglow/_build.py
+
+      - name: Build the bundle
+        env:
+          AFTERGLOW_BUNDLE_LIBCONCORD: /tmp/libconcord-install/lib/libconcord.so.6.0.0
+        run: pyinstaller --noconfirm packaging/afterglow.spec
+
+      - name: Check the bundle carries what it needs
+        run: |
+          set -euxo pipefail
+          test -x dist/afterglow
+          # A bundle that starts and cannot open an .ezhex is the failure mode this
+          # whole spec exists to prevent, so assert the registries actually resolve.
+          # Run from elsewhere with a scrubbed environment: run from the checkout it
+          # could pass by importing the source tree instead of its own contents.
+          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            "$GITHUB_WORKSPACE/dist/afterglow" --self-check
+          # The library is loaded by name through ctypes, which asks the *system*
+          # loader; a bundled copy is only reachable because `concord._load()` looks in
+          # the extraction directory first. Prove that, rather than assume it.
+          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            "$GITHUB_WORKSPACE/dist/afterglow" --concord-check
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: afterglow-linux-x86_64${{ needs.identify.outputs.suffix }}
+          path: |
+            dist/afterglow
+          if-no-files-found: error
+
+  windows:
+    needs: identify
+    runs-on: windows-latest
+    outputs:
+      libconcord: ${{ steps.libconcord.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Two toolchains, deliberately. MSYS2/MinGW builds libconcord, because it is
+      # autotools and that is what Concordance's INSTALL.windows describes. Everything
+      # Python uses the **native** interpreter from `setup-python`.
+      #
+      # Doing it all under MSYS2 was the first attempt and it fails: PyQt6 publishes no
+      # wheel for MSYS2's Python, so pip falls back to building it from source and stops
+      # with "specify a working qmake or add it to PATH". Native Python gets the wheel.
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            git base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-autotools
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-libzip
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-hidapi
+
+      - name: Build libconcord from the default branch
+        id: libconcord
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 "$CONCORDANCE_REPO" /tmp/concordance
+          echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cd /tmp/concordance/libconcord
+          autoreconf --install --force
+          ./configure --prefix=/tmp/libconcord-install
+          make -j"$(nproc)"
+          make install
+          # libtool's -version-info 6:0:0 produces libconcord-6.dll under MinGW, which is
+          # why `concord.LIBRARY_NAMES` lists that name and no Unix one. The bundle finds
+          # it by pattern regardless of what the bundler calls it.
+          ls -l /tmp/libconcord-install/bin/
+          # Report it to later steps in Windows form, since native Python cannot read
+          # an MSYS path.
+          cygpath -w /tmp/libconcord-install/bin > "$RUNNER_TEMP/libconcord_bin.txt"
+          # And where MinGW keeps the DLLs libconcord links against. `setup-msys2` does
+          # not install to a fixed location - this runner put it under `D:\a\_temp` - so
+          # a hardcoded `C:\msys64` found nothing, and PyInstaller could not resolve
+          # `libzip.dll` or `libhidapi-0.dll`. The bundle then carried a libconcord that
+          # would not load, and said only "NOT available" three steps later.
+          cygpath -w /mingw64/bin > "$RUNNER_TEMP/mingw_bin.txt"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          # `.[gui]`, not `.`: PyQt6 is an optional extra, and the bare package produces
+          # a bundle with no interface toolkit in it at all.
+          pip install -e ".[gui]"
+          pip install pyinstaller
+
+      - name: Stamp the build version
+        shell: pwsh
+        run: |
+          $v = "${{ needs.identify.outputs.version }}"
+          Set-Content -Path src/afterglow/_build.py -Value "VERSION = `"$v`""
+          Get-Content src/afterglow/_build.py
+
+      - name: Build the bundle
+        shell: pwsh
+        run: |
+          $bin = (Get-Content "$env:RUNNER_TEMP/libconcord_bin.txt").Trim()
+          # The MinGW runtime and libconcord's own dependencies - libusb, libzip,
+          # libcurl, hidapi, libstdc++, libwinpthread - live beside it. PyInstaller
+          # follows a binary's imports, but only if it can find them, so MinGW's bin
+          # directory has to be on PATH while the analysis runs.
+          $mingw = (Get-Content "$env:RUNNER_TEMP/mingw_bin.txt").Trim()
+          $env:PATH = "$bin;$mingw;$env:PATH"
+          $env:AFTERGLOW_BUNDLE_LIBCONCORD = Join-Path $bin "libconcord-6.dll"
+          if (-not (Test-Path $env:AFTERGLOW_BUNDLE_LIBCONCORD)) {
+            Get-ChildItem $bin
+            throw "libconcord-6.dll was not where the build put it"
+          }
+          pyinstaller --noconfirm packaging/afterglow.spec 2>&1 | Tee-Object -Variable log
+          # A dependency PyInstaller cannot resolve is a DLL that will not load at run
+          # time, and the only symptom is "libconcord: NOT available" several steps later.
+          # Fail where the cause is visible.
+          $unresolved = $log | Select-String "Library not found: could not resolve"
+          if ($unresolved) {
+            $unresolved | ForEach-Object { Write-Host $_ }
+            throw "PyInstaller could not resolve a dependency of libconcord"
+          }
+
+      - name: Check the bundle carries what it needs
+        shell: pwsh
+        run: |
+          # `$LASTEXITCODE` is only set for *console* applications, and the spec builds a
+          # GUI-subsystem executable (`console=False`), so it keeps whatever value it had
+          # before - the first run of this reported "self-check failed" directly beneath
+          # the executable printing "self-check OK". `Start-Process -Wait -PassThru` waits
+          # for the real process and hands back its actual exit code.
+          function Invoke-Check($check) {
+            $p = Start-Process -FilePath ".\dist\afterglow.exe" `
+                               -ArgumentList $check -NoNewWindow -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$check failed with $($p.ExitCode)" }
+          }
+          Invoke-Check "--self-check"
+          Invoke-Check "--concord-check"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: afterglow-windows-x86_64${{ needs.identify.outputs.suffix }}
+          path: dist/afterglow.exe
+          if-no-files-found: error
+
+  # Publish the two executables as a GitHub release.
+  #
+  # Only on a tag: `workflow_dispatch` exists so a bundle can be built and downloaded as
+  # an artifact without publishing anything.
+  #
+  # `contents: write` is granted to this job only; the build jobs stay read-only.
+  #
+  # Action versions are majors, not digests. A tag can be repointed at code nobody here
+  # reviewed, so pinning to a commit digest is stronger and worth doing before this
+  # repository publishes anything people install.
+  #
+  # `download-artifact` is v8 while `upload-artifact` is v7: the two are separate actions
+  # and their majors do not track each other. Check both when bumping.
+  release:
+    needs: [linux, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      # Write is granted here and nowhere else; the build jobs stay read-only.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Stage the files under the names they are published as
+        run: |
+          set -euxo pipefail
+          mkdir -p release
+          cp artifacts/afterglow-linux-x86_64/afterglow \
+             release/afterglow-linux-x86_64
+          cp artifacts/afterglow-windows-x86_64/afterglow.exe \
+             release/afterglow-windows-x86_64.exe
+          cd release
+          # Checksums, so a download can be verified without trusting the transport.
+          sha256sum ./* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Write the release notes
+        env:
+          LINUX_LIBCONCORD: ${{ needs.linux.outputs.libconcord }}
+          WINDOWS_LIBCONCORD: ${{ needs.windows.outputs.libconcord }}
+        run: |
+          set -euo pipefail
+          # Only what is specific to THIS build. Setup instructions live in the README
+          # and repeating them here means two copies that drift - the first version of
+          # this file was already a release behind it.
+          cat > notes.md <<'EOF'
+          | File | Platform |
+          |---|---|
+          | `afterglow-windows-x86_64.exe` | Windows |
+          | `afterglow-linux-x86_64` | Linux - `chmod +x` it first |
+
+          Standalone; no Python needed. **Windows and macOS need Logitech's driver
+          installed first** - see the
+          [README](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#before-you-start).
+
+          ```
+          sha256sum -c SHA256SUMS --ignore-missing
+          ```
+          EOF
+          {
+            echo
+            echo "Bundled libconcord, built from source at:"
+            echo
+            echo "- Linux \`${LINUX_LIBCONCORD}\`"
+            echo "- Windows \`${WINDOWS_LIBCONCORD}\`"
+          } >> notes.md
+          cat notes.md
+
+      - name: Publish
+        uses: softprops/action-gh-release@v3
+        with:
+          files: release/*
+          body_path: notes.md
+          name: Afterglow ${{ github.ref_name }}
+          # A tag with a suffix (v1.0.0-rc1) is a pre-release, so it does not become
+          # "latest" and nobody downloads it by accident.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true
+          # Appends GitHub's own "What's Changed" list to the body above. That is the
+          # part worth reading in a release and the part no hand-written file can keep
+          # current.
+          generate_release_notes: true

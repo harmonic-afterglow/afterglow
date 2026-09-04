@@ -1,0 +1,748 @@
+{
+  "id": "harmony-900",
+  "model": "Harmony 900",
+  "identity": {
+    "arch": 15,
+    "skin": 61,
+    "flash": "0x01:0x49",
+    "board": "0.1.0",
+    "software_type": 0
+  },
+  "payload": "pk",
+  "status": "verified",
+  "capabilities": {
+    "rf_blaster": true,
+    "touchscreen": true,
+    "ir_learning": true,
+    "hard_keys": true
+  },
+  "infrared": {
+    "backend": "harmony-pk",
+    "native_protocols": [
+      "nec1",
+      "nec1-toshiba",
+      "nec-ext",
+      "nec2",
+      "nec2-ext",
+    "samsung32",
+    "sony12",
+    "sony15",
+    "sony20",
+    "jvc16",
+      "rc5-13",
+      "rc6-mce"
+    ],
+    "waveform": "carrier-period",
+    "notes": "SsIr stores a u32 little-endian carrier period in nanoseconds followed by a u16 pulse-word count and signed mark/space words. Established from the unstripped irgen raw path and hardware-validated with a newly generated Yamaha RAV16 Volume Up waveform on 2026-08-30."
+  },
+  "notes": "Identity taken from real dumps. Configs built by Afterglow have been flashed to one and boot.",
+  "schema": "afterglow-remote/1",
+  "vocabulary": {
+    "_comment": "What this model can be told. Read out of its own app-main.swf: one movie clip per device and activity type, and the physical keys the case actually has. The identifiers are Logitech's; the readable labels are ours, because the firmware has no name table for them and the friendly names the web configurator showed went away with it. Another model has a different set - a remote with no touchscreen has no screen buttons, and one with fewer keys has fewer slots.",
+    "device_types": {
+      "Amplifier": "Amplifier",
+      "AudioVideoSwitch": "A/V switch",
+      "CableBox": "Cable box",
+      "Cassette": "Cassette deck",
+      "Cd": "CD player",
+      "CdJukebox": "CD jukebox",
+      "CdRadioCassette": "Radio / CD / cassette",
+      "ClimateControl": "Climate control",
+      "Computer": "Computer",
+      "Dat": "DAT deck",
+      "DvdCd": "DVD / CD player",
+      "DvdCdGame": "DVD / games console",
+      "DvdCdRadio": "DVD / CD / radio",
+      "DvdRecorder": "DVD recorder",
+      "DvdVcr": "DVD / VCR combo",
+      "DvdVcrReceiver": "DVD / VCR receiver",
+      "DvdrVcr": "DVD recorder / VCR",
+      "GameConsole": "Games console",
+      "HomeAppliance": "Home appliance",
+      "Laptop": "Laptop",
+      "Laserdisc": "LaserDisc player",
+      "Light": "Lighting",
+      "MediaCenterPC": "Media centre PC",
+      "Minidisc": "MiniDisc deck",
+      "Monitor": "Monitor",
+      "MusicServer": "Music server",
+      "Projector": "Projector",
+      "Pvr": "Recorder (PVR)",
+      "RadioTuner": "Radio tuner",
+      "Receiver": "AV receiver",
+      "Satellite": "Satellite receiver",
+      "SetTopBox": "Set-top box",
+      "Television": "Television",
+      "TvDvd": "TV / DVD combo",
+      "TvDvdVcr": "TV / DVD / VCR combo",
+      "TvHdd": "TV / hard-disc recorder",
+      "TvVcr": "TV / VCR combo",
+      "Vcr": "VCR"
+    },
+    "activity_types": [
+      [
+        "Listen to the CD Jukebox",
+        "VirtualCdJukebox"
+      ],
+      [
+        "Listen to a CD",
+        "VirtualCdMulti"
+      ],
+      [
+        "Watch a DVD",
+        "VirtualDvd"
+      ],
+      [
+        "Play a Game",
+        "VirtualGameConsole"
+      ],
+      [
+        "Custom / Other",
+        "VirtualGeneric"
+      ],
+      [
+        "Watch a Laserdisc",
+        "VirtualLaserdisc"
+      ],
+      [
+        "Listen to Music (Media Center)",
+        "VirtualMediaCenterMusic"
+      ],
+      [
+        "View Pictures",
+        "VirtualMediaCenterPictures"
+      ],
+      [
+        "Watch TV (Media Center)",
+        "VirtualMediaCenterTv"
+      ],
+      [
+        "Watch Video (Media Center)",
+        "VirtualMediaCenterVideos"
+      ],
+      [
+        "Listen to a MiniDisc",
+        "VirtualMinidisc"
+      ],
+      [
+        "Listen to the Music Server",
+        "VirtualMusicServer"
+      ],
+      [
+        "Give a Presentation",
+        "VirtualPresentation"
+      ],
+      [
+        "Watch the PVR",
+        "VirtualPvr"
+      ],
+      [
+        "Listen to the Radio",
+        "VirtualRadioSimple"
+      ],
+      [
+        "Watch ReplayTV",
+        "VirtualReplayTV"
+      ],
+      [
+        "Listen to Satellite Radio",
+        "VirtualSatelliteMusic"
+      ],
+      [
+        "Listen to a Tape",
+        "VirtualTape"
+      ],
+      [
+        "Teletext",
+        "VirtualTeletext"
+      ],
+      [
+        "Watch TV",
+        "VirtualTelevisionN"
+      ],
+      [
+        "Watch TiVo",
+        "VirtualTiVo"
+      ],
+      [
+        "Watch a Video",
+        "VirtualVcr"
+      ],
+      [
+        "Record to Video",
+        "VirtualVcrRecorder"
+      ]
+    ],
+    "hard_keys": [
+      "VolumeUp",
+      "VolumeDown",
+      "VolumeMute",
+      "ChannelUp",
+      "ChannelDown",
+      "PrevChannel",
+      "DirectionUp",
+      "DirectionDown",
+      "DirectionLeft",
+      "DirectionRight",
+      "Select",
+      "Back",
+      "Menu",
+      "Exit",
+      "Home",
+      "Play",
+      "Pause",
+      "Stop",
+      "Rewind",
+      "FastForward",
+      "Skip",
+      "Replay",
+      "Record",
+      "Info",
+      "Guide",
+      "InputAV",
+      "InputHDMI",
+      "Number0",
+      "Number1",
+      "Number2",
+      "Number3",
+      "Number4",
+      "Number5",
+      "Number6",
+      "Number7",
+      "Number8",
+      "Number9",
+      "Red",
+      "Green",
+      "Yellow",
+      "Blue"
+    ]
+  },
+  "properties": {
+    "_comment": "Which properties this model has, and what its own firmware does with each. applies_to is measured from real configurations of this model; when_absent is read out of its behaviour layer. A property missing here is not offered for this remote at all.",
+    "device": {
+      "AlwaysOn": {
+        "applies_to": "all",
+        "default": "false",
+        "default_from": "observed",
+        "observed": {
+          "false": 27,
+          "true": 2
+        },
+        "read_by": "remote",
+        "when_absent": "skipped: the device is neither switched on nor off by an activity"
+      },
+      "Dimmer": {
+        "applies_to": [
+          "Light"
+        ],
+        "default": "false",
+        "default_from": "observed",
+        "observed": {
+          "false": 3
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HasBands": {
+        "applies_to": [
+          "CdRadioCassette",
+          "MediaCenterPC",
+          "Receiver"
+        ],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {
+          "true": 8
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HasPresets": {
+        "applies_to": [
+          "CdRadioCassette",
+          "MediaCenterPC",
+          "Receiver"
+        ],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {
+          "true": 8
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "IsDisplayDevice": {
+        "applies_to": [
+          "MediaCenterPC",
+          "Projector",
+          "Television"
+        ],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {
+          "true": 7
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "IsNewDevice": {
+        "applies_to": [
+          "DvdCd",
+          "Receiver"
+        ],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {
+          "true": 7
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ManualPower": {
+        "applies_to": "all",
+        "default": "false",
+        "default_from": "observed",
+        "observed": {
+          "True": 2,
+          "false": 29
+        },
+        "read_by": "remote",
+        "when_absent": "false"
+      },
+      "MenuOnDevice": {
+        "applies_to": [
+          "DvdCd",
+          "DvdCdGame"
+        ],
+        "default": "false",
+        "default_from": "observed",
+        "observed": {
+          "false": 6
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "NumCassettes": {
+        "applies_to": [
+          "CdRadioCassette"
+        ],
+        "default": "1",
+        "default_from": "observed",
+        "observed": {
+          "1": 2
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "NumDiscs": {
+        "applies_to": [
+          "CdRadioCassette",
+          "DvdCd",
+          "DvdCdGame",
+          "MediaCenterPC"
+        ],
+        "default": "1",
+        "default_from": "observed",
+        "observed": {
+          "1": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "NumLights": {
+        "applies_to": [
+          "Light"
+        ],
+        "default": "1",
+        "default_from": "observed",
+        "observed": {
+          "1": 2,
+          "10": 1
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "OnScreenGuide": {
+        "applies_to": [
+          "SetTopBox"
+        ],
+        "default": "false",
+        "default_from": "observed",
+        "observed": {
+          "false": 3
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "PvrType": {
+        "applies_to": [
+          "MediaCenterPC",
+          "Pvr"
+        ],
+        "default": "Generic",
+        "default_from": "observed",
+        "observed": {
+          "Generic": 3
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "RecordMedia Fixed Disc": {
+        "applies_to": [
+          "MediaCenterPC",
+          "Pvr"
+        ],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {
+          "true": 3
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "Scart": {
+        "applies_to": "all",
+        "default": "false",
+        "default_from": "inferred - never seen in any configuration",
+        "read_by": "remote",
+        "when_absent": "false"
+      },
+      "TunerInput": {
+        "applies_to": [
+          "CdRadioCassette",
+          "MediaCenterPC",
+          "Projector",
+          "Pvr",
+          "Receiver",
+          "SetTopBox",
+          "Television"
+        ],
+        "default": "Tuner",
+        "default_from": "observed",
+        "observed": {
+          "Tuner": 17
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      }
+    },
+    "activity": {
+      "ActivityStartPage": {
+        "applies_to": "all",
+        "default": "Numbers",
+        "default_from": "observed",
+        "observed": {
+          "GameController": 1,
+          "Numbers": 12,
+          "Transport": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ChannelButtonBehaviour": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualSatelliteMusic",
+          "VirtualTelevisionN"
+        ],
+        "default": "BasicChannels",
+        "default_from": "observed",
+        "observed": {
+          "BasicChannels": 15
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Hard Buttons": {
+        "applies_to": "all",
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 23
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Soft Buttons": {
+        "applies_to": [
+          "VirtualDvd",
+          "VirtualGameConsole",
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 16
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "EnableSmartMenu": {
+        "applies_to": [
+          "VirtualDvd",
+          "VirtualPvr"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 6
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "EnableSmartZoom": {
+        "applies_to": [
+          "VirtualDvd"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 5
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "GuideButtonMode": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "TunerProgramGuide",
+        "default_from": "observed",
+        "observed": {
+          "TunerProgramGuide": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideModeControl": {
+        "applies_to": "all",
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 20
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideModeNavigate": {
+        "applies_to": [
+          "VirtualDvd",
+          "VirtualPvr",
+          "VirtualSatelliteMusic",
+          "VirtualTelevisionN"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 17
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideModePlay": {
+        "applies_to": [
+          "VirtualCdMulti",
+          "VirtualDvd",
+          "VirtualPvr"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 8
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideModePlayMode": {
+        "applies_to": [
+          "VirtualCdMulti"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 2
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideSurfAllChannels": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideSurfAllShows": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideSurfFavoriteChannels": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideSurfFavoriteShows": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "MaxTvContentDays": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualSatelliteMusic",
+          "VirtualTelevisionN"
+        ],
+        "default": "14",
+        "default_from": "observed",
+        "observed": {
+          "14": 12
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "MediaButtonMode": {
+        "applies_to": [
+          "VirtualDvd",
+          "VirtualPvr",
+          "VirtualSatelliteMusic",
+          "VirtualTelevisionN"
+        ],
+        "default": "ShowMedia",
+        "default_from": "observed",
+        "observed": {
+          "ShowMedia": 17
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "PlayOnEnter": {
+        "applies_to": [
+          "VirtualCdMulti",
+          "VirtualDvd"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 7
+        },
+        "read_by": "remote",
+        "when_absent": "false"
+      },
+      "PowerOffUnusedDevices": {
+        "applies_to": "all",
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "False": 2,
+          "True": 21
+        },
+        "read_by": "remote",
+        "when_absent": "false"
+      },
+      "RetainStop": {
+        "applies_to": [
+          "VirtualPvr"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 1
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ScrollChannelsByPage": {
+        "applies_to": [
+          "VirtualPvr",
+          "VirtualTelevisionN"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 10
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ScrollShowsByPage": {
+        "applies_to": [
+          "VirtualTelevisionN"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 9
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "StopOnExit": {
+        "applies_to": [
+          "VirtualCdMulti",
+          "VirtualDvd"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 7
+        },
+        "read_by": "remote",
+        "when_absent": "false"
+      },
+      "TrainingWheels": {
+        "applies_to": "all",
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "False": 1,
+          "True": 19
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "UnusedDevicesHelp": {
+        "applies_to": "all",
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 20
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      }
+    }
+  }
+}

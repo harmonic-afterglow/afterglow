@@ -1,0 +1,38 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "rc5-13",
+  "name": "Philips RC5 13-bit toggle",
+  "modulation": {"kind": "carrier", "carrier_hz": 36000},
+  "parameters": {"code": {"bits": 13}},
+  "state": {
+    "toggle": {"kind": "toggle", "initial": 0, "advance": "press"}
+  },
+  "bursts": {
+    "leader": [889],
+    "zero": [889, -889],
+    "one": [-889, 889]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "data": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "code", "offset": 12, "bits": 1, "order": "msb"},
+        {"state": "toggle", "order": "msb"},
+        {"field": "code", "offset": 0, "bits": 11, "order": "msb"}
+      ],
+      "minimum_period_us": 113792
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "data"}],
+    "hold": [{"frame": "data"}],
+    "release": []
+  },
+  "provenance": {
+    "kind": "protocol-definition",
+    "source": "Logitech protocol Philips RC5 13 Bit Toggle (id 674); cross-checked against its derived IRP"
+  }
+}

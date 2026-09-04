@@ -1,0 +1,67 @@
+# PRIVATE DATA - never publish.
+# A configuration is a list of what is in somebody's living room, and donor dumps
+# belong to other people. The tool reads these off your own remote; none of them
+# need to be in the repository.
+# (No trailing comments on pattern lines: git treats them as part of the path.)
+# Written by the bundle workflow so a frozen build can name itself. Generated, never
+# committed - a stale one would make every build claim the wrong version.
+src/afterglow/_build.py
+
+*.ezhex
+*.EzHex
+*.EZHex
+*.EZHEX
+*_extracted/
+configs/
+channel_logos/
+
+# Private device libraries and captures. The application writes its live library under
+# XDG_DATA_HOME, but these legacy in-tree paths must stay ignored during migration.
+/src/afterglow/library/devices/
+/src/afterglow/library/captures/
+/src/afterglow/library/ir-captures/
+/library/devices/
+/library/captures/
+/library/ir-captures/
+/test_external_archive.json
+/local-library/
+/user-library/
+
+# Project files describe a real home, and carry the MAC of any paired RF base.
+#
+# Deny by default at the repository root. The list below used to be the whole rule, and
+# it is a list of names someone thought of after the fact - a project file has reached a
+# commit twice because its name matched no pattern that existed yet. Every private
+# artifact this project produces is written to the working directory: project.json,
+# project_actual_mce.json, home_logi_dump.json, test_external_archive.json. Nothing
+# legitimate is: all 34 tracked .json files live under src/afterglow/library/, and a
+# leading slash confines this to the root, so they are untouched.
+#
+# Adding a genuinely shareable .json at the root therefore needs `git add -f` and a
+# moment's thought about what is in it. That is the point.
+/*.json
+
+# Kept as well, because these names are also dangerous in a subdirectory.
+project.json
+project_*.json
+*_project.json
+*_proj.json
+*_dump.json
+
+# PROPRIETARY - Logitech's, not ours. Redistributing any of this is not ok.
+# Firmware images and anything recovered by decompiling them.
+*.hfw
+lua_src/
+ffdec_out/
+
+# Build / scratch
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*_work/

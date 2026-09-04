@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afterglow"
+version = "0.1.0"
+description = "Build and flash configurations for infrared remote controls whose vendor service no longer exists"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+keywords = ["infrared", "remote-control", "harmony", "ezhex", "ir"]
+classifiers = [
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: System :: Hardware",
+]
+
+# The format/build layer is pure standard library on purpose: unpacking, rebuilding
+# and verifying a config must work on a bare Python with nothing installed.
+dependencies = []
+
+[project.optional-dependencies]
+gui = ["PyQt6>=6.5", "Pillow>=10"]
+# `ruff` belongs here, not only in CI. It was installed by the workflow alone, so
+# `pip install -e '.[dev]'` produced an environment that could not run the gate CI
+# enforces - and it went uninstalled long enough for four F821 name errors to reach the
+# tree in one session, each one a call that would raise on import.
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/harmonic-afterglow/afterglow"
+"Sibling project (Harmony One)" = "https://github.com/Unkn0wn-dx/RE-HARMONY"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["afterglow*"]
+
+# The library, the firmware artwork and the build scaffold are not optional extras:
+# without them there is no device to pick, no glyph to draw and nothing to build onto.
+# They live inside the package so that an install carries them; `paths.root()` finds
+# them by looking, so a checkout that keeps them elsewhere still works.
+[tool.setuptools.package-data]
+afterglow = [
+    "library/**/*",
+    "icons/**/*",
+    "branding/*",
+    "scaffolds/**/*",
+    "scaffolds/**/.*",
+    # The Linux USB-RNDIS helper and its udev rule. They used to sit at the top of the
+    # checkout and ship with nothing, while three modules told the user to run
+    # `sudo linux/harmony_net.sh` - a path that exists only in a source tree.
+    "linux/*",
+]
+
+[project.scripts]
+afterglow = "afterglow.gui:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+# What the gate is for: correctness, not house style.
+#
+# `F` (pyflakes) is the part that finds real defects, and it is clean - keep it that way.
+# It has already caught two shipped bugs: `tools/rf_pair.py` calling a renamed API
+# (`HaoChannel`, `MESSAGES`, `name_of`, `pair` - every use raised NameError), and
+# `gui/build_service.py` annotating with `Path` without importing it, which only imported
+# at all because this machine runs 3.14 with PEP 649 lazy annotations. On the declared
+# minimum of 3.11 that module raised NameError on import.
+#
+# The `E` rules below are deliberately off. They flag this codebase's own established
+# style rather than mistakes, and churning ~125 sites to satisfy them would bury real
+# findings in noise:
+#   E402 - tools/ put `sys.path.insert` before importing the package, on purpose.
+#   E701/E702 - the compact `a=[]; b=[]` idiom used throughout the builder.
+#   E741 - a handful of short loop names.
+#   E731 - one lambda alias in irproto.py.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E402", "E701", "E702", "E741", "E731"]

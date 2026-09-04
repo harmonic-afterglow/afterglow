@@ -1,0 +1,45 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "samsung32",
+  "name": "Samsung32",
+  "modulation": {"kind": "carrier", "carrier_hz": 38000, "duty_cycle": 0.333333},
+  "parameters": {"address": {"bits": 8}, "command": {"bits": 8}},
+  "bursts": {
+    "leader": [4500, -4500],
+    "zero": [562, -562],
+    "one": [562, -1686],
+    "trailer": [562]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "press": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "address", "order": "lsb"},
+        {"field": "address", "order": "lsb"},
+        {"field": "command", "order": "lsb"},
+        {"field": "command", "order": "lsb", "transform": "invert"},
+        {"burst": "trailer"}
+      ],
+      "minimum_period_us": 108000
+    },
+    "repeat": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "address", "order": "lsb"},
+        {"field": "address", "order": "lsb"},
+        {"field": "command", "order": "lsb"},
+        {"field": "command", "order": "lsb", "transform": "invert"},
+        {"burst": "trailer"}
+      ],
+      "minimum_period_us": 108000
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "press"}],
+    "hold": [{"frame": "repeat"}],
+    "release": []
+  }
+}

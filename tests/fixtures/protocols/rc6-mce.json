@@ -1,0 +1,41 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "rc6-mce",
+  "name": "Microsoft RC6 Mode 6A / MCE 30-bit",
+  "modulation": {"kind": "carrier", "carrier_hz": 36200},
+  "parameters": {"code": {"bits": 30}},
+  "state": {
+    "toggle": {"kind": "toggle", "initial": 0, "advance": "press"}
+  },
+  "bursts": {
+    "leader": [2632, -900, 441, -443, 441, -439, 441, -887, 441, -879, 1323, -889, 441],
+    "zero": [441, -446],
+    "one": [-446, 441],
+    "suffix": [-2664]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "data": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "code", "offset": 16, "bits": 14, "order": "msb"},
+        {"state": "toggle", "order": "msb"},
+        {"field": "code", "offset": 0, "bits": 15, "order": "msb"},
+        {"burst": "suffix"}
+      ],
+      "minimum_period_us": 105850
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "data"}],
+    "hold": [{"frame": "data"}],
+    "release": []
+  },
+  "provenance": {
+    "kind": "protocol-definition",
+    "source": "Logitech protocol Microsoft 30 Bit (id 85), cross-checked against its derived IRP and the Linux RC6-MCE encoder/decoder; the explicit 2664 us suffix is required to terminate a raw frame",
+    "hardware_validation": "2026-08-30: corrected toggle-0 and toggle-1 frames rendered through Harmony PK SsIr both controlled a real Windows Media Center receiver when alternated; a fully padded toggle-0 frame also worked on every press when alternated with toggle 1, isolating earlier intermittency as receiver debounce"
+  }
+}

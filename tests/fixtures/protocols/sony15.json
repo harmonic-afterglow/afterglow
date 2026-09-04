@@ -1,0 +1,33 @@
+{
+  "schema": "afterglow-ir-protocol/1",
+  "id": "sony15",
+  "name": "Sony SIRC 15-bit",
+  "modulation": {"kind": "carrier", "carrier_hz": 40000},
+  "parameters": {"code": {"bits": 15}},
+  "bursts": {
+    "leader": [2400],
+    "zero": [-600, 600],
+    "one": [-600, 1200]
+  },
+  "alphabets": {
+    "bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}
+  },
+  "frames": {
+    "data": {
+      "segments": [
+        {"burst": "leader"},
+        {"field": "code", "order": "msb"}
+      ],
+      "minimum_period_us": 45000
+    }
+  },
+  "transmission": {
+    "press": [{"frame": "data", "count": 3}],
+    "hold": [{"frame": "data"}],
+    "release": []
+  },
+  "provenance": {
+    "kind": "protocol-definition",
+    "source": "Logitech protocol Sony 15 Bit (id 17); cross-checked against its derived IRP and command Pronto"
+  }
+}
