@@ -10,9 +10,7 @@
 
 **Set up a Logitech Harmony remote after the service shut down.**
 
-Logitech closed the Harmony service in 2025. The remotes still work - they just cannot be
-*reconfigured*, because every way to change what a button does went through a server that
-no longer answers.
+Logitech closed the Harmony service in 2025. The remotes still work - they just cannot be *reconfigured*, because every way to change what a button does went through a server that no longer answers.
 
 Afterglow builds the configuration on your own computer and writes it back over USB.
 Nothing is sent anywhere.
@@ -46,12 +44,9 @@ it, and again from Settings > Set up the USB link.
 ## Using it
 
 Download the build for your platform from
-[Releases](https://github.com/harmonic-afterglow/afterglow/releases). They are standalone
-- no Python installation needed.
+[Releases](https://github.com/harmonic-afterglow/afterglow/releases). They are standalone - no Python installation needed.
 
-There is no macOS build, because nobody has reached a remote from macOS yet. You can
-still author configurations there by running from source - see
-[Contributing](#contributing).
+There is no macOS build, because nobody has reached a remote from macOS yet. You can still author configurations there by running from source - see [Contributing](#contributing).
 
 > [!IMPORTANT]
 > **Save a backup before anything else.** On the **Flash** tab, choose **Read from
@@ -60,19 +55,15 @@ still author configurations there by running from source - see
 
 Then:
 
-- **File > Import** that backup to bring your existing devices and activities into
-  Afterglow - or skip it and start from an empty project.
+- **File > Import** that backup to bring your existing devices and activities into Afterglow - or skip it and start from an empty project.
 - Set your equipment up on the **Devices** and **Activities** tabs.
 - Back on **Flash**, choose **Build Config**, then **Flash to Remote**.
 
 ### What you can set up
 
-- **Devices** - from your own library, by **learning codes off the original remote**,
-  from an online database if you enable one, or from a configuration you imported.
-- **Activities** - "Watch TV" turns on the television and the amplifier, switches both
-  to the right input, and routes each key to whichever device should receive it.
-- **IR output per device** - the remote's front emitter, or a wireless RF blaster
-  including its two wired mini-emitters. New blasters can be paired from the app.
+- **Devices** - from your own library, by **learning codes off the original remote**, from an online database if you enable one, or from a configuration you imported.
+- **Activities** - "Watch TV" turns on the television and the amplifier, switches both to the right input, and routes each key to whichever device should receive it.
+- **IR output per device** - the remote's front emitter, or a wireless RF blaster including its two wired mini-emitters. New blasters can be paired from the app.
 - **Remote settings** - clock, key beep, large font, backlight, child lock.
 - **The remote's own artwork** - the device, activity and button icons it draws.
 
@@ -81,18 +72,15 @@ Importing takes your devices and activities and leaves the other remote's state 
 
 ## Something went wrong
 
-**The remote will not connect.** Give it a few seconds - it is not ready the instant it is
-plugged in. If it still will not connect after 20 seconds, unplug it and plug it back in.
+**The remote will not connect.** Give it a few seconds - it is not ready the instant it is plugged in. If it still will not connect after 20 seconds, unplug it and plug it back in.
 
-**Flashing succeeded but the remote rejected the configuration.** Re-flash your backup,
-then open an issue with what you built.
+**Flashing succeeded but the remote rejected the configuration.** Re-flash your backup, then open an issue with what you built.
 
 **On Linux the link stops working.** Settings > Set up the USB link.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the architecture, and [docs/](docs/) for the
-configuration format itself - the container, the IR bytecode, the device and activity XML.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the architecture, and [docs/](docs/) for the configuration format itself - the container, the IR bytecode, the device and activity XML.
 
 Running from source instead of a release build:
 
