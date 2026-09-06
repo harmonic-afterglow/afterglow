@@ -15,6 +15,9 @@ Logitech closed the Harmony service in 2025. The remotes still work - they just 
 Afterglow builds the configuration on your own computer and writes it back over USB.
 Nothing is sent anywhere.
 
+> [!CAUTION]
+> A breaking bug has been found which prevents users from generating brand new configs. It will be fixed shortly
+
 > [!WARNING]
 > Not affiliated with, endorsed by, or connected to Logitech. *Harmony* and *Logitech*
 > are trademarks of Logitech International S.A.
