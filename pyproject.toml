@@ -56,6 +56,7 @@ afterglow = [
 
 [project.scripts]
 afterglow = "afterglow.gui:main"
+afterglow-first-write = "afterglow.first_write:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

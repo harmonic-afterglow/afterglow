@@ -437,6 +437,41 @@ class Remote:
             raise RemoteError(f"{identity['model']} does not support configuration "
                               "updates through libconcord")
         self._verify_intended_for(path, identity)
+        self._apply_config(path, on_progress=on_progress, reset=reset)
+
+    def _authorize_experimental_config(self, path, expected_identity: dict) -> None:
+        """Repeat every read-only first-write check on the current connection.
+
+        Recovery capture, artifact validation, change review and confirmation live in
+        ``afterglow.first_write``. It calls this before durably recording that a write is
+        about to start, so a missing remote or identity mismatch cannot leave an
+        ambiguous report despite no write having been attempted.
+        """
+        from . import remotes
+
+        path = Path(path)
+        identity = self.identity()
+        profile = self._verify_intended_for(path, identity, allow_experimental=True)
+        if profile.status != remotes.EXPERIMENTAL:
+            raise RemoteError(
+                f"the development write path requires an experimental profile, got "
+                f"{profile.status!r}")
+        problems = []
+        for field in ("arch", "skin", "flash", "board", "software_type", "firmware"):
+            if identity.get(field) != expected_identity.get(field):
+                problems.append(
+                    f"{field} changed from {expected_identity.get(field)!r} to "
+                    f"{identity.get(field)!r}")
+        if problems:
+            raise RemoteError(
+                "the attached remote no longer matches the prepared first-write report: "
+                + "; ".join(problems))
+        if not identity["can_write"]:
+            raise RemoteError(f"{identity['model']} does not support configuration updates")
+
+    def _apply_config(self, path, on_progress=None, reset=True) -> None:
+        """Parse and apply a config whose safety policy has already authorized it."""
+        path = Path(path)
 
         kind = ctypes.c_int()
         self._check(self.lib.read_and_parse_file(str(path).encode(),
@@ -486,7 +521,8 @@ class Remote:
         return True
 
     @staticmethod
-    def _verify_intended_for(path: Path, identity: dict) -> None:
+    def _verify_intended_for(
+            path: Path, identity: dict, *, allow_experimental: bool = False):
         """Prove that the artifact, profile, and attached remote all agree."""
         from . import ezhex, remotes
         try:
@@ -499,8 +535,11 @@ class Remote:
         except remotes.UnknownRemote as exc:
             raise RemoteError(f"{path.name} has no supported remote profile: {exc}") from exc
         try:
-            profile.require_writable()
-        except remotes.NotWritable as exc:
+            if allow_experimental:
+                profile.require_buildable()
+            else:
+                profile.require_writable()
+        except (remotes.NotBuildable, remotes.NotWritable) as exc:
             raise RemoteError(str(exc)) from exc
 
         artifact_problems = profile.identity_mismatches(wanted, require_all=True)
@@ -517,6 +556,7 @@ class Remote:
                 f"{path.name} is not proven compatible with the attached "
                 f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
                 "Refusing to write it.")
+        return profile
 
     def reset(self, on_progress=None) -> None:
         """Reboot the remote."""
