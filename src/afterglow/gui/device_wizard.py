@@ -7,7 +7,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
     QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem,
-    QFileDialog, QMessageBox, QAbstractItemView, QHeaderView, QWizard, QWizardPage
+    QMessageBox, QAbstractItemView, QHeaderView, QWizard, QWizardPage
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -125,8 +125,7 @@ class SearchPage(QWizardPage):
     """Step 1 - search the device database by typing manufacturer then model."""
     template_selected = pyqtSignal(dict)
 
-    def __init__(self, templates, existing, parent=None, archive_path=None,
-                 source_preferences=None):
+    def __init__(self, templates, existing, parent=None, source_preferences=None):
         super().__init__(parent)
         self.setTitle("Find Device")
         self.setSubTitle(
@@ -146,7 +145,6 @@ class SearchPage(QWizardPage):
         self._chosen = False
         self._archive = None
         self._archive_models = {}
-        self._archive_path = archive_path
         if source_preferences is None:
             from .source_settings import SourcePreferences
             source_preferences = SourcePreferences()
@@ -177,11 +175,6 @@ class SearchPage(QWizardPage):
                 self.search_type.addItem(
                     f"Afterglow database · {repository.name}",
                     f"afterglow_external:{number}")
-        # Kept only for callers of the old direct SearchPage API; the application no
-        # longer offers Logitech checkouts as a configured source.
-        if archive_path is not None:
-            self.search_type.addItem(
-                "Logitech Harmony archive · Legacy local", "archive")
         # The third answer to "how do I find this device?" is that you cannot - it is
         # not in the library. Learning belongs here, next to the other two ways of
         # identifying a device, rather than as a separate button somewhere else.
@@ -214,32 +207,6 @@ class SearchPage(QWizardPage):
                 chips_layout.addWidget(btn)
         chips_layout.addStretch()
         layout.addWidget(self._sources_chips_widget)
-
-        # The external source is optional and user-selected. It remains outside the
-        # project and package; only the chosen device's portable signals enter a project.
-        self._archive_section = QWidget()
-        archive_layout = QVBoxLayout(self._archive_section)
-        archive_layout.setContentsMargins(0, 0, 0, 0)
-        archive_layout.setSpacing(4)
-        self._archive_heading = bold("Archive source")
-        archive_layout.addWidget(self._archive_heading)
-        archive_row = QHBoxLayout()
-        self._archive_edit = QLineEdit()
-        self._archive_edit.setPlaceholderText("Folder containing manifest.json and index.json")
-        self._archive_edit.editingFinished.connect(self._open_archive)
-        self._archive_browse = QPushButton("Browse…")
-        self._archive_browse.clicked.connect(self._browse_archive)
-        archive_row.addWidget(self._archive_edit, stretch=1)
-        archive_row.addWidget(self._archive_browse)
-        archive_layout.addLayout(archive_row)
-        self._archive_note = QLabel()
-        self._archive_note.setWordWrap(True)
-        archive_layout.addWidget(self._archive_note)
-        self._archive_section.setVisible(False)
-        layout.addWidget(self._archive_section)
-
-        if self._archive_path:
-            self._archive_edit.setText(str(self._archive_path))
 
         # Manufacturer
         self._mfr_label = bold("Manufacturer")
@@ -321,7 +288,7 @@ class SearchPage(QWizardPage):
 
     def _archive_mode(self):
         return self.search_type.currentData() in {
-            "archive", "logitech_online", "flipper_irdb_online", "irdb_online"}
+            "logitech_online", "flipper_irdb_online", "irdb_online"}
 
     def _external_mode(self):
         return str(self.search_type.currentData()).startswith("afterglow_external:")
@@ -331,7 +298,6 @@ class SearchPage(QWizardPage):
         learning = mode == "learn"
         archive = self._archive_mode()
         self._sources_chips_widget.setVisible(mode == "all")
-        self._archive_section.setVisible(archive)
         self._mfr_label.setVisible(not learning)
         self._mfr_box.setVisible(not learning)
         self._model_section.setVisible(not learning and self._model_section_wanted)
@@ -341,21 +307,6 @@ class SearchPage(QWizardPage):
         self._set_chosen(False)
         if archive:
             self._archive = None
-            if mode != "archive":
-                labels = {
-                    "logitech_online": "Logitech Harmony database",
-                    "flipper_irdb_online": "Flipper-IRDB",
-                    "irdb_online": "IRDB",
-                }
-                self._archive_heading.setText("Live online database")
-                self._archive_edit.setText(labels[mode])
-                self._archive_edit.setReadOnly(True)
-                self._archive_browse.setVisible(False)
-            else:
-                self._archive_heading.setText("Legacy local archive folder")
-                self._archive_edit.setText(str(self._archive_path or ""))
-                self._archive_edit.setReadOnly(False)
-                self._archive_browse.setVisible(True)
             self._open_archive()
         elif self._external_mode():
             self._archive = None
@@ -485,8 +436,9 @@ class SearchPage(QWizardPage):
         try:
             models = self._archive.models(self._matched_mfr, text, limit=300)
         except (LookupError, OSError, ValueError) as exc:
-            self._archive_note.setText(str(exc))
-            self._archive_note.setStyleSheet("color: #b00020;")
+            self._status_lbl.setText(str(exc))
+            self._status_lbl.setStyleSheet("color: #b00020;")
+            self._status_lbl.setVisible(True)
             return
         repeated = Counter(model.name for model in models)
         names = {}
@@ -588,26 +540,12 @@ class SearchPage(QWizardPage):
             if model_str in t.get("remote_models", []):
                 self._fire(t); return
 
-    def _browse_archive(self):
-        chosen = QFileDialog.getExistingDirectory(
-            self, "Select Logitech Harmony IR archive", self._archive_edit.text())
-        if chosen:
-            self._archive_path = Path(chosen)
-            self._archive_edit.setText(chosen)
-            self._open_archive()
-
     def _open_archive(self):
         if not self._archive_mode():
             return
         mode = self.search_type.currentData()
-        selected = str(self._archive_path or "")
-        if mode == "archive" and not selected:
-            self._archive = None
-            self._archive_note.setText("Choose the legacy archive folder first.")
-            self._archive_note.setStyleSheet("color: #b00020;")
-            return
         try:
-            from ..corpus_provider import LogitechCatalog, online_logitech_catalog
+            from ..corpus_provider import online_logitech_catalog
             from ..public_ir_sources import FlipperIrdbCatalog, IrdbCatalog
 
             openers = {
@@ -616,18 +554,16 @@ class SearchPage(QWizardPage):
                 "flipper_irdb_online": FlipperIrdbCatalog,
                 "irdb_online": IrdbCatalog,
             }
-            self._archive = (LogitechCatalog(selected) if mode == "archive"
-                             else openers[mode]())
+            self._archive = openers[mode]()
             manufacturers = self._archive.manufacturers(limit=100_000)
         except (OSError, ValueError) as exc:
             self._archive = None
-            self._archive_note.setText(f"Could not open archive: {exc}")
-            self._archive_note.setStyleSheet("color: #b00020;")
+            message = f"Could not open archive: {exc}"
+            self._status_lbl.setText(message)
+            self._status_lbl.setStyleSheet("color: #b00020;")
+            self._status_lbl.setVisible(True)
             self._mfr_box.set_choices([])
             return
-        self._archive_note.setText(
-            f"Ready: {len(manufacturers):,} manufacturers.")
-        self._archive_note.setStyleSheet("color: green;")
         self._mfr_box.set_choices([entry.name for entry in manufacturers])
         self._matched_mfr = None
         self._model_section_wanted = False
