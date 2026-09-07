@@ -13,17 +13,13 @@ into an actual extension point while keeping the core free of third-party depend
 """
 from __future__ import annotations
 
+from functools import lru_cache
 from importlib import import_module
-from types import ModuleType
+from .contracts import BuildContext as BuildContext
+from .contracts import BuildResult as BuildResult
+from .contracts import ImportResult as ImportResult
 
-
-REQUIRED = (
-    "build_tree",
-    "capability",
-    "import_project",
-    "lower_devices",
-    "migrate_legacy_device",
-)
+REQUIRED = ("build_project", "import_project")
 
 # This backend is identified by the ``PK\x03\x04`` magic at the start of its ezhex
 # payload. ``harmony-z`` and the briefly used structural name ``harmony-ziptree`` were
@@ -35,11 +31,16 @@ ALIASES = {
 }
 
 
-def get(name: str) -> ModuleType:
-    """Return one backend module and verify its public contract."""
+def get(name: str):
+    """Return one backend implementation behind the two-operation contract."""
     if not isinstance(name, str) or not name.strip():
         raise LookupError("remote profile does not name an infrared backend")
     canonical = ALIASES.get(name.strip(), name.strip())
+    return _get_canonical(canonical)
+
+
+@lru_cache
+def _get_canonical(canonical: str):
     module_name = canonical.replace("-", "_")
     try:
         backend = import_module(f"{__name__}.{module_name}.backend")
@@ -47,16 +48,20 @@ def get(name: str) -> ModuleType:
         expected = f"{__name__}.{module_name}"
         if exc.name not in (expected, f"{expected}.backend"):
             raise
-        raise LookupError(f"unknown infrared backend {name!r}") from None
-    missing = [attribute for attribute in REQUIRED
-               if not callable(getattr(backend, attribute, None))]
+        raise LookupError(f"unknown infrared backend {canonical!r}") from None
+    if all(callable(getattr(backend, name, None)) for name in REQUIRED):
+        return backend
+
+    from . import v1
+    missing = [name for name in v1.REQUIRED if not callable(getattr(backend, name, None))]
     if missing:
         raise TypeError(
-            f"infrared backend {name!r} is incomplete; missing {', '.join(missing)}")
-    return backend
+            f"infrared backend {canonical!r} is incomplete; missing "
+            f"{', '.join(missing)}")
+    return v1.Backend(backend)
 
 
-def for_profile(profile) -> ModuleType:
+def for_profile(profile):
     """Resolve the backend named by a ``RemoteProfile``."""
     # The fallback keeps old in-memory profiles readable during the schema migration.
     name = getattr(profile, "backend", "") or (profile.infrared or {}).get("backend")
@@ -73,7 +78,7 @@ def installed() -> list[str]:
                   if info.ispkg and not info.name.startswith("_"))
 
 
-def for_legacy_device(spec: dict) -> ModuleType:
+def for_legacy_device(spec: dict):
     """The backend that recognises a pre-portable device record.
 
     Reading a legacy record needs that architecture's knowledge of block ids and command
