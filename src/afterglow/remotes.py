@@ -22,12 +22,13 @@ already-implemented architecture is adding a file, not editing code:
 
 ## `status` is a safety gate, not a label
 
-    verified   configs have been built AND flashed to this remote successfully
-    untested   the identity is known but nothing has ever been written to one
+    read-only    identity is known; importing and inspection only
+    experimental configs may be built for controlled first-write testing
+    verified     configs have been built AND flashed to this remote successfully
 
-`untested` profiles can read and inspect; `require_writable()` refuses to write to
-them. Getting a config wrong on a remote nobody has tested means bricking hardware
-that cannot be re-flashed from a vendor server any more, so the default is no.
+Only `verified` profiles are writable through the normal application flow. Getting a
+config wrong can strand hardware that cannot be re-flashed from a vendor server any
+more, so a new profile defaults to `read-only` and promotion is explicit.
 
 The skin id identifies the model (`library/remotes/models.json`, indexed by skin,
 from Concordance's table). Identity is read straight out of a config's
@@ -46,7 +47,10 @@ SCHEMA = "afterglow-remote/1"
 LIBRARY = paths.library("remotes")
 
 VERIFIED = "verified"
-UNTESTED = "untested"
+EXPERIMENTAL = "experimental"
+READ_ONLY = "read-only"
+UNTESTED = "untested"  # legacy profile value; loaded as READ_ONLY
+STATUSES = frozenset({READ_ONLY, EXPERIMENTAL, VERIFIED})
 
 
 class UnknownRemote(LookupError):
@@ -55,6 +59,10 @@ class UnknownRemote(LookupError):
 
 class NotWritable(PermissionError):
     """Refusing to write a config for a remote nobody has verified."""
+
+
+class NotBuildable(PermissionError):
+    """Refusing to build for a profile that has not entered controlled testing."""
 
 
 @dataclass(frozen=True)
@@ -68,7 +76,7 @@ class RemoteProfile:
     software_type: int | None = None
     payload: str = ""          # required in the JSON; see load()
     backend: str = ""          # implementation selector, separate from capabilities
-    status: str = UNTESTED
+    status: str = READ_ONLY
     capabilities: dict = field(default_factory=dict)
     # IR meaning is portable; reproduction is not. This records which semantic
     # protocols the backend can lower and what kind of waveform evidence it requires.
@@ -86,6 +94,10 @@ class RemoteProfile:
     @property
     def verified(self) -> bool:
         return self.status == VERIFIED
+
+    @property
+    def buildable(self) -> bool:
+        return self.status in (EXPERIMENTAL, VERIFIED)
 
     def can(self, capability: str) -> bool:
         return bool(self.capabilities.get(capability))
@@ -162,6 +174,14 @@ class RemoteProfile:
                 f"remote boots, then set \"status\": \"verified\" in its profile."
             )
 
+    def require_buildable(self) -> None:
+        if not self.buildable:
+            raise NotBuildable(
+                f"{self.model} (skin {self.skin}) is {self.status}: its identity may be "
+                "read and inspected, but configs cannot be built until the profile is "
+                "explicitly promoted to \"experimental\" for controlled testing."
+            )
+
     def matches(self, identity: dict) -> bool:
         """Identity from a config header vs this profile. Skin alone identifies the
         model; arch is checked too when the profile declares it."""
@@ -218,6 +238,16 @@ def _required_backend(data: dict) -> str:
     return backend.strip()
 
 
+def _status(data: dict) -> str:
+    status = data.get("status", READ_ONLY)
+    if status == UNTESTED:
+        return READ_ONLY
+    if status not in STATUSES:
+        raise ValueError(
+            f"remote profile {data.get('id', '?')!r} has unknown status {status!r}")
+    return status
+
+
 def _from_json(data: dict) -> RemoteProfile:
     if data.get("schema") != SCHEMA:
         raise ValueError(f"expected schema {SCHEMA!r}, got {data.get('schema')!r}")
@@ -227,7 +257,7 @@ def _from_json(data: dict) -> RemoteProfile:
         arch=ident.get("arch"), skin=ident.get("skin"), flash=ident.get("flash"),
         board=ident.get("board"), software_type=ident.get("software_type"),
         payload=_required_payload(data), backend=_required_backend(data),
-        status=data.get("status", UNTESTED),
+        status=_status(data),
         capabilities=data.get("capabilities", {}),
         infrared=data.get("infrared", {}),
         vocabulary=data.get("vocabulary", {}),

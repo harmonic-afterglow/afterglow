@@ -65,7 +65,7 @@ src/afterglow/
   paths.py                the ONE answer to "where does shipped data live" - see §4
   ezhex.py                the .ezhex container: unpack / pack_standalone / rehash
   project_devices.py      canonical portable device shape stored in projects
-  remotes.py              remote profiles + the writable/untested safety gate
+  remotes.py              remote profiles + the build/write safety gates
   importer.py             profile-selected backend import dispatcher
   library.py              private portable device/protocol library + learn()
   build_service.py        headless build orchestration (ConfigBuildService)
@@ -141,8 +141,10 @@ the root. The order below is also the order the tests will stop you in.
 2. Add `scaffolds/<model>/` - a sanitised real configuration from that remote. It cannot
    be synthesised, and one from a *different* model must never be substituted: it carries
    that remote's calibration and persisted settings.
-3. Leave `status: untested`. `require_writable()` refuses to build for it, on purpose.
-4. Flash it, boot it, and only then set `verified`. **No exceptions** - there is no vendor
+3. Start with `status: read-only`; promote it to `experimental` only for controlled
+   artifact builds. Normal writes remain blocked.
+4. Flash through the dedicated first-write process, boot it, and only then set
+   `verified`. **No exceptions** - there is no vendor
    server to recover from.
 
 That is the whole job. No Python.
@@ -268,8 +270,10 @@ model; "reproducible" describes one remote's backend. They differ by half the co
 it, so quoting the first alone is a false claim. Both numbers come out of one `tools/logitech_archive.py … audit --reproduce <remote>` run; report them
 together.
 
-**The safety gate:** `remotes.py` profiles have `status: verified | untested`.
-`profile.require_writable()` refuses to build for an `untested` remote. Only
+**The safety gate:** `remotes.py` profiles have
+`status: read-only | experimental | verified`. `profile.require_buildable()` permits
+controlled builds for experimental profiles; `profile.require_writable()` permits only
+verified profiles through the normal write path. Only
 `harmony-900` is verified. **Never** downgrade this gate or mark a profile `verified`
 that has not actually had a config flashed and booted on it. Adding support for a remote
 of an already-implemented architecture is **adding a JSON file to `library/remotes/`,

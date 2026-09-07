@@ -36,9 +36,11 @@ status:
 | Status | Meaning |
 |---|---|
 | verified | A configuration has been written to one and it booted |
-| untested | The identity is known, but nothing has ever been written to one |
+| experimental | Configs may be built for controlled first-write testing |
+| read-only | The identity is known; importing and inspection only |
 
-An `untested` profile can read and inspect; writing is refused. A configuration that is
+An `experimental` profile can also build an artifact, but normal writing is refused. A
+`read-only` profile can only read and inspect. A configuration that is
 wrong on a remote nobody has tested means bricking hardware that can no longer be
 recovered from a vendor server, so the default is no.
 

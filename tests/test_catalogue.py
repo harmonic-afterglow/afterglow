@@ -20,7 +20,7 @@ def test_profiles_load():
     assert profiles, "no remote profiles"
     for profile in profiles:
         assert profile.id and profile.model
-        assert profile.status in (remotes.VERIFIED, remotes.UNTESTED)
+        assert profile.status in remotes.STATUSES
 
 
 def test_every_config_is_identified(configs):
@@ -40,11 +40,32 @@ def test_only_verified_profiles_ship():
     assert [p.id for p in remotes.load_all() if not p.verified] == []
 
 
-def test_untested_profile_refuses_to_build():
-    """The gate itself still holds, for a profile someone adds locally."""
-    profile = remotes.RemoteProfile(id="x", model="Untried", status=remotes.UNTESTED)
+def test_read_only_profile_refuses_to_build_or_write():
+    profile = remotes.RemoteProfile(id="x", model="Untried")
+    with pytest.raises(remotes.NotBuildable):
+        profile.require_buildable()
     with pytest.raises(remotes.NotWritable):
         profile.require_writable()
+
+
+def test_experimental_profile_can_build_but_not_write():
+    profile = remotes.RemoteProfile(
+        id="x", model="In controlled testing", status=remotes.EXPERIMENTAL)
+    profile.require_buildable()
+    with pytest.raises(remotes.NotWritable):
+        profile.require_writable()
+
+
+def test_legacy_untested_status_migrates_to_read_only():
+    profile = remotes._from_json({
+        "schema": remotes.SCHEMA,
+        "id": "legacy",
+        "model": "Legacy profile",
+        "payload": "pk",
+        "backend": "harmony-pk",
+        "status": "untested",
+    })
+    assert profile.status == remotes.READ_ONLY
 
 
 def test_an_unshipped_remote_is_still_named_on_import():
