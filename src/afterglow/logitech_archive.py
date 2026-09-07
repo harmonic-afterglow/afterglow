@@ -1141,14 +1141,32 @@ def protocol_record(relative: str, source_record: dict, *,
     }
     mapping = PORTABLE_PROTOCOLS.get(source_record.get("name"))
     if mapping and source_record.get("logitechProtocolId") == mapping[0]:
-        record["portable"] = _catalogue(library)[mapping[1]].raw
-        record["portable_status"] = "reviewed"
+        reviewed = _catalogue(library).get(mapping[1])
         try:
             generic, _layout = _portable_protocol(source_record)
-        except ArchiveError:
-            pass
+        except ArchiveError as exc:
+            generic = None
+            generic_reason = str(exc)
+        if reviewed is not None:
+            record["portable"] = reviewed.raw
+            record["portable_status"] = "reviewed"
+            if generic is not None:
+                record["generic_portable"] = generic
+        elif generic is not None:
+            # Reviewed adapters give useful semantic names to archive fields, but the
+            # application deliberately ships no catalogue containing their definitions.
+            # The archive's complete definition is still enough to preserve and build
+            # the signal with mechanically named payload fields.
+            record["portable"] = generic
+            record["portable_status"] = "generic"
         else:
-            record["generic_portable"] = generic
+            # A missing optional reviewed definition must not prevent the command's
+            # derived Pronto waveform from reaching the later fallback path.
+            record["portable_status"] = "unavailable"
+            record["portable_reason"] = (
+                f"reviewed portable protocol {mapping[1]!r} is not installed; "
+                f"{generic_reason}"
+            )
     else:
         try:
             record["portable"] = portable_protocol(source_record)

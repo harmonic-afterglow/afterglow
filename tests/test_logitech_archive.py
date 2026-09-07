@@ -435,6 +435,48 @@ def test_catalogue_device_carries_its_generic_protocol_after_source_disconnects(
     assert project_device["commands"][0][2:4] == ["", "0A"]
 
 
+def test_catalogue_converts_a_reviewed_family_when_no_protocols_are_installed(
+        tmp_path, monkeypatch):
+    root = _generic_protocol_archive(tmp_path / "source")
+    old_name = "Example 4 Bit Generic"
+    name = "GoVideoO1 32 Bit"
+    protocol_path = root / "protocols/Example_4_Bit_Generic.json"
+    protocol = json.loads(protocol_path.read_text())
+    protocol.update(name=name, logitechProtocolId=677)
+    protocol["definition"]["Name"] = name
+    protocol["definition"]["IRSegments"][0]["Name"] = name
+    protocol["definition"]["KeyCode"]["Repeat"][0]["SegmentName"] = name
+    _write(protocol_path, protocol)
+
+    index = json.loads((root / "protocols/index.json").read_text())
+    entry = next(item for item in index if item["n"] == old_name)
+    entry.update(id=677, n=name)
+    _write(root / "protocols/index.json", index)
+
+    archive = logitech_archive.Archive(root)
+    device = archive.device("devices/Sony/CDP222ES.json")
+    codeset_path = root / device["codeset"]
+    codeset = json.loads(codeset_path.read_text())
+    codeset["commands"][0].update(
+        protocol=name,
+        keycode=f"G:{name}:()(0xA)():3",
+    )
+    _write(codeset_path, codeset)
+
+    empty_library = tmp_path / "no-protocols"
+    empty_library.mkdir()
+    monkeypatch.setattr(ir_protocol, "LIBRARY", empty_library)
+
+    catalog = corpus_provider.LogitechCatalog(root)
+    result = catalog.materialize(catalog.models("Sony", "CDP")[0])
+    project_device = device_json.to_project_device(result["template"], "40009001")
+    signal = project_device["signals"]["PowerToggle"]
+
+    assert result["counts"] == {"source": 1, "supported": 1, "excluded": 0}
+    assert signal["protocol"].startswith("logitech-677-")
+    assert signal["protocol"] in project_device["portable_protocol_definitions"]
+
+
 def test_optional_real_archive_has_no_well_formed_ir_shape_outside_the_grammar():
     selected = os.environ.get("AFTERGLOW_LOGITECH_ARCHIVE")
     root = (Path(selected).expanduser() if selected else
@@ -471,28 +513,6 @@ def test_external_catalog_searches_indexes_and_materializes_only_faithful_comman
     assert result["template"]["schema"] == "afterglow-device/2"
     assert result["template"]["power"] == {"toggle": "PowerToggle"}
     assert result["template"]["commands"][0]["signal"]["kind"] == "waveform"
-
-
-def test_external_catalog_is_a_visible_lazy_search_mode(tmp_path, qapp_or_skip):
-    root = _fixed_waveform_archive(tmp_path)
-    from afterglow.gui.device_wizard import SearchPage
-
-    page = SearchPage([], {}, archive_path=root)
-    archive_index = [page.search_type.itemData(index)
-                     for index in range(page.search_type.count())].index("archive")
-    page.search_type.setCurrentIndex(archive_index)
-    page._mfr_box.setText("Sony")
-    page._model_box.setText("CDP")
-    chosen = next(iter(page._archive_models))
-    emitted = []
-    page.template_selected.connect(emitted.append)
-    page._on_model_chosen(chosen)
-
-    assert page._archive is not None
-    assert page._capabilities.rowCount() == 1
-    assert "1 of 1 commands" in page._status_lbl.text()
-    assert emitted[0]["model"] == "CDP222ES"
-    assert emitted[0]["signals"]["PowerToggle"]["kind"] == "waveform"
 
 
 def test_device_sources_are_independently_enabled_and_persist_outside_projects(
@@ -590,6 +610,42 @@ def test_source_setup_keeps_online_descriptions_compact(qapp_or_skip):
     assert "Last-read records" not in descriptions
     assert "Devices dumped, learned, or saved by you." in descriptions
     assert "small reviewed device library" not in descriptions
+
+
+def test_online_logitech_search_loads_and_materializes_a_device(
+        tmp_path, qapp_or_skip, monkeypatch):
+    root = _fixed_waveform_archive(tmp_path)
+    from afterglow import corpus_provider
+    from afterglow.gui.device_wizard import SearchPage
+    from afterglow.gui.source_settings import SourcePreferences
+
+    monkeypatch.setattr(
+        corpus_provider,
+        "online_logitech_catalog",
+        lambda **_options: corpus_provider.LogitechCatalog(root),
+    )
+    page = SearchPage([], {}, source_preferences=SourcePreferences(
+        local_devices=False,
+        logitech_online=True,
+        flipper_irdb_online=False,
+        irdb_online=False,
+    ))
+    modes = [page.search_type.itemData(index)
+             for index in range(page.search_type.count())]
+    page.search_type.setCurrentIndex(modes.index("logitech_online"))
+
+    assert page._archive is not None
+    assert page._mfr_box._choices == ["Sony"]
+    page._mfr_box.setText("Sony")
+    page._model_box.setText("CDP")
+    chosen = next(iter(page._archive_models))
+    emitted = []
+    page.template_selected.connect(emitted.append)
+    page._on_model_chosen(chosen)
+
+    assert "1 of 1 commands" in page._status_lbl.text()
+    assert emitted[0]["model"] == "CDP222ES"
+    assert emitted[0]["signals"]["PowerToggle"]["kind"] == "waveform"
 
 
 def test_external_afterglow_sources_are_https_git_repositories_not_folders(tmp_path):
