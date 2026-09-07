@@ -4,6 +4,21 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-09-07
+
+### Fixed
+
+- Convert and embed protocol definitions from the Logitech Harmony archive when no
+  external protocol database is installed, instead of aborting device creation with a
+  `LookupError`.
+- Preserve the Pronto waveform fallback when neither a reviewed nor mechanically
+  converted protocol definition is available.
+
+### Removed
+
+- Remove the redundant online-database source text box and the inaccessible legacy local
+  Logitech archive folder mode from the Device Wizard.
+
 ## [0.1.0] - 2026-09-04
 
 ### Added
