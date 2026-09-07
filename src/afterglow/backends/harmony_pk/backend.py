@@ -9,8 +9,15 @@ project.  The legacy migration entry point is intentionally here as well: interp
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
+import io
 import json
 from pathlib import Path
+import re
+import struct
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 
 from ... import ir_protocol, ir_signal, project_devices
 from . import BACKEND_NAMES, NAME
@@ -492,3 +499,69 @@ def import_project(extracted_dir, out_file=None) -> dict:
     """Read one extracted arch-15 configuration into the portable project model."""
     from . import importer
     return importer._build_project_harmony_pk(extracted_dir, out_file=out_file)
+
+
+def validate_payload(payload: bytes, _profile) -> dict:
+    """Validate the PK carrier independently of the builder that produced it."""
+    required = {
+        "userconfig/UserConfiguration.xml",
+        "userconfig/ActionLists.xml",
+        "userconfig/SsIr.bin",
+    }
+    try:
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            bad = archive.testzip()
+            if bad:
+                raise ValueError(f"ZIP entry {bad!r} fails its CRC")
+            names = set(archive.namelist())
+            missing = sorted(required - names)
+            if missing:
+                raise ValueError(f"configuration is missing {', '.join(missing)}")
+            for name in ("userconfig/UserConfiguration.xml",
+                         "userconfig/ActionLists.xml"):
+                ET.fromstring(archive.read(name))
+            if "userconfig/IrProto.bin" in names:
+                irproto = archive.read("userconfig/IrProto.bin")
+                if len(irproto) < 8:
+                    raise ValueError("IrProto.bin is shorter than its integrity header")
+                stored_crc, stored_size = struct.unpack("<II", irproto[:8])
+                actual_crc = zlib.crc32(irproto[8:]) & 0xFFFFFFFF
+                if stored_size != len(irproto) - 8 or stored_crc != actual_crc:
+                    raise ValueError("IrProto.bin length or CRC32 is stale")
+                for name in ("userconfig/UserConfiguration.xml",
+                             "userconfig/ActionLists.xml"):
+                    hashes = re.findall(
+                        rb"(?:ProtocolCacheHash\">|<Hash>)(0x[0-9A-Fa-f]+)",
+                        archive.read(name))
+                    if hashes and any(int(value, 16) != actual_crc for value in hashes):
+                        raise ValueError(f"{name} carries a stale protocol cache hash")
+    except (ET.ParseError, zipfile.BadZipFile) as exc:
+        raise ValueError(f"invalid Harmony PK payload: {exc}") from exc
+    return {
+        "ok": True,
+        "validator": "harmony-pk/zip-and-critical-files",
+        "entries": len(names),
+        "protocol_cache": "consistent" if "userconfig/IrProto.bin" in names else "absent",
+    }
+
+
+def compare_payloads(recovery: bytes, candidate: bytes, _profile) -> dict:
+    """File-level change report for review before a first hardware write."""
+    def entries(payload):
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            return {
+                name: hashlib.sha256(archive.read(name)).hexdigest()
+                for name in archive.namelist()
+                if not name.endswith("/")
+            }
+
+    before, after = entries(recovery), entries(candidate)
+    return {
+        "kind": "pk-entry-sha256",
+        "added": sorted(after.keys() - before.keys()),
+        "removed": sorted(before.keys() - after.keys()),
+        "changed": sorted(
+            name for name in before.keys() & after.keys() if before[name] != after[name]),
+        "unchanged": sum(
+            before[name] == after[name] for name in before.keys() & after.keys()),
+    }

@@ -147,6 +147,10 @@ the root. The order below is also the order the tests will stop you in.
    `verified`. **No exceptions** - there is no vendor
    server to recover from.
 
+The dedicated process is documented in `docs/first-write.md`. Keep its preparation, apply and
+readback states separate: an interrupted write has an unknown outcome and must never become an
+automatic retry.
+
 That is the whole job. No Python.
 
 A tree-like internal layout is not sufficient evidence. Harmony One uses a different
