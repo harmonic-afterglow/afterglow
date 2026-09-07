@@ -102,8 +102,17 @@ def test_registry_can_load_a_new_backend_without_core_changes(monkeypatch):
     )
 
     assert backends.get("example") is fake
-    fake.lower_devices([])
-    assert calls == ["lower_devices"]
+    fake.build_project({}, None, None)
+    assert calls == ["build_project"]
+
+
+def test_current_backend_is_hidden_behind_the_v1_adapter():
+    from afterglow import backends, remotes
+    from afterglow.backends import v1
+
+    backend = backends.for_profile(remotes.get("harmony-900"))
+    assert isinstance(backend, v1.Backend)
+    assert all(callable(getattr(backend, name)) for name in backends.REQUIRED)
 
 
 def test_pre_rename_backend_names_remain_read_aliases():
