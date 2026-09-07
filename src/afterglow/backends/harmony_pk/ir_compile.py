@@ -113,7 +113,7 @@ def _report_frozen(frozen: list[tuple[str, str, str]], model: str) -> None:
 def prepare_devices(specs: list[dict], profile, *, library=None) -> None:
     """Add exact backend Codes/waveforms required by each portable command in place."""
     library = ir_protocol.LIBRARY if library is None else library
-    backend_name = profile.infrared.get("backend")
+    backend_name = getattr(profile, "backend", "") or profile.infrared.get("backend")
     frozen: list[tuple[str, str, str]] = []
     for spec in specs:
         for name, signal in (spec.get("signals") or {}).items():

@@ -9,6 +9,7 @@
     "software_type": 0
   },
   "payload": "pk",
+  "backend": "harmony-pk",
   "status": "verified",
   "capabilities": {
     "rf_blaster": true,
@@ -17,7 +18,6 @@
     "hard_keys": true
   },
   "infrared": {
-    "backend": "harmony-pk",
     "native_protocols": [
       "nec1",
       "nec1-toshiba",
