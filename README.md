@@ -3,11 +3,12 @@
 <div id="toc">
   <ul style="list-style: none">
     <summary>
+      
+[![Telegram](https://img.shields.io/badge/-updates-blue?logo=telegram&logoColor=white&labelColor=gray)](https://t.me/afterglowupdates)
       <h1>Afterglow</h1> <!-- removes underline under the h1 -->
     </summary>
   </ul>
 </div>
-
 **Set up a Logitech Harmony remote after the service shut down.**
 
 Logitech closed the Harmony service in 2025. The remotes still work - they just cannot be *reconfigured*, because every way to change what a button does went through a server that no longer answers.
