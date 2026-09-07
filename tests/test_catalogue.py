@@ -68,6 +68,16 @@ def test_legacy_untested_status_migrates_to_read_only():
     assert profile.status == remotes.READ_ONLY
 
 
+def test_profile_firmware_bounds_are_enforced_for_writes():
+    profile = remotes.RemoteProfile(
+        id="x", model="Bounded", firmware_min="1.2", firmware_max="1.4")
+    assert not profile.identity_mismatches({"firmware": "1.3"}, require_all=True)
+    assert "minimum" in profile.identity_mismatches(
+        {"firmware": "1.1"}, require_all=True)[0]
+    assert "maximum" in profile.identity_mismatches(
+        {"firmware": "1.5"}, require_all=True)[0]
+
+
 def test_an_unshipped_remote_is_still_named_on_import():
     """Dropping the profiles must not make a foreign config unidentifiable rubbish:
     the skin table still says which remote it belongs to."""
