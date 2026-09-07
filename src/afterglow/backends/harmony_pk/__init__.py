@@ -16,3 +16,6 @@ what you need explicitly:
 NAME = "harmony-pk"
 LEGACY_NAMES = ("harmony-z", "harmony-ziptree")
 BACKEND_NAMES = (NAME, *LEGACY_NAMES)
+# Native evidence is keyed by the backend name that produced it. Keep those stable even
+# when implementation selection moves or is renamed.
+NATIVE_EVIDENCE_NAMES = BACKEND_NAMES

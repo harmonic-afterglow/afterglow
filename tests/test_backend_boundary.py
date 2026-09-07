@@ -52,9 +52,40 @@ def test_every_profile_resolves_a_complete_backend():
     from afterglow import backends, remotes
 
     for profile in remotes.load_all():
-        if (profile.infrared or {}).get("backend"):
+        if profile.backend:
             backend = backends.for_profile(profile)
             assert all(callable(getattr(backend, name)) for name in backends.REQUIRED)
+
+
+def test_legacy_nested_backend_is_migrated_to_the_top_level():
+    from afterglow import remotes
+
+    profile = remotes._from_json({
+        "schema": remotes.SCHEMA,
+        "id": "legacy",
+        "model": "Legacy profile",
+        "payload": "pk",
+        "infrared": {"backend": "harmony-z", "waveform": "carrier-period"},
+    })
+
+    assert profile.backend == "harmony-z"
+    saved = profile.to_json()
+    assert saved["backend"] == "harmony-z"
+    assert "backend" not in saved["infrared"]
+
+
+def test_conflicting_backend_selectors_are_rejected():
+    from afterglow import remotes
+
+    with pytest.raises(ValueError, match="conflicting backends"):
+        remotes._from_json({
+            "schema": remotes.SCHEMA,
+            "id": "conflict",
+            "model": "Conflicting profile",
+            "payload": "pk",
+            "backend": "one",
+            "infrared": {"backend": "another"},
+        })
 
 
 def test_registry_can_load_a_new_backend_without_core_changes(monkeypatch):

@@ -765,7 +765,7 @@ def test_audit_measures_remote_reproduction_separately_from_representation(tmp_p
     assert state["complete"]
     reproduction = state["reproduction"]
     assert reproduction["remote"] == profile.model
-    assert reproduction["backend"] == (profile.infrared or {}).get("backend")
+    assert reproduction["backend"] == profile.backend
 
     # Every classified command is answered for, so the two totals stay comparable.
     assert (sum(reproduction["strategies"].values())

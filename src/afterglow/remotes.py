@@ -14,9 +14,10 @@ already-implemented architecture is adding a file, not editing code:
       "model": "Harmony 900",
       "identity": {"arch": 15, "skin": 61, "flash": "0x01:0x49", "board": "0.1.0"},
       "payload": "pk",
+      "backend": "harmony-pk",
       "status": "verified",
       "capabilities": {"rf_blaster": true, "touchscreen": true},
-      "infrared": {"backend": "harmony-pk", "native_protocols": ["nec1"]}
+      "infrared": {"native_protocols": ["nec1"]}
     }
 
 ## `status` is a safety gate, not a label
@@ -66,6 +67,7 @@ class RemoteProfile:
     board: str | None = None
     software_type: int | None = None
     payload: str = ""          # required in the JSON; see load()
+    backend: str = ""          # implementation selector, separate from capabilities
     status: str = UNTESTED
     capabilities: dict = field(default_factory=dict)
     # IR meaning is portable; reproduction is not. This records which semantic
@@ -97,7 +99,7 @@ class RemoteProfile:
         from . import ir_signal
 
         ir_signal.validate(signal)
-        backend = self.infrared.get("backend")
+        backend = self.backend or self.infrared.get("backend")
         native = signal.get("native") or {}
         evidence_names = (backend,) if backend else ()
         if backend:
@@ -106,7 +108,10 @@ class RemoteProfile:
             # reproduce native evidence stored by an older private project.
             from . import backends
             implementation = backends.get(backend)
-            evidence_names = getattr(implementation, "BACKEND_NAMES", evidence_names)
+            evidence_names = getattr(
+                implementation, "NATIVE_EVIDENCE_NAMES",
+                getattr(implementation, "BACKEND_NAMES", evidence_names),
+            )
         has_native_evidence = any(native.get(name) for name in evidence_names)
         if signal["kind"] == "protocol":
             if signal["protocol"] in self.infrared.get("native_protocols", []):
@@ -173,8 +178,9 @@ class RemoteProfile:
                                            ("flash", self.flash), ("board", self.board),
                                            ("software_type", self.software_type))
                          if v is not None},
-            "payload": self.payload, "status": self.status,
-            "capabilities": self.capabilities, "infrared": self.infrared,
+            "payload": self.payload, "backend": self.backend, "status": self.status,
+            "capabilities": self.capabilities,
+            "infrared": {k: v for k, v in self.infrared.items() if k != "backend"},
             "vocabulary": self.vocabulary,
             "properties": self.vocabulary_properties, "notes": self.notes,
         }
@@ -197,6 +203,21 @@ def _required_payload(data: dict) -> str:
     return payload.strip()
 
 
+def _required_backend(data: dict) -> str:
+    """Read the top-level selector, accepting the old infrared location on import."""
+    infrared = data.get("infrared") or {}
+    backend = data.get("backend") or infrared.get("backend")
+    if not isinstance(backend, str) or not backend.strip():
+        raise ValueError(
+            f"remote profile {data.get('id', '?')!r} does not name a backend; "
+            "add a top-level \"backend\"")
+    if data.get("backend") and infrared.get("backend") \
+            and data["backend"].strip() != infrared["backend"].strip():
+        raise ValueError(
+            f"remote profile {data.get('id', '?')!r} names conflicting backends")
+    return backend.strip()
+
+
 def _from_json(data: dict) -> RemoteProfile:
     if data.get("schema") != SCHEMA:
         raise ValueError(f"expected schema {SCHEMA!r}, got {data.get('schema')!r}")
@@ -205,7 +226,8 @@ def _from_json(data: dict) -> RemoteProfile:
         id=data["id"], model=data["model"],
         arch=ident.get("arch"), skin=ident.get("skin"), flash=ident.get("flash"),
         board=ident.get("board"), software_type=ident.get("software_type"),
-        payload=_required_payload(data), status=data.get("status", UNTESTED),
+        payload=_required_payload(data), backend=_required_backend(data),
+        status=data.get("status", UNTESTED),
         capabilities=data.get("capabilities", {}),
         infrared=data.get("infrared", {}),
         vocabulary=data.get("vocabulary", {}),
@@ -287,7 +309,7 @@ def describe(profile: RemoteProfile) -> str:
             f"flash {profile.flash}, board {profile.board}\n"
             f"  payload      : {profile.payload}\n"
             f"  capabilities : {caps}\n"
-            f"  IR backend   : {profile.infrared.get('backend', 'none declared')}")
+            f"  backend      : {profile.backend or 'none declared'}")
 
 
 def main(argv=None):

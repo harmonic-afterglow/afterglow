@@ -3,7 +3,7 @@
 The rest of Afterglow deals in portable devices, signals and protocol definitions.  A
 backend is the one deliberately narrow place where those meanings become a particular
 remote's command bytes, protocol tables and configuration tree.  Backends are loaded by
-the name in ``RemoteProfile.infrared.backend``; callers must never import a concrete
+the name in ``RemoteProfile.backend``; callers must never import a concrete
 backend themselves.
 
 Keeping the registry dynamic matters.  A hard-coded ``harmony_pk`` import in the builder
@@ -58,7 +58,9 @@ def get(name: str) -> ModuleType:
 
 def for_profile(profile) -> ModuleType:
     """Resolve the backend named by a ``RemoteProfile``."""
-    return get((profile.infrared or {}).get("backend"))
+    # The fallback keeps old in-memory profiles readable during the schema migration.
+    name = getattr(profile, "backend", "") or (profile.infrared or {}).get("backend")
+    return get(name)
 
 
 def installed() -> list[str]:

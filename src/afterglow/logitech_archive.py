@@ -1348,7 +1348,7 @@ class _Reproduction:
     def state(self) -> dict:
         return {
             "remote": self.profile.model,
-            "backend": (self.profile.infrared or {}).get("backend"),
+            "backend": self.profile.backend,
             "evaluated": (
                 "once per protocol and command transmission recipe, weighted by "
                 "command count"),
