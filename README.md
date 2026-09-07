@@ -4,7 +4,7 @@
   <ul style="list-style: none">
     <summary>
       
-[![Telegram](https://img.shields.io/badge/-updates-blue?logo=telegram&logoColor=white&labelColor=gray)](https://t.me/afterglowupdates)
+[![Telegram](https://img.shields.io/badge/-updates-blue?logo=telegram&logoColor=white&labelColor=gray)](https://t.me/afterglowupdate)
       <h1>Afterglow</h1> <!-- removes underline under the h1 -->
     </summary>
   </ul>
