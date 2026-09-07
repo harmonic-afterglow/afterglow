@@ -45,11 +45,12 @@ class ConfigBuildService:
         from . import backends, ir_protocol, project_devices, remotes
 
         settings = project["settings"]
-        # Which remote is this for, and may we write for it? An untested profile can be
-        # read and inspected but not built for: a wrong config on a remote nobody has
-        # tried is not recoverable from a vendor server any more.
+        # Which remote is this for, and has its profile entered build testing? This is
+        # deliberately weaker than the write gate: experimental profiles can produce
+        # artifacts for controlled validation, but the normal flash path still refuses
+        # them until a real write and boot has been verified.
         profile = remotes.get(settings.get("remote", "harmony-900"))
-        profile.require_writable()
+        profile.require_buildable()
         backend = backends.for_profile(profile)
         self.log(f"Building for {profile.model} (payload: {profile.payload})")
         output = settings.get("out_file", "home.ezhex")
