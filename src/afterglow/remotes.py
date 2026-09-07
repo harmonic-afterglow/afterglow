@@ -74,6 +74,8 @@ class RemoteProfile:
     flash: str | None = None
     board: str | None = None
     software_type: int | None = None
+    firmware_min: str | None = None
+    firmware_max: str | None = None
     payload: str = ""          # required in the JSON; see load()
     backend: str = ""          # implementation selector, separate from capabilities
     status: str = READ_ONLY
@@ -182,22 +184,60 @@ class RemoteProfile:
                 "explicitly promoted to \"experimental\" for controlled testing."
             )
 
+    def identity_mismatches(self, identity: dict, *, require_all: bool = False) -> list[str]:
+        """Describe conflicts with the identity constraints declared by this profile.
+
+        Import may identify an older header that omits a field, but a destructive write
+        must pass ``require_all=True`` and prove every declared constraint.
+        """
+        mismatches = []
+        for name, expected in (
+            ("arch", self.arch),
+            ("skin", self.skin),
+            ("flash", self.flash),
+            ("board", self.board),
+            ("software_type", self.software_type),
+        ):
+            if expected is None:
+                continue
+            actual = identity.get(name)
+            if actual is None or actual == -1:
+                if require_all:
+                    mismatches.append(f"{name} is unavailable (expected {expected})")
+            elif actual != expected:
+                mismatches.append(f"{name} is {actual} (expected {expected})")
+
+        firmware = identity.get("firmware")
+        if self.firmware_min or self.firmware_max:
+            if not firmware:
+                if require_all:
+                    mismatches.append("firmware is unavailable")
+            else:
+                actual = _version(firmware)
+                if self.firmware_min and actual < _version(self.firmware_min):
+                    mismatches.append(
+                        f"firmware is {firmware} (minimum {self.firmware_min})")
+                if self.firmware_max and actual > _version(self.firmware_max):
+                    mismatches.append(
+                        f"firmware is {firmware} (maximum {self.firmware_max})")
+        return mismatches
+
     def matches(self, identity: dict) -> bool:
-        """Identity from a config header vs this profile. Skin alone identifies the
-        model; arch is checked too when the profile declares it."""
-        if self.skin is not None and identity.get("skin") != self.skin:
-            return False
-        if self.arch is not None and identity.get("arch") not in (None, self.arch):
-            return False
-        return True
+        """Whether every identity field present agrees with this profile."""
+        return not self.identity_mismatches(identity)
 
     def to_json(self) -> dict:
         return {
             "schema": SCHEMA, "id": self.id, "model": self.model,
-            "identity": {k: v for k, v in (("arch", self.arch), ("skin", self.skin),
-                                           ("flash", self.flash), ("board", self.board),
-                                           ("software_type", self.software_type))
-                         if v is not None},
+            "identity": {
+                **{k: v for k, v in (("arch", self.arch), ("skin", self.skin),
+                                     ("flash", self.flash), ("board", self.board),
+                                     ("software_type", self.software_type))
+                   if v is not None},
+                **({"firmware": {k: v for k, v in (("min", self.firmware_min),
+                                                    ("max", self.firmware_max)) if v}}
+                   if self.firmware_min or self.firmware_max else {}),
+            },
             "payload": self.payload, "backend": self.backend, "status": self.status,
             "capabilities": self.capabilities,
             "infrared": {k: v for k, v in self.infrared.items() if k != "backend"},
@@ -248,14 +288,32 @@ def _status(data: dict) -> str:
     return status
 
 
+def _version(value: str) -> tuple[int, ...]:
+    try:
+        parts = tuple(int(part) for part in str(value).split("."))
+    except ValueError as exc:
+        raise ValueError(f"invalid dotted firmware version {value!r}") from exc
+    return parts + (0,) * (4 - len(parts))
+
+
 def _from_json(data: dict) -> RemoteProfile:
     if data.get("schema") != SCHEMA:
         raise ValueError(f"expected schema {SCHEMA!r}, got {data.get('schema')!r}")
     ident = data.get("identity", {})
+    firmware = ident.get("firmware") or {}
+    if not isinstance(firmware, dict):
+        raise ValueError("identity.firmware must contain optional min/max versions")
+    for bound in (firmware.get("min"), firmware.get("max")):
+        if bound:
+            _version(bound)
+    if firmware.get("min") and firmware.get("max") \
+            and _version(firmware["min"]) > _version(firmware["max"]):
+        raise ValueError("identity.firmware min is newer than max")
     return RemoteProfile(
         id=data["id"], model=data["model"],
         arch=ident.get("arch"), skin=ident.get("skin"), flash=ident.get("flash"),
         board=ident.get("board"), software_type=ident.get("software_type"),
+        firmware_min=firmware.get("min"), firmware_max=firmware.get("max"),
         payload=_required_payload(data), backend=_required_backend(data),
         status=_status(data),
         capabilities=data.get("capabilities", {}),

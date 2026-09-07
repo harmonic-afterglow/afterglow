@@ -19,7 +19,7 @@ Writing is the one operation that can leave a remote unusable, and there is no v
 server to recover from any more. So:
 
   * `write_config()` refuses a file that is not a configuration for the remote that is
-    actually attached - it compares the file's `<SKIN>` against the connected remote's.
+    actually attached. It checks every identity constraint declared by the profile.
   * flash is invalidated by `update_configuration` itself, which is also what re-reads
     and verifies afterwards. This module does not reimplement that sequence.
   * nothing here writes unless asked to. Reading, identifying and learning are safe and
@@ -262,6 +262,12 @@ class Remote:
             ("get_arch", ctypes.c_int, []),
             ("get_fw_ver_maj", ctypes.c_int, []),
             ("get_fw_ver_min", ctypes.c_int, []),
+            ("get_fw_type", ctypes.c_int, []),
+            ("get_hw_ver_maj", ctypes.c_int, []),
+            ("get_hw_ver_min", ctypes.c_int, []),
+            ("get_hw_ver_mic", ctypes.c_int, []),
+            ("get_flash_mfg", ctypes.c_int, []),
+            ("get_flash_id", ctypes.c_int, []),
             ("get_config_bytes_used", ctypes.c_int, []),
             ("get_config_bytes_total", ctypes.c_int, []),
             ("is_config_dump_supported", ctypes.c_int, []),
@@ -352,6 +358,14 @@ class Remote:
             value = getattr(self.lib, name)()
             return value.decode(errors="replace") if value else ""
 
+        def number(name):
+            function = getattr(self.lib, name, None)
+            return function() if function is not None else None
+
+        hw = tuple(number(name) for name in (
+            "get_hw_ver_maj", "get_hw_ver_min", "get_hw_ver_mic"))
+        flash = (number("get_flash_mfg"), number("get_flash_id"))
+
         return {
             "mfg": text("get_mfg"),
             "model": text("get_model"),
@@ -359,6 +373,11 @@ class Remote:
             "skin": self.lib.get_skin(),
             "arch": self.lib.get_arch(),
             "firmware": f"{self.lib.get_fw_ver_maj()}.{self.lib.get_fw_ver_min()}",
+            "software_type": number("get_fw_type"),
+            "board": ".".join(str(value) for value in hw)
+            if all(value is not None for value in hw) else None,
+            "flash": ":".join(f"0x{value:02x}" for value in flash)
+            if all(value is not None for value in flash) else None,
             "config_used": self.lib.get_config_bytes_used(),
             "config_total": self.lib.get_config_bytes_total(),
             "can_read": self.lib.is_config_dump_supported() == 0,
@@ -468,19 +487,36 @@ class Remote:
 
     @staticmethod
     def _verify_intended_for(path: Path, identity: dict) -> None:
-        """The file's own header says which remote it is for. Believe it."""
+        """Prove that the artifact, profile, and attached remote all agree."""
         from . import ezhex, remotes
         try:
             header, _start, _size, _checksum = ezhex._split(path.read_bytes())
         except Exception as exc:
             raise RemoteError(f"{path.name} is not a configuration file: {exc}") from exc
         wanted = remotes.identity_of(header)
-        skin = wanted.get("skin")
-        if skin is not None and identity.get("skin") not in (None, -1) \
-                and skin != identity["skin"]:
+        try:
+            profile = remotes.identify(header)
+        except remotes.UnknownRemote as exc:
+            raise RemoteError(f"{path.name} has no supported remote profile: {exc}") from exc
+        try:
+            profile.require_writable()
+        except remotes.NotWritable as exc:
+            raise RemoteError(str(exc)) from exc
+
+        artifact_problems = profile.identity_mismatches(wanted, require_all=True)
+        remote_problems = profile.identity_mismatches(identity, require_all=True)
+        disagreements = []
+        for field in ("arch", "skin", "flash", "board", "software_type"):
+            if wanted.get(field) != identity.get(field):
+                disagreements.append(
+                    f"{field} differs: file {wanted.get(field)!r}, remote "
+                    f"{identity.get(field)!r}")
+        problems = artifact_problems + remote_problems + disagreements
+        if problems:
             raise RemoteError(
-                f"{path.name} is built for skin {skin}, but the attached remote is "
-                f"{identity['model']} (skin {identity['skin']}). Refusing to write it.")
+                f"{path.name} is not proven compatible with the attached "
+                f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
+                "Refusing to write it.")
 
     def reset(self, on_progress=None) -> None:
         """Reboot the remote."""

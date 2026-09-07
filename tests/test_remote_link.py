@@ -6,6 +6,7 @@ they protect is the one that cannot be undone.
 """
 import ctypes
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -36,6 +37,44 @@ def test_callback_signature_matches_the_library():
                              ctypes.POINTER(ctypes.c_uint32))
 
 
+def test_connected_identity_includes_every_write_constraint():
+    values = {
+        "get_mfg": b"Logitech",
+        "get_model": b"Harmony 900",
+        "get_codename": b"Squirt",
+        "get_skin": 61,
+        "get_arch": 15,
+        "get_fw_ver_maj": 7,
+        "get_fw_ver_min": 8,
+        "get_fw_type": 0,
+        "get_hw_ver_maj": 0,
+        "get_hw_ver_min": 1,
+        "get_hw_ver_mic": 0,
+        "get_flash_mfg": 1,
+        "get_flash_id": 0x49,
+        "get_config_bytes_used": 100,
+        "get_config_bytes_total": 200,
+        "is_config_dump_supported": 0,
+        "is_config_update_supported": 0,
+        "get_identity": 0,
+    }
+    remote = concord.Remote.__new__(concord.Remote)
+    remote.lib = SimpleNamespace(**{
+        name: (lambda *_args, value=value: value) for name, value in values.items()
+    })
+    remote._check = lambda error, _what: None if not error else pytest.fail(str(error))
+    remote._callback = lambda _progress: None
+
+    identity = remote.identity()
+
+    assert identity["arch"] == 15
+    assert identity["skin"] == 61
+    assert identity["flash"] == "0x01:0x49"
+    assert identity["board"] == "0.1.0"
+    assert identity["software_type"] == 0
+    assert identity["firmware"] == "7.8"
+
+
 def test_writing_refuses_a_config_for_another_remote(a_config):
     """The file says which remote it is for. Writing a Harmony 900 config to something
     else would invalidate that remote's flash before failing."""
@@ -45,8 +84,39 @@ def test_writing_refuses_a_config_for_another_remote(a_config):
 
 
 def test_writing_accepts_a_config_for_this_remote(a_config):
-    concord.Remote._verify_intended_for(Path(a_config), {"skin": 61,
-                                                         "model": "Harmony 900"})
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity["model"] = "Harmony 900"
+    concord.Remote._verify_intended_for(Path(a_config), identity)
+
+
+@pytest.mark.parametrize("field,replacement", [
+    ("arch", 12),
+    ("flash", "0xff:0xff"),
+    ("board", "9.9.9"),
+    ("software_type", 99),
+])
+def test_writing_refuses_every_declared_identity_mismatch(a_config, field, replacement):
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Other remote", **{field: replacement})
+    with pytest.raises(concord.RemoteError, match=field):
+        concord.Remote._verify_intended_for(Path(a_config), identity)
+
+
+def test_writing_fails_closed_when_a_declared_identity_is_unavailable(a_config):
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Incomplete identity")
+    identity.pop("flash")
+    with pytest.raises(concord.RemoteError, match="flash is unavailable"):
+        concord.Remote._verify_intended_for(Path(a_config), identity)
 
 
 def test_writing_refuses_something_that_is_not_a_config(tmp_path):
