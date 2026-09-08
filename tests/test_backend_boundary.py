@@ -120,6 +120,30 @@ def test_current_backend_is_hidden_behind_the_v1_adapter():
     assert all(callable(getattr(backend, name)) for name in backends.REQUIRED)
 
 
+def test_build_service_can_retain_backend_result_evidence(monkeypatch, tmp_path):
+    from afterglow import backends, remotes
+    from afterglow.build_service import ConfigBuildService
+
+    expected = backends.BuildResult(
+        artifact=tmp_path / "one.ezhex",
+        validation={"ok": True},
+        changes={"changed": []},
+        metadata={"backend": "fake"},
+    )
+    profile = remotes.RemoteProfile(
+        id="fake", model="Fake", payload="blob", backend="fake",
+        status=remotes.EXPERIMENTAL)
+    implementation = SimpleNamespace(build_project=lambda *_args: expected)
+    monkeypatch.setattr(remotes, "get", lambda _name: profile)
+    monkeypatch.setattr(backends, "for_profile", lambda _profile: implementation)
+    service = ConfigBuildService(tmp_path)
+
+    result = service.build_result({"settings": {"remote": "fake"}})
+
+    assert result is expected
+    assert service.build({"settings": {"remote": "fake"}}) == expected.artifact
+
+
 def test_pre_rename_backend_names_remain_read_aliases():
     from afterglow import backends
 

@@ -19,6 +19,7 @@ EXPECTED = (
     "harmony_pk/irproto.md",
     "harmony_pk/ssir.md",
     "harmony_pk/remote-identities.md",
+    "harmony_one/gspm.md",
 )
 
 

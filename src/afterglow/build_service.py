@@ -37,6 +37,11 @@ class ConfigBuildService:
         self.log = log or (lambda _message: None)
 
     def build(self, project: dict) -> Path:
+        """Compatibility entry point returning only the completed artifact path."""
+        return self.build_result(project).artifact
+
+    def build_result(self, project: dict):
+        """Build while retaining backend validation, change and provenance evidence."""
         from . import backends, remotes
 
         # Which remote is this for, and has its profile entered build testing? This is
@@ -51,4 +56,4 @@ class ConfigBuildService:
             log=self.log,
             find_scaffold=find_scaffold,
         )
-        return backend.build_project(project, profile, context).artifact
+        return backend.build_project(project, profile, context)

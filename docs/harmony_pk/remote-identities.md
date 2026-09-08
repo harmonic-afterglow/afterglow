@@ -14,8 +14,13 @@ libconcord's `get_identity` for an attached remote. They carry the same fields:
 |---|---|---|
 | `arch` | `<PROTOCOL>` | Architecture family |
 | `skin` | `<SKIN>` | Model id |
-| `flash` | | Flash chip identifier |
-| `board` | | Board revision |
+| `flash` | `<FLASH>` | Flash chip identifier |
+| `board` | `<BOARD>` | Board revision |
+| `software_type` | `<SOFTWARETYPE>` | Firmware/software family |
+
+Firmware version is reported by a connected remote but is not part of the EZHex intended
+identity. A profile may impose an evidence-backed firmware bound, but versions are otherwise
+diagnostic rather than an automatic compatibility allow-list.
 
 The Harmony 900 is `arch` 15, `skin` 61.
 
@@ -49,8 +54,9 @@ configurations import and build - every command rendered into recorded sequences
 ([ssir-sequences.md](ssir-sequences.md)), a Logitech configuration rebuilding to the same
 sequence table byte for byte - but no build has yet been flashed to one. The 1000
 stores configurations the same way as the 900 and has donor evidence, but has not been
-flashed. The 880, 890 and 76x use a
-different architecture and nothing in these documents applies to them.
+flashed. Harmony One has a read-only profile and independent native GSPM validation,
+but its devices and activities are not imported or authored yet. The 880, 890 and 76x
+use a different architecture and nothing in these documents applies to them.
 
 ## Adding a remote
 

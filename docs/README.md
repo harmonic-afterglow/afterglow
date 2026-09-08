@@ -7,6 +7,7 @@ Reference documentation for supported remote architectures and configuration for
 | Directory | Architecture / Target | Format Reference |
 |---|---|---|
 | [harmony_pk/](harmony_pk/README.md) | Harmony 900 (`harmony_pk`) | `.ezhex` container, XML payload, `IrProto.bin`, `SsIr.bin` |
+| [harmony_one/](harmony_one/gspm.md) | Harmony One (`harmony-one`) | arch-12 `GSPM` indexed image and native integrity |
 
 ### Harmony 900 (`harmony_pk`) Format Documents
 
@@ -16,3 +17,7 @@ Reference documentation for supported remote architectures and configuration for
 - [ssir.md](harmony_pk/ssir.md) — `SsIr.bin`: recorded waveforms for commands no protocol describes
 - [ssir-sequences.md](harmony_pk/ssir-sequences.md) — `SsIr.bin` on the Harmony 1100: every command a recorded device sequence
 - [remote-identities.md](harmony_pk/remote-identities.md) — Which remote a configuration is for, and profile status
+
+### Harmony One (`harmony-one`) Format Documents
+
+- [gspm.md](harmony_one/gspm.md) — The arch-12 indexed image, address space, close marker and checksum

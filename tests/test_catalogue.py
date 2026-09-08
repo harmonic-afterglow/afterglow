@@ -91,9 +91,27 @@ def test_profile_firmware_bounds_are_enforced_for_writes():
 def test_an_unshipped_remote_is_still_named_on_import():
     """Dropping the profiles must not make a foreign config unidentifiable rubbish:
     the skin table still says which remote it belongs to."""
-    header = b"<INTENDEDVERSION><PROTOCOL>12</PROTOCOL><SKIN>54</SKIN></INTENDEDVERSION>"
-    with pytest.raises(remotes.UnknownRemote, match="Harmony One"):
+    header = b"<INTENDEDVERSION><PROTOCOL>14</PROTOCOL><SKIN>72</SKIN></INTENDEDVERSION>"
+    with pytest.raises(remotes.UnknownRemote, match="Harmony 650"):
         remotes.identify(header)
+
+
+def test_harmony_one_support_is_read_only_and_not_firmware_allowlisted():
+    profile = remotes.get("harmony-one")
+
+    assert profile.status == remotes.READ_ONLY
+    assert profile.payload == "blob"
+    assert profile.backend == "harmony-one"
+    assert profile.firmware_min is None
+    assert profile.firmware_max is None
+    assert not profile.identity_mismatches({
+        "arch": 12,
+        "skin": 54,
+        "flash": "0x1F:0xC8",
+        "board": "0.5.0",
+        "software_type": 0,
+        "firmware": "99.99",
+    }, require_all=True)
 
 
 def test_verified_profiles_have_a_scaffold():

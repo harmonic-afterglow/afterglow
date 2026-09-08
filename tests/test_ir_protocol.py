@@ -31,6 +31,15 @@ def test_waveform_sections_must_cover_complete_mark_space_pairs():
         ir_signal.validate(signal)
 
 
+def test_a_waveform_release_section_may_end_on_a_mark():
+    signal = ir_signal.waveform(
+        [100, -100, 200],
+        sections={"intro_pulses": 2, "repeat_pulses": 0, "release_pulses": 1},
+    )
+
+    ir_signal.validate(signal)
+
+
 def test_harmony_pk_refuses_to_flatten_distinct_waveform_intro_and_repeat_sections():
     class RawOnlyProfile:
         model = "Test Harmony PK"
@@ -48,6 +57,25 @@ def test_harmony_pk_refuses_to_flatten_distinct_waveform_intro_and_repeat_sectio
               "signals": {"PowerToggle": signal}}
 
     with pytest.raises(ValueError, match="distinct intro and repeat"):
+        ir_compile.prepare_devices([device], RawOnlyProfile())
+
+
+def test_harmony_pk_refuses_to_drop_a_waveform_release_section():
+    class RawOnlyProfile:
+        model = "Test Harmony PK"
+        infrared = {"backend": "harmony-pk"}
+
+        @staticmethod
+        def ir_strategy(_signal):
+            return "native-waveform"
+
+    signal = ir_signal.waveform(
+        [100, -100, 200],
+        sections={"intro_pulses": 2, "repeat_pulses": 0, "release_pulses": 1},
+    )
+    device = {"commands": [["Key", "Key"]], "signals": {"Key": signal}}
+
+    with pytest.raises(ValueError, match="emits on release"):
         ir_compile.prepare_devices([device], RawOnlyProfile())
 
 

@@ -7,9 +7,10 @@ inspect a remote and keep a working backup - but not to author one: its master i
 sections of screens, objects and key bindings are a separate format that this project has
 not reverse-engineered.
 
-RE-HARMONY (github.com/Unkn0wn-dx/RE-HARMONY) does exactly that work for the Harmony One.
-If you want to author for one today, use that; this backend exists so Afterglow identifies
-the remote honestly and refuses rather than writing something plausible and wrong.
+The historical RE-HARMONY project contains partial Harmony One reverse engineering, but its
+mutation path is abandoned and has unresolved relocation failures. This backend implements only
+independently evidenced structures and refuses authoring rather than writing something plausible
+and wrong.
 """
 import os
 

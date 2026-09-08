@@ -11,8 +11,8 @@ Signals are a discriminated union:
     A named protocol plus semantic parameters such as address and command.
 ``waveform``
     A measured carrier and signed microsecond durations. Positive values are marks;
-    negative values are spaces. Optional ``sections`` retain an intro/repeat boundary
-    when a source format such as Pronto carries one; the durations remain stored once.
+    negative values are spaces. Optional ``sections`` retain intro/repeat/release
+    boundaries when a source format carries them; the durations remain stored once.
 ``backend-opaque``
     Native evidence an importer can preserve but cannot yet translate.
 
@@ -206,16 +206,19 @@ def validate(spec: dict) -> None:
     if sections is not None:
         if not isinstance(sections, dict):
             raise ValueError("waveform sections must be an object")
-        if set(sections) != {"intro_pulses", "repeat_pulses"}:
+        required = {"intro_pulses", "repeat_pulses"}
+        allowed = required | {"release_pulses"}
+        if not required <= set(sections) or not set(sections) <= allowed:
             raise ValueError(
-                "waveform sections need exactly intro_pulses and repeat_pulses")
+                "waveform sections need intro_pulses and repeat_pulses, with optional "
+                "release_pulses")
         counts = list(sections.values())
         if any(isinstance(count, bool) or not isinstance(count, int) or count < 0
                for count in counts):
             raise ValueError("waveform section sizes must be non-negative integers")
         if sum(counts) != len(pulses):
             raise ValueError("waveform section sizes must cover every stored pulse")
-        if any(count % 2 for count in counts):
+        if any(sections[key] % 2 for key in required):
             raise ValueError("waveform intro/repeat sections must contain mark/space pairs")
 
 
