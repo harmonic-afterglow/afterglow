@@ -38,6 +38,9 @@ def _require_fixed_waveform(signal: dict) -> None:
     sections = signal.get("sections")
     if not sections:
         return
+    if sections.get("release_pulses", 0):
+        raise ValueError(
+            "waveform emits on release; Harmony PK SsIr cannot represent that lifecycle")
     intro = sections["intro_pulses"]
     repeat = sections["repeat_pulses"]
     if intro and repeat:

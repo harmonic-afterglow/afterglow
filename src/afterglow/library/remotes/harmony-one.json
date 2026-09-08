@@ -1,0 +1,65 @@
+{
+  "id": "harmony-one",
+  "model": "Harmony One",
+  "identity": {
+    "arch": 12,
+    "skin": 54,
+    "flash": "0x1F:0xC8",
+    "board": "0.5.0",
+    "software_type": 0
+  },
+  "payload": "blob",
+  "backend": "harmony-one",
+  "status": "read-only",
+  "capabilities": {
+    "touchscreen": true,
+    "ir_learning": true,
+    "hard_keys": true
+  },
+  "infrared": {
+    "native_protocols": [],
+    "waveform": "unsupported"
+  },
+  "notes": "Four independent donor configurations establish this hardware identity and the arch-12 GSPM integrity rules. Firmware is deliberately unbounded; native structure is validated instead. Import and backup are read-only until safe authoring is implemented.",
+  "schema": "afterglow-remote/1",
+  "vocabulary": {},
+  "properties": {},
+  "interface": {
+    "_comment": "No RF blasters and no preferences yet. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
+    "tabs": [
+      "devices",
+      "activities",
+      "settings",
+      "flash"
+    ],
+    "device_pages": [
+      "search",
+      "identity",
+      "commands",
+      "inputs",
+      "timing",
+      "advanced"
+    ],
+    "activity_pages": [
+      "identity",
+      "roles",
+      "favourites",
+      "screen_buttons",
+      "hard_buttons",
+      "startup",
+      "power",
+      "advanced"
+    ],
+    "settings": [
+      "output_file",
+      "owner",
+      "language"
+    ],
+    "languages": [
+      [
+        "English",
+        "enu"
+      ]
+    ]
+  }
+}

@@ -4,8 +4,8 @@ from pathlib import Path
 from . import backends, project_devices, remotes
 
 
-def build_project(extracted_dir, out_file=None):
-    """Read an extracted configuration into the portable project model."""
+def import_result(extracted_dir, out_file=None):
+    """Read an extracted configuration without discarding backend evidence."""
     header_path = Path(extracted_dir) / ".ezhex_header"
     profile = (remotes.identify(header_path.read_bytes()) if header_path.is_file()
                else remotes.default())
@@ -16,4 +16,9 @@ def build_project(extracted_dir, out_file=None):
     # Its keys are bound as the configuration had them; none is free to fill.
     for device in result.project.get("devices") or []:
         device[project_devices.KEYS_FILLED] = True
-    return result.project
+    return result
+
+
+def build_project(extracted_dir, out_file=None):
+    """Compatibility entry point returning only the portable project model."""
+    return import_result(extracted_dir, out_file=out_file).project
