@@ -263,11 +263,35 @@ not a store. Do not introduce a state-management library.
    Logitech's, down to `\r\n` vs `\r\r\n`, Unix modes, and Info-ZIP extra fields. Never
    change `ezhex.py` without keeping this test green against a real config.
 
-3. **Every build starts from the bundled `scaffolds/<remote-id>/`, never from a donor
-   config.** A donor config carries the other remote's platform state (RF assignments,
-   statetracker, calibration) that would ride along unnoticed. Import takes only devices
-   and activities; the config is rebuilt on the scaffold. See
+3. **Every build starts from a scaffold, never from a previous config.** A config
+   carries platform state (RF assignments, statetracker, calibration) and somebody's
+   setup, both of which would ride along unnoticed. Import takes only devices and
+   activities; the config is rebuilt on the scaffold. See
    `build_service.py::ConfigBuildService.build`.
+
+   A scaffold is the remote's platform layer. Where it comes from is decided by
+   measurement, and the question to ask is *what kind of thing is this layer*:
+
+   - **Bundled**, in `scaffolds/<remote-id>/`, when it is **undocumented per-model
+     state**: calibration curves, persisted settings, install scripts. These cannot be
+     synthesised - the formats are undocumented and the values are per-model - so one
+     sanitised copy from a real config serves every owner. The Harmony 900 is this: the
+     same files are byte-identical in all five configurations measured.
+   - **Synthesised**, when it is **assets rendered through a documented interpreter**:
+     fonts, bitmaps, screen layouts. The vendor had an asset library and emitted a
+     subset of it into every config; that is why no two configs share anything. But the
+     format is a general drawing VM, so the assets do not have to be theirs. Write your
+     own glyphs and bitmaps and the layer is shippable, with no vendor artwork in it.
+
+   Do not conclude "there is nothing shared between configs, so nothing can be shipped".
+   That confuses the vendor's assets with the format's requirements. The vendor generated
+   a first config for a remote fresh out of its box, with no previous config in
+   existence; whatever they did, it is reproducible. Find out what they had.
+
+   Which mode applies is a finding to measure across several real configurations before
+   any of it is coded - not a default. The rule that does not vary is the first sentence:
+   a build generates onto a platform layer, and never edits the configuration it started
+   from.
 
 4. **A gate must not be stricter than the runtime it protects, and never looser.** When
    a checker and the thing it models disagree, the model is wrong - say so, don't tune

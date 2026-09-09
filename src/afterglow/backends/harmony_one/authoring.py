@@ -86,9 +86,17 @@ def device_objects(
 
 
 def key_register(entries: list[tuple[int, int, int]]) -> bytes:
-    """Build one counted key register of ``(key code, object index, class)`` rows."""
-    if not entries or len(entries) >= 40:
-        raise ValueError("a Harmony One key register must hold between 1 and 39 entries")
+    """Build one counted key register of ``(key code, object index, class)`` rows.
+
+    A screen slot that binds no key at all has an empty register - 50 and 62 of them in
+    the two broader donors - so zero entries is a shape the format uses, not a mistake.
+    The count is one byte, and a screen's own button map is a register of 55 rows in
+    every image measured, so the limit is 255. The narrower bound of 39 that `pages`
+    uses is a rule for recognising a page while scanning section 9, not a rule of the
+    format.
+    """
+    if len(entries) > 0xFF:
+        raise ValueError("a Harmony One key register holds at most 255 entries")
     if len({key for key, _object, _category in entries}) != len(entries):
         raise ValueError("a Harmony One key register cannot repeat a key code")
     out = bytearray([len(entries)])
@@ -1628,3 +1636,127 @@ def delete_activity(payload: bytes, activity: int) -> tuple[bytes, dict]:
         },
         "relocation": relocation_report,
     }
+
+
+def context_record(context: dict) -> bytes:
+    """Build one section-10 context from its parsed rows.
+
+    A short context is a row count followed by four-byte rows; a long one opens with a
+    zero, then its count, then five-byte rows whose extra leading byte the reader keeps
+    as ``flags``. Which form a context uses is a property of the context, not of its
+    contents, so it is carried rather than chosen.
+    """
+    rows = context["rows"]
+    long_form = context["form"] == "long"
+    if context["form"] not in ("short", "long"):
+        raise ValueError(f"unknown section-10 context form {context['form']!r}")
+    if not rows or len(rows) > 0xFF:
+        raise ValueError("a section-10 context holds between 1 and 255 rows")
+    out = bytearray(b"\x00" if long_form else b"")
+    out.append(len(rows))
+    for row in rows:
+        if long_form:
+            if row["flags"] is None:
+                raise ValueError("a long-form context row needs its flags byte")
+            out.append(row["flags"])
+        elif row["flags"] is not None:
+            raise ValueError("a short-form context row cannot carry a flags byte")
+        out += bytes([row["key_code"]]) + _atom(row["operand"], row["category"])
+    return bytes(out)
+
+
+def context_table(offsets: list[int]) -> bytes:
+    """Build the section-10 index that gives every context its ordinal."""
+    if not offsets or len(offsets) > 64:
+        raise ValueError("section 10 indexes between 1 and 64 contexts")
+    return bytes([len(offsets)]) + b"".join(_pointer24(offset) for offset in offsets)
+
+
+# Section 4 opens with a generated table rather than a constant: two u24 headers - a
+# first key and the count 30 - then thirty `{u24 key, u8 value}` records whose keys run
+# up from that first key and whose values run 1 to 30, cut to 125 bytes. Household
+# configurations start their keys at 10; the factory configuration shipped in the
+# Harmony One firmware starts at 0, which is what showed the table was generated.
+COMMAND_INDEX_KEYS = 30
+COMMAND_INDEX_HEAD_SIZE = 125
+HOUSEHOLD_FIRST_KEY = 10
+
+
+def command_index_head(first_key: int = HOUSEHOLD_FIRST_KEY) -> bytes:
+    """Build section 4's leading key table."""
+    if isinstance(first_key, bool) or not isinstance(first_key, int) or first_key < 0:
+        raise ValueError("the section 4 key table starts at a non-negative key")
+    out = bytearray(first_key.to_bytes(3, "little")
+                    + COMMAND_INDEX_KEYS.to_bytes(3, "little"))
+    for index in range(COMMAND_INDEX_KEYS):
+        out += (first_key + index).to_bytes(3, "little") + bytes([index + 1])
+    return bytes(out[:COMMAND_INDEX_HEAD_SIZE])
+
+
+def command_flat_index(devices: list[list[int]], *,
+                       first_key: int = HOUSEHOLD_FIRST_KEY) -> bytes:
+    """Build section 4: every command record again, counted and grouped by device.
+
+    Section 5 reaches a command through its device's sub-table; section 4 lists the same
+    records flat, each device's run introduced by its own count. Both point at the record
+    plus eleven. The grouping matched section 5's exactly in all four images measured.
+    """
+    if len(devices) > 0xFF:
+        raise ValueError("section 4 groups at most 255 devices")
+    out = bytearray(command_index_head(first_key))
+    for commands in devices:
+        if len(commands) > 0xFFFF:
+            raise ValueError("a device cannot hold more than 65535 commands")
+        # Every run opens with a zero byte before its count, the first included. The
+        # factory configuration in firmware settles this: with no devices at all its
+        # section 4 is the head alone.
+        out += b"\x00" + len(commands).to_bytes(2, "little")
+        for offset in commands:
+            absolute = gspm.BASE + offset + 11
+            if offset < 0 or absolute >= 1 << 24:
+                raise ValueError("a command record pointer does not fit in 24 bits")
+            out += absolute.to_bytes(3, "little")
+    return bytes(out)
+
+
+# Section 3 is two markers around seven bytes that read as a timestamp in all four
+# images measured: second, minute, hour and day are in range, the month is 7, 11, 7 and
+# 4, and the year is 23, 24, 15 and 26 - eras matching when those backups were taken.
+# The fifth byte is not explained: it is 3, 6, 0 and 3 where the weekdays are Saturday,
+# Wednesday, Wednesday and Sunday, so two identical weekdays carry different values.
+STAMP_PREFIX = bytes.fromhex("dfad")
+STAMP_SUFFIX = bytes.fromhex("bfef000000")
+
+
+def read_stamp(payload: bytes) -> dict:
+    """Read section 3's timestamp, or say why it cannot be read."""
+    start, end = gspm.section_ranges(payload)[3]
+    body = payload[start:end]
+    if (len(body) != len(STAMP_PREFIX) + 7 + len(STAMP_SUFFIX)
+            or not body.startswith(STAMP_PREFIX) or not body.endswith(STAMP_SUFFIX)):
+        raise ValueError("section 3 is not the measured marker-wrapped stamp")
+    second, minute, hour, day, unexplained, month, year = body[2:9]
+    return {
+        "second": second, "minute": minute, "hour": hour, "day": day,
+        "month": month, "year": 2000 + year, "unexplained": unexplained,
+        "in_range": (second < 60 and minute < 60 and hour < 24
+                     and 1 <= day <= 31 and 1 <= month <= 12),
+    }
+
+
+def stamp(second: int, minute: int, hour: int, day: int, month: int, year: int,
+          unexplained: int) -> bytes:
+    """Build section 3. ``unexplained`` is the byte nothing has accounted for yet."""
+    fields = (
+        (second, 59, "second"), (minute, 59, "minute"), (hour, 23, "hour"),
+        (day, 31, "day"), (month, 12, "month"), (year - 2000, 255, "year"),
+        (unexplained, 255, "unexplained byte"),
+    )
+    for value, limit, label in fields:
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= limit:
+            raise ValueError(f"section 3 {label} is outside its measured range")
+    if not 1 <= day or not 1 <= month:
+        raise ValueError("section 3 day and month count from one")
+    return (STAMP_PREFIX
+            + bytes([second, minute, hour, day, unexplained, month, year - 2000])
+            + STAMP_SUFFIX)

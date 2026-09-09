@@ -8,6 +8,48 @@ The observations below agree across four independent Harmony One donor configura
 also consistent with the arch-12 configuration base and cookie in Concordance and with the remote
 validator analysis performed by RE-HARMONY.
 
+## The factory configuration in firmware
+
+Harmony One firmware `54.2.5` ships six regions, and `Region_3.EZHex` is a raw `GSPM` image of
+8,902 bytes: the configuration a remote leaves the factory with. It declares no devices and no
+commands, 30 screens and one section-10 context. Reading it corrected three things that four
+household images had agreed on only by coincidence.
+
+**The base address is not a format constant.** It is where the image is mapped in flash. Household
+configurations sit at `0x040000`; this one sits at `0x2000`, and every pointer in it is relative to
+that. The end vector, the checksum and all nineteen sections resolve once the right base is used.
+
+**The marker is `LWJL`, not `LWJL7`.** The byte after it is the image's button count, which is 55
+in every household configuration - hence the apparent `7` - and 2 here.
+
+**Section 4's leading table is generated, not constant.** It is a `u24` first key, the `u24` count
+30, then thirty `{u24 key, u8 value}` records whose keys run up from that first key and whose
+values run 1 to 30, cut to 125 bytes. Household configurations start their keys at 10 and this one
+starts at 0. It also settled the shape of what follows: every device run opens with a zero byte,
+the first included, which is why a configuration with no devices is the key table alone. The writer
+now reproduces section 4 byte for byte in all five images.
+
+## What the factory configuration draws
+
+Its 30 screens draw text and nothing else - `call`, `attribute`, `text`, `inline_text`, `end`, no
+bitmaps at all - and every one of its 9 pointer-text targets resolves inside the image. The whole
+platform layer of a virgin remote is 8 KB: one 14-pixel font of 46 glyphs and 56 strings. So the
+button frames and chrome bitmaps in a household configuration are produced per configuration, not
+resident in firmware.
+
+Its font settles the subsetting rule. The 46 glyphs are exactly the 46 distinct characters its
+messages need - `Go to Website`, `to update settings`, `FLASH Memory Erase`, `Battery
+Trickle\Charge`, `Invalid Configuration` and the rest - and no others; there is not a single digit,
+because no message contains one. The codes run in first-use order across those strings, offset by
+two, with `H` and `y` occupying codes 1 and 2 before anything this configuration draws. Every
+household layout begins `H`, `y` as well, so a 2008 firmware corroborates tables derived from
+images made between 2015 and 2026.
+
+Two font-record headers are therefore established. Household images count their glyphs in a
+little-endian `u16` after the height; this one counts in the byte after that, which is what makes
+its 46 pointers land exactly on the start of section 7. Neither reading is applied blind: the count
+is the one whose whole index resolves, and a font where neither does is refused.
+
 ## Identity and address space
 
 The donor envelopes declare:
@@ -450,6 +492,57 @@ the additional replica uses inline text. The upstairs set contains six section-5
 and three native-only rows whose target screens contain no indexed IR commands. Those rows are
 retained separately instead of being forced into the portable IR device list.
 
+## Where a build starts
+
+A build should start from the remote's own platform layer and generate everything else from the
+project, so a new configuration is never a copy of an old one. What that platform layer is, and
+where it comes from, is a property of the architecture rather than a choice.
+
+Four independent Harmony One images agree on almost nothing. Their glyph repertoires are 72, 73, 77
+and 79; their fonts, chrome strings, background bitmaps, button frames, page selectors and prologue
+atoms all differ; even the seven base contexts differ in content, and one image places them at
+different addresses. Between any two, 7 to 19 per cent of bytes match at the same offset.
+
+That is not evidence that nothing can be shipped. It is evidence of how these images were made. The
+producer had an asset library and emitted a subset of it into every configuration - which is also
+why each font carries exactly the glyphs its own labels needed, why nothing sits at the same
+address twice, and why half the object table is emitted and never referenced. A remote fresh out of
+its box had no previous configuration either, and it still got a first one.
+
+So the platform layer here is assets, not calibration, and the assets do not have to be the
+producer's. A glyph is a width byte followed by runs - `80` closes a row, a high-bit run skips that
+many transparent pixels, a low-bit run carries that many big-endian RGB565 pixels, `00` closes the
+glyph - and a mode-0 bitmap is a four-byte header followed by raw RGB565. Both are written here as
+the exact inverse of the readers, and the readers accept what they produce. The glyph repertoire
+stops being a constraint at the same moment: 72, 73, 77 and 79 matter only for reading text
+somebody else wrote, and an image whose font and text are both authored here chooses its own codes.
+
+A Harmony One scaffold is therefore synthesisable, with no vendor artwork in it, and every section
+now has a way of being produced.
+
+Sections 1, 2, 17 and 18 are byte-identical in all four images - 19 bytes together - and are
+carried. Section 3 is two markers, `dfad` and `bfef000000`, around seven bytes that read as a
+timestamp: second, minute, hour and day all in range, months 7, 11, 7 and 4, and years 23, 24, 15
+and 26, matching when those backups were taken. One of the seven is unexplained; it is 3, 6, 0 and
+3 where the weekdays are Saturday, Wednesday, Wednesday and Sunday, so two identical weekdays carry
+different values and it is not a day of the week.
+
+Section 4 turned out to be a second index of the same commands section 5 reaches. It opens with 126
+bytes identical in all four - two `u24` headers and thirty `{u24 key, u8 value}` records mapping
+keys 10 to 39 onto 1 to 29 and 0 - and then lists every command record again, grouped by device:
+a `u16` count and that many `u24` pointers to the record plus eleven, each run after the first
+introduced by a zero byte. The grouping matched section 5's exactly in all four images, and the
+writer reproduces all four sections byte for byte.
+
+Sections 13, 15 and 16 are counted tables of `u24` pointers, the same shape as every other index
+here. They address drawing programs that no screen reaches - section 16 holds exactly 11 in every
+image measured - so they are structures rather than opaque data, and the drawing encoder can write
+what they point at.
+
+What is left is not a format gap but a semantic one: the activity engine in sections 10 and 14 has
+no portable model, so a generated configuration could carry devices before it could carry
+activities.
+
 ## Building from a project
 
 An authored Harmony One is the user's own image with a bounded set of edits, so a build starts from
@@ -473,6 +566,133 @@ device, menu-row and menu-replica counts and reader reject counts before and aft
 artifact may be written at all remains the profile's decision; `require_buildable` is checked
 before any of this runs, so a read-only Harmony One describes a plan and writes nothing.
 
+## The pictures a configuration draws
+
+Bitmaps are most of a configuration: 1.1 to 1.5 MB of the 1.3 to 1.8 MB in the four images
+measured, around 85 per cent. Every backdrop, frame, softkey and icon the remote shows is stored
+in the configuration rather than in firmware, which is why a generated one has to supply them.
+
+Pixels are RGB565, and the two encodings disagree about their byte order. Mode 0 stores every pixel
+of every row after a four-byte header, little-endian. Mode 1 runs them big-endian - a byte with the
+high bit set leaves that many pixels untouched, a byte without it introduces that many stored
+pixels, `80` closes a row and `00` closes the picture - which is the same run encoding, and the
+same byte order, that a font glyph uses. The last row carries no separator, because the picture's
+terminator closes it. There is no alpha channel: a run simply declines to write, and whatever was
+on the screen shows through.
+
+The images are the only authority on that split, and it is measurable. Taking the mean difference
+between horizontally neighbouring pixels, a 62x42 panel stored whole reads at 14.4; the six
+run-encoded panels of the same size in the same image read at 48 to 53 little-endian and 17 to 27
+big-endian. Across the two broader donors, run-encoded pictures average 33 read little-endian
+against 14 to 15 read big-endian, where stored-whole pictures average 7.8.
+
+The encoder is the reader's exact inverse. Every picture the four donors draw rebuilds its own
+bytes: 294 pictures, 268 stored whole and 26 run-encoded.
+
+The same eight shapes appear in all four images, at the same places:
+
+| size | per image | drawn at | what it is |
+| --- | --- | --- | --- |
+| 176x220 | 7-9 | (0,0) | full-screen backdrops |
+| 81x50 | 18-25 | the six-button grid | command button frames |
+| 164x50 | 7-9 | (6,38) (6,92) (6,146) | full-width row frames |
+| 51x48 | 5-13 | (11,39) (11,93) (11,147) | menu row icons |
+| 62x42 | 3-17 | (57,67) | centred panel |
+| 88x22 | up to 6 | (0,198) (88,198) | softkey backgrounds |
+| 22x18 | 2-6 | (128,0) | small indicator |
+| 164x85, 62x33 | 1-2 | (3,118), (57,95) | larger panels |
+
+## Emitting drawing programs
+
+Every other structure this backend authors is a counted table it can serialize. Drawing programs
+were the exception: bytecode carrying absolute pointers to other programs, to bitmaps and to glyph
+strings, which could be copied but not laid out afresh. That is what kept authoring to patching.
+
+The encoder is the reader's exact inverse. Re-encoding every instruction of every program reachable
+from a screen slot reproduces its own bytes: 479 and 1,040 blocks, 12,309 instructions in total,
+covering all eleven opcodes the reader recognizes. Only four instruction shapes hold an address -
+`call`, `jump`, `bitmap` and `text` - plus a switch's case and range targets; everything else an
+instruction carries is a literal that travels with it.
+
+Every block ends at `end`, `return` or `jump`, so none falls through into its neighbour and the
+graph can be laid out in any order. Emitting the whole graph at a fresh address and remapping each
+internal reference re-disassembles to the same programs in both donors, 479 of 479 and 1,040 of
+1,040. The graph is 21,493 and 43,188 bytes, one and two per cent of the image.
+
+An address the layout does not name is left alone, which is what lets a program keep pointing at
+bitmaps and glyph strings it does not own while the blocks around it move.
+
+## Composing a configuration
+
+Every operation before this one edits an image in place: relocate a section, append a record,
+repoint a pointer. That cannot delete, cannot compact, and grows the file on every change, because
+nothing is ever laid out afresh.
+
+Composition reads the structures this backend owns into a model with no addresses in it - the
+object bodies, the section-10 contexts, the screen chain with each slot's key bindings, and the
+drawing-program graph - then emits them all together at chosen addresses and fixes every reference
+in one pass. What is not modelled stays exactly where it is and is referenced from the new layout:
+command records and their waveforms, fonts, bitmaps, glyph strings, touch templates, and the
+sections with no model at all. An authored image is still the owner's own image.
+
+The four composed sections are emitted last and in ascending order - 9, 10, 11, then 6 - so each
+one's computed range covers its own table and nothing else. Section 9 must hold every key register,
+which is why the slots that point at them are emitted first and filled in afterwards; no donor
+shares a register between slots, 213 and 439 slots to as many registers. A slot that binds no key
+still has a register, and 50 and 62 of them are empty, so a zero-entry register is a shape the
+format uses rather than a mistake.
+
+The model also holds the pictures and glyph strings those programs draw, the commands with their
+own waveforms, every font with its glyphs' own bytes, and each screen's button map, so they move
+with everything else and the references to them are repaired in the same pass. Sections 4, 5, 6, 7,
+9, 10 and 11 are emitted from it.
+
+Three things about the format came out of rebuilding rather than reading. A command record's five
+opening bytes are carried, not rebuilt from a flag: the donors open records with 0, 1, 4, 5, 6 and
+7, and one opens `2f 81`. A screen trailer's header is another key register, holding the physical
+buttons that screen answers - four to six rows usually, and the whole 55-button vocabulary the
+`LWJL` marker counts in a few - so the 39-row limit was a rule for recognising a page while
+scanning section 9, never a rule of the format; the count is a byte, so the limit is 255. Pictures are the
+one structure placed without the 64 KiB window rule: 15 to 19 of them cross a boundary in every
+image and 7 to 9 are larger than the window itself, a 176x220 backdrop stored whole being 77,444
+bytes. Whatever that rule protects, it is not pixel data.
+
+The gate is a no-change re-emission: the model that goes in must be the model that comes back, with
+only addresses different. A picture is compared by what it draws and a string by its glyphs, not by
+where either is kept. Both donors pass, laying out 479 and 1,040 programs, 3,015 and 5,647
+objects, 10 and 16 contexts, 157 and 339 screens and 213 and 439 key registers - 65,086 and 124,682
+emitted bytes - with command, key, activity, device-menu and activity-menu inventories unchanged.
+
+## The interface parts an image contains
+
+Screens have been built here by cloning one the image already has. That cannot build a screen for
+a configuration that has none, which is what generating from a project rather than from a previous
+image requires. The parts a screen is made of turn out to be constant within an image, so they can
+be named instead of copied.
+
+Both donors agree on all of these across every command page they have, 28 and 52:
+
+- one frame bitmap per button position, six positions;
+- one font per role - title, button, softkey, page counter, menu row - each a single attribute;
+- one shared `Devices` softkey string, one `pages` word, one background bitmap at (0,0), one
+  section-12 prologue atom `(2, 73)`, one page selector (37 and 45);
+- one touch template per page size, and one menu template;
+- one prologue shape: title, background, atom, the page-total block, atom, title again, return,
+  with attributes `3, indicator, 3`.
+
+A page's chrome is a resource too. Every command page ends with a two-way switch whose arms label
+the left softkey `Activities` or `Current Activity`, both jumping to a common tail that draws the
+`Devices` softkey and the page counter. All 28 and 52 pages draw the identical shape from the
+identical shared strings.
+
+The page counter is right-aligned: its right edge is 18 on every page, which is why a one-digit
+`1` sits at x=13, a wider `4` at 12 and a two-digit `10` at 8. The prologue's total is left-aligned
+at x=23 instead. A resource the image does not agree on is reported as absent rather than guessed,
+and a caller is told exactly what a page still needs before it can be generated.
+
+Menu row icons are the exception: they belong to the devices that used them, five and fifteen
+distinct sets, so a generated row borrows one rather than drawing an icon the image does not have.
+
 ## The Activities menu
 
 Both donors draw a second menu of the same shape - equally sized touch zones in reading order,
@@ -491,8 +711,11 @@ same restricted menu font as the device rows.
 ### What an activity ordinal is, and why one is not reclaimed
 
 An activity ordinal is a position in the section-10 context table, so removing a context would
-renumber every one above it. Section-10 contexts 0 to 6 are byte-identical at identical offsets in
-both donors and hold no activity; activities occupy 7 upwards. Exactly one context row starts an
+renumber every one above it. Section 10 opens with 7 contexts that hold no activity in all four
+images measured, and activities occupy 7 upwards. Those seven are not otherwise constant: they were
+byte-identical at identical offsets in the first two images compared, but across four only one of
+them - a seven-byte context 5 - is identical, and one image places them 12 bytes further along.
+Their count is a format property; their contents are not. Exactly one context row starts an
 activity directly - the Off key (`a5`) in context 1 - and it names the one activity each donor keeps
 off its menu: a long-form five-row context, referenced by a single object where menu activities have
 two. That is the All Off path, and a row for it is refused.

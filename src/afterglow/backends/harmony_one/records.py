@@ -12,6 +12,7 @@ from . import gspm
 
 NEW_COMMAND_FLAG = 0x01
 PRESERVED_FLAGS = (0x01, 0x04)
+PREFIX_SIZE = 5
 
 
 def _u24(value: int, label: str) -> bytes:
@@ -29,14 +30,24 @@ def _pointer(offset: int, label: str) -> bytes:
 def command_record(record_offset: int, press_offset: int, hold_offset: int | None,
                    carrier_period_ns: int, carrier_half_period_ns: int, *,
                    release_offset: int | None = None,
-                   flag: int = NEW_COMMAND_FLAG) -> bytes:
-    """Build the measured 25-byte record after placement offsets are known."""
-    if flag not in PRESERVED_FLAGS:
+                   flag: int = NEW_COMMAND_FLAG, prefix: bytes | None = None) -> bytes:
+    """Build the measured 25-byte record after placement offsets are known.
+
+    A record authored here opens with one of the flags this backend writes. A record
+    being rebuilt from one that already exists passes its own five opening bytes
+    instead: the donors carry 0, 1, 4, 5, 6 and 7 there, and one record opens `2f 81`,
+    so reconstructing those bytes from a flag alone would not put them back.
+    """
+    if prefix is not None:
+        if len(prefix) != PREFIX_SIZE:
+            raise ValueError(
+                f"a command record opens with {PREFIX_SIZE} bytes, not {len(prefix)}")
+    elif flag not in PRESERVED_FLAGS:
         raise ValueError(f"unknown Harmony One command flag {flag:#04x}")
     if carrier_half_period_ns != carrier_period_ns // 2:
         raise ValueError("Harmony One carrier half-period must be period // 2")
 
-    out = bytearray([flag, 0, 0, 0, 0])
+    out = bytearray(prefix if prefix is not None else bytes([flag, 0, 0, 0, 0]))
     out += _u24(carrier_period_ns, "carrier period")
     out += _u24(carrier_half_period_ns, "carrier half-period")
     out += b"\x01" + _pointer(record_offset + 4, "command self-pointer")
