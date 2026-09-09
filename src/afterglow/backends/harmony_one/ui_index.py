@@ -720,3 +720,104 @@ def inspect(payload: bytes, ownership: dict | None = None) -> dict:
         buttons = {"count": 0, "index_is_sequential": False,
                    "classification": {}, "rows": [], "error": str(error)}
     return {"device_menus": menus, "fonts": fonts, "drawing": drawing, "buttons": buttons}
+
+
+# An activity row's object carries opcode 0x1f with 0xff in the operand's high byte and
+# the activity ordinal in the low one. Device-menu rows are refused when they contain it,
+# which is what keeps the two menus apart.
+ACTIVITY_ACTION = 0x1F
+ACTIVITY_MARK = 0xFF
+
+
+def activity_rows(payload: bytes, ownership: dict | None = None) -> dict:
+    """Own the Activities menu: which row band starts which activity, and its text.
+
+    Rows are read the same way device-menu rows are - equally sized touch zones in
+    reading order paired band for band with the labels drawn in those bands - because
+    both menus draw the same row grid. What differs is the action: a row starts an
+    activity rather than opening a screen.
+    """
+    objects = command_index.objects(payload)
+    templates = touch_templates(payload)
+    rows = []
+    rejected = Counter()
+    screens = set()
+    for screen in screen_slots(payload):
+        for slot in screen["slots"]:
+            try:
+                program = drawing_program(payload, slot["program_offset"])
+            except ValueError:
+                rejected["unreadable_program"] += 1
+                continue
+            lines: dict[int, list[dict]] = defaultdict(list)
+            for instruction in program["instructions"]:
+                if (instruction["opcode"] not in ("text", "inline_text")
+                        or instruction["x"] != DEVICE_LABEL_X):
+                    continue
+                band = row_index(instruction["y"])
+                if band is not None:
+                    lines[band].append({
+                        "y": instruction["y"], "glyphs": instruction["glyphs"]})
+            if not lines:
+                continue
+            zones = templates.get(slot["template"])
+            if zones is None:
+                rejected["missing_touch_template"] += 1
+                continue
+            content = [zone for zone in zones if zone["tag"] not in SIDE_STRIP_TAGS]
+            sizes = Counter((zone["width"], zone["height"]) for zone in content)
+            if not sizes:
+                continue
+            size, repeats = sizes.most_common(1)[0]
+            if repeats < 2:
+                continue
+            ordered = sorted(
+                (zone for zone in content if (zone["width"], zone["height"]) == size),
+                key=lambda zone: (-zone["y"], zone["x"]))
+            entries = {entry["key_code"]: entry for entry in slot["entries"]}
+            found = []
+            for band in sorted(lines):
+                if band >= len(ordered):
+                    rejected["row_band_without_a_zone"] += 1
+                    continue
+                entry = entries.get(ordered[band]["key_code"])
+                if entry is None or entry["category"] != 0x7F:
+                    continue
+                if not 0 <= entry["operand"] < len(objects):
+                    rejected["invalid_object_index"] += 1
+                    continue
+                started = {
+                    operand & 0xFF
+                    for operand, opcode in objects[entry["operand"]]["atoms"]
+                    if opcode == ACTIVITY_ACTION and operand >> 8 == ACTIVITY_MARK
+                }
+                if not started:
+                    continue
+                if len(started) > 1:
+                    rejected["row_starts_several_activities"] += 1
+                    continue
+                found.append({
+                    "screen": screen["ordinal"], "slot": slot["index"], "row": band,
+                    "key_code": ordered[band]["key_code"],
+                    "object_index": entry["operand"],
+                    "activity": next(iter(started)),
+                    "lines": sorted(lines[band], key=lambda item: item["y"]),
+                })
+            if found:
+                screens.add(screen["ordinal"])
+                rows.extend(found)
+    by_activity = defaultdict(list)
+    for row in rows:
+        by_activity[row["activity"]].append(row)
+    for activity, occurrences in by_activity.items():
+        if len(occurrences) > 1:
+            rejected["activity_on_several_rows"] += 1
+    return {
+        "counts": {
+            "screens": len(screens), "rows": len(rows),
+            "activities": len(by_activity),
+        },
+        "rejected": dict(rejected),
+        "screens": sorted(screens),
+        "rows": rows,
+    }

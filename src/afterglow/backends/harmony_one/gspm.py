@@ -41,8 +41,8 @@ def _sections(payload: bytes, checksum_offset: int) -> tuple[int | None, ...]:
                 f"GSPM section {index} points outside the configuration: {absolute:#08x}")
         sections.append(relative)
     present = [offset for offset in sections if offset is not None]
-    if present != sorted(set(present)):
-        raise ValueError("GSPM section pointers are not unique and ascending")
+    if len(present) != len(set(present)):
+        raise ValueError("GSPM section pointers are not unique")
     if sections[ABSENT_SECTION] is not None or len(present) != SECTION_COUNT - 1:
         raise ValueError("GSPM master index is not the measured 19-section arch-12 layout")
     return tuple(sections)
