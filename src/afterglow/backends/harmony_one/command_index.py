@@ -43,21 +43,28 @@ def objects(payload: bytes) -> list[dict]:
         _relative(payload, start + 2 + 3 * index, f"object {index}")
         for index in range(count)
     )
-    if list(pointers) != sorted(set(pointers)):
-        raise ValueError("GSPM object pointers are not unique and ascending")
+    if len(pointers) != len(set(pointers)):
+        raise ValueError("GSPM object pointers are not unique")
     checksum_offset = struct.unpack_from("<I", payload, 4)[0] - gspm.BASE - 2
     out = []
     for index, offset in enumerate(pointers):
         atom_count = payload[offset]
         object_end = offset + 1 + 3 * atom_count
-        next_offset = pointers[index + 1] if index + 1 < count else checksum_offset
-        if object_end > next_offset:
-            raise ValueError(f"GSPM object {index} overlaps the next native object")
+        if object_end > checksum_offset:
+            raise ValueError(f"GSPM object {index} exceeds the native object region")
         atoms = tuple(
             struct.unpack_from("<HB", payload, offset + 1 + 3 * atom)
             for atom in range(atom_count)
         )
         out.append({"index": index, "offset": offset, "atoms": atoms})
+    occupied = sorted(
+        (item["offset"], item["offset"] + 1 + 3 * len(item["atoms"]), item["index"])
+        for item in out
+    )
+    for previous, current in zip(occupied, occupied[1:]):
+        if current[0] < previous[1]:
+            raise ValueError(
+                f"GSPM objects {previous[2]} and {current[2]} overlap")
     return out
 
 
@@ -379,10 +386,16 @@ def portable_devices(
                 "target_screen": menu["target_screen"],
                 "occurrences": menu["occurrences"],
             }
+            if menu.get("label_lines"):
+                native_evidence["menu"]["label_lines"] = menu["label_lines"]
+        label = (
+            menu.get("label") if menu and menu.get("label") else
+            f"Harmony One device {index}"
+        )
         devices.append({
             "schema": "afterglow-project-device/1",
             "id": f"harmony-one-{index}",
-            "label": f"Harmony One device {index}",
+            "label": label,
             "manufacturer": "",
             "model": "",
             "type": "Unknown",
