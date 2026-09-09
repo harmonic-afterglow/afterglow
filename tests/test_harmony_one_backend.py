@@ -12,16 +12,22 @@ from afterglow.backends.harmony_one import (
     activity_index,
     authoring,
     baseline,
+    bitmap,
     build,
     command_index,
+    compose,
     differential,
+    drawing,
     font_index,
     glyph_codec,
     gspm,
     inventory,
     key_index,
     named_index,
+    records,
     relocation,
+    resources,
+    scaffold,
     screen_program,
     ui_index,
 )
@@ -750,7 +756,7 @@ def test_differential_audit_distinguishes_storage_from_on_air_equivalence():
         (lambda value: value.__setitem__(slice(0, 4), b"TPTP"), "magic"),
         (lambda value: struct.pack_into("<I", value, 4, gspm.BASE + 0x100), "end vector"),
         (lambda value: struct.pack_into("<I", value, 8, 0x1400), "header constant"),
-        (lambda value: value.__setitem__(0x63, 0), "LWJL7"),
+        (lambda value: value.__setitem__(0x63, 0), "LWJL"),
         (lambda value: value.__setitem__(0x80, 1), "checksum mismatch"),
         (lambda value: struct.pack_into("<I", value, 0x0C, 0xFFFFFF), "section 0"),
     ],
@@ -1703,3 +1709,529 @@ def test_deleting_an_activity_the_menu_does_not_show_is_refused():
 
     with pytest.raises(ValueError, match="no Activities-menu row starts activity 9"):
         authoring.delete_activity(payload, 9)
+
+
+def test_the_drawing_encoder_is_the_readers_exact_inverse():
+    payload = gspm_payload_with_command_screen(paged=True)
+    slot = ui_index.screen_slots(payload)[0]["slots"][0]
+
+    blocks = drawing.program_blocks(payload, [slot["program_offset"]])
+
+    assert set(blocks) == {slot["program_offset"], 0xB00}
+    for offset, instructions in blocks.items():
+        body = drawing.encode_program(instructions)
+        assert body == payload[offset:offset + len(body)]
+
+
+def test_every_drawing_opcode_round_trips():
+    shapes = [
+        {"opcode": "end"},
+        {"opcode": "return"},
+        {"opcode": "call", "target": 0x100},
+        {"opcode": "jump", "target": 0x110},
+        {"opcode": "attribute", "value": 9},
+        {"opcode": "bitmap", "x": 6, "y": 38, "target": 0x120},
+        {"opcode": "text", "x": 29, "y": 58, "target": 0x130},
+        {"opcode": "inline_text", "x": 29, "y": 58, "glyphs": "0102"},
+        {"opcode": "atom", "operand": 0x0102, "category": 0x73},
+        {"opcode": "rectangle", "x": 1, "y": 2, "width": 3, "height": 4, "color": 0x1234},
+        {"opcode": "switch", "selector": 37,
+         "cases": [(0, 0x140), (1, 0x150)], "ranges": [(2, 3, 0x160)]},
+    ]
+    payload = bytearray(gspm_payload(0x2000))
+    at = 0x900
+    for shape in shapes:
+        body = drawing.encode(shape)
+        payload[at:at + len(body)] = body
+        at += len(body)
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    # Read each shape from its own address, because several of them stop the reader.
+    at = 0x900
+    for shape in shapes:
+        item = ui_index.drawing_program(bytes(payload), at)["instructions"][0]
+        assert item["opcode"] == shape["opcode"]
+        assert drawing.encode(item) == drawing.encode(shape)
+        at += len(drawing.encode(shape))
+
+
+def test_relocating_a_program_moves_addresses_it_owns_and_no_others():
+    instructions = [
+        {"opcode": "call", "target": 0x100},
+        {"opcode": "bitmap", "x": 0, "y": 0, "target": 0x200},
+        {"opcode": "switch", "selector": 1,
+         "cases": [(0, 0x100)], "ranges": [(1, 2, 0x300)]},
+        {"opcode": "end"},
+    ]
+
+    moved = drawing.relocated(instructions, {0x100: 0x900, 0x300: 0xA00})
+
+    assert moved[0]["target"] == 0x900
+    assert moved[1]["target"] == 0x200
+    assert moved[2]["cases"] == [(0, 0x900)]
+    assert moved[2]["ranges"] == [(1, 2, 0xA00)]
+
+
+def test_a_program_that_does_not_terminate_is_not_emitted():
+    with pytest.raises(ValueError, match="must finish at end, return or jump"):
+        drawing.encode_program([{"opcode": "attribute", "value": 1}])
+
+
+def test_the_whole_program_graph_can_be_laid_out_somewhere_else():
+    payload = gspm_payload_with_command_screen(paged=True)
+    roots = [slot["program_offset"]
+             for screen in ui_index.screen_slots(payload) for slot in screen["slots"]]
+    blocks = drawing.program_blocks(payload, roots)
+
+    at = int.from_bytes(payload[4:8], "little") - gspm.BASE - 2
+    body, mapping = drawing.lay_out(blocks, at)
+    image = relocation.repair_integrity(payload[:at] + body)
+
+    assert set(mapping) == set(blocks)
+    for old, new in mapping.items():
+        read = ui_index.drawing_program(image, new)["instructions"]
+        assert [item["opcode"] for item in read] == [
+            item["opcode"] for item in blocks[old]]
+        # every internal reference now names the block's new home
+        for item in read:
+            if item["opcode"] in ("call", "jump"):
+                assert item["target"] in mapping.values()
+
+
+def test_a_context_rebuilds_the_bytes_it_was_read_from():
+    payload = gspm_payload_with_activity_menu()
+
+    for context in activity_index.contexts(payload):
+        body = authoring.context_record(context)
+        assert body == payload[context["offset"]:context["offset"] + len(body)]
+    start = gspm.section_ranges(payload)[10][0]
+    table = authoring.context_table(
+        [item["offset"] for item in activity_index.contexts(payload)])
+    assert table == payload[start:start + len(table)]
+
+
+def test_a_slot_that_binds_no_key_still_has_a_register():
+    assert authoring.key_register([]) == b"\x00"
+    # A screen's own button map is a 55-row register, so 39 was never a format rule.
+    assert len(authoring.key_register([(index, 0, 0x7F) for index in range(55)])) == 221
+    with pytest.raises(ValueError, match="at most 255 entries"):
+        authoring.key_register([(index % 256, 0, 0x7F) for index in range(256)])
+
+
+def test_re_emitting_an_image_reads_back_as_the_same_model():
+    payload = gspm_payload_with_activity_menu()
+
+    result, report = compose.recompose(payload)
+
+    assert report["screens"] == len(ui_index.screen_slots(payload))
+    assert report["objects"] == len(command_index.objects(payload))
+    assert report["contexts"] == len(activity_index.contexts(payload))
+    assert compose.canonical(result) == compose.canonical(payload)
+    assert gspm.validate(result)["ok"] is True
+
+
+def test_re_emitting_an_image_keeps_everything_it_does_not_lay_out():
+    payload = gspm_payload_with_activity_menu()
+
+    result, _report = compose.recompose(payload)
+
+    assert command_index.inspect(result)["counts"] == command_index.inspect(payload)["counts"]
+    assert key_index.inspect(result)["counts"] == key_index.inspect(payload)["counts"]
+    assert ui_index.activity_rows(result)["counts"] == ui_index.activity_rows(payload)["counts"]
+    assert ui_index.device_menus(result)["counts"] == ui_index.device_menus(payload)["counts"]
+
+
+def test_the_composed_sections_each_cover_their_own_table():
+    payload = gspm_payload_with_activity_menu()
+
+    result, report = compose.recompose(payload)
+
+    ranges = gspm.section_ranges(result)
+    for section in compose.COMPOSED_SECTIONS:
+        assert ranges[section][0] == report["sections"][section]
+    # The composed tables are emitted last, so in address order each one's range runs
+    # to the next and covers its own table and nothing else.
+    order = sorted(compose.COMPOSED_SECTIONS, key=lambda s: ranges[s][0])
+    for earlier, later in zip(order, order[1:]):
+        assert ranges[earlier][1] == ranges[later][0]
+
+
+def test_an_edited_model_is_what_gets_emitted():
+    payload = gspm_payload_with_activity_menu()
+    model = compose.read(payload)
+    slot = model["screens"][1]["slots"][0]
+    key, _object, category = slot["entries"][0]
+    slot["entries"][0] = (key, 1, category)
+
+    result, _report = compose.emit(model, payload)
+
+    emitted = compose.read(result)["screens"][1]["slots"][0]["entries"][0]
+    assert emitted == (key, 1, category)
+    assert compose.canonical(result) != compose.canonical(payload)
+
+
+def test_re_emission_refuses_to_report_success_when_the_model_moved(monkeypatch):
+    payload = gspm_payload_with_activity_menu()
+
+    original = compose.emit
+
+    def _wrong(model, source):
+        model["contexts"][0]["rows"][0]["key_code"] ^= 0xFF
+        return original(model, source)
+
+    monkeypatch.setattr(compose, "emit", _wrong)
+    with pytest.raises(RuntimeError, match="changed its model"):
+        compose.recompose(payload)
+
+
+def test_a_page_number_is_right_aligned_so_it_never_meets_its_separator():
+    payload = gspm_payload_with_command_screen(paged=True)
+    slot = ui_index.screen_slots(payload)[0]["slots"][0]
+
+    def _drawn(value):
+        body = screen_program.render_page_counter(
+            payload, slot["program_offset"], screen_program.PAGE_NUMBER_XY, value)
+        at = int.from_bytes(payload[4:8], "little") - gspm.BASE - 2
+        probe = relocation.repair_integrity(payload[:at] + body)
+        found = screen_program.page_indicator(
+            probe, at, screen_program.PAGE_NUMBER_XY)
+        program = ui_index.drawing_program(probe, at)
+        return found["text"], program["instructions"][found["instruction"]]["x"]
+
+    # This font draws every glyph one pixel wide, so the number's left edge is its
+    # right edge less its length.
+    assert _drawn(1) == ("1", screen_program.PAGE_NUMBER_RIGHT - 1)
+    assert _drawn(12) == ("12", screen_program.PAGE_NUMBER_RIGHT - 2)
+
+
+def test_the_catalogue_names_the_parts_an_image_agrees_on():
+    payload = gspm_payload_with_command_screen(paged=True)
+
+    found = resources.catalogue(payload)
+
+    assert found["fonts"][resources.BUTTON_FONT_ROLE] == 0
+    assert found["fonts"][resources.TITLE_FONT_ROLE] == 0
+    assert found["background"] is None
+    assert sorted(found["button_frames"]) == [(6, 10), (40, 10)]
+    assert found["page_templates"] == {2: 0}
+    assert found["counts"]["command_pages"] == 1
+
+
+def test_the_catalogue_says_what_a_page_still_needs():
+    payload = gspm_payload_with_command_screen(paged=True)
+
+    missing = resources.complete_for(resources.catalogue(payload), 2)
+
+    assert "no page_chrome" in missing
+    assert "no softkey_text" in missing
+    assert "no touch template for a 6 button page" in resources.complete_for(
+        resources.catalogue(payload), 6)
+
+
+def test_a_disagreeing_image_yields_no_resource_rather_than_a_guess():
+    payload = bytearray(gspm_payload_with_command_screen(paged=True))
+    slot = ui_index.screen_slots(bytes(payload))[0]["slots"][0]
+    program = ui_index.drawing_program(bytes(payload), slot["program_offset"])
+    frame = next(item for item in program["instructions"] if item["opcode"] == "bitmap")
+    # Point one button frame somewhere else and the position stops being agreed.
+    payload[frame["offset"] + 3:frame["offset"] + 6] = (
+        gspm.BASE + 0x800).to_bytes(3, "little")
+    payload[0x800:0x804] = bytes([0, 20, 0, 24])
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    found = resources.catalogue(bytes(payload))
+
+    assert (6, 10) in found["button_frames"]
+    assert found["button_frames"][(6, 10)] == 0x800
+
+
+def test_screens_are_classified_by_who_owns_them():
+    payload = gspm_payload_with_activity_menu()
+
+    classes = scaffold.classify_screens(payload)
+
+    assert classes[1] == scaffold.ACTIVITY_MENU
+    assert set(classes.values()) <= {
+        scaffold.DEVICE_COMMANDS, scaffold.DEVICE_MENU, scaffold.ACTIVITY_MENU,
+        scaffold.UNCLASSIFIED}
+
+
+def test_a_scaffold_is_not_cut_while_a_screen_has_no_owner():
+    payload = gspm_payload_with_activity_menu()
+
+    report = scaffold.audit(payload)
+
+    assert report["can_cut"] is False
+    assert any("owned by nobody" in item for item in report["blocking"])
+    assert report["by_class"][scaffold.UNCLASSIFIED]["screens"] > 0
+
+
+def test_the_audit_separates_the_base_contexts_from_the_activity_ones():
+    payload = gspm_payload_with_activity_menu()
+
+    report = scaffold.audit(payload)
+
+    # This image declares three contexts, all of them below the base count, so it has
+    # no activity contexts even though a row starts activity 2.
+    assert report["contexts"] == {"base": 3, "activity": 0}
+
+
+def test_the_flat_command_index_groups_every_command_by_its_device():
+    body = authoring.command_flat_index([[0x100, 0x200], [0x300]])
+
+    head = authoring.command_index_head()
+    assert len(head) == authoring.COMMAND_INDEX_HEAD_SIZE
+    assert body.startswith(head)
+    assert body[len(head):] == (
+        # every run opens with a zero byte, the first included
+        b"\x00" + (2).to_bytes(2, "little")
+        + (gspm.BASE + 0x100 + 11).to_bytes(3, "little")
+        + (gspm.BASE + 0x200 + 11).to_bytes(3, "little")
+        + b"\x00" + (1).to_bytes(2, "little")
+        + (gspm.BASE + 0x300 + 11).to_bytes(3, "little"))
+
+
+def test_a_configuration_with_no_devices_has_only_the_key_table():
+    assert authoring.command_flat_index([]) == authoring.command_index_head()
+
+
+def test_a_flat_command_index_refuses_more_devices_than_the_format_holds():
+    with pytest.raises(ValueError, match="at most 255 devices"):
+        authoring.command_flat_index([[]] * 256)
+
+
+def test_the_build_stamp_round_trips_through_its_markers():
+    body = authoring.stamp(26, 35, 22, 22, 7, 2023, 3)
+
+    assert body.startswith(authoring.STAMP_PREFIX)
+    assert body.endswith(authoring.STAMP_SUFFIX)
+    assert len(body) == 14
+
+    payload = bytearray(gspm_payload(0x2000))
+    start = struct.unpack_from("<I", payload, 0x0C + 4 * 3)[0] - gspm.BASE
+    # Section 3 runs to wherever section 4 begins, so put section 4 right after it.
+    struct.pack_into("<I", payload, 0x0C + 4 * 4, gspm.BASE + start + len(body))
+    payload[start:start + len(body)] = body
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    read = authoring.read_stamp(bytes(payload))
+    assert read["year"] == 2023 and read["month"] == 7 and read["day"] == 22
+    assert (read["hour"], read["minute"], read["second"]) == (22, 35, 26)
+    assert read["unexplained"] == 3
+    assert read["in_range"] is True
+
+
+def test_a_stamp_outside_its_measured_ranges_is_refused():
+    with pytest.raises(ValueError, match="month is outside"):
+        authoring.stamp(0, 0, 0, 1, 13, 2023, 0)
+    with pytest.raises(ValueError, match="hour is outside"):
+        authoring.stamp(0, 0, 24, 1, 1, 2023, 0)
+
+
+def test_every_section_has_a_way_of_being_produced():
+    report = scaffold.plan()
+
+    assert report["by_state"].get(scaffold.UNKNOWN, []) == []
+    assert report["can_generate"] is True
+    assert report["by_state"][scaffold.CONSTANT] == [1, 2, 17, 18]
+    assert set(report["sections"]) == set(scaffold.SECTION_PLAN)
+    for section, entry in report["sections"].items():
+        assert entry["evidence"], f"section {section} has no evidence behind its state"
+
+
+def test_the_factory_repertoire_reads_the_messages_it_was_derived_from():
+    report = glyph_codec.resolve_mapping({code: {"shape"} for code in range(1, 47)})
+
+    assert report["repertoire"] == 46
+    assert glyph_codec.decode(bytes([3, 4, 5, 6, 4, 5, 7, 8, 9, 10, 11, 6, 8]),
+                              report) == "Go to Website"
+    assert glyph_codec.encode("Battery", report) is not None
+    # Every established layout starts with the same two codes, which is what makes the
+    # firmware table corroborate the ones derived from household images.
+    for size in sorted(glyph_codec.REPERTOIRES):
+        assert glyph_codec.REPERTOIRES[size][1] == "H"
+        assert glyph_codec.REPERTOIRES[size][2] == "y"
+
+
+def test_a_font_counts_its_glyphs_in_whichever_header_resolves():
+    payload = gspm_payload_with_menu_replicas()
+
+    table = font_index.fonts(payload)
+
+    assert [font["layout"] for font in table] == [font_index.WIDE_COUNT] * len(table)
+    assert {font["slots"] for font in table} == {71}
+
+
+def test_a_font_whose_count_resolves_no_way_is_refused():
+    payload = bytearray(gspm_payload_with_menu_replicas())
+    start = gspm.section_ranges(bytes(payload))[7][0]
+    offset = int.from_bytes(payload[start + 2:start + 5], "little") - gspm.BASE
+    # Point the first glyph slot outside the image under either reading.
+    payload[offset + 1:offset + 3] = b"\xff\xff"
+    payload[offset + 3:offset + 6] = b"\xff\xff\xff"
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    with pytest.raises(ValueError, match="no glyph count that resolves"):
+        font_index.fonts(bytes(payload))
+
+
+def test_a_display_colour_survives_the_trip_through_the_screen_format():
+    for colour in ((0, 0, 0), (255, 255, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255)):
+        packed = bitmap.to_rgb565(colour)
+        assert 0 <= packed <= 0xFFFF
+        back = bitmap.from_rgb565(packed)
+        # Five and six bit channels cannot hold every byte, but the ends are exact.
+        assert all(abs(a - b) <= 4 for a, b in zip(colour, back))
+    with pytest.raises(ValueError, match="red channel must be a byte"):
+        bitmap.to_rgb565((256, 0, 0))
+
+
+def test_a_stored_picture_rebuilds_the_bytes_it_was_read_from():
+    payload = bytearray(gspm_payload(0x4000))
+    rows = [[(255, 0, 0), (0, 255, 0)], [(0, 0, 255), (255, 255, 255)]]
+    body = bitmap.encode(rows, mode=bitmap.RAW)
+    payload[0x900:0x900 + len(body)] = body
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    read = bitmap.decode(bytes(payload), 0x900)
+
+    assert read["mode"] == bitmap.RAW
+    assert (read["width"], read["height"]) == (2, 2)
+    assert bitmap.encode(read["rows"], mode=bitmap.RAW) == body
+
+
+def test_a_picture_with_undrawn_pixels_must_be_run_encoded():
+    rows = [[(255, 0, 0), None], [None, (0, 0, 255)]]
+
+    body = bitmap.encode(rows)
+
+    assert body[0] == bitmap.RUNS
+    with pytest.raises(ValueError, match="cannot store every pixel"):
+        bitmap.encode(rows, mode=bitmap.RAW)
+
+
+def test_a_run_encoded_picture_leaves_its_last_row_unseparated():
+    payload = bytearray(gspm_payload(0x4000))
+    rows = [[(255, 0, 0), None], [None, (0, 0, 255)]]
+    body = bitmap.encode(rows, mode=bitmap.RUNS)
+    # One separator for the first row, then the picture terminator.
+    assert body.count(bytes([bitmap.ROW_END])) >= 1
+    assert body[-1] == bitmap.PICTURE_END
+    assert body[-2] != bitmap.ROW_END
+
+    payload[0x900:0x900 + len(body)] = body
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+    read = bitmap.decode(bytes(payload), 0x900)
+    assert read["rows"] == rows
+
+
+def test_a_picture_larger_than_the_display_is_refused():
+    with pytest.raises(ValueError, match="at most 176x220"):
+        bitmap.encode([[(0, 0, 0)] * 177])
+
+
+def test_the_two_picture_encodings_keep_their_own_byte_order():
+    # Stored whole and run encoded disagree, so a colour written one way and read the
+    # other comes back wrong. Guard the split rather than the individual orders.
+    assert bitmap.RAW_ORDER != bitmap.RUN_ORDER
+    colour = (255, 128, 0)
+    rows = [[colour, None]]
+
+    raw = bitmap.encode([[colour, colour]], mode=bitmap.RAW)
+    runs = bitmap.encode(rows, mode=bitmap.RUNS)
+
+    word = bitmap.to_rgb565(colour)
+    assert raw[4:6] == word.to_bytes(2, bitmap.RAW_ORDER)
+    # header, then the run length, then the pixel
+    assert runs[6:8] == word.to_bytes(2, bitmap.RUN_ORDER)
+
+
+def test_the_model_holds_the_pictures_and_strings_its_programs_draw():
+    payload = gspm_payload_with_activity_menu()
+
+    model = compose.read(payload)
+
+    drawn = [
+        item for block in model["programs"].values() for item in block
+        if item["opcode"] in ("bitmap", "text")
+    ]
+    for item in drawn:
+        pool = model["pictures"] if item["opcode"] == "bitmap" else model["strings"]
+        assert item["target"] in pool
+
+
+def test_re_emitting_moves_the_pictures_and_the_references_to_them():
+    payload = gspm_payload_with_activity_menu()
+    before = compose.read(payload)
+
+    result, _report = compose.recompose(payload)
+
+    after = compose.read(result)
+    assert len(after["pictures"]) == len(before["pictures"])
+    # The pictures are somewhere else now, but they are the same pictures.
+    assert sorted(p["rows"] for p in after["pictures"].values()) == sorted(
+        p["rows"] for p in before["pictures"].values())
+    assert set(after["pictures"]) != set(before["pictures"]) or not before["pictures"]
+
+
+def test_a_picture_is_not_padded_to_a_64_kib_window():
+    # A backdrop stored whole is larger than the window, so the rule cannot apply to
+    # pictures; the donors put 15 to 19 of them across a boundary in every image.
+    out = bytearray(b"\x00" * 16)
+    body = bitmap.encode([[(1, 2, 3)] * 4] * 4, mode=bitmap.RAW)
+
+    at = compose._place_picture(out, body)
+
+    assert at == 16
+    assert bytes(out[at:at + len(body)]) == body
+
+
+def test_the_model_holds_the_commands_and_the_waveforms_they_send():
+    payload = gspm_payload_with_activity_menu()
+
+    model = compose.read(payload)
+
+    assert len(model["devices"]) == command_index.inspect(payload)["counts"]["devices"]
+    for commands in model["devices"]:
+        for command in commands:
+            assert command["prefix"] and len(command["prefix"]) == 5
+            assert command["phases"]["press"]
+
+
+def test_a_rebuilt_command_record_keeps_the_bytes_it_opened_with():
+    # The donors open records with 0, 1, 4, 5, 6, 7 and one with 2f 81, so the opening
+    # bytes are carried rather than rebuilt from a flag this backend knows.
+    body = records.command_record(
+        0x100, 0x200, None, 26315, 26315 // 2, prefix=bytes.fromhex("2f81000000"))
+
+    assert body[:5] == bytes.fromhex("2f81000000")
+    with pytest.raises(ValueError, match="opens with 5 bytes"):
+        records.command_record(0x100, 0x200, None, 26315, 26315 // 2, prefix=b"\x01")
+
+
+def test_the_model_holds_every_font_and_its_glyphs():
+    payload = gspm_payload_with_activity_menu()
+
+    model = compose.read(payload)
+
+    assert len(model["fonts"]) == len(font_index.fonts(payload))
+    for font in model["fonts"]:
+        assert font["height"] and font["slots"]
+        for body in font["glyphs"].values():
+            assert body and body[-1] == 0
+
+
+def test_a_screens_button_map_moves_with_it():
+    payload = gspm_payload_with_activity_menu()
+
+    model = compose.read(payload)
+    result, _report = compose.recompose(payload)
+
+    after = compose.read(result)
+    assert [s["header"] for s in after["screens"]] == [s["header"] for s in model["screens"]]

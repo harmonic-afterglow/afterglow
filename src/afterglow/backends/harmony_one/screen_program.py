@@ -209,8 +209,13 @@ def _counter_change(payload: bytes, program_offset: int, position: tuple[int, in
             f"this program draws no page counter at {position}, so there is no evidence "
             "of how this screen numbers its pages")
     widths = glyph_widths(payload, counter["attribute"])
-    return {counter["instruction"]: _text_instruction(
-        *position, _encode(str(value), report, widths))}
+    glyphs = _encode(str(value), report, widths)
+    x, y = position
+    if position == PAGE_NUMBER_XY:
+        x = PAGE_NUMBER_RIGHT - sum(widths[code] for code in glyphs)
+        if x < 0:
+            raise ValueError(f"page {value} does not fit beside its separator")
+    return {counter["instruction"]: _text_instruction(x, y, glyphs)}
 
 
 def screen_title(payload: bytes, prologue_offset: int,
@@ -398,7 +403,12 @@ def render_menu_row(payload: bytes, program_offset: int, row: int, label) -> byt
 # prologue every slot calls. Single-slot screens draw neither. Both donors put these at
 # the same coordinates on every screen that has them; the font attribute varies by
 # screen and is read from the screen itself.
+# The page number is right-aligned so it never runs into the "/" beside it: its right
+# edge is 18 on all 28 and 52 command pages of the two broader donors, which is why a
+# one-digit "1" sits at 13, a wider "4" at 12 and a two-digit "10" at 8. The prologue's
+# total is left-aligned at 23 instead.
 PAGE_NUMBER_XY = (13, 18)
+PAGE_NUMBER_RIGHT = 18
 PAGE_TOTAL_XY = (23, 18)
 # Both donors draw a screen's title here, twice per prologue and always agreeing.
 TITLE_XY = (6, 4)
@@ -409,9 +419,14 @@ def _fixed_text(program: dict, position: tuple[int, int]) -> tuple[int, int] | N
     for index, item in enumerate(program["instructions"]):
         if item["opcode"] == "attribute":
             attribute = item["value"]
-        elif (item["opcode"] in ("text", "inline_text")
-                and (item["x"], item["y"]) == position):
-            return index, attribute
+        elif item["opcode"] in ("text", "inline_text"):
+            if position == PAGE_NUMBER_XY:
+                # A right-aligned number does not sit at one x, but it is the only text
+                # on its line that starts before the "/" its right edge meets.
+                if item["y"] == PAGE_NUMBER_XY[1] and item["x"] < PAGE_NUMBER_RIGHT:
+                    return index, attribute
+            elif (item["x"], item["y"]) == position:
+                return index, attribute
     return None
 
 
@@ -439,17 +454,9 @@ def render_page_counter(payload: bytes, program_offset: int,
     """Rebuild a program with one page counter renumbered and the rest verbatim."""
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ValueError("a page counter counts from one")
-    counter = page_indicator(payload, program_offset, position)
-    if counter is None:
-        raise ValueError(
-            f"this program draws no page counter at {position}, so there is no evidence "
-            "of how this screen numbers its pages")
     report = glyph_codec.inspect(payload)
-    widths = glyph_widths(payload, counter["attribute"])
-    glyphs = _encode(str(value), report, widths)
-    return _rewrite(payload, program_offset, {
-        counter["instruction"]: _text_instruction(*position, glyphs),
-    })
+    return _rewrite(payload, program_offset, _counter_change(
+        payload, program_offset, position, value, report))
 
 
 def menu_rows(payload: bytes, program_offset: int) -> list[dict]:

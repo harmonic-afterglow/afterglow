@@ -12,7 +12,10 @@ BASE = 0x040000
 MAGIC = b"GSPM"
 HEADER_CONSTANT = 0x1600
 BUTTON_MAP_OFFSET = 0x63
-BUTTON_MAP_MAGIC = b"LWJL7"
+# `LWJL` is the marker; the byte after it is the image's button count, not part of it.
+# Household configurations all carry 55 there, which is why it read as a literal "7".
+# The Harmony One factory configuration shipped in firmware carries 2.
+BUTTON_MAP_MAGIC = b"LWJL"
 SECTION_COUNT = 20
 ABSENT_SECTION = 8
 CHECKSUM_SEED = (0x21, 0x43)
@@ -70,8 +73,11 @@ def validate(payload: bytes) -> dict:
             f"GSPM end vector {end_vector:#08x} does not point at the final PTYY marker")
     if payload[marker_offset:marker_offset + 4] != b"PTYY":
         raise ValueError("GSPM end vector does not point at PTYY")
-    if payload[BUTTON_MAP_OFFSET:BUTTON_MAP_OFFSET + 5] != BUTTON_MAP_MAGIC:
-        raise ValueError("GSPM arch-12 button-map marker LWJL7 is absent at +0x63")
+    end = BUTTON_MAP_OFFSET + len(BUTTON_MAP_MAGIC)
+    if payload[BUTTON_MAP_OFFSET:end] != BUTTON_MAP_MAGIC:
+        raise ValueError(
+            f"GSPM arch-12 button-map marker {BUTTON_MAP_MAGIC.decode()} is absent at "
+            f"{BUTTON_MAP_OFFSET:#x}")
 
     checksum_offset = marker_offset - 2
     actual = checksum(payload, checksum_offset)

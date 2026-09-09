@@ -22,6 +22,41 @@ import struct
 from . import gspm, relocation, ui_index
 
 
+# Two font-record headers are established, both three bytes after the height. Every
+# household image counts its glyphs in a little-endian u16; the factory configuration in
+# Harmony One firmware 54.2.5 counts in the third byte instead, and reading it that way
+# is what makes its 46 glyph pointers land exactly on the start of section 7. Neither
+# reading can be applied blind, so the count is the one whose index resolves.
+WIDE_COUNT = "u16-count"
+BYTE_COUNT = "u8-count"
+
+
+def _glyph_count(payload: bytes, offset: int, attribute: int) -> tuple[int, str]:
+    """Return a font's glyph count and which of the two headers it uses."""
+    candidates = (
+        (struct.unpack_from("<H", payload, offset + 1)[0], WIDE_COUNT),
+        (payload[offset + 2], BYTE_COUNT),
+    )
+    for slots, layout in candidates:
+        if not slots or offset + 3 + 3 * slots > len(payload):
+            continue
+        if all(
+            _resolves(payload, offset + 3 + 3 * index) for index in range(slots)
+        ):
+            return slots, layout
+    raise ValueError(
+        f"font {attribute} declares no glyph count that resolves; tried "
+        + ", ".join(f"{layout} = {slots}" for slots, layout in candidates))
+
+
+def _resolves(payload: bytes, at: int) -> bool:
+    pointer = int.from_bytes(payload[at:at + 3], "little")
+    if not pointer:
+        return True
+    target = pointer - gspm.BASE
+    return 0 <= target < len(payload)
+
+
 def fonts(payload: bytes) -> list[dict]:
     """Return every section-7 font with its declared shape and glyph slots."""
     start, end = gspm.section_ranges(payload)[7]
@@ -34,9 +69,7 @@ def fonts(payload: bytes) -> list[dict]:
         offset = int.from_bytes(payload[field:field + 3], "little") - gspm.BASE
         if not 0 <= offset + 3 <= len(payload):
             raise ValueError(f"font {attribute} pointer falls outside the image")
-        slots = struct.unpack_from("<H", payload, offset + 1)[0]
-        if offset + 3 + 3 * slots > len(payload):
-            raise ValueError(f"font {attribute} glyph index is truncated")
+        slots, layout = _glyph_count(payload, offset, attribute)
         glyphs = {}
         empty = []
         for index in range(slots):
@@ -49,7 +82,7 @@ def fonts(payload: bytes) -> list[dict]:
             glyphs[index + 1] = {"field": at, "pointer": pointer, **shape}
         out.append({
             "attribute": attribute, "offset": offset, "field": field,
-            "height": payload[offset], "slots": slots,
+            "height": payload[offset], "slots": slots, "layout": layout,
             "glyphs": glyphs, "empty": empty,
         })
     return out

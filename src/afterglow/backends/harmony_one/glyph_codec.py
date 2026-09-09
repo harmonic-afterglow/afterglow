@@ -31,11 +31,21 @@ _COMMON = {
 
 WIDE_BLANK = "\N{OPEN BOX}"
 
-# The 71-code layout is RE-Harmony's factory-image derivation. The other three
+# The 71-code layout is RE-Harmony's derivation from a household image. The other three
 # were read from independent 72-, 77-, and 79-code donor font sheets and
 # cross-checked against their on-screen device labels. Keeping the layouts
 # separate is essential: their suffixes are permutations, not extensions.
+# The Harmony One factory configuration shipped in firmware 54.2.5 carries its own
+# 46-glyph font, and its 56 system messages read back exactly under this table - "Go to
+# Website", "FLASH Memory Erase", "Battery Trickle\\Charge" and the rest. It is not an
+# extension of the household layouts: after the first two codes it runs in first-use
+# order over its own strings. That it also begins H, y is what corroborates the
+# household tables, which were derived from entirely different images.
+_FACTORY_46 = dict(enumerate(
+    "HyGo tWebsiupdangUSBIlzrLckRTmCEDPhFAMfqw\\vNO.", start=1))
+
 REPERTOIRES = {
+    46: _FACTORY_46,
     71: _COMMON | dict(zip(
         range(0x3D, 0x48),
         ("x", "?", "Y", "V", WIDE_BLANK, ",", "'", "-", "j", '"', "J"),
