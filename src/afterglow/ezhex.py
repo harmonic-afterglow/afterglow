@@ -221,7 +221,7 @@ def _header_for(src_dir, payload, profile=None):
     else:
         if profile is None:
             from . import remotes
-            profile = remotes.get("harmony-900")
+            profile = remotes.default()
         header = header_for_profile(profile)
     header = re.sub(rb"<BINARYDATASIZE>\d+</BINARYDATASIZE>",
                     ("<BINARYDATASIZE>%d</BINARYDATASIZE>" % len(payload)).encode(), header)

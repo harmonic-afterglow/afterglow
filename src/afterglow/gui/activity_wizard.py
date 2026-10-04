@@ -14,15 +14,16 @@ from .project import (drop_retired_fields)
 from .activity_buttons import FavouritesPage, ScreenButtonsPage
 from .ui_helpers import (FilterCombo)
 
-from .constants import ACTIVITY_TYPES
+from .. import vocabulary
 from .icons import icon as type_icon
 from .properties_editor import PropertiesEditor, PropertiesPage
 from .widgets import _new_act_id
 
 
 class ActivityWizard(QWizard):
-    def __init__(self, devices, parent=None, existing=None, taken_ids=None):
+    def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None):
         super().__init__(parent)
+        profile = vocabulary.for_remote(remote)
         self._taken_ids = list(taken_ids or [])
         self.setWindowTitle("Add Activity" if not existing else "Edit Activity")
         self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
@@ -31,14 +32,14 @@ class ActivityWizard(QWizard):
         self.result_spec = None
         e = self._existing = existing or {}
 
-        self.addPage(ActivityIdentityPage(e))
+        self.addPage(ActivityIdentityPage(e, remote=profile))
         self.addPage(ActivityRolesPage(devices, e))
         self.addPage(FavouritesPage(devices, e))
         self.addPage(ScreenButtonsPage(devices, e))
-        self.addPage(ActivityHardButtonsPage(devices, e))
+        self.addPage(ActivityHardButtonsPage(devices, e, remote=profile))
         self.addPage(ActivityMacrosPage(devices, e))
         self.addPage(PropertiesPage("activity", e.get("properties"),
-                                    kind=e.get("type")))
+                                    kind=e.get("type"), remote=profile))
 
     def initializePage(self, page_id):
         """Before a page is shown, tell it which devices this activity uses.
@@ -95,7 +96,7 @@ class ActivityWizard(QWizard):
 
 
 class ActivityIdentityPage(QWizardPage):
-    def __init__(self, existing, parent=None):
+    def __init__(self, existing, parent=None, remote=None):
         super().__init__(parent)
         self.setTitle("Activity Name & Icon")
         self.setSubTitle("Give the activity a name and choose the icon that will "
@@ -107,7 +108,7 @@ class ActivityIdentityPage(QWizardPage):
 
         self.type_combo = QComboBox()
         self.type_combo.setIconSize(QSize(20, 20))
-        types = list(ACTIVITY_TYPES)
+        types = list(vocabulary.activity_types(remote))
         current = (existing.get("type") or "").strip()
         if current and current not in {t for _l, t in types}:
             types.insert(0, (f"{current} (from the imported config)", current))
@@ -288,7 +289,7 @@ class HardButtonMacroDialog(QDialog):
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
 class ActivityHardButtonsPage(QWizardPage):
-    def __init__(self, devices, existing, parent=None):
+    def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.setTitle("Physical buttons")
         self.setSubTitle("Map device commands onto the remote's own buttons. Left "
@@ -303,11 +304,13 @@ class ActivityHardButtonsPage(QWizardPage):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         layout.addWidget(self.table)
         
-        self.slots = ["Menu", "VolumeUp", "VolumeDown", "VolumeMute", "DirectionUp", "DirectionDown", 
-                      "DirectionLeft", "DirectionRight", "Select", "Number1", "Number2", "Number3", 
-                      "Number4", "Number5", "Number6", "Number7", "Number8", "Number9", "Number0"]
-                      
+        # Every physical key this remote has, from its profile. This was a fixed list of
+        # nineteen, so Guide, Info, the transport keys and the rest could not be given an
+        # activity's own action at all (GitHub #5). A key an imported activity already
+        # binds is kept even if the profile does not name it, so editing cannot drop it.
         self.macros = existing.get("hard_macros", {})
+        self.slots = list(vocabulary.hard_keys(remote))
+        self.slots += [key for key in self.macros if key not in self.slots]
         
         for slot in self.slots:
             r = self.table.rowCount()
@@ -433,8 +436,9 @@ def _carry_activity(base: dict) -> dict:
 
 
 class ActivityEditor(QDialog):
-    def __init__(self, devices, parent=None, existing=None):
+    def __init__(self, devices, parent=None, existing=None, remote=None):
         super().__init__(parent)
+        profile = vocabulary.for_remote(remote)
         self.setWindowTitle("Edit Activity")
         self.resize(660, 600)
         self.result_spec  = None
@@ -444,11 +448,11 @@ class ActivityEditor(QDialog):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
         
-        self.p0 = ActivityIdentityPage(e)
+        self.p0 = ActivityIdentityPage(e, remote=profile)
         self.p1 = ActivityRolesPage(devices, e)
         self.p3 = FavouritesPage(devices, e)
         self.p3b = ScreenButtonsPage(devices, e)
-        self.p4 = ActivityHardButtonsPage(devices, e)
+        self.p4 = ActivityHardButtonsPage(devices, e, remote=profile)
         self.p5 = ActivityMacrosPage(devices, e)
 
         self.tabs.addTab(self.p0, "Identity")
@@ -458,7 +462,7 @@ class ActivityEditor(QDialog):
         self.tabs.addTab(self.p4, "Physical buttons")
         self.tabs.addTab(self.p5, "Startup / Shutdown")
         self.p6 = PropertiesEditor("activity", (existing or {}).get("properties"),
-                                   kind=(existing or {}).get("type"))
+                                   kind=(existing or {}).get("type"), remote=profile)
         self.tabs.addTab(self.p6, "Advanced")
         
         btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)

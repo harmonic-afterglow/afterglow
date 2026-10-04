@@ -10,7 +10,6 @@ import os
 import shutil
 import xml.etree.ElementTree as ET
 
-from .... import paths
 from ....preferences import apply as apply_preferences
 from ....rf import apply_rf_setting
 from .. import irproto, ssir
@@ -19,14 +18,12 @@ from .activities import _gen_activity
 from .codes import esc
 from .devices import _gen_device
 
-# The config skeleton copied into the work tree: platformconfig, boot scripts and a
-# UserConfiguration carrying the Properties/User shell.
-#
-# This defaults to the bundled scaffold and must never default to a real config. It used
-# to point at the user's own dump, so any caller that forgot to pass `base_dir` silently
-# inherited that remote's state - its RF blaster registration, its device-to-blaster map,
-# anything else unmodelled - into a supposedly fresh build, without saying so.
-BASE = str(paths.scaffolds("harmony-900"))
+# The config skeleton copied into the work tree is the caller's to name: platformconfig,
+# boot scripts and a UserConfiguration carrying the Properties/User shell. There is
+# deliberately no default. It once pointed at the user's own dump, so a caller that forgot
+# `base_dir` silently inherited that remote's RF registration into a fresh build; then at
+# the Harmony 900's scaffold, which would have built any other PK remote on a 900's
+# calibration and persisted settings without saying so.
 
 
 @dataclass(frozen=True)
@@ -122,7 +119,9 @@ def build(specs, work, request: BuildRequest | None = None):
     protocol_meta_by_id = request.protocol_meta_by_id
     power_off_all = request.power_off_all
     power_off_label = request.power_off_label
-    base = request.base_dir or BASE
+    if not request.base_dir:
+        raise ValueError("a build needs the target remote's scaffold as base_dir")
+    base = request.base_dir
     settings = request.settings or {}
     # Assembly stamps its own transient fields onto these specs: the runtime protocol
     # index each command resolved to, the block ids behind them, and raw codes renumbered

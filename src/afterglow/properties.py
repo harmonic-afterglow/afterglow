@@ -72,10 +72,13 @@ def catalog(remote=None, path: Path | str = CATALOG_PATH) -> dict:
             # all because one lookup missed.
             profile = None
     else:
-        # Nothing named: the first verified profile, if the library has one. An empty
-        # library, or one where every profile is still `untested`, is an ordinary state
-        # rather than a failure - `load_all` already reports the profiles it skipped.
-        profile = next((p for p in _remotes.load_all() if p.verified), None)
+        # Nothing named: the default remote, if there is an unambiguous one. An empty
+        # library, or one with no single verified profile, is an ordinary state rather
+        # than a failure - `load_all` already reports the profiles it skipped.
+        try:
+            profile = _remotes.default()
+        except _remotes.UnknownRemote:
+            profile = None
     # A profile is not required to declare properties, and `remote` may be any object
     # with a vocabulary. Both mean "nothing declared", which is not the same as an error
     # - and a bare `except` here used to report a genuine fault as exactly that.

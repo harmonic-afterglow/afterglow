@@ -21,6 +21,12 @@ from .rf_routing import rf_label, rf_set
 from .widgets import bold, sep
 
 
+def project_remote(project):
+    """The profile this project is built for - the one the whole window follows."""
+    from .. import remotes
+    return remotes.for_project(project or {})
+
+
 class DeviceCard(QWidget):
     """Single device row displayed in the list."""
     def __init__(self, spec, on_edit, on_delete, parent=None, project=None):
@@ -37,8 +43,8 @@ class DeviceCard(QWidget):
 
         info = QVBoxLayout()
         name_lbl = bold(spec.get("label","?"))
-        from .constants import DEVICE_TYPE_LABELS
-        kind = DEVICE_TYPE_LABELS.get(spec.get("type", ""), spec.get("type", ""))
+        labels = project_remote(project).device_types
+        kind = labels.get(spec.get("type", ""), spec.get("type", ""))
         route = rf_label(project or {}, spec.get("id"))
         sub = (f"{spec.get('mfr','')} {spec.get('model','')}  ·  {kind}  ·  "
                f"{len(spec.get('commands', []))} commands  ·  {route}")
@@ -234,7 +240,8 @@ class ActivitiesTab(QWidget):
                                     "Add at least one device before creating an activity.")
             return
         wiz = ActivityWizard(devs, self,
-                             taken_ids=[a.get("id") for a in self.project["activities"]])
+                             taken_ids=[a.get("id") for a in self.project["activities"]],
+                             remote=project_remote(self.project))
         if wiz.exec() and wiz.result_spec:
             self.project["activities"].append(wiz.result_spec)
             self._keep_assets(wiz)
@@ -259,7 +266,8 @@ class ActivitiesTab(QWidget):
 
     def edit_activity(self, idx):
         editor = ActivityEditor(self.project["devices"], self,
-                                existing=self.project["activities"][idx])
+                                existing=self.project["activities"][idx],
+                                remote=project_remote(self.project))
         if editor.exec() and editor.result_spec:
             self.project["activities"][idx] = editor.result_spec
             self._keep_assets(editor)
@@ -277,16 +285,25 @@ class ActivitiesTab(QWidget):
             self.refresh()
             self.changed.emit()
 def remote_profiles():
-    """Remotes the user may build for: the verified ones only.
+    """Remotes the user may build for: verified ones, then experimental ones.
 
-    Only verified profiles ship (docs/harmony_pk/remote-identities.md says why), so this is every
-    profile in the library; the filter stays as a guard for a locally added one.
+    A read-only profile is left out - its identity is known but nothing can be built
+    for it. An experimental one is offered, labelled, because building is how it gets
+    tested; writing it goes through the Flash tab's test write rather than a plain flash.
     """
     from ..remotes import load_all
-    return [p for p in load_all() if p.verified]
+    return [p for p in load_all() if p.buildable]
+
+
+def remote_label(profile) -> str:
+    return profile.model if profile.verified else f"{profile.model} (experimental)"
 
 
 class SettingsTab(QWidget):
+    # The project now targets another remote: everything showing that remote's
+    # vocabulary has to be redrawn.
+    remote_changed = pyqtSignal()
+
     def __init__(self, project, parent=None):
         super().__init__(parent)
         self.project = project
@@ -295,15 +312,19 @@ class SettingsTab(QWidget):
         layout.addWidget(sep())
 
         form = QFormLayout()
+        self.form = form
         s = project.get("settings", {})
 
-        # Which remote this config is for. Only verified profiles ship, so everything
-        # offered here can actually be built and flashed.
+        # Which remote this config is for. Every tab follows this choice: the device and
+        # activity types, the keys, the properties and what the Flash tab will do.
         self.remote = QComboBox()
         for profile in remote_profiles():
-            self.remote.addItem(profile.model, profile.id)
-        idx = self.remote.findData(s.get("remote", "harmony-900"))
-        self.remote.setCurrentIndex(idx if idx >= 0 else 0)
+            self.remote.addItem(remote_label(profile), profile.id)
+        self._select_remote()
+        self.remote.currentIndexChanged.connect(self._on_remote_picked)
+        self.remote_note = QLabel()
+        self.remote_note.setWordWrap(True)
+        self.remote_note.setStyleSheet("color: #b26a00;")
 
         self.out_file   = QLineEdit(s.get("out_file", ""))
         self.first_name = QLineEdit(s.get("first_name", ""))
@@ -327,6 +348,7 @@ class SettingsTab(QWidget):
             self.locale.setCurrentIndex(idx)
 
         form.addRow("Remote:", self.remote)
+        form.addRow("", self.remote_note)
         form.addRow("Output .ezhex file:", self.out_file)
         form.addRow("First Name:", self.first_name)
         form.addRow("Last Name:", self.last_name)
@@ -343,14 +365,17 @@ class SettingsTab(QWidget):
             "Pair a wireless blaster base with the remote, then read its address back")
         self.add_blaster_btn.clicked.connect(self._add_blaster)
         blaster_row.addWidget(self.add_blaster_btn)
+        self.blaster_row = blaster_row
         form.addRow("RF blasters:", blaster_row)
         self._refresh_blasters()
 
         # The remote's own preferences (platformconfig/system_*.dat). These are
         # writable: see `payloads.pk.mode_for` for why their file mode matters.
         from .. import preferences as prefs
-        form.addRow(sep())
+        self.pref_rows = [sep()]
+        form.addRow(self.pref_rows[0])
         heading = bold("Remote's own settings")
+        self.pref_rows.append(heading)
         form.addRow(heading)
         note = QLabel(
             "These are applied when you flash. The remote keeps its own copy, so a "
@@ -358,6 +383,7 @@ class SettingsTab(QWidget):
             "overwrites it.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray;")
+        self.pref_rows.append(note)
         form.addRow(note)
 
         self.prefs = {}
@@ -377,10 +403,48 @@ class SettingsTab(QWidget):
                 widget.setValue(int(current) if current.isdigit() else prefs.DEFAULTS[key])
             widget.setToolTip("Applied to the remote when you flash this configuration.")
             self.prefs[key] = widget
+            self.pref_rows.append(widget)
             form.addRow(QLabel(prefs.LABELS[key] + ":"), widget)
 
         layout.addLayout(form)
         layout.addStretch()
+        self._show_what_the_remote_has()
+
+    def _select_remote(self):
+        """Point the picker at the project's remote without announcing a change."""
+        wanted = self.project.get("settings", {}).get("remote")
+        if not wanted:
+            try:
+                wanted = project_remote(self.project).id
+            except LookupError:
+                wanted = None
+        idx = self.remote.findData(wanted) if wanted else -1
+        self.remote.blockSignals(True)
+        self.remote.setCurrentIndex(idx if idx >= 0 else 0)
+        self.remote.blockSignals(False)
+
+    def _on_remote_picked(self, _index):
+        self.project.setdefault("settings", {})["remote"] = self.remote.currentData()
+        self._show_what_the_remote_has()
+        self.remote_changed.emit()
+
+    def _show_what_the_remote_has(self):
+        """Offer only what the chosen remote has: an RF base needs an RF remote, and the
+        persisted-preference files are one family's, not every remote's."""
+        from .. import remotes
+        remote_id = self.remote.currentData()
+        if not remote_id:
+            return
+        profile = remotes.get(remote_id)
+        self.form.setRowVisible(self.blaster_row, profile.can("rf_blaster"))
+        for widget in self.pref_rows:
+            self.form.setRowVisible(widget, profile.can("platform_preferences"))
+        self.remote_note.setText(
+            "" if profile.verified else
+            f"{profile.model} support is experimental: configurations can be built, and "
+            "the Flash tab writes them only through a test write that backs the remote up "
+            "first and checks the result.")
+        self.remote_note.setVisible(not profile.verified)
 
     def _refresh_blasters(self):
         from .rf_routing import rf_receivers
@@ -427,9 +491,8 @@ class SettingsTab(QWidget):
 
     def refresh(self):
         s = self.project.get("settings", {})
-        idx = self.remote.findData(s.get("remote", "harmony-900"))
-        if idx >= 0:
-            self.remote.setCurrentIndex(idx)
+        self._select_remote()
+        self._show_what_the_remote_has()
         self.out_file.setText(s.get("out_file", ""))
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
@@ -529,6 +592,11 @@ class UpdateTab(QWidget):
         self.log_box.setReadOnly(True)
         self.log_box.setFont(QFont("Courier", 9))
         layout.addWidget(self.log_box)
+
+    def refresh(self):
+        """The project's remote changed: a file built for the previous one is not this
+        one's, so it has to be rebuilt before anything can be written."""
+        self.flash_btn.setEnabled(False)
 
     def build(self):
         # Required settings have no defaults on purpose, so ask rather than invent one.

@@ -167,6 +167,20 @@ class RemoteProfile:
         """The physical buttons this case has, by the name a config calls them."""
         return list(self.vocabulary.get("hard_keys") or [])
 
+    @property
+    def hard_key_layout(self) -> list[dict]:
+        """Where each physical button sits on the case, for drawing a picture of it.
+
+        One cell per button: grid row and column, spans, the key's configuration name
+        (None for a button the configuration cannot bind) and the label printed on it.
+        """
+        return [
+            {"row": row, "column": column, "rows": rows, "columns": columns,
+             "key": key, "label": label}
+            for row, column, rows, columns, key, label
+            in self.vocabulary.get("hard_key_layout") or []
+        ]
+
     def require_writable(self) -> None:
         if not self.verified:
             raise NotWritable(
@@ -343,6 +357,27 @@ def get(profile_id: str, library: Path | str = LIBRARY) -> RemoteProfile:
         if profile.id == profile_id:
             return profile
     raise UnknownRemote(f"no remote profile with id {profile_id!r}")
+
+
+def default(library: Path | str = LIBRARY) -> RemoteProfile:
+    """The remote a project targets when it names none.
+
+    Only ever the single verified model. With none, or with several, there is no honest
+    answer, so this raises rather than picking one - the bug this replaces was every
+    module quietly assuming a Harmony 900 on its own.
+    """
+    verified = [profile for profile in load_all(library) if profile.verified]
+    if len(verified) != 1:
+        raise UnknownRemote(
+            f"{len(verified)} remote models are verified, so a project has to name the "
+            "one it is for in settings.remote")
+    return verified[0]
+
+
+def for_project(project: dict, library: Path | str = LIBRARY) -> RemoteProfile:
+    """The profile a project is built for: the one it names, else `default()`."""
+    remote_id = (project.get("settings") or {}).get("remote")
+    return get(remote_id, library) if remote_id else default(library)
 
 
 def models(library: Path | str = LIBRARY) -> dict:

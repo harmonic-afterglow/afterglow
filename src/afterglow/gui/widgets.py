@@ -11,7 +11,7 @@ from PyQt6.QtCore import QEvent, Qt, pyqtSignal
 from .project import TemplateRepository
 from .ui_helpers import bold_label, separator
 
-from .constants import REPO_DIR, _REMOTE_GRID
+from .constants import REPO_DIR
 
 
 def load_repo_templates(database=None):
@@ -149,11 +149,15 @@ class _SuggestBox(QWidget):
     def text(self):        return self.edit.text()
     def setText(self, v):  self.edit.setText(v); self.list.setVisible(False)
 class RemotePickerDialog(QDialog):
-    """Shows a visual Harmony remote layout. Click a button to assign it as the
-    hard key slot for a command. used_slots highlights already-mapped buttons.
-    current_slot is the one currently assigned to this command."""
+    """Shows the remote's own keypad. Click a button to assign it as the hard key slot
+    for a command. used_slots highlights already-mapped buttons; current_slot is the one
+    currently assigned to this command.
 
-    def __init__(self, current_slot, used_slots, parent=None):
+    The picture is the profile's `hard_key_layout`. A remote whose case has not been
+    drawn yet gets its keys as a plain grid instead - every key it has, none it lacks.
+    """
+
+    def __init__(self, current_slot, used_slots, parent=None, remote=None):
         super().__init__(parent)
         self.setWindowTitle("Map to Remote Button")
         self.setModal(True)
@@ -171,8 +175,16 @@ class RemotePickerDialog(QDialog):
         grid = QGridLayout(body)
         grid.setSpacing(4)
 
+        from .. import vocabulary
+        profile = vocabulary.for_remote(remote)
+        cells = profile.hard_key_layout or [
+            {"row": index // 4, "column": index % 4, "rows": 1, "columns": 1,
+             "key": key, "label": key}
+            for index, key in enumerate(profile.hard_keys)]
         self._btns = {}
-        for row, col, rspan, cspan, slot, label in _REMOTE_GRID:
+        for cell in cells:
+            row, col, rspan, cspan = cell["row"], cell["column"], cell["rows"], cell["columns"]
+            slot, label = cell["key"], cell["label"]
             btn = QPushButton(label)
             btn.setFixedHeight(32)
             if slot is None:

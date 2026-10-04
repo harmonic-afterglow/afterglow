@@ -109,9 +109,10 @@ def test_vocabulary_covers_every_real_config(configs, unpacked):
     missing from them. When they were hand-written, five real types were absent and
     editing such a device silently changed what it was."""
     import re
-    pytest.importorskip("PyQt6.QtWidgets")
-    from afterglow.gui.constants import ACTIVITY_TYPES, DEVICE_TYPES
-    activity_types = {t for _label, t in ACTIVITY_TYPES} | {"PowerOff"}
+    from afterglow import remotes
+    profile = remotes.get("harmony-900")      # the real configs here are all 900s
+    DEVICE_TYPES = profile.device_types
+    activity_types = {t for _label, t in profile.activity_types} | {"PowerOff"}
     for index, config in enumerate(configs):
         tree = unpacked(config, f"v{index}")
         xml = (tree / "userconfig" / "UserConfiguration.xml").read_text(errors="replace")
@@ -128,23 +129,22 @@ def test_every_type_has_a_readable_name():
     web configurator - so the labels are ours and every type must have one.
     """
     import re
-    pytest.importorskip("PyQt6.QtWidgets")
-    from afterglow.gui.constants import DEVICE_TYPE_LABELS, DEVICE_TYPES
-    assert set(DEVICE_TYPES) == set(DEVICE_TYPE_LABELS)
-    for identifier, label in DEVICE_TYPE_LABELS.items():
-        assert label, identifier
-        # A run-together identifier (`TvDvdVcr`, `SetTopBox`) must have been separated;
-        # a single-word one (`Amplifier`) is already readable and may stand.
-        if re.search(r"[a-z][A-Z]", identifier):
-            assert label != identifier, f"{identifier} is not a readable name"
+    from afterglow import remotes
+    for profile in remotes.load_all():
+        for identifier, label in profile.device_types.items():
+            assert label, f"{profile.id}: {identifier}"
+            # A run-together identifier (`TvDvdVcr`, `SetTopBox`) must have been
+            # separated; a single-word one (`Amplifier`) is already readable.
+            if re.search(r"[a-z][A-Z]", identifier):
+                assert label != identifier, f"{profile.id}: {identifier} is not a name"
 
 
 def test_type_labels_are_distinct():
     """Two types reading the same in the dropdown is a way to pick the wrong one."""
-    pytest.importorskip("PyQt6.QtWidgets")
-    from afterglow.gui.constants import DEVICE_TYPE_LABELS
-    labels = list(DEVICE_TYPE_LABELS.values())
-    assert len(labels) == len(set(labels))
+    from afterglow import remotes
+    for profile in remotes.load_all():
+        labels = list(profile.device_types.values())
+        assert len(labels) == len(set(labels)), profile.id
 
 
 # properties
@@ -257,12 +257,13 @@ def test_a_declared_choice_matches_what_the_file_accepts():
 # icons
 def test_icons_cover_the_vocabulary():
     pytest.importorskip("PyQt6.QtWidgets")
+    from afterglow import remotes
     from afterglow.gui import icons
-    from afterglow.gui.constants import ACTIVITY_TYPES, DEVICE_TYPES
     if not icons.have_artwork():
         pytest.skip("icon artwork not extracted")
-    assert icons.missing(DEVICE_TYPES) == []
-    assert icons.missing([t for _label, t in ACTIVITY_TYPES]) == []
+    for profile in remotes.load_all():
+        assert icons.missing(list(profile.device_types)) == [], profile.id
+        assert icons.missing([t for _label, t in profile.activity_types]) == [], profile.id
 
 
 def test_button_glyphs_are_available():

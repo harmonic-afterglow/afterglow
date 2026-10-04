@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from .ui_helpers import FilterCombo
 
-from .constants import DEVICE_TYPES, DEVICE_TYPE_LABELS
+from .. import remotes
 from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
 from .properties_editor import PropertiesEditor, PropertiesPage
@@ -44,13 +44,15 @@ class DeviceWizard(QWizard):
         self._loaded_tpl  = None          # shared across pages
         self._inputs      = list((existing or {}).get("inputs") or [])
 
+        self.profile = remotes.for_project(project or {})
         self.page_search = SearchPage(
-            templates, self._existing, source_preferences=source_preferences)
+            templates, self._existing, source_preferences=source_preferences,
+            remote=self.profile)
         self.page_identity = IdentityPage(self._existing, project=project)
-        self.page_cmds     = CommandsPage(self._existing)
+        self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
         self.page_timing   = TimingPage(self._existing)
         self.page_props    = PropertiesPage("device", self._existing.get("properties"),
-                                    kind=self._existing.get("type"))
+                                    kind=self._existing.get("type"), remote=self.profile)
 
         self.addPage(self.page_search)
         self.addPage(self.page_identity)
@@ -125,8 +127,12 @@ class SearchPage(QWizardPage):
     """Step 1 - search the device database by typing manufacturer then model."""
     template_selected = pyqtSignal(dict)
 
-    def __init__(self, templates, existing, parent=None, source_preferences=None):
+    def __init__(self, templates, existing, parent=None, source_preferences=None,
+                 remote=None):
         super().__init__(parent)
+        # Catalogues judge every command against the remote it will run on, so they
+        # are opened for the project's remote rather than for whichever is default.
+        self._profile = remote if remote is not None else remotes.default()
         self.setTitle("Find Device")
         self.setSubTitle(
             "Type a manufacturer name to search the database, then select a model. "
@@ -239,7 +245,7 @@ class SearchPage(QWizardPage):
 
         self._capabilities = QTableWidget(0, 3)
         self._capabilities.setHorizontalHeaderLabels(
-            ["Command", "Source conversion", "Harmony 900"])
+            ["Command", "Source conversion", self._profile.model])
         self._capabilities.horizontalHeader().setStretchLastSection(True)
         self._capabilities.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._capabilities.setSelectionBehavior(
@@ -353,9 +359,10 @@ class SearchPage(QWizardPage):
 
         openers = {
             "logitech_online": lambda: online_logitech_catalog(
-                follow_latest=self._sources.logitech_follow_latest),
-            "flipper_irdb_online": FlipperIrdbCatalog,
-            "irdb_online": IrdbCatalog,
+                follow_latest=self._sources.logitech_follow_latest,
+                remote_id=self._profile.id),
+            "flipper_irdb_online": lambda: FlipperIrdbCatalog(remote_id=self._profile.id),
+            "irdb_online": lambda: IrdbCatalog(remote_id=self._profile.id),
         }
         for mode_key, opener in openers.items():
             if getattr(self._sources, mode_key, False) and mode_key not in self._online_catalogs:
@@ -550,9 +557,11 @@ class SearchPage(QWizardPage):
 
             openers = {
                 "logitech_online": lambda: online_logitech_catalog(
-                    follow_latest=self._sources.logitech_follow_latest),
-                "flipper_irdb_online": FlipperIrdbCatalog,
-                "irdb_online": IrdbCatalog,
+                    follow_latest=self._sources.logitech_follow_latest,
+                    remote_id=self._profile.id),
+                "flipper_irdb_online": lambda: FlipperIrdbCatalog(
+                    remote_id=self._profile.id),
+                "irdb_online": lambda: IrdbCatalog(remote_id=self._profile.id),
             }
             self._archive = openers[mode]()
             manufacturers = self._archive.manufacturers(limit=100_000)
@@ -588,7 +597,7 @@ class SearchPage(QWizardPage):
         counts = result["counts"]
         self._status_lbl.setText(
             f"SUCCESS: {model.manufacturer} {model.name}: {counts['supported']} of "
-            f"{counts['source']} commands are faithful on Harmony 900 - click Next")
+            f"{counts['source']} commands are faithful on {self._profile.model} - click Next")
         self._status_lbl.setStyleSheet("color: green;")
         self._status_lbl.setVisible(True)
         self._set_chosen(True)
@@ -629,6 +638,7 @@ class IdentityPage(QWizardPage):
     def __init__(self, existing, parent=None, project=None):
         super().__init__(parent)
         self.project = project
+        self._types = remotes.for_project(project or {}).device_types
         self.setTitle("Device Details")
         self.setSubTitle(
             "Review and adjust the device details. "
@@ -644,12 +654,12 @@ class IdentityPage(QWizardPage):
         # seen must survive being edited rather than being replaced by the first entry.
         self.type_combo.setEditable(True)
         existing_type = (existing.get("type") or "").strip()
-        types = list(DEVICE_TYPES)
+        types = list(self._types)
         if existing_type and existing_type not in types:
             types.insert(0, existing_type)
         self._type_index = {name: i for i, name in enumerate(types)}
-        populate_types(self.type_combo, types, labels=DEVICE_TYPE_LABELS)
-        if existing.get("type") in DEVICE_TYPES:
+        populate_types(self.type_combo, types, labels=self._types)
+        if existing.get("type") in self._types:
             index = self.type_combo.findData(existing["type"])
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
@@ -730,7 +740,7 @@ class IdentityPage(QWizardPage):
     def apply_template(self, t):
         """Called by DeviceWizard when SearchPage fires template_selected."""
         if t.get("label"):  self.label_edit.setText(t["label"])
-        if t.get("type") and t["type"] in DEVICE_TYPES:
+        if t.get("type") and t["type"] in self._types:
             index = self.type_combo.findData(t["type"])
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
@@ -741,8 +751,9 @@ class IdentityPage(QWizardPage):
 class CommandsPage(QWizardPage):
     learned = pyqtSignal()
 
-    def __init__(self, existing, parent=None):
+    def __init__(self, existing, parent=None, remote=None):
         super().__init__(parent)
+        self._remote = remote
         # Which commands already carry a captured code. For those the address and
         # command columns are not merely unused - `builder.devices.code_for` returns
         # the stored code and never looks at them - so showing them as editable 00s
@@ -944,7 +955,7 @@ class CommandsPage(QWizardPage):
         for r in range(self.table.rowCount()):
             if r == row: continue
             used.update(self._hard_slots(r))
-        dlg = RemotePickerDialog(current, used, self)
+        dlg = RemotePickerDialog(current, used, self, remote=self._remote)
         if dlg.exec():
             self._set_hard_key_btn(row, dlg.chosen)
             self._check_duplicates()
@@ -1235,13 +1246,15 @@ class DeviceEditor(QDialog):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
         
+        self.profile = remotes.for_project(project or {})
         self.page_search = SearchPage(
-            templates, self._existing, source_preferences=source_preferences)
+            templates, self._existing, source_preferences=source_preferences,
+            remote=self.profile)
         self.page_identity = IdentityPage(self._existing, project=project)
-        self.page_cmds     = CommandsPage(self._existing)
+        self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
         self.page_timing   = TimingPage(self._existing)
         self.page_props    = PropertiesEditor("device", self._existing.get("properties"),
-                                      kind=self._existing.get("type"))
+                                      kind=self._existing.get("type"), remote=self.profile)
         
         self.tabs.addTab(self.page_search, "Search")
         self.tabs.addTab(self.page_identity, "Identity")

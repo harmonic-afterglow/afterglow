@@ -48,7 +48,7 @@ def test_activity_types_keep_the_order_the_profile_gives_them():
 def test_asking_by_id_and_by_profile_agree():
     profile = remotes.get("harmony-900")
     assert vocabulary.device_types("harmony-900") == vocabulary.device_types(profile)
-    assert vocabulary.activity_types(profile) == vocabulary.ACTIVITY_TYPES
+    assert vocabulary.activity_types() == vocabulary.activity_types(profile)
 
 
 def test_a_profile_that_has_not_been_worked_out_answers_empty():
@@ -100,9 +100,17 @@ def test_an_unknown_type_names_the_model_it_was_checked_against():
         _check_activity_type("VirtualNonsense", "My Activity", "harmony-900")
 
 
-def test_the_interface_takes_its_hard_keys_from_the_profile(qapp_or_skip):
-    from afterglow.gui.constants import HARD_SLOTS
-    assert HARD_SLOTS == remotes.get("harmony-900").hard_keys
+def test_an_activity_can_remap_every_key_its_remote_has(qapp_or_skip, tmp_path):
+    """GitHub #5. The page offered a fixed nineteen keys, so Guide, Info and the rest
+    could not be given an activity's own action - and it was the same nineteen for
+    any remote. It is the profile's list, plus any key an imported activity binds."""
+    from afterglow.gui.activity_wizard import ActivityHardButtonsPage
+    page = ActivityHardButtonsPage([], {"hard_macros": {"Mystery": []}},
+                                   remote=remotes.get("harmony-900"))
+    assert page.slots[:-1] == remotes.get("harmony-900").hard_keys
+    assert "Guide" in page.slots and page.slots[-1] == "Mystery"
+    small = remotes.get("test-model", other_remote(tmp_path))
+    assert ActivityHardButtonsPage([], {}, remote=small).slots == ["VolumeUp"]
 
 
 def test_the_vocabulary_survives_a_round_trip_through_json():
@@ -187,3 +195,68 @@ def test_scart_is_offered_even_though_no_configuration_has_ever_had_it(qapp_or_s
     from afterglow.gui.properties_editor import PropertiesEditor
     for kind in ("Television", "Receiver", "DvdCd"):
         assert "Scart" in PropertiesEditor("device", {}, kind=kind)._rows, kind
+
+
+# which remote a project is for
+def two_verified(tmp_path):
+    """A library where a second model has also been verified."""
+    profile = json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    profile.update(id="test-model", model="Test Model", identity={"arch": 15, "skin": 99})
+    (tmp_path / "harmony-900.json").write_text(
+        (remotes.LIBRARY / "harmony-900.json").read_text())
+    (tmp_path / "test-model.json").write_text(json.dumps(profile))
+    return tmp_path
+
+
+def test_a_project_is_for_the_remote_it_names():
+    project = {"settings": {"remote": "harmony-900"}}
+    assert remotes.for_project(project).id == "harmony-900"
+
+
+def test_a_project_naming_no_remote_gets_the_one_verified_model():
+    assert remotes.for_project({"settings": {}}).id == remotes.default().id
+    assert remotes.default().verified
+
+
+def test_with_two_verified_models_a_project_has_to_say_which(tmp_path):
+    """Picking one would build for the wrong remote - quietly, which is the bug."""
+    library = two_verified(tmp_path)
+    with pytest.raises(remotes.UnknownRemote, match="settings.remote"):
+        remotes.for_project({"settings": {}}, library)
+    assert remotes.for_project(
+        {"settings": {"remote": "test-model"}}, library).id == "test-model"
+
+
+def test_the_keypad_picture_is_the_remotes_own():
+    """Every button drawn is one the case has, under the name a configuration uses."""
+    profile = remotes.get("harmony-900")
+    layout = profile.hard_key_layout
+    assert layout, "the 900 has a keypad"
+    named = [cell["key"] for cell in layout if cell["key"]]
+    assert set(named) <= set(profile.hard_keys)
+    assert len(named) == len(set(named)), "a key drawn twice"
+    assert remotes.RemoteProfile(id="x", model="Other").hard_key_layout == []
+
+
+def test_no_shared_module_names_a_particular_remote():
+    """Outside a backend and the profiles, a remote is whatever the project says.
+
+    Seven modules each fell back to "harmony-900" on their own; a project for any other
+    remote would have been imported, catalogued or built as a 900 by whichever one it
+    reached first.
+    """
+    import tokenize
+    from pathlib import Path
+
+    import afterglow
+    root = Path(afterglow.__file__).parent
+    offenders = []
+    for path in root.rglob("*.py"):
+        if "backends" in path.relative_to(root).parts:
+            continue
+        with path.open("rb") as handle:
+            for token in tokenize.tokenize(handle.readline):
+                if token.type == tokenize.STRING and token.string.strip("\"'rbf") in {
+                        profile.id for profile in remotes.load_all()}:
+                    offenders.append(f"{path.relative_to(root)}:{token.start[0]}")
+    assert offenders == []

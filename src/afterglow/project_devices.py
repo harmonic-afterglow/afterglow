@@ -91,8 +91,7 @@ def normalise_project(project: dict) -> dict:
     """Migrate old project devices at the read boundary and validate current ones."""
     from . import backends, remotes
 
-    remote_id = (project.get("settings") or {}).get("remote", "harmony-900")
-    backend = backends.for_profile(remotes.get(remote_id))
+    backend = backends.for_profile(remotes.for_project(project))
     migrated = []
     for device in project.get("devices") or []:
         migrated.append(clean(device) if is_portable(device)

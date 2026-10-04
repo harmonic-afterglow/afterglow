@@ -11,9 +11,9 @@ remote, and this module is the way to ask for them. The identifiers are Logitech
 readable labels are this project's: the firmware has no name table for either set, and the
 friendly names the web configurator showed went away with the service.
 
-`for_remote()` takes a profile, an id, or nothing - and with nothing it answers for the
-only model Afterglow will write for. The module-level names below are that same answer,
-kept so the ordinary case reads as plainly as it did when this was a hardcoded list.
+Every question names its remote - a profile, an id, or nothing for `remotes.default()`.
+There are deliberately no module-level answers: computed once at import they answered
+for one model for the life of the process, whichever remote the project was for.
 """
 from __future__ import annotations
 
@@ -24,17 +24,7 @@ from . import remotes
 
 @lru_cache(maxsize=8)
 def _profile(remote_id: str | None):
-    if remote_id:
-        return remotes.get(remote_id)
-    # No remote named: the one this build is for. Only verified models can be written,
-    # and exactly one is, so "the verified one" is unambiguous today - and the moment a
-    # second appears this raises rather than silently answering for the wrong remote.
-    verified = [p for p in remotes.load_all() if p.verified]
-    if len(verified) == 1:
-        return verified[0]
-    raise remotes.UnknownRemote(
-        "which remote's vocabulary? more than one model is verified, so it has to be "
-        "named: vocabulary.for_remote('harmony-900')")
+    return remotes.get(remote_id) if remote_id else remotes.default()
 
 
 def for_remote(remote=None):
@@ -60,9 +50,6 @@ def hard_keys(remote=None) -> list:
     return for_remote(remote).hard_keys
 
 
-# The same answers for the single model Afterglow writes for. Kept as names because most
-# of the interface has no reason to ask about a remote it is not building for.
-DEVICE_TYPE_LABELS = device_types()
-DEVICE_TYPES = list(DEVICE_TYPE_LABELS)
-ACTIVITY_TYPES = activity_types()
-HARD_KEYS = hard_keys()
+def hard_key_layout(remote=None) -> list[dict]:
+    """Where the physical buttons sit on the case, for drawing a picture of it."""
+    return for_remote(remote).hard_key_layout

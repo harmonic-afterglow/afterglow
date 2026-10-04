@@ -8,7 +8,7 @@ def build_project(extracted_dir, out_file=None):
     """Read an extracted configuration into the portable project model."""
     header_path = Path(extracted_dir) / ".ezhex_header"
     profile = (remotes.identify(header_path.read_bytes()) if header_path.is_file()
-               else remotes.get("harmony-900"))
+               else remotes.default())
     result = backends.for_profile(profile).import_project(
         extracted_dir, profile, {"out_file": out_file})
     return result.project
