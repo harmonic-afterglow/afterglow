@@ -105,6 +105,7 @@ class MainWindow(QMainWindow):
             settings_menu.addAction(_act("Set up the USB link…", self.setup_usb_link))
 
         help_menu = mb.addMenu("Help")
+        help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
         help_menu.addAction(_act("About", self._about))
 
     def setup_usb_link(self):
@@ -380,7 +381,7 @@ def _driver_reminder(parent) -> None:
     Not a blocker - authoring and building need no driver, and someone editing a
     configuration should not be stopped by a dialog about hardware.
     """
-    from .. import HOMEPAGE, concord
+    from .. import concord
 
     # Driven by whether a driver is needed, not by whether the platform is proven.
     # Windows is proven *and* still needs Logitech's driver installed first; gating on
@@ -391,20 +392,44 @@ def _driver_reminder(parent) -> None:
     if str(settings.value("ui/driver_reminder_shown_for", "")) == sys.platform:
         return
 
-    box = QMessageBox(parent)
-    box.setIcon(QMessageBox.Icon.Information)
-    box.setWindowTitle("Before you connect a remote")
-    box.setText("To use this software with a remote you need to install the official "
-                "Logitech Harmony drivers. Please read the project's README for more "
-                "information.")
-    open_button = box.addButton("Open", QMessageBox.ButtonRole.ActionRole)
-    box.addButton(QMessageBox.StandardButton.Ok)
-    box.exec()
-    if box.clickedButton() is open_button:
-        QDesktopServices.openUrl(QUrl(HOMEPAGE))
-
+    connection_help(parent)
     settings.setValue("ui/driver_reminder_shown_for", sys.platform)
     settings.sync()
+
+
+# Logitech's servers are gone; this is the archived installer the README points at.
+DRIVER_DOWNLOAD = "https://archive.org/details/logitech-harmony-software-7-8"
+
+
+def connection_help(parent) -> None:
+    """How to get a remote talking to this computer, step by step.
+
+    Shown once at first start where a driver is needed, and from Help at any time. It
+    used to say only "install the official drivers, see the README", and that is where
+    people stopped: which software, where from now, and what to press once it is in.
+    """
+    from .. import concord
+    steps = []
+    if concord.needs_driver():
+        steps.append(
+            "Install Logitech Harmony Remote Software 7.8. Afterglow only needs its USB "
+            "driver - you never have to open it, and it cannot sign in any more.")
+    steps += [
+        "Plug the remote in and wait until its screen says it is connected over USB.",
+        "In Afterglow, open the Flash tab and press Check Connection.",
+        "Press Read from Remote to save what is on it now. Keep that file: it is how "
+        "you get back to where you started.",
+    ]
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Icon.Information)
+    box.setWindowTitle("Connecting a remote")
+    box.setText("<ol>" + "".join(f"<li>{step}</li>" for step in steps) + "</ol>")
+    download = (box.addButton("Get the driver software", QMessageBox.ButtonRole.ActionRole)
+                if concord.needs_driver() else None)
+    box.addButton(QMessageBox.StandardButton.Ok)
+    box.exec()
+    if download is not None and box.clickedButton() is download:
+        QDesktopServices.openUrl(QUrl(DRIVER_DOWNLOAD))
 
 
 def _usb_link_offer(parent, forced: bool = False) -> None:
