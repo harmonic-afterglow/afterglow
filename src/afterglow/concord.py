@@ -32,9 +32,13 @@ progress callback is invoked from inside the library on that same thread.
 """
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import ctypes.util
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 # Every name libconcord is installed under, across the platforms it builds for. The
@@ -80,6 +84,61 @@ LC_CALLBACK = ctypes.CFUNCTYPE(
 
 class NotAvailable(RuntimeError):
     """libconcord is not installed, so the remote cannot be reached."""
+
+
+def native_path(path) -> bytes:
+    """A path as libconcord's C `fopen` reads it.
+
+    On Windows that is the ANSI code page, not UTF-8: a Documents folder under an
+    accented user name, a localised or OneDrive-redirected one, failed every save with
+    "OS-level error related to file operations" (libconcord's error 14) while the
+    Desktop worked. Raises UnicodeEncodeError for a path that code page cannot spell.
+    """
+    if os.name == "nt":
+        return str(path).encode("mbcs", "strict")
+    return os.fsencode(str(path))
+
+
+def _staging_dirs():
+    yield Path(tempfile.gettempdir())
+    for variable in ("PUBLIC", "ProgramData", "SystemDrive"):
+        value = os.environ.get(variable)
+        if value:
+            yield Path(value if variable != "SystemDrive" else value + os.sep)
+
+
+@contextlib.contextmanager
+def staged_file(name: str):
+    """A temporary file path libconcord can open, removed afterwards.
+
+    libconcord is never given a user's own path: it reads and writes here, and Python -
+    which handles any path - moves the file into place or copies it in.
+    """
+    for parent in _staging_dirs():
+        try:
+            native_path(parent)
+            folder = Path(tempfile.mkdtemp(prefix="afterglow-", dir=parent))
+        except (UnicodeEncodeError, OSError):
+            continue
+        try:
+            yield folder / name
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+        return
+    raise RemoteError("no temporary folder libconcord can open; set TMP to a plain "
+                      "folder such as C:\\Temp")
+
+
+def _place(source: Path, target: Path) -> None:
+    """Move a finished file to where the user asked, saying plainly if Windows refuses."""
+    try:
+        shutil.move(str(source), str(target))
+    except OSError as exc:
+        raise RemoteError(
+            f"the configuration was read, but it could not be saved to {target.parent}: "
+            f"{exc.strerror or exc}. Windows may be protecting that folder (Controlled "
+            "folder access, or OneDrive); choose another folder, such as the Desktop."
+        ) from exc
 
 
 class RemoteError(RuntimeError):
@@ -399,8 +458,10 @@ class Remote:
             ctypes.byref(blob), ctypes.byref(size),
             self._callback(on_progress), None), "reading the configuration")
         try:
-            self._check(self.lib.write_config_to_file(
-                blob, size.value, str(path).encode(), 0), f"saving to {path}")
+            with staged_file("remote.ezhex") as staged:
+                self._check(self.lib.write_config_to_file(
+                    blob, size.value, native_path(staged), 0), f"saving to {path}")
+                _place(staged, Path(path))
         finally:
             self.lib.delete_blob(blob)
         return size.value
@@ -474,9 +535,11 @@ class Remote:
         path = Path(path)
 
         kind = ctypes.c_int()
-        self._check(self.lib.read_and_parse_file(str(path).encode(),
-                                                 ctypes.byref(kind)),
-                    f"reading {path.name}")
+        with staged_file("config.ezhex") as staged:
+            shutil.copyfile(path, staged)
+            self._check(self.lib.read_and_parse_file(native_path(staged),
+                                                     ctypes.byref(kind)),
+                        f"reading {path.name}")
         try:
             # Always 1 (== do not reset), because we do the restart ourselves below.
             #
