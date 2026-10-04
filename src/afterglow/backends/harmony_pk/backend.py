@@ -490,6 +490,38 @@ def cycle_without_values(spec: dict) -> bool:
     return check(spec)
 
 
+# What a configuration says about the person it belongs to, measured over 18 Harmony 900
+# configurations: one <User> block with an account id, a first name and a last name. The
+# container header names no one ("Cookie: Monster", "UserId: 0" are libconcord's template),
+# and RF blaster MAC addresses identify hardware, not a person. The replacements are the
+# scaffold's own, which a remote has already run with.
+ANONYMOUS_USER = {"Id": "10000000", "FirstName": "Harmony", "LastName": "User"}
+
+
+def anonymise(tree_dir) -> list[str]:
+    """Replace the owner's identity in an unpacked configuration, in place.
+
+    Returns a line per field changed. Device and activity names are left alone: they are
+    what makes a donated configuration useful, and the person sharing it chooses them.
+    """
+    path = Path(tree_dir) / "userconfig" / "UserConfiguration.xml"
+    text = path.read_text(encoding="utf-8")
+    changed = []
+    block = re.search(r"<User>.*?</User>", text, re.S)
+    if block is None:
+        return changed
+    user = block.group(0)
+    for tag, value in ANONYMOUS_USER.items():
+        pattern = rf"(<{tag}>)([^<]*)(</{tag}>)"
+        found = re.search(pattern, user)
+        if found and found.group(2) != value:
+            user = re.sub(pattern, rf"\g<1>{value}\g<3>", user, count=1)
+            changed.append(f"owner {tag} replaced")
+    if changed:
+        path.write_text(text[:block.start()] + user + text[block.end():], encoding="utf-8")
+    return changed
+
+
 def build_tree(devices, work, **kwargs) -> None:
     """Build the Harmony PK configuration tree from already-lowered devices.
 
