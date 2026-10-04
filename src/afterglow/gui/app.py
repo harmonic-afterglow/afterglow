@@ -89,8 +89,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(_act("Import .ezhex…",    self.import_ezhex))
         file_menu.addAction(_act("Save Project",      self.save_project,    "Ctrl+S"))
         file_menu.addAction(_act("Save Project As…",  self.save_project_as))
-        file_menu.addSeparator()
-        file_menu.addAction(_act("Make a Shareable Copy of a Dump…", self.share_dump))
+        file_menu.addAction(_act("Export Shareable Project…", self.export_bundle))
         file_menu.addSeparator()
         file_menu.addAction(_act("Exit", self.close))
 
@@ -217,9 +216,15 @@ class MainWindow(QMainWindow):
         self._reload_tabs()
 
     def open_project(self):
+        from .. import project_bundle
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Project", str(user_files()), "JSON Project (*.json);;All (*)")
+            self, "Open Project", str(user_files()),
+            f"Projects (*.json *{project_bundle.SUFFIX});;"
+            f"Shareable project (*{project_bundle.SUFFIX});;JSON Project (*.json);;All (*)")
         if not path:
+            return
+        if path.lower().endswith(project_bundle.SUFFIX):
+            self.open_bundle(path)
             return
         try:
             from .. import project_devices
@@ -232,6 +237,56 @@ class MainWindow(QMainWindow):
             self._reload_tabs()
         except Exception as e:
             QMessageBox.critical(self, "Open Failed", str(e))
+
+    def open_bundle(self, path):
+        """Unpack a shareable project into a folder of its own and work on it there."""
+        from .. import project_bundle
+        stem, parent = Path(path).stem, user_files() / "projects"
+        folder, n = parent / stem, 2
+        while folder.exists():                      # never unpack over an earlier copy
+            folder, n = parent / f"{stem}-{n}", n + 1
+        try:
+            data = project_bundle.open_bundle(path, folder)
+        except Exception as exc:
+            QMessageBox.critical(self, "Open Failed", str(exc))
+            return
+        self.project.clear()
+        self.project.update(drop_retired_fields(data))
+        self._write_project(folder / "project.json")
+        self._project_path = str(folder / "project.json")
+        self._reload_tabs()
+        QMessageBox.information(
+            self, "Shareable project",
+            f"Opened {Path(path).name}. It is saved as its own project in\n{folder}\n"
+            "so the file you were sent is left as it was.")
+
+    def export_bundle(self):
+        """One file holding the project and everything it needs to build anywhere."""
+        from .. import project_bundle
+        self.settings_tab.save()
+        stem = Path(self._project_path).stem if self._project_path else "project"
+        if stem == "project" and self._project_path:
+            stem = Path(self._project_path).parent.name
+        suggested = user_files() / f"{stem}{project_bundle.SUFFIX}"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Shareable Project", str(suggested),
+            f"Shareable project (*{project_bundle.SUFFIX})")
+        if not path:
+            return
+        if not path.lower().endswith(project_bundle.SUFFIX):
+            path += project_bundle.SUFFIX
+        base = Path(self._project_path).parent if self._project_path else user_files()
+        try:
+            notes = project_bundle.export(self.project, path, base_dir=base)
+        except Exception as exc:
+            QMessageBox.warning(self, "Export Shareable Project", str(exc))
+            return
+        QMessageBox.information(
+            self, "Export Shareable Project",
+            f"Saved {Path(path).name}. It holds the project, its pictures and every "
+            "protocol its devices use, so it builds on any computer with Afterglow."
+            + (f"\n\n{len(notes)} thing(s) were added or left out to make that so." if notes
+               else ""))
 
     def import_ezhex(self):
         """Import an existing .ezhex: unpack it, extract its devices/activities AND its RF
@@ -286,34 +341,6 @@ class MainWindow(QMainWindow):
                 + learned)
         except Exception as e:
             QMessageBox.critical(self, "Import Failed", str(e))
-
-    def share_dump(self, source=None):
-        """Copy a dump with its owner's name and account taken out, for donating it."""
-        from .. import share
-        if not source:
-            source, _ = QFileDialog.getOpenFileName(
-                self, "Dump to share", str(user_files()),
-                "Harmony config (*.ezhex);;All (*)")
-        if not source:
-            return
-        target, _ = QFileDialog.getSaveFileName(
-            self, "Save the shareable copy",
-            str(Path(source).with_name(Path(source).stem + "-shareable.ezhex")),
-            "Harmony config (*.ezhex)")
-        if not target:
-            return
-        try:
-            changes = share.make_shareable(source, target)
-        except Exception as exc:
-            QMessageBox.warning(self, "Shareable copy", str(exc))
-            return
-        QMessageBox.information(
-            self, "Shareable copy",
-            f"Saved {Path(target).name}.\n\n"
-            + ("Your name and account number were replaced. " if changes else
-               "It did not name anyone, so nothing needed replacing. ")
-            + "Device and activity names are kept - they are what makes a dump useful - "
-            "so look them over if any of them say more than you want to share.")
 
     def save_project(self):
         if self._project_path:
