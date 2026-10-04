@@ -173,3 +173,58 @@ def test_normal_write_guard_still_refuses_an_experimental_profile(
 
     with pytest.raises(concord.RemoteError, match="experimental"):
         concord.Remote._verify_intended_for(artifact, _identity(artifact))
+
+
+def test_restore_writes_back_only_the_captured_recovery(tmp_path, build, monkeypatch):
+    """An experimental remote cannot go through the normal write path, so without this
+    a tester whose remote misbehaved held a backup they could not put back."""
+    _artifact, profile, _identity_data, writes, factory, report, prepared = \
+        _prepared(tmp_path, build, monkeypatch)
+    phrase = f"RESTORE {profile.id} {prepared['recovery']['sha256'][:12]}"
+
+    with pytest.raises(first_write.FirstWriteError, match="nothing to restore"):
+        first_write.restore(report, ask=lambda _p: phrase, remote_factory=factory)
+
+    first_write.apply(report, ask=lambda _p: prepared["confirmation"],
+                      remote_factory=factory)
+    with pytest.raises(first_write.FirstWriteError, match="nothing was written"):
+        first_write.restore(report, ask=lambda _p: "RESTORE", remote_factory=factory)
+
+    restored = first_write.restore(report, ask=lambda _p: phrase, remote_factory=factory)
+    assert restored["status"] == "restored"
+    assert writes[-1] == Path(prepared["recovery"]["path"])
+
+
+def test_an_uncertain_restore_may_be_repeated(tmp_path, build, monkeypatch):
+    """Unlike a test write: putting the remote's own configuration back is the fix."""
+    _artifact, profile, _identity_data, writes, factory, report, prepared = \
+        _prepared(tmp_path, build, monkeypatch)
+    first_write.apply(report, ask=lambda _p: prepared["confirmation"],
+                      remote_factory=factory)
+    phrase = f"RESTORE {profile.id} {prepared['recovery']['sha256'][:12]}"
+
+    class Interrupted(FakeRemote):
+        def _apply_config(self, path):
+            raise RuntimeError("USB disappeared")
+
+    identity = {f: prepared["identity"].get(f) for f in first_write.IDENTITY_FIELDS}
+    identity.update(can_read=True, can_write=True)
+    with pytest.raises(first_write.FirstWriteError, match="restore again"):
+        first_write.restore(report, ask=lambda _p: phrase, remote_factory=lambda:
+                            Interrupted(prepared["artifact"]["path"], identity, writes))
+    assert json.loads(report.read_text())["status"] == "restore-outcome-unknown"
+    assert first_write.restore(
+        report, ask=lambda _p: phrase, remote_factory=factory)["status"] == "restored"
+
+
+def test_a_tampered_recovery_is_not_written(tmp_path, build, monkeypatch):
+    _artifact, profile, _identity_data, writes, factory, report, prepared = \
+        _prepared(tmp_path, build, monkeypatch)
+    first_write.apply(report, ask=lambda _p: prepared["confirmation"],
+                      remote_factory=factory)
+    recovery = Path(prepared["recovery"]["path"])
+    recovery.write_bytes(recovery.read_bytes() + b"x")
+    with pytest.raises(first_write.FirstWriteError):
+        first_write.restore(report, ask=lambda _p: pytest.fail("must not prompt"),
+                            remote_factory=factory)
+    assert writes == [Path(prepared["artifact"]["path"]).resolve()]

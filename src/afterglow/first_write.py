@@ -6,6 +6,7 @@ This is deliberately separate from the GUI's verified-only write path:
         --report first-write.json
     afterglow-first-write apply first-write.json
     afterglow-first-write readback first-write.json --out readback.ezhex
+    afterglow-first-write restore first-write.json      # put the remote's own back
 
 Preparation captures the connected remote's current configuration, validates both files,
 and records a backend-native change report. Applying rechecks every digest and identity and
@@ -252,6 +253,60 @@ def readback(report, out, *, remote_factory=concord.Remote) -> dict:
     return data
 
 
+# Anything after preparation. A prepared report has written nothing, so there is nothing
+# to restore; every later state may need the remote's own configuration back.
+RESTORABLE = {"write-started", "write-outcome-unknown", "written-awaiting-readback",
+              "readback-verified", "restore-outcome-unknown", "restored"}
+
+
+def restore(report, *, ask=input, remote_factory=concord.Remote) -> dict:
+    """Write the recovery captured at preparation back onto the same remote.
+
+    The normal write path refuses an experimental profile, so without this a tester whose
+    remote misbehaves after a test write would hold a backup they could not put back.
+    Only the recovery recorded in the report can be written, after its digest and the
+    attached remote's identity are checked again. Unlike `apply`, an uncertain restore
+    may be repeated: putting the remote's own configuration back is the recovery itself.
+    """
+    report_path, data = _load_report(report)
+    if data.get("status") not in RESTORABLE:
+        raise FirstWriteError(
+            f"report status is {data.get('status')!r}; nothing was written, so there is "
+            "nothing to restore")
+    profile = remotes.get(data["profile"])
+    recovery = Path(data["recovery"]["path"])
+    current, _payload = _artifact(recovery, profile)
+    if current["sha256"] != data["recovery"]["sha256"]:
+        raise FirstWriteError(
+            "the recovery changed after it was captured; use the second copy at "
+            f"{data['recovery_copy']['path']}")
+    phrase = f"RESTORE {profile.id} {data['recovery']['sha256'][:12]}"
+    if ask(f"Type {phrase!r} to restore: ").strip() != phrase:
+        raise FirstWriteError("confirmation did not match; nothing was written")
+
+    try:
+        with remote_factory() as remote:
+            remote._authorize_experimental_config(str(recovery), data["identity"])
+            data["status"] = "restore-started"
+            data["restore_started_at"] = datetime.now(timezone.utc).isoformat()
+            _write_json(report_path, data)
+            remote._apply_config(str(recovery))
+            restart_error = remote.last_restart_error
+    except Exception as exc:
+        if data.get("status") != "restore-started":
+            raise
+        data["status"] = "restore-outcome-unknown"
+        data["restore_error"] = f"{type(exc).__name__}: {exc}"
+        _write_json(report_path, data)
+        raise FirstWriteError(
+            "the restore outcome is unknown; reconnect the remote and restore again") from exc
+    data["status"] = "restored"
+    data["restored_at"] = datetime.now(timezone.utc).isoformat()
+    data["restore_restart_warning"] = restart_error
+    _write_json(report_path, data)
+    return data
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -265,6 +320,8 @@ def main(argv=None) -> int:
     verify = commands.add_parser("readback")
     verify.add_argument("report")
     verify.add_argument("--out", required=True)
+    back = commands.add_parser("restore")
+    back.add_argument("report")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
@@ -277,6 +334,9 @@ def main(argv=None) -> int:
             result = apply(args.report)
             print(f"write completed; report status: {result['status']}")
             print("Wait for the remote to boot, then run the readback command.")
+        elif args.command == "restore":
+            result = restore(args.report)
+            print(f"recovery written back; report status: {result['status']}")
         else:
             result = readback(args.report, args.out)
             print(f"readback verified: {result['readback']['payload_sha256']}")

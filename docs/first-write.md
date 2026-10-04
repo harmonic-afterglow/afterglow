@@ -1,7 +1,11 @@
 # Controlled first write
 
-An experimental profile may build configurations, but the GUI and `Remote.write_config()`
-remain verified-only. The first hardware test uses a separate local workflow:
+An experimental profile may build configurations, but the normal flash and
+`Remote.write_config()` remain verified-only. A remote under test is written through this
+separate workflow instead - from the command line below, or from the Flash tab, where an
+experimental remote's button reads **Test Write…** and walks the same four steps (back up,
+write, read back, restore). Each attempt keeps its files and report in its own folder under
+`test-writes/`, and **Resume test write…** reopens one.
 
 ```bash
 afterglow-first-write prepare candidate.ezhex \
@@ -13,6 +17,9 @@ afterglow-first-write apply first-write.json
 
 # Wait until the remote has rebooted and reappeared on USB.
 afterglow-first-write readback first-write.json --out readback.ezhex
+
+# At any point after a write started: put the remote's own configuration back.
+afterglow-first-write restore first-write.json
 ```
 
 `prepare` requires the artifact's profile to be `experimental`. It validates the EZHex
@@ -30,6 +37,12 @@ never retry merely because the remote disappeared while rebooting.
 new configuration without overwriting an existing file, validates it independently, and compares
 its payload hash with the candidate. Only an exact match changes the report to
 `readback-verified`.
+
+`restore` writes back only the recovery recorded in the report, after checking its digest and
+the attached remote's identity again, and requires its own phrase. The normal write path
+refuses an experimental profile, so without it a tester would hold a backup they could not
+put back. Unlike `apply`, an uncertain restore may be repeated: writing the remote's own
+configuration again is the recovery itself.
 
 The report is evidence for review, not an automatic promotion. Set a profile to `verified` only
 after the remote also boots and the changed controls work on real equipment.

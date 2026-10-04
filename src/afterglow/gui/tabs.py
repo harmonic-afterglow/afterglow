@@ -544,6 +544,10 @@ class UpdateTab(QWidget):
         self.flash_btn = QPushButton("Flash to Remote")
         self.read_btn = QPushButton("Read from Remote")
         self.check_btn = QPushButton("Check Connection")
+        self.resume_btn = QPushButton("Resume test write…")
+        self.resume_btn.setToolTip(
+            "Open an earlier test write - to read it back, or to restore its backup")
+        self.resume_btn.clicked.connect(self.resume_test_write)
         self.flash_btn.setEnabled(False)
         self.build_btn.clicked.connect(self.build)
         self.flash_btn.clicked.connect(self.flash)
@@ -552,13 +556,14 @@ class UpdateTab(QWidget):
         for button in (self.build_btn, self.flash_btn, self.read_btn, self.check_btn):
             btn_row.addWidget(button)
         btn_row.addStretch()
+        btn_row.addWidget(self.resume_btn)
         layout.addLayout(btn_row)
 
         # Everything that touches the remote needs libconcord. Say so once, here,
         # rather than failing at the moment the user presses a button.
         from .. import concord
         if not concord.available():
-            for button in (self.flash_btn, self.read_btn, self.check_btn):
+            for button in (self.flash_btn, self.read_btn, self.check_btn, self.resume_btn):
                 button.setEnabled(False)
                 button.setToolTip("libconcord is not installed - see the README")
             note = QLabel("libconcord was not found, so the remote cannot be reached. "
@@ -592,11 +597,25 @@ class UpdateTab(QWidget):
         self.log_box.setReadOnly(True)
         self.log_box.setFont(QFont("Courier", 9))
         layout.addWidget(self.log_box)
+        self._name_the_write()
+
+    def _profile(self):
+        return project_remote(self.project)
+
+    def _name_the_write(self):
+        """An experimental remote is written through a test write, and the button says so."""
+        verified = self._profile().verified
+        self.flash_btn.setText("Flash to Remote" if verified else "Test Write…")
+        self.flash_btn.setToolTip(
+            "" if verified else "This remote's support is experimental: back it up, "
+            "write, read back and verify, with a way to restore the backup")
+        self.resume_btn.setVisible(not verified)
 
     def refresh(self):
         """The project's remote changed: a file built for the previous one is not this
         one's, so it has to be rebuilt before anything can be written."""
         self.flash_btn.setEnabled(False)
+        self._name_the_write()
 
     def build(self):
         # Required settings have no defaults on purpose, so ask rather than invent one.
@@ -706,7 +725,40 @@ class UpdateTab(QWidget):
         if not path:
             return
         self.log_box.clear()
-        self._run("read", path=path).start()
+        worker = self._run("read", path=path)
+        worker.result.connect(self._name_what_was_read)
+        worker.start()
+
+    def _name_what_was_read(self, path):
+        """Say which remote that was, and offer to build for it if the project is not.
+
+        A dump from a remote nobody supports yet is exactly what the project needs to
+        add it, so that case asks for the file rather than only failing to recognise it.
+        """
+        from .. import ezhex, remotes
+        try:
+            header = ezhex._split(Path(path).read_bytes())[0]
+            profile = remotes.identify(header)
+        except remotes.UnknownRemote:
+            self.log_box.append(
+                "\nAfterglow does not support this remote yet. The file you just saved is "
+                "what adding it starts from - please share it with the project (GitHub or "
+                "Discord) if you are happy to.")
+            return
+        except (OSError, ValueError):
+            return
+        current = self.project.get("settings", {}).get("remote")
+        if profile.id == current or not profile.buildable:
+            return
+        answer = QMessageBox.question(
+            self, "Different remote",
+            f"That was a {profile.model}, and this project is for "
+            f"{self._profile().model}. Build this project for the {profile.model} "
+            "instead?")
+        if answer == QMessageBox.StandardButton.Yes:
+            index = self.settings.remote.findData(profile.id)
+            if index >= 0:
+                self.settings.remote.setCurrentIndex(index)
 
     def flash(self):
         self.settings.save()
@@ -716,6 +768,11 @@ class UpdateTab(QWidget):
             QMessageBox.warning(self, "Nothing to flash",
                                 f"{out_path.name or 'The output file'} does not exist "
                                 "yet. Build the config first.")
+            return
+        profile = self._profile()
+        if not profile.verified:
+            from .test_write import TestWriteDialog, new_attempt
+            TestWriteDialog(new_attempt(user_files(), profile.id), out_path, self).exec()
             return
         answer = QMessageBox.question(
             self, "Flash to Remote",
@@ -729,3 +786,16 @@ class UpdateTab(QWidget):
             return
         self.log_box.clear()
         self._run("write", path=str(out_path)).start()
+
+    def resume_test_write(self):
+        from .test_write import REPORT, TestWriteDialog
+        start = user_files() / "test-writes"
+        folder = QFileDialog.getExistingDirectory(
+            self, "Open a test write", str(start if start.is_dir() else user_files()))
+        if not folder:
+            return
+        if not (Path(folder) / REPORT).is_file():
+            QMessageBox.warning(self, "Not a test write",
+                                f"{folder} has no {REPORT} in it.")
+            return
+        TestWriteDialog(Path(folder), None, self).exec()
