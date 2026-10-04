@@ -371,7 +371,7 @@ def test_remote_settings_are_shown_and_editable(qapp_or_skip):
         assert key in tab.prefs, f"{key} disappeared from the interface"
         assert tab.prefs[key].isEnabled(), f"{key} is still locked"
     # The things that do work must stay editable.
-    for widget in (tab.remote, tab.out_file, tab.first_name, tab.last_name,
+    for widget in (tab.out_file, tab.first_name, tab.last_name,
                    tab.locale, tab.add_blaster_btn):
         assert widget.isEnabled()
 

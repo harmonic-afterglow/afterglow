@@ -300,10 +300,6 @@ def remote_label(profile) -> str:
 
 
 class SettingsTab(QWidget):
-    # The project now targets another remote: everything showing that remote's
-    # vocabulary has to be redrawn.
-    remote_changed = pyqtSignal()
-
     def __init__(self, project, parent=None):
         super().__init__(parent)
         self.project = project
@@ -315,16 +311,8 @@ class SettingsTab(QWidget):
         self.form = form
         s = project.get("settings", {})
 
-        # Which remote this config is for. Every tab follows this choice: the device and
-        # activity types, the keys, the properties and what the Flash tab will do.
-        self.remote = QComboBox()
-        for profile in remote_profiles():
-            self.remote.addItem(remote_label(profile), profile.id)
-        self._select_remote()
-        self.remote.currentIndexChanged.connect(self._on_remote_picked)
-        self.remote_note = QLabel()
-        self.remote_note.setWordWrap(True)
-        self.remote_note.setStyleSheet("color: #b26a00;")
+        # Which remote this is for is not set here: it is shown above the tabs, and
+        # changing it migrates the project (gui/remote_bar.py).
 
         self.out_file   = QLineEdit(s.get("out_file", ""))
         self.first_name = QLineEdit(s.get("first_name", ""))
@@ -347,8 +335,6 @@ class SettingsTab(QWidget):
         if idx >= 0:
             self.locale.setCurrentIndex(idx)
 
-        form.addRow("Remote:", self.remote)
-        form.addRow("", self.remote_note)
         form.addRow("Output .ezhex file:", self.out_file)
         form.addRow("First Name:", self.first_name)
         form.addRow("Last Name:", self.last_name)
@@ -410,41 +396,16 @@ class SettingsTab(QWidget):
         layout.addStretch()
         self._show_what_the_remote_has()
 
-    def _select_remote(self):
-        """Point the picker at the project's remote without announcing a change."""
-        wanted = self.project.get("settings", {}).get("remote")
-        if not wanted:
-            try:
-                wanted = project_remote(self.project).id
-            except LookupError:
-                wanted = None
-        idx = self.remote.findData(wanted) if wanted else -1
-        self.remote.blockSignals(True)
-        self.remote.setCurrentIndex(idx if idx >= 0 else 0)
-        self.remote.blockSignals(False)
-
-    def _on_remote_picked(self, _index):
-        self.project.setdefault("settings", {})["remote"] = self.remote.currentData()
-        self._show_what_the_remote_has()
-        self.remote_changed.emit()
-
     def _show_what_the_remote_has(self):
-        """Offer only what the chosen remote has: an RF base needs an RF remote, and the
-        persisted-preference files are one family's, not every remote's."""
-        from .. import remotes
-        remote_id = self.remote.currentData()
-        if not remote_id:
+        """Offer only what the project's remote has: an RF base needs an RF remote, and
+        the persisted-preference files are one family's, not every remote's."""
+        try:
+            profile = project_remote(self.project)
+        except LookupError:
             return
-        profile = remotes.get(remote_id)
         self.form.setRowVisible(self.blaster_row, profile.can("rf_blaster"))
         for widget in self.pref_rows:
             self.form.setRowVisible(widget, profile.can("platform_preferences"))
-        self.remote_note.setText(
-            "" if profile.verified else
-            f"{profile.model} support is experimental: configurations can be built, and "
-            "the Flash tab writes them only through a test write that backs the remote up "
-            "first and checks the result.")
-        self.remote_note.setVisible(not profile.verified)
 
     def _refresh_blasters(self):
         from .rf_routing import rf_receivers
@@ -466,7 +427,6 @@ class SettingsTab(QWidget):
     def save(self):
         if "settings" not in self.project:
             self.project["settings"] = {}
-        self.project["settings"]["remote"]      = self.remote.currentData()
         self.project["settings"]["out_file"]    = self.out_file.text().strip()
         self.project["settings"]["first_name"]  = self.first_name.text().strip()
         self.project["settings"]["last_name"]   = self.last_name.text().strip()
@@ -491,7 +451,6 @@ class SettingsTab(QWidget):
 
     def refresh(self):
         s = self.project.get("settings", {})
-        self._select_remote()
         self._show_what_the_remote_has()
         self.out_file.setText(s.get("out_file", ""))
         self.first_name.setText(s.get("first_name", ""))
@@ -517,6 +476,7 @@ class SettingsTab(QWidget):
 
 class UpdateTab(QWidget):
     flash_succeeded = pyqtSignal(object)  # ids flagged new in the configuration written
+    migrate_requested = pyqtSignal(str)   # move the project to this remote
 
     def __init__(self, project, settings_tab, parent=None):
         super().__init__(parent)
@@ -753,12 +713,10 @@ class UpdateTab(QWidget):
         answer = QMessageBox.question(
             self, "Different remote",
             f"That was a {profile.model}, and this project is for "
-            f"{self._profile().model}. Build this project for the {profile.model} "
-            "instead?")
+            f"{self._profile().model}. Move this project to the {profile.model}? You "
+            "will see what changes first.")
         if answer == QMessageBox.StandardButton.Yes:
-            index = self.settings.remote.findData(profile.id)
-            if index >= 0:
-                self.settings.remote.setCurrentIndex(index)
+            self.migrate_requested.emit(profile.id)
 
     def flash(self):
         self.settings.save()
