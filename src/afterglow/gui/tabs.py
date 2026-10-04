@@ -690,12 +690,6 @@ class UpdateTab(QWidget):
         worker.start()
 
     def _name_what_was_read(self, path):
-        self.log_box.append(
-            "\nTo give this dump to the project, use File ▸ Make a Shareable Copy of a "
-            "Dump: it takes your name and account number out first.")
-        self._identify_what_was_read(path)
-
-    def _identify_what_was_read(self, path):
         """Say which remote that was, and offer to build for it if the project is not.
 
         A dump from a remote nobody supports yet is exactly what the project needs to
