@@ -9,6 +9,7 @@ sidecar files so `build()` can reproduce it byte for byte.
 
 This module name describes its storage adapter, not a Harmony architecture family.
 """
+import hashlib
 import io
 import json
 import os
@@ -18,7 +19,14 @@ import zipfile
 import zlib
 
 
-SIDECARS = {".ezhex_order", ".ezhex_meta.json", ".ezhex_header"}  # bookkeeping, never zip entries
+SIDECARS = {".ezhex_order", ".ezhex_meta.json", ".ezhex_header",  # bookkeeping, never
+            ".ezhex_original"}                                     # zip entries
+
+# The payload a tree was unpacked from. Deflate output depends on the zlib a machine has:
+# Arch and Fedora ship zlib-ng, which compresses the same bytes to different bytes, so
+# re-deflating an unchanged entry stopped reproducing Logitech's container there. An
+# entry whose content is unchanged gets its original compressed bytes back instead.
+ORIGINAL = ".ezhex_original"
 
 def _iter_local(payload):
     """Yield (offset, name, extra, header_len, comp_size) for each local file header."""
@@ -33,8 +41,15 @@ def _iter_local(payload):
         yield off, name, extra, 30 + nlen + elen, csize
         off += total
 
-def _patch_local_extras(payload, local_extras):
-    """Rewrite each local header's extra field to `local_extras[name]`.
+def _compressed_entries(payload):
+    """{name: the entry's compressed bytes} from a payload, by its local headers."""
+    return {name: payload[off + hlen:off + hlen + csize]
+            for off, name, _extra, hlen, csize in _iter_local(payload)}
+
+
+def _patch_local_extras(payload, local_extras, reuse=None):
+    """Rewrite each local header's extra field to `local_extras[name]`, and put back the
+    original compressed bytes of every entry named in `reuse`.
 
     Genuine Logitech payloads are Info-ZIP-made: the LOCAL header carries a longer
     extra than the central directory (UT with mtime+atime, ux with uid/gid), while the
@@ -42,16 +57,20 @@ def _patch_local_extras(payload, local_extras):
     a rebuilt payload is 8 bytes/entry short of the original. Patch the local headers
     back and fix up the central directory offsets so the archive stays valid.
     """
-    if not local_extras:
+    reuse = reuse or {}
+    if not local_extras and not reuse:
         return payload
-    out, remap, pos = bytearray(), {}, 0
+    out, remap, pos, sizes = bytearray(), {}, 0, {}
     for off, name, extra, hlen, csize in _iter_local(payload):
         new_extra = local_extras.get(name, extra)
         remap[off] = len(out)
         nlen, = struct.unpack("<H", payload[off + 26:off + 28])
         head = bytearray(payload[off:off + 30 + nlen])
         struct.pack_into("<H", head, 26 + 2, len(new_extra))     # extra-field length
-        out += head + new_extra + payload[off + hlen:off + hlen + csize]
+        data = reuse.get(name, payload[off + hlen:off + hlen + csize])
+        struct.pack_into("<I", head, 18, len(data))               # compressed size
+        sizes[name] = len(data)
+        out += head + new_extra + data
         pos = off + hlen + csize
     tail = payload[pos:]                                          # central dir + EOCD
     cd_start = len(out)
@@ -61,6 +80,9 @@ def _patch_local_extras(payload, local_extras):
         rec = bytearray(tail[i:i + 46 + nlen + elen + clen])
         old_off, = struct.unpack("<I", rec[42:46])
         struct.pack_into("<I", rec, 42, remap.get(old_off, old_off))
+        name = bytes(rec[46:46 + nlen]).decode("utf-8", "replace")
+        if name in sizes:
+            struct.pack_into("<I", rec, 20, sizes[name])           # compressed size
         out += rec
         i += 46 + nlen + elen + clen
     eocd = bytearray(tail[i:])
@@ -215,6 +237,12 @@ def _build_zip_standalone(src_dir):
     else:
         entries = on_disk
 
+    original_path = os.path.join(src_dir, ORIGINAL)
+    original = {}
+    if os.path.isfile(original_path):
+        with open(original_path, "rb") as handle:
+            original = _compressed_entries(handle.read())
+    reuse = {}
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for rel, is_dir in entries:
             zi = _make_zinfo(rel, is_dir)
@@ -223,11 +251,18 @@ def _build_zip_standalone(src_dir):
             else:
                 full = os.path.join(src_dir, rel.replace("/", os.sep))
                 with open(full, "rb") as handle:
-                    z.writestr(zi, handle.read())
-    # Restore the original (longer) Info-ZIP local-header extras -- see _patch_local_extras.
+                    content = handle.read()
+                z.writestr(zi, content)
+                recorded = meta.get(rel, {})
+                if (rel in original and recorded.get("sha256")
+                        and recorded["sha256"] == hashlib.sha256(content).hexdigest()
+                        and recorded.get("compress_type") == zi.compress_type):
+                    reuse[rel] = original[rel]
+    # Restore the original (longer) Info-ZIP local-header extras, and the original
+    # compressed bytes of every unchanged entry -- see _patch_local_extras.
     return _patch_local_extras(buf.getvalue(),
                                {n: bytes.fromhex(m["extra_local"]) for n, m in meta.items()
-                                if m.get("extra_local")})
+                                if m.get("extra_local")}, reuse)
 
 
 # the payload-type interface
@@ -252,6 +287,8 @@ def unpack(payload: bytes, out_dir: str) -> int:
     os.makedirs(out_dir, exist_ok=True)
     archive = zipfile.ZipFile(io.BytesIO(payload))
     archive.extractall(out_dir)
+    with open(os.path.join(out_dir, ORIGINAL), "wb") as handle:
+        handle.write(payload)
     with open(os.path.join(out_dir, ".ezhex_order"), "w", encoding="utf-8") as handle:
         handle.write("\n".join(i.filename for i in archive.infolist()))
     local = {name: extra for _o, name, extra, _h, _c in _iter_local(payload)}
@@ -260,7 +297,9 @@ def unpack(payload: bytes, out_dir: str) -> int:
              "create_version": i.create_version, "extract_version": i.extract_version,
              "external_attr": i.external_attr, "internal_attr": i.internal_attr,
              "flag_bits": i.flag_bits, "extra": i.extra.hex(), "comment": i.comment.hex(),
-             "extra_local": local.get(i.filename, i.extra).hex()}
+             "extra_local": local.get(i.filename, i.extra).hex(),
+             **({} if i.is_dir() else
+                {"sha256": hashlib.sha256(archive.read(i)).hexdigest()})}
             for i in archive.infolist()]
     with open(os.path.join(out_dir, ".ezhex_meta.json"), "w", encoding="utf-8") as handle:
         json.dump(meta, handle, indent=1)
