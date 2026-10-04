@@ -11,4 +11,6 @@ def build_project(extracted_dir, out_file=None):
                else remotes.default())
     result = backends.for_profile(profile).import_project(
         extracted_dir, profile, {"out_file": out_file})
+    # The remote it came off is the remote it is for, until somebody migrates it.
+    result.project.setdefault("settings", {})["remote"] = profile.id
     return result.project

@@ -2,26 +2,26 @@
 
 import sys
 import json
-import copy
 import shutil
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QLabel,
-    QMainWindow, QMessageBox, QRadioButton, QTabWidget, QVBoxLayout
+    QMainWindow, QMessageBox, QRadioButton, QTabWidget, QVBoxLayout, QWidget
 )
 from PyQt6.QtCore import QRectF, QSettings, QSize, Qt, QUrl
 from PyQt6.QtGui import (QAction, QDesktopServices, QIcon, QIconEngine,
                          QPainter, QPixmap)
 from PyQt6.QtSvg import QSvgRenderer
 
-from .project import DEFAULT_PROJECT
+from .project import new_project as empty_project
 
 from .constants import USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY, user_files
 from .project import drop_retired_fields, retire_new_devices
 from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
-from .tabs import ActivitiesTab, DevicesTab, SettingsTab, UpdateTab
+from .remote_bar import ChooseRemoteDialog, MigrationDialog, RemoteBar
+from .tabs import ActivitiesTab, DevicesTab, SettingsTab, UpdateTab, remote_profiles
 from .widgets import load_repo_templates
 
 
@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Afterglow")
         self.resize(900, 600)
 
-        self.project   = copy.deepcopy(DEFAULT_PROJECT)
+        self.project   = empty_project()
         from .. import paths
         paths.user_library("devices").mkdir(parents=True, exist_ok=True)
         self.templates = load_repo_templates(paths.user_library())
@@ -55,14 +55,21 @@ class MainWindow(QMainWindow):
         self.devices_tab.changed.connect(self.activities_tab.refresh)
         self.devices_tab.changed.connect(self._mark_dirty)
         self.activities_tab.changed.connect(self._mark_dirty)
-        # A different remote means a different vocabulary everywhere it is shown.
-        for follow in (self.devices_tab.refresh, self.activities_tab.refresh,
-                       self.update_tab.refresh, self._mark_dirty):
-            self.settings_tab.remote_changed.connect(follow)
         self.update_tab.flash_succeeded.connect(self._retire_flashed_devices)
+        self.update_tab.migrate_requested.connect(self.change_remote)
 
-        self.setCentralWidget(self.tabs)
+        # The remote sits above the tabs: every tab follows it, and changing it is a
+        # migration of the whole project rather than a setting on one of them.
+        self.remote_bar = RemoteBar()
+        self.remote_bar.change_requested.connect(self.change_remote)
+        central = QWidget()
+        column = QVBoxLayout(central)
+        column.setContentsMargins(6, 6, 6, 0)
+        column.addWidget(self.remote_bar)
+        column.addWidget(self.tabs, 1)
+        self.setCentralWidget(central)
         self._setup_menu()
+        self._show_remote()
 
     # Menu bar
     def _setup_menu(self):
@@ -127,15 +134,84 @@ class MainWindow(QMainWindow):
             # asking. Keep the change in memory and let the normal close prompt save it.
             self._mark_dirty()
 
-    # Project I/O
-    def new_project(self):
-        self.project.clear()
-        self.project.update(copy.deepcopy(DEFAULT_PROJECT))
-        self._project_path = None
-        self.setWindowTitle("Afterglow")
+    # The remote
+    def _profile(self):
+        from .. import remotes
+        try:
+            return remotes.for_project(self.project)
+        except LookupError:
+            return None
+
+    def _show_remote(self):
+        self.remote_bar.set_profile(self._profile())
+
+    def _reload_tabs(self):
+        """Everything shown depends on the project and on its remote; redraw it all."""
+        self._show_remote()
         self.devices_tab.refresh()
         self.activities_tab.refresh()
         self.settings_tab.refresh()
+        self.update_tab.refresh()
+
+    def _choose_remote(self, title, intro, exclude=None):
+        choices = [p for p in remote_profiles() if p.id != exclude]
+        if not choices:
+            QMessageBox.information(
+                self, title, "There is no other remote Afterglow can build for yet.")
+            return None
+        dialog = ChooseRemoteDialog(choices, title, intro, self)
+        return dialog.chosen() if dialog.exec() else None
+
+    def change_remote(self, target_id=None):
+        """Move the project to another remote: review what changes, save it as new."""
+        from .. import migrate, remotes
+        source = self._profile()
+        if not target_id:
+            target_id = self._choose_remote(
+                "Change remote",
+                "Move this project to another remote. Devices, activities and settings "
+                "are checked against what that remote can do; you see every change "
+                "before anything is saved, and this project is left as it is.",
+                exclude=source.id if source else None)
+        if not target_id:
+            return
+        self.settings_tab.save()
+        target = remotes.get(target_id)
+        try:
+            migrated, report = migrate.migrate(self.project, target)
+        except Exception as exc:
+            QMessageBox.critical(self, "Change remote", str(exc))
+            return
+        if not MigrationDialog(source, target, report, self).exec():
+            return
+        stem = Path(self._project_path).stem if self._project_path else "project"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save the moved project", str(user_files() / f"{stem}-{target.id}.json"),
+            "JSON Project (*.json);;All (*)")
+        if not path:
+            return
+        migrated.get("settings", {}).pop("out_file", None)   # its build is not this one's
+        self.project.clear()
+        self.project.update(migrated)
+        self._write_project(path)
+        self._project_path = path
+        self._reload_tabs()
+
+    # Project I/O
+    def new_project(self):
+        project = empty_project()
+        # Asked only when there is a choice to make; with one remote, it is that one.
+        if len(remote_profiles()) > 1:
+            chosen = self._choose_remote(
+                "New project", "Which remote is this project for?")
+            if not chosen:
+                return
+            project["settings"]["remote"] = chosen
+        self.project.clear()
+        self.project.update(project)
+        self._project_path = None
+        self.setWindowTitle("Afterglow")
+        self._reload_tabs()
 
     def open_project(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -150,9 +226,7 @@ class MainWindow(QMainWindow):
             self.project.update(data)
             self._project_path = path
             self.setWindowTitle(f"Afterglow - {Path(path).name}")
-            self.devices_tab.refresh()
-            self.activities_tab.refresh()
-            self.settings_tab.refresh()
+            self._reload_tabs()
         except Exception as e:
             QMessageBox.critical(self, "Open Failed", str(e))
 
@@ -184,9 +258,7 @@ class MainWindow(QMainWindow):
             self.project.update(data)
             self._project_path = None
             self.setWindowTitle(f"Afterglow - {stem} (imported) *")
-            self.devices_tab.refresh()
-            self.activities_tab.refresh()
-            self.settings_tab.refresh()
+            self._reload_tabs()
             # Everything this config can teach goes into the library: unseen protocols,
             # the devices' command sets, any recorded waveforms. Without it the knowledge
             # stays in one project file, and a config using an unknown protocol cannot be
