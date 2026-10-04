@@ -140,8 +140,17 @@ def _gen_device(spec):
     # a code) has no command to synthesise from; those devices carry their real block.
     inputs = [pair for pair in inputs if len(pair) == 2 and pair[1]]
     cycle = spec.get("input_cycle") or {}
+    # A cycle is position tracking over its values, and `State.lua` throws on a state
+    # with neither values nor a range - while the remote loads its configuration, so the
+    # whole behaviour layer goes with it. A cycle that lost its values is left out
+    # rather than written; `cycle_without_values` lets the caller say so.
+    if not inputs and not cycle.get("values"):
+        cycle = {}
     if inputs or cycle:
-        sv = "".join(f"<Value>{esc(v)}</Value>" for v, _ in inputs)
+        sv = "".join(f"<Value>{esc(v)}</Value>" for v, _ in inputs) or "".join(
+            f"<Value>{esc(v)}</Value>" for v in cycle.get("values", []))
+        if not inputs and cycle.get("delay_ms"):
+            sv += f"<Delay>{int(cycle['delay_ms'])}</Delay>"
         body = sv
         # Never both: `State.lua` reads `RelativeActions` and only falls through to
         # `DiscreteActions` in an `elseif`, so a state carrying both loses its discrete
@@ -213,7 +222,11 @@ def _gen_device(spec):
         numeric_xml = (f"<Numeric><FixedDigits>{ncfg.get('fixed', 0)}</FixedDigits>"
                        f"{extra_xml}<FirstDigit>{digs}</FirstDigit>{fin_xml}</Numeric>")
 
-    always = "true" if spec.get("always_on") else "false"   # AlwaysOn -> excluded from activity power on/off
+    # AlwaysOn has three states on the remote: true (never powered by an activity), false
+    # (powered by them) and absent (never touched, which `Activity.lua` treats unlike
+    # false). `always_on: None` is the imported third state and writes nothing.
+    always = None if "always_on" in spec and spec["always_on"] is None else (
+        "true" if spec.get("always_on") else "false")
     # Properties the builder owns, then everything else the config carried. Devices use
     # these to describe what they are, and the remote changes behaviour based on them, so
     # dropping unmodelled ones would quietly alter the device.
@@ -233,10 +246,12 @@ def _gen_device(spec):
     # question. NewDeviceFound in the User block is derived from exactly that.
     if str(carried.get("IsNewDevice", "")).lower() != "true":
         carried.pop("IsNewDevice", None)
+    carried.pop("AlwaysOn", None)          # derived from `always_on` below, never carried
     dev_props = ("<Properties>"
                  + "".join(f'<Property name="{esc(k)}">{esc(str(v))}</Property>'
                            for k, v in {**always_written, **carried,
-                                        "AlwaysOn": always}.items())
+                                        **({"AlwaysOn": always} if always else {})
+                                        }.items())
                  + "</Properties>")
     device = (f"<Device><Id>{did}</Id><Type>{spec['type']}</Type>"
               f"<Manufacturer>{esc(spec.get('mfr', ''))}</Manufacturer>"
@@ -250,3 +265,14 @@ def _gen_device(spec):
         f'<Parameter name="Modifier">Hold</Parameter></Operation></Action></ActionList>'
         for n,_l,_a,_c,_h in cmds)
     return device, al
+
+
+def cycle_without_values(spec: dict) -> bool:
+    """A device whose only input control is a cycle that has lost its input names.
+
+    Projects built before the names were kept carry `input_cycle` with `next` alone. The
+    builder leaves such a cycle out; this is how the build reports which devices those are.
+    """
+    cycle = spec.get("input_cycle") or {}
+    discrete = [pair for pair in spec.get("inputs") or [] if len(pair) == 2 and pair[1]]
+    return bool(cycle) and not cycle.get("values") and not discrete

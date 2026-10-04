@@ -113,9 +113,12 @@ def parse_numeric(device) -> dict | None:
             # attribute and a child element to the same shape - so the odd form was not
             # itself the bug. Both are accepted, and the form real configs use is the
             # one written back.
+            # A digit with no action is real too: a device that takes no number entry
+            # still lists all ten, empty, and dropping them lost the whole set.
             {"value": digit.attrib.get("value", digit.findtext("value")),
-             "action": _parse_action(digit.find("Action"))}
-            for digit in container.findall("Digit") if digit.find("Action") is not None
+             "action": (_parse_action(digit.find("Action"))
+                        if digit.find("Action") is not None else None)}
+            for digit in container.findall("Digit")
         ]
     finish = numeric.find("Finish/Action")
     if finish is not None:
@@ -273,8 +276,10 @@ def build_numeric(numeric: dict) -> str:
         digits = numeric.get("digits", {}).get(tag)
         if not digits:
             continue
-        inner = "".join(f'<Digit value="{_esc(d["value"])}">'
-                        f'{_build_action(d["action"])}</Digit>' for d in digits)
+        inner = "".join(
+            f'<Digit value="{_esc(d["value"])}">{_build_action(d["action"])}</Digit>'
+            if d.get("action") is not None else f'<Digit value="{_esc(d["value"])}" />'
+            for d in digits)
         body += f"<{tag}>{inner}</{tag}>"
     return f"<Numeric>{body}</Numeric>"
 

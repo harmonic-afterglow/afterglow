@@ -40,7 +40,11 @@ CONFIGS = ["configs/mine/dump.ezhex",
            "configs/donor-1/backup.ezhex",
            "configs/donor-2/backup.ezhex",
            "configs/donor-3/backup.ezhex",
-           "configs/donor-4/backup.ezhex"]
+           "configs/donor-4/backup.ezhex",
+           # A Harmony 900 owner's own backups from 2020 on: eleven configurations
+           # Logitech generated, several of one household over the years.
+           *sorted(f"configs/martin/{path.name}"
+                   for path in (ROOT / "configs" / "martin").glob("*.ezhex"))]
 
 
 def existing_configs():

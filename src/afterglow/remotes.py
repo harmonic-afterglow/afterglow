@@ -168,6 +168,11 @@ class RemoteProfile:
         return list(self.vocabulary.get("hard_keys") or [])
 
     @property
+    def hard_key_aliases(self) -> dict:
+        """{a name this model's keys were once called: the key's real name}."""
+        return dict(self.vocabulary.get("hard_key_aliases") or {})
+
+    @property
     def hard_key_layout(self) -> list[dict]:
         """Where each physical button sits on the case, for drawing a picture of it.
 

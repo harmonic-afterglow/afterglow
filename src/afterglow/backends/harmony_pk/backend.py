@@ -484,6 +484,12 @@ def capability(signal: dict, profile, *, library=None) -> dict:
         return {"supported": False, "strategy": "unsupported", "reason": str(exc)}
 
 
+def cycle_without_values(spec: dict) -> bool:
+    """Whether a device's input cycle lost its input names; see the builder's note."""
+    from .builder.devices import cycle_without_values as check
+    return check(spec)
+
+
 def build_tree(devices, work, **kwargs) -> None:
     """Build the Harmony PK configuration tree from already-lowered devices.
 

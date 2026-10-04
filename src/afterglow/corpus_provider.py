@@ -261,7 +261,7 @@ class LogitechCatalog:
             inputs = _inputs(names)
         if inputs:
             template["inputs"] = inputs
-        cycle = _archive_input_cycle(control.get("inputs"), names)
+        cycle = _archive_input_cycle(control.get("inputs"), names, control.get("timing"))
         if cycle:
             template["input_cycle"] = cycle
         declared = _archive_states(control.get("states"), names)
@@ -354,15 +354,20 @@ def online_logitech_catalog(*, cache: Path | None = None,
 
 def _hard_key(name: str, available: list[str]) -> str | None:
     direct = name if name in available else None
+    # Command names that sit on a key under another name. Measured from Logitech's own
+    # Harmony 900 configurations: `Clear` is on NumberPlus 51 times, `PageUp`/`PageDown`
+    # on UpArrow/DownArrow. `SkipForward` and `SkipBack` are already the keys' names -
+    # mapping them to `Skip` and `Replay`, which no configuration binds, left both
+    # transport skips doing nothing.
     aliases = {
         "Mute": "VolumeMute",
         "OK": "Select",
-        "Enter": "InputAV",
-        "Return": "Back",
+        "Enter": "NumberEnter",
+        "Clear": "NumberPlus",
+        "PageUp": "UpArrow",
+        "PageDown": "DownArrow",
         "ChannelPrev": "PrevChannel",
         "PreviousChannel": "PrevChannel",
-        "SkipForward": "Skip",
-        "SkipBack": "Replay",
     }
     candidate = direct or aliases.get(name)
     if candidate in available:
@@ -414,13 +419,18 @@ def _archive_numeric(tuning, names) -> bool | dict:
     return out or True
 
 
-def _archive_input_cycle(inputs, names) -> dict:
+def _archive_input_cycle(inputs, names, timing=None) -> dict:
     """Stepping actions for a device whose inputs cannot be selected directly.
 
     The archive names 1,089,512 inputs across 209,010 devices, but only 680,091 of those
-    name a command that selects them; the rest belong to devices that can only cycle. For
-    those, a list of input names with no way to reach any of them is not useful, and
-    `next`/`previous` are the whole of the device's input control.
+    name a command that selects them; the rest belong to devices that can only cycle.
+
+    Their names are kept, in order, as the cycle's `values`. Stepping is position
+    tracking: the remote's `State.lua` needs the list to know how many presses reach an
+    input, and a state with neither values nor a range throws while the remote loads its
+    configuration - which left a Harmony 900 with no Help, no Remote info and no RF
+    settings. Every Logitech configuration writes them: `<Value>TV</Value><Value>Radio
+    </Value>` beside the `NextAction`. `inputDelay` is the wait between steps.
     """
     if not isinstance(inputs, dict):
         return {}
@@ -429,6 +439,14 @@ def _archive_input_cycle(inputs, names) -> dict:
         steps = _steps(inputs.get(key), names)
         if steps:
             out[key] = steps
+    if out:
+        values = [entry.get("name") for entry in inputs.get("list") or []
+                  if isinstance(entry, dict) and entry.get("name")]
+        if values:
+            out["values"] = values
+        delay = (timing or {}).get("inputDelay")
+        if isinstance(delay, int) and not isinstance(delay, bool) and delay > 0:
+            out["delay_ms"] = delay
     return out
 
 

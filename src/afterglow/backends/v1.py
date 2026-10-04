@@ -76,6 +76,13 @@ class Backend:
                             f"External portable protocol {protocol_id!r} conflicts with "
                             "the built-in definition")
                     portable_protocols[protocol_id] = definition
+            for spec in portable_devices:
+                if getattr(self.module, "cycle_without_values", lambda _s: False)(spec):
+                    context.log(
+                        f"WARNING: {spec.get('label')} can only cycle its inputs, but its "
+                        "input names were lost when it was added, so input switching is "
+                        "left out for it. Delete it and add it again from the catalogue "
+                        "to get input switching back.")
             specs = self.module.lower_devices(
                 portable_devices, profile, library=portable_protocols)
             self.module.build_tree(

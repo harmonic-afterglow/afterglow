@@ -280,11 +280,19 @@ def build(specs, work, request: BuildRequest | None = None):
     # Assemble the final IrProto.bin from the ordered library blocks the devices actually use
     # (each generated at the position it lands in, so there is no relocation step).
     total = sum(len(s["commands"]) for s in specs)
+    # Two devices may reach one block through different protocols: NEC1 and extended
+    # NEC emit the same program and differ only in how a Code frames the address, so the
+    # block is one block. What has to agree is the program, not the name it was emitted
+    # under - comparing names refused an owner's configuration whose TV spoke NEC1 and
+    # whose receiver spoke extended NEC.
+    def _program(definition):
+        return {key: value for key, value in definition.items() if key != "name"}
+
     definitions = {}
     for spec in specs:
         for block_id, definition in (spec.get("protocol_definitions") or {}).items():
             existing = definitions.get(block_id)
-            if existing is not None and existing != definition:
+            if existing is not None and _program(existing) != _program(definition):
                 raise ValueError(
                     f"Devices carry conflicting definitions for protocol block {block_id}")
             definitions[block_id] = definition
