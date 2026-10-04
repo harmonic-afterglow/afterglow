@@ -9,11 +9,11 @@
 `build()` is the whole public surface; the rest is here so each piece can be read,
 tested and changed on its own.
 """
-from .assemble import BASE, BuildRequest, build
+from .assemble import BuildRequest, build
 from .codes import (CODECS, SYNTHESIZABLE_PROTOCOLS, bitrev, code_pre, esc,
                     nec_code, necext_code, samsung_code)
 from .protocols import NEC_ID, SAMSUNG_ID
 
-__all__ = ["build", "BuildRequest", "BASE", "CODECS", "SYNTHESIZABLE_PROTOCOLS",
+__all__ = ["build", "BuildRequest", "CODECS", "SYNTHESIZABLE_PROTOCOLS",
            "bitrev", "code_pre", "esc", "nec_code", "necext_code", "samsung_code",
            "NEC_ID", "SAMSUNG_ID"]

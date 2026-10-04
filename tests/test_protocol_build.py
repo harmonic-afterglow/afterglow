@@ -8,11 +8,15 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from afterglow import paths
 from afterglow.backends.harmony_pk import builder as build_config
 from afterglow.backends.harmony_pk import donor_profiles, irproto
 
 ROOT = Path(__file__).resolve().parents[1]
 import reference_devices as ref  # noqa: E402  (device specs, beside this file)
+
+# The builder takes the target remote's scaffold explicitly; these build for a 900.
+ON_900 = build_config.BuildRequest(base_dir=str(paths.scaffolds("harmony-900")))
 
 
 class ProtocolBuildTests(unittest.TestCase):
@@ -35,7 +39,7 @@ class ProtocolBuildTests(unittest.TestCase):
 
     def test_builder_writes_a_wrapped_irproto_file(self) -> None:
         work = self.temp_dir / "work"
-        build_config.build([ref.NEC_DEVICE.copy()], str(work))
+        build_config.build([ref.NEC_DEVICE.copy()], str(work), ON_900)
         payload = irproto.read_payload(work / "userconfig" / "IrProto.bin")
         blocks, starts = irproto.parse_proto(payload)
         self.assertEqual(len(blocks), 1)
@@ -47,14 +51,14 @@ class ProtocolBuildTests(unittest.TestCase):
                 "codec": "samsung", "protocol": 1,
                 "commands": [("Power", "Power", "07", "02", None)]}
         work = self.temp_dir / "work"
-        build_config.build([spec], str(work))
+        build_config.build([spec], str(work), ON_900)
         blocks, _ = irproto.parse_proto(irproto.read_payload(work / "userconfig" / "IrProto.bin"))
         self.assertEqual(irproto.block_info(blocks[0])["lead_mark_us"], 4500)
 
     def test_unvalidated_donor_block_is_rejected(self) -> None:
         spec = {**ref.NEC_DEVICE, "protocol": "9f379fe650c8"}
         with self.assertRaisesRegex(ValueError, "donor-only"):
-            build_config.build([spec], str(self.temp_dir / "work"))
+            build_config.build([spec], str(self.temp_dir / "work"), ON_900)
 
     def test_mixed_blocks_and_command_indexes_stay_aligned(self) -> None:
         samsung = {"id": "40009998", "label": "Samsung", "type": "Television", "mfr": "Test", "model": "Test",
@@ -64,7 +68,7 @@ class ProtocolBuildTests(unittest.TestCase):
                "codec": "nec", "protocol": "a7b8a0e6c639",
                "commands": [("Power", "Power", "7A", "1F", None)]}
         work = self.temp_dir / "work"
-        build_config.build([samsung, nec], str(work))
+        build_config.build([samsung, nec], str(work), ON_900)
         blocks, _ = irproto.parse_proto(irproto.read_payload(work / "userconfig" / "IrProto.bin"))
         # NEC is pinned to index 0 regardless of the order the devices were given in,
         # so its leader (8990) comes first and Samsung's (4500) second. This is what
@@ -326,7 +330,8 @@ def test_generic_portable_signal_reaches_transient_native_block_and_code(tmp_pat
     # NEC is forced to runtime index 0, so the generic Code must be rewritten to index 1
     # when the complete tree is assembled.
     work = tmp_path / "tree"
-    backend.build_tree(lowered_devices, work, activities=[], settings={})
+    backend.build_tree(lowered_devices, work, activities=[], settings={},
+                       base_dir=str(paths.scaffolds("harmony-900")))
     root = ET.parse(work / "userconfig/UserConfiguration.xml").getroot()
     command = next(node for node in root.findall(".//Command")
                    if node.findtext("Name") == "Probe")
@@ -450,7 +455,8 @@ def test_one_device_can_use_an_established_and_a_generic_protocol(tmp_path):
     assert "Probe" not in lowered.get("raw_codes", {})
 
     work = tmp_path / "tree"
-    backend.build_tree([lowered], work, activities=[], settings={})
+    backend.build_tree([lowered], work, activities=[], settings={},
+                       base_dir=str(paths.scaffolds("harmony-900")))
     root = ET.parse(work / "userconfig/UserConfiguration.xml").getroot()
     data = {
         command.findtext("Name"): command.find("Data")
@@ -792,7 +798,7 @@ def test_the_config_is_written_as_utf8_whatever_the_platform_encoding(tmp_path):
         f"sys.path.insert(0, {str(ROOT / 'tests')!r})\n"
         "import conftest\n"
         "from test_protocol_build import _generic_test_protocol, _generic_test_device\n"
-        "from afterglow import ir_protocol, ir_signal, remotes\n"
+        "from afterglow import ir_protocol, ir_signal, paths, remotes\n"
         "from afterglow.backends.harmony_pk import backend\n"
         "name = 'Lautst\\u00e4rke+'\n"
         "device = _generic_test_device(ir_signal.protocol_signal(\n"
@@ -807,7 +813,8 @@ def test_the_config_is_written_as_utf8_whatever_the_platform_encoding(tmp_path):
         "    [device], remotes.get('harmony-900'), library=library)[0]\n"
         f"work = pathlib.Path({str(tmp_path / 'tree')!r})\n"
         "with contextlib.redirect_stdout(io.StringIO()):\n"
-        "    backend.build_tree([lowered], work, activities=[], settings={})\n"
+        "    backend.build_tree([lowered], work, activities=[], settings={},\n"
+        "                       base_dir=str(paths.scaffolds('harmony-900')))\n"
         "written = (work / 'userconfig/ActionLists.xml').read_bytes()\n"
         "print(json.dumps({'utf8': name.encode('utf-8') in written}))\n",
         encoding="ascii")

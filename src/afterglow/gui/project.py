@@ -13,8 +13,9 @@ DEFAULT_PROJECT: dict[str, Any] = {
     # A new project deliberately carries no output name and no user name: those are
     # answers only the user has, and a plausible-looking default is worse than an empty
     # box (it gets shipped unnoticed). rf="front" means every device emits from the
-    # remote's own front IR LED; importing a config picks up any RF blaster base.
-    "settings": {"rf": "front", "remote": "harmony-900"},
+    # remote's own front IR LED; importing a config picks up any RF blaster base. Which
+    # remote it is for is filled in by `new_project`, from the profiles rather than here.
+    "settings": {"rf": "front"},
 }
 
 NEW_DEVICE_PROPERTY = "IsNewDevice"
@@ -110,4 +111,13 @@ class TemplateRepository:
 
 
 def new_project() -> dict[str, Any]:
-    return deepcopy(DEFAULT_PROJECT)
+    """An empty project for the one verified remote, or for none if that is ambiguous -
+    in which case the Remote Settings tab is where the user says which."""
+    from .. import remotes
+
+    project = deepcopy(DEFAULT_PROJECT)
+    try:
+        project["settings"]["remote"] = remotes.default().id
+    except remotes.UnknownRemote:
+        pass
+    return project

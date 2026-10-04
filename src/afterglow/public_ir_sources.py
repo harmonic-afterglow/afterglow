@@ -198,9 +198,9 @@ def _irdb_signal(row: dict) -> tuple[dict | None, str]:
 class _PublicCatalog:
     source_kind = "public-ir"
 
-    def __init__(self, *, fetch=None, remote_id: str = "harmony-900"):
+    def __init__(self, *, fetch=None, remote_id: str | None = None):
         self.fetch = fetch or _fetch_text
-        self.profile = remotes.get(remote_id)
+        self.profile = remotes.get(remote_id) if remote_id else remotes.default()
         self._models: list[PublicModel] | None = None
 
     def _load_models(self) -> list[PublicModel]:

@@ -65,7 +65,7 @@ class PropertiesEditor(QWidget):
     """Edit one device's or one activity's <Property> entries."""
 
     def __init__(self, scope: str, values: dict | None = None, parent=None,
-                 kind: str | None = None, remote: str | None = None):
+                 kind: str | None = None, remote=None):
         super().__init__(parent)
         self.scope = scope
         self.kind = kind or None
@@ -291,7 +291,7 @@ class PropertiesPage(QWizardPage):
     """The same editor as a wizard step."""
 
     def __init__(self, scope: str, values: dict | None = None, parent=None,
-                 kind: str | None = None, remote: str | None = None):
+                 kind: str | None = None, remote=None):
         super().__init__(parent)
         self.setTitle("Advanced")
         self.setSubTitle(

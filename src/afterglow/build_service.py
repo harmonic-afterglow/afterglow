@@ -39,12 +39,11 @@ class ConfigBuildService:
     def build(self, project: dict) -> Path:
         from . import backends, remotes
 
-        settings = project["settings"]
         # Which remote is this for, and has its profile entered build testing? This is
         # deliberately weaker than the write gate: experimental profiles can produce
         # artifacts for controlled validation, but the normal flash path still refuses
         # them until a real write and boot has been verified.
-        profile = remotes.get(settings.get("remote", "harmony-900"))
+        profile = remotes.for_project(project)
         profile.require_buildable()
         backend = backends.for_profile(profile)
         context = backends.BuildContext(

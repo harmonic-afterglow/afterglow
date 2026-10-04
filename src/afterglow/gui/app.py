@@ -55,6 +55,10 @@ class MainWindow(QMainWindow):
         self.devices_tab.changed.connect(self.activities_tab.refresh)
         self.devices_tab.changed.connect(self._mark_dirty)
         self.activities_tab.changed.connect(self._mark_dirty)
+        # A different remote means a different vocabulary everywhere it is shown.
+        for follow in (self.devices_tab.refresh, self.activities_tab.refresh,
+                       self.update_tab.refresh, self._mark_dirty):
+            self.settings_tab.remote_changed.connect(follow)
         self.update_tab.flash_succeeded.connect(self._retire_flashed_devices)
 
         self.setCentralWidget(self.tabs)

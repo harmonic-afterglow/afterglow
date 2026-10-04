@@ -108,10 +108,10 @@ DEVICE_TYPES = {
 class LogitechCatalog:
     """Read the source archive indexes lazily and materialize one selected device."""
 
-    def __init__(self, source, *, remote_id: str = "harmony-900"):
+    def __init__(self, source, *, remote_id: str | None = None):
         self.archive = (source if isinstance(source, logitech_archive.Archive)
                         else logitech_archive.Archive(source))
-        self.profile = remotes.get(remote_id)
+        self.profile = remotes.get(remote_id) if remote_id else remotes.default()
         self._manufacturers: list[Manufacturer] | None = None
         self._models: dict[str, list[Model]] = {}
 
@@ -336,7 +336,7 @@ class LogitechCatalog:
 
 
 def online_logitech_catalog(*, cache: Path | None = None,
-                            remote_id: str = "harmony-900",
+                            remote_id: str | None = None,
                             follow_latest: bool = False) -> LogitechCatalog:
     """Open the live Logitech database and read only records the user selects.
 
