@@ -225,9 +225,9 @@ def test_the_driver_reminder_shows_once_and_not_where_it_is_pointless(qapp_or_sk
     assert len(shown) == 1, "the reminder must not return on every launch"
 
 
-def test_the_driver_reminder_shows_once_with_a_way_to_the_readme(qapp_or_skip,
+def test_the_driver_reminder_shows_once_with_a_way_to_the_driver(qapp_or_skip,
                                                                 monkeypatch, tmp_path):
-    """Once per platform, never where the link already works, and it opens the project.
+    """Once per platform, never where the link already works, and it gets the driver.
 
     A warning shown on every launch is one people learn to dismiss without reading, which
     is worse than not showing it - so the answer is recorded and not asked again. It is
@@ -235,7 +235,7 @@ def test_the_driver_reminder_shows_once_with_a_way_to_the_readme(qapp_or_skip,
     """
     from PyQt6.QtCore import QSettings
 
-    from afterglow import HOMEPAGE, concord
+    from afterglow import concord
     from afterglow.gui import app as gui_app
 
     opened, clicked = [], []
@@ -246,9 +246,9 @@ def test_the_driver_reminder_shows_once_with_a_way_to_the_readme(qapp_or_skip,
 
     def press(self):
         clicked.append(1)
-        # Whatever "Open" is on this box: the reminder must not hardcode a button index.
+        # Whatever the download button is: the reminder must not hardcode an index.
         for button in self.buttons():
-            if button.text().strip("&") == "Open":
+            if button.text().strip("&") == "Get the driver software":
                 self.setClickedButton = None
                 self._chosen = button
         return 0
@@ -267,7 +267,9 @@ def test_the_driver_reminder_shows_once_with_a_way_to_the_readme(qapp_or_skip,
     monkeypatch.setattr(gui_app.sys, "platform", "win32")
     gui_app._driver_reminder(None)
     assert len(clicked) == 1
-    assert opened == [HOMEPAGE], "Open must reach the project, not a dead vendor page"
+    # Logitech's own download pages are gone; the archived installer is what works.
+    assert opened == [gui_app.DRIVER_DOWNLOAD]
+    assert "archive.org" in gui_app.DRIVER_DOWNLOAD
 
     gui_app._driver_reminder(None)
     assert len(clicked) == 1, "the reminder must not return on every launch"
@@ -932,3 +934,14 @@ def test_the_generated_stamp_is_ignored_by_git():
         ["git", "check-ignore", "src/afterglow/_build.py"],
         cwd=ROOT_PACKAGE.parent.parent, capture_output=True)
     assert result.returncode == 0, "src/afterglow/_build.py must be gitignored"
+
+
+def test_a_remote_that_will_not_connect_points_at_the_driver_where_one_is_needed(
+        monkeypatch):
+    """Three people stopped at the same first step on Windows: no driver installed. The
+    message they saw only said to wait and replug."""
+    from afterglow import concord
+    monkeypatch.setattr(concord.sys, "platform", "win32")
+    assert "Harmony Remote Software" in concord.connection_advice()
+    monkeypatch.setattr(concord.sys, "platform", "linux")
+    assert "Harmony Remote Software" not in concord.connection_advice()

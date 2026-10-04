@@ -156,6 +156,18 @@ NOT_CONNECTED_ADVICE = (
     "and plug it back in."
 )
 
+# Where a driver is needed, a remote that never connects is nearly always a missing one -
+# three people stuck on the same first step said so. Kept apart from the general advice,
+# which `hao` and `remote_shell` share on Linux too.
+DRIVER_ADVICE = (
+    "If it never connects: this computer needs Logitech's Harmony Remote Software 7.x "
+    "installed, for its USB driver (Help > Connecting a Remote says where to get it).")
+
+
+def connection_advice() -> str:
+    """What to try when the remote cannot be reached, for this platform."""
+    return NOT_CONNECTED_ADVICE + (f"\n\n{DRIVER_ADVICE}" if needs_driver() else "")
+
 
 def _bundled_candidates():
     """Every libconcord a frozen build carries, by full path.
@@ -398,7 +410,7 @@ class Remote:
             # interface after enumeration, adding a delay on top of the remote's own.
             # Nothing here can wait for it - libconcord has already given up - so the
             # honest thing is to say what the state probably is and what ends it.
-            raise RemoteError(f"{exc}\n\n{NOT_CONNECTED_ADVICE}") from exc
+            raise RemoteError(f"{exc}\n\n{connection_advice()}") from exc
         self._open = True
         return self
 
