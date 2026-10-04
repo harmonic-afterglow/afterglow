@@ -56,3 +56,11 @@ remote's filesystem and the archive carries the metadata that extraction depends
 Round-tripping content alone therefore is not enough. Reading a configuration has to
 record this metadata alongside the files if writing one is ever to produce something the
 remote accepts.
+
+The compressed bytes themselves are a fifth item, and the only one that depends on the
+machine rather than the archive. Deflate output is not specified by the format: zlib and
+zlib-ng (the default on Arch and Fedora) compress the same file to different, equally
+valid bytes. An unpacked tree therefore keeps the payload it came from beside the files
+(`.ezhex_original`) and a digest of each entry's content (`.ezhex_meta.json`). When it is
+packed again, an entry whose content is unchanged gets its original compressed bytes back;
+only an edited entry is deflated afresh.

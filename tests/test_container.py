@@ -204,3 +204,33 @@ def test_sidecars_never_enter_the_payload(a_config, unpacked, tmp_path):
 def test_payload_is_a_readable_zip(configs):
     for config in configs:
         assert zipfile.ZipFile(io.BytesIO(payload_of(config))).testzip() is None
+
+
+def test_an_unchanged_entry_keeps_its_original_compressed_bytes(tmp_path, monkeypatch):
+    """Deflate output depends on the zlib a machine has. Arch and Fedora ship zlib-ng,
+    which compresses the same bytes differently, so re-deflating every entry stopped
+    reproducing Logitech's container there - every real configuration failed this gate.
+    A different compression level stands in for a different zlib here."""
+    import io
+    import zipfile
+    from afterglow.payloads import pk
+
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        z.writestr("userconfig/", b"")
+        for name in ("userconfig/A.xml", "userconfig/B.xml"):
+            z.writestr(name, (name * 400).encode())
+    payload = source.getvalue()
+    tree = tmp_path / "tree"
+    pk.unpack(payload, str(tree))
+
+    real = zipfile._get_compressor
+    monkeypatch.setattr(zipfile, "_get_compressor",
+                        lambda kind, level=None: real(kind, 1))
+    assert pk.build(str(tree)) == payload
+
+    (tree / "userconfig" / "B.xml").write_bytes(b"edited")
+    rebuilt = zipfile.ZipFile(io.BytesIO(pk.build(str(tree))))
+    assert rebuilt.read("userconfig/B.xml") == b"edited"
+    assert rebuilt.read("userconfig/A.xml") == ("userconfig/A.xml" * 400).encode()
+    assert rebuilt.testzip() is None
