@@ -21,7 +21,10 @@ _ACT_DEFAULTS = {
 
 
 def _act_props(act):
-    props = {**_ACT_DEFAULTS, **(act.get("properties") or {})}
+    # An imported activity's properties are complete as they are: adding a default the
+    # configuration did not have changes what the remote does with it.
+    defaults = {} if act.get("properties_complete") else _ACT_DEFAULTS
+    props = {**defaults, **(act.get("properties") or {})}
     return ("<Properties>"
             + "".join(f'<Property name="{esc(k)}">{esc(str(v))}</Property>'
                       for k, v in props.items())
@@ -110,7 +113,10 @@ def _check_icon(name, label):
     """An <Icon> names a glyph in the remote's firmware. A name it does not have draws
     nothing at all, and the button looks broken rather than plain."""
     known = _known_icons()
-    if not known or name in known:
+    # Case is not part of the name: Logitech's own configurations ask for `subtitle`
+    # where the artwork is `Subtitle`, and 8 of 11 from one owner could not be rebuilt
+    # because of it. The configuration's spelling is kept; only the check is lenient.
+    if not known or name.lower() in {item.lower() for item in known}:
         return
     close = sorted(n for n in known if name.lower() in n.lower()
                    or n.lower() in name.lower())[:4]
@@ -137,6 +143,11 @@ def _gen_activity(act, by_id, remote=None):
     disp, ctrl = act.get("display"), act.get("control")
     vol = act.get("volume", disp)                  # volume can ride a 3rd device (e.g. an AVR)
     buttons = _default_hard_buttons(act, by_id)
+    # An imported activity binds exactly the keys it bound; routing the rest from its
+    # devices would make keys Logitech left alone start sending commands.
+    if act.get("bound_keys") is not None:
+        bound = set(act["bound_keys"])
+        buttons = {slot: target for slot, target in buttons.items() if slot in bound}
     macro_als = []                                  # extra ActionLists this activity needs
     
     hard_macros = act.get("hard_macros", {})
@@ -249,30 +260,28 @@ def _gen_activity(act, by_id, remote=None):
                                f'<Actions>{action}</Actions></Channel>')
                 
         chan_xml = "<ChannelList>" + "".join(entries) + "</ChannelList>"
-    # power on every distinct device the activity uses (display, volume, control) that isn't
-    # AlwaysOn (STB / Media Center stay on). dict.fromkeys keeps order and de-dupes.
+    # power on every distinct device the activity uses (display, volume, control).
+    # dict.fromkeys keeps order and de-dupes.
     # An activity says what to turn ON *and* what to turn OFF. Without the <Off> list
     # the devices from the previous activity stay powered - switching from Watch DVD to
     # Watch TV left the DVD player running, because only <On> was ever written.
     power_devs = act.get("power_on_devices") or ([disp, vol, ctrl]
                                                  + list(extra_roles.values()))
-    power_devs = [d for d in dict.fromkeys(power_devs)
-                  if d and d in by_id and not by_id[d].get("always_on")]
+    power_devs = [d for d in dict.fromkeys(power_devs) if d and d in by_id]
     off_devs = [d for d in dict.fromkeys(act.get("power_off_devices") or [])
-                if d in by_id and d not in power_devs
-                and not by_id[d].get("always_on")]
+                if d in by_id and d not in power_devs]
     # Every device the configuration knows is either switched on or switched off.
     # That is not a guess: all six donor configurations partition completely, in
     # all thirty of their activities, without exception. A device in neither list
     # is one the activity never touches - which is how a device added to a project
     # after it was imported silently stopped being powered down by anything.
     #
-    # AlwaysOn devices are the one case no donor demonstrates, since none of them
-    # has such a device. They are left out of both lists on the reading that
-    # "always on" means activities do not power it at all.
+    # AlwaysOn devices are listed too. Eighteen Logitech configurations that have them
+    # list them in every activity - 96 times on, 132 off, never in neither - and the
+    # remote's own `Activity.lua` is what declines to switch a device whose AlwaysOn is
+    # true. Leaving them out made a rebuilt activity forget them entirely.
     listed = set(power_devs) | set(off_devs)
-    off_devs += [d for d in by_id
-                 if d not in listed and not by_id[d].get("always_on")]
+    off_devs += [d for d in by_id if d not in listed]
     power = ("".join(f'<On>{d}</On>' for d in power_devs)
              + "".join(f'<Off>{d}</Off>' for d in off_devs))
     

@@ -10,10 +10,10 @@ malformed one. That happens when a device is added to a project after it was imp
 the imported activities carry an off-list from the original config, the new device is in
 nobody's list, and nothing ever powers it down.
 
-AlwaysOn devices are the one case the donors cannot settle, because none of them has
-one. They are excluded from both lists here, on the reading that "always on" means
-activities do not power it - if that is ever shown to be wrong, this is the file that
-should say so.
+AlwaysOn devices are listed like any other. That was once an open question, settled by
+eighteen Logitech configurations that have such devices: every activity lists them, 96
+times on and 132 off, and the remote's `Activity.lua` is what declines to power a device
+whose AlwaysOn is true.
 """
 import contextlib
 import glob

@@ -983,8 +983,9 @@ def test_channel_tuning_and_input_cycling_reach_the_built_configuration(tmp_path
 
     `fixedDigits` is on 57,940 devices: there, channel 7 must be dialled `07` or the tuner
     waits for a digit that never arrives. And 209,010 devices name their inputs while only
-    some name a command that selects one - the rest can only step, so `next`/`previous`
-    are the whole of their input control and a list of unreachable names is not useful.
+    some name a command that selects one - the rest can only step with `next`/`previous`.
+    Their names still matter: the remote tracks a cycle by position in that list, and a
+    stepping state written without it crashed the remote's logic as it loaded.
     """
     from afterglow.backends.harmony_pk.builder import devices as device_builder
 
@@ -999,8 +1000,9 @@ def test_channel_tuning_and_input_cycling_reach_the_built_configuration(tmp_path
         for name in ["PowerToggle", "InputNext", "InputPrev", "Enter"]
         + [str(digit) for digit in range(10)]]})
     device["channelTuning"] = {"fixedDigits": 2, "finish": ["Enter"]}
-    device["inputs"] = {"type": 1, "list": [], "next": ["InputNext"],
-                        "previous": ["InputPrev"]}
+    device["inputs"] = {"type": 1, "list": [{"name": "TV"}, {"name": "Radio"}],
+                        "next": ["InputNext"], "previous": ["InputPrev"]}
+    device["timing"] = {"inputDelay": 1000}
     _write(root / device_relative, device)
 
     catalog = corpus_provider.LogitechCatalog(root)
@@ -1033,8 +1035,8 @@ def test_channel_tuning_and_input_cycling_reach_the_built_configuration(tmp_path
     assert prefixed.index("<GreaterTen>") < prefixed.index("<FirstDigit>"), (
         "a prefix is pressed before the digits")
     assert 'name="Delay">200<' in prefixed
-    assert template["input_cycle"] == {"next": ["InputNext"],
-                                       "previous": ["InputPrev"]}
+    assert template["input_cycle"] == {"next": ["InputNext"], "previous": ["InputPrev"],
+                                       "values": ["TV", "Radio"], "delay_ms": 1000}
 
     project = device_json.to_project_device(template, "7")
     project["_proto_idx"] = 0
@@ -1045,6 +1047,28 @@ def test_channel_tuning_and_input_cycling_reach_the_built_configuration(tmp_path
     assert "<FixedDigits>2</FixedDigits>" in xml, "channel 7 must be dialled as 07"
     assert "<NextAction>" in xml and "InputNext" in xml
     assert "<PrevAction>" in xml and "InputPrev" in xml
+    assert "<Id>Input</Id><Value>TV</Value><Value>Radio</Value><Delay>1000</Delay>" in xml
+
+
+def test_a_cycle_that_lost_its_input_names_is_left_out_not_written():
+    """A Harmony 900's `State.lua` throws on a state with neither values nor a range, and
+    it does so while loading the configuration - mole's remote lost Help, Remote info and
+    its RF settings to two such states. Projects made before the names were kept still
+    carry a bare `next`; the build must leave that cycle out and say which device."""
+    from afterglow.backends.harmony_pk import backend
+    from afterglow.backends.harmony_pk.builder import devices as device_builder
+
+    spec = {"id": "7", "label": "Cello", "type": "Receiver", "mfr": "x", "model": "y",
+            "commands": [["Source", "Source", "", "", None]], "inputs": [],
+            "input_cycle": {"next": ["Source"]}, "_proto_idx": 0,
+            "raw_codes": {"Source": "000000000100"}}
+    xml, _actions = device_builder._gen_device(spec)
+    assert "<Id>Input</Id>" not in xml
+    assert backend.cycle_without_values(spec)
+    spec["input_cycle"]["values"] = ["CD", "Tuner"]
+    assert not backend.cycle_without_values(spec)
+    assert "<Id>Input</Id><Value>CD</Value><Value>Tuner</Value>" in \
+        device_builder._gen_device(spec)[0]
 
 
 def test_a_sequenced_input_reaches_the_built_configuration_with_its_wait(tmp_path):

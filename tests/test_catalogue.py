@@ -322,6 +322,16 @@ def test_the_builder_refuses_an_icon_the_remote_lacks():
     _check_icon("stop", "Stop")
 
 
+def test_an_icon_differing_only_in_case_is_the_same_icon():
+    """Logitech's own configurations ask for `subtitle`; the artwork is `Subtitle`. Eight
+    of one owner's eleven backups could not be rebuilt after importing them."""
+    from afterglow.backends.harmony_pk.builder.activities import _check_icon, _known_icons
+    if "Subtitle" not in _known_icons():
+        pytest.skip("icon artwork not extracted")
+    _check_icon("subtitle", "Subtitles")
+    _check_icon("SUBTITLE", "Subtitles")
+
+
 def test_the_scaffold_is_found_from_anywhere():
     """It is looked for beside the package and up from the caller's root. Passing a
     directory inside the package sent the search into afterglow/gui and reported a

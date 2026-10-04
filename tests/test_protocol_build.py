@@ -827,3 +827,22 @@ def test_the_config_is_written_as_utf8_whatever_the_platform_encoding(tmp_path):
         "the build must not depend on the platform encoding:\n" + done.stderr)
     assert json.loads(done.stdout.strip().splitlines()[-1])["utf8"], (
         "ActionLists.xml declares UTF-8 and must be written as UTF-8")
+
+
+def test_nec1_and_extended_nec_devices_share_their_block(build):
+    """NEC1 and extended NEC emit one program and so one block; only the name they were
+    emitted under differs. Comparing the names refused a real configuration whose TV
+    spoke one and whose receiver spoke the other."""
+    from afterglow import ir_signal
+
+    def device(device_id, protocol, parameters):
+        return {"schema": "afterglow-project-device/1", "id": device_id,
+                "label": protocol, "type": "Television", "mfr": "T", "model": protocol,
+                "commands": [["Power", "Power", "", "", None]],
+                "signals": {"Power": ir_signal.protocol_signal(protocol, parameters)}}
+
+    out = build({"activities": [], "devices": [
+        device("1", "nec1", {"address": 0x04, "command": 0x08}),
+        device("2", "nec-ext", {"address_low": 0x34, "address_high": 0x12,
+                                "command": 0x08})]})
+    assert out.is_file()

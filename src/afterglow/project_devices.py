@@ -87,11 +87,41 @@ def is_portable(device: dict) -> bool:
     return True
 
 
+def rename_hard_keys(project: dict, aliases: dict) -> int:
+    """Rename physical-key bindings a remote's profile no longer calls that, in place.
+
+    A key is bound in two places: a device command's hard slot (one name or a list) and
+    an activity's `hard_macros`. Both are renamed, and a binding that would collide with
+    one already on the new name is kept as it was rather than overwrite it. Returns how
+    many were renamed.
+    """
+    if not aliases:
+        return 0
+    renamed = 0
+    for device in project.get("devices") or []:
+        for command in device.get("commands") or []:
+            if len(command) < 5 or not command[4]:
+                continue
+            slots = command[4] if isinstance(command[4], list) else [command[4]]
+            fixed = [aliases.get(slot, slot) for slot in slots]
+            renamed += sum(a != b for a, b in zip(slots, fixed))
+            command[4] = fixed if isinstance(command[4], list) else fixed[0]
+    for activity in project.get("activities") or []:
+        macros = activity.get("hard_macros") or {}
+        for old, new in aliases.items():
+            if old in macros and new not in macros:
+                macros[new] = macros.pop(old)
+                renamed += 1
+    return renamed
+
+
 def normalise_project(project: dict) -> dict:
     """Migrate old project devices at the read boundary and validate current ones."""
     from . import backends, remotes
 
-    backend = backends.for_profile(remotes.for_project(project))
+    profile = remotes.for_project(project)
+    rename_hard_keys(project, profile.hard_key_aliases)
+    backend = backends.for_profile(profile)
     migrated = []
     for device in project.get("devices") or []:
         migrated.append(clean(device) if is_portable(device)

@@ -214,7 +214,10 @@ def test_a_donor_device_has_nothing_left_unset(qapp_or_skip):
                  # SCART is the one property no configuration has ever contained, on any
                  # device, so it is genuinely absent rather than missing. Absence means
                  # false there and the remote is fine with it.
-                 and cat.get(n, {}).get("observed")]
+                 and cat.get(n, {}).get("observed")
+                 # Some are carried by particular models rather than by every device of
+                 # the type, and the profile says so; their absence is ordinary.
+                 and not cat.get(n, {}).get("optional")]
         assert not unset, f"{device['label']} ({device['type']}) still shows {unset}"
 
 

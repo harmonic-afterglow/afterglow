@@ -429,6 +429,10 @@ class _HarmonyPkImport:
                 "commands": []
             }
         
+            # Absent is not false. The remote powers a device from an activity only when
+            # AlwaysOn is exactly false; a device with no AlwaysOn at all - a camera, a
+            # bank of radio sockets - is never touched. None keeps that third state.
+            dev["always_on"] = None
             props_node = d.find('Properties')
             if props_node is not None:
                 properties = {}
@@ -627,7 +631,14 @@ class _HarmonyPkImport:
                 "label": html.unescape(a.find('Presentation/Label').text),
                 "soft_buttons": [],
                 "image_buttons": [],
-                "hard_macros": {}
+                "hard_macros": {},
+                # The keys this activity binds, exactly. Keys the builder would route
+                # from the activity's devices are not stored as macros, so without the
+                # set a rebuild also bound every key Logitech had left unbound - 27 of
+                # them on one owner's "PC" activity, which bound none.
+                "bound_keys": [],
+                # The properties below are all the activity has; none are to be added.
+                "properties_complete": True,
             }
             # Which devices this activity powers off when it starts. Kept as the config
             # states it rather than recomputed: an owner may deliberately leave a device
@@ -693,6 +704,8 @@ class _HarmonyPkImport:
                         action_id = btn.find('ActionId').text
                         if not hname:
                             continue
+                        if hname not in act["bound_keys"]:
+                            act["bound_keys"].append(hname)
                         # A hard key may run a whole named ActionList, not just one
                         # command. Rebuilding it from the id alone kept the first step and
                         # threw the rest away, so a three-step macro came back as one.

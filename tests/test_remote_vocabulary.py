@@ -260,3 +260,39 @@ def test_no_shared_module_names_a_particular_remote():
                         profile.id for profile in remotes.load_all()}:
                     offenders.append(f"{path.relative_to(root)}:{token.start[0]}")
     assert offenders == []
+
+
+def test_the_900s_keys_are_the_names_its_configurations_bind():
+    """Measured over eighteen Logitech configurations: the profile once said Replay, Skip,
+    InputAV and Back, which none of them binds, and could not bind Pg Up or Pg Dn."""
+    keys = remotes.get("harmony-900").hard_keys
+    for name in ("SkipBack", "SkipForward", "UpArrow", "DownArrow", "NumberPlus",
+                 "NumberEnter"):
+        assert name in keys
+    for name in ("Replay", "Skip", "InputAV", "Back", "Home", "InputHDMI"):
+        assert name not in keys
+    assert all(cell["key"] for cell in remotes.get("harmony-900").hard_key_layout)
+
+
+def test_a_project_saved_with_the_old_key_names_is_renamed_on_load():
+    from afterglow import project_devices
+    project = {"settings": {"remote": "harmony-900"}, "devices": [], "activities": [
+        {"hard_macros": {"Replay": [["command", "1", "Rew"]],
+                         "Skip": [["command", "1", "Next"]], "Menu": []}}]}
+    project["devices"] = [{"commands": [["Next", "Next", "", "", "Skip"],
+                                        ["Both", "Both", "", "", ["InputAV", "Back"]]]}]
+    assert project_devices.rename_hard_keys(
+        project, remotes.get("harmony-900").hard_key_aliases) == 5
+    assert set(project["activities"][0]["hard_macros"]) == {"SkipBack", "SkipForward", "Menu"}
+    assert project["devices"][0]["commands"][0][4] == "SkipForward"
+    assert project["devices"][0]["commands"][1][4] == ["NumberEnter", "NumberPlus"]
+
+
+def test_the_catalogue_puts_commands_on_the_keys_the_900_has():
+    from afterglow.corpus_provider import _hard_key
+    keys = remotes.get("harmony-900").hard_keys
+    assert _hard_key("SkipForward", keys) == "SkipForward"
+    assert _hard_key("SkipBack", keys) == "SkipBack"
+    assert _hard_key("Enter", keys) == "NumberEnter"
+    assert _hard_key("Clear", keys) == "NumberPlus"
+    assert _hard_key("PageUp", keys) == "UpArrow"

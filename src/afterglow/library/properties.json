@@ -57,6 +57,12 @@
       "label": "Hide Control page",
       "type": "bool"
     },
+    "HideModeListen": {
+      "casing": "title",
+      "description": "Hide the Listen page.",
+      "label": "Hide Listen page",
+      "type": "bool"
+    },
     "HideModeNavigate": {
       "casing": "title",
       "description": "Hide the Navigate page.",
@@ -169,6 +175,18 @@
       "label": "Always on",
       "type": "bool"
     },
+    "AudioSwitch": {
+      "casing": "lower",
+      "description": "The switch routes audio.",
+      "label": "Switches audio",
+      "type": "bool"
+    },
+    "AutoPower": {
+      "casing": "lower",
+      "description": "The television turns itself on when it receives another command; seen set to false on every television that carries it.",
+      "label": "Switches on by itself",
+      "type": "bool"
+    },
     "Dimmer": {
       "casing": "lower",
       "description": "The lighting controller supports dimming, not just on/off.",
@@ -247,6 +265,24 @@
       "label": "Records to disc",
       "type": "bool"
     },
+    "RecordMedia Removable Dvd": {
+      "casing": "lower",
+      "description": "The recorder writes to a removable DVD.",
+      "label": "Records to DVD",
+      "type": "bool"
+    },
+    "RecordMedia Removable Videotape": {
+      "casing": "lower",
+      "description": "The recorder writes to a removable videotape.",
+      "label": "Records to tape",
+      "type": "bool"
+    },
+    "RevertInput": {
+      "casing": "lower",
+      "description": "The television goes back to its previous input on its own; meaning inferred from the name, not measured.",
+      "label": "Returns to its input",
+      "type": "bool"
+    },
     "Scart": {
       "casing": "lower",
       "help": "This device is connected by SCART, so switching it on makes the television switch to it by itself. The remote powers SCART devices first and waits for them to settle before running the rest of the activity.",
@@ -260,6 +296,12 @@
       "values": [
         "Tuner"
       ]
+    },
+    "VideoSwitch": {
+      "casing": "lower",
+      "description": "The switch routes video.",
+      "label": "Switches video",
+      "type": "bool"
     }
   }
 }

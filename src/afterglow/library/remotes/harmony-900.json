@@ -174,56 +174,30 @@
         "VirtualVcrRecorder"
       ]
     ],
+    "_hard_keys_comment": "The names Logitech's own Harmony 900 configurations bind, measured over 18 of them: Pg Up and Pg Dn are UpArrow and DownArrow, the transport skips are SkipBack and SkipForward, and the two keys beside 0 are NumberPlus (Clear) and NumberEnter (E).",
     "hard_keys": [
-      "VolumeUp",
-      "VolumeDown",
-      "VolumeMute",
-      "ChannelUp",
-      "ChannelDown",
-      "PrevChannel",
-      "DirectionUp",
-      "DirectionDown",
-      "DirectionLeft",
-      "DirectionRight",
-      "Select",
-      "Back",
-      "Menu",
-      "Exit",
-      "Home",
-      "Play",
-      "Pause",
-      "Stop",
-      "Rewind",
-      "FastForward",
-      "Skip",
-      "Replay",
-      "Record",
-      "Info",
-      "Guide",
-      "InputAV",
-      "InputHDMI",
-      "Number0",
-      "Number1",
-      "Number2",
-      "Number3",
-      "Number4",
-      "Number5",
-      "Number6",
-      "Number7",
-      "Number8",
-      "Number9",
-      "Red",
-      "Green",
-      "Yellow",
-      "Blue"
+      "VolumeUp", "VolumeDown", "VolumeMute", "ChannelUp", "ChannelDown", "PrevChannel",
+      "DirectionUp", "DirectionDown", "DirectionLeft", "DirectionRight", "Select",
+      "Menu", "Exit", "Info", "Guide", "UpArrow", "DownArrow",
+      "Play", "Pause", "Stop", "Rewind", "FastForward", "SkipBack", "SkipForward", "Record",
+      "Number0", "Number1", "Number2", "Number3", "Number4", "Number5", "Number6",
+      "Number7", "Number8", "Number9", "NumberPlus", "NumberEnter",
+      "Red", "Green", "Yellow", "Blue"
     ],
-    "_hard_key_layout_comment": "The case seen from the front, for drawing it: [row, column, rows, columns, key, printed label]. A null key is a button no configuration can bind yet.",
+    "_hard_key_aliases_comment": "Names this profile once used that no Harmony 900 configuration has, and the key each one meant. A project saved with them is renamed on load; Home and InputHDMI were never keys on this case and have no entry.",
+    "hard_key_aliases": {
+      "Replay": "SkipBack",
+      "Skip": "SkipForward",
+      "InputAV": "NumberEnter",
+      "Back": "NumberPlus"
+    },
+    "_hard_key_layout_comment": "The case seen from the front, for drawing it: [row, column, rows, columns, key, printed label]. Every key on it binds.",
     "hard_key_layout": [
       [0, 0, 1, 2, "Menu", "Menu"],
-      [0, 2, 1, 1, null, "Pg Up"],
+      [0, 2, 1, 1, "UpArrow", "Pg Up"],
       [0, 3, 1, 2, "Info", "Info"],
       [1, 0, 1, 2, "Exit", "Exit"],
-      [1, 2, 1, 1, null, "Pg Dn"],
+      [1, 2, 1, 1, "DownArrow", "Pg Dn"],
       [1, 3, 1, 2, "Guide", "Guide"],
       [2, 0, 1, 1, "Red", "Red"],
       [2, 1, 1, 1, "Green", "Green"],
@@ -243,9 +217,9 @@
       [7, 0, 1, 1, "Rewind", "Rew"],
       [7, 2, 1, 1, "Play", "Play"],
       [7, 4, 1, 1, "FastForward", "FF"],
-      [8, 0, 1, 1, "Replay", "Replay"],
+      [8, 0, 1, 1, "SkipBack", "Skip back"],
       [8, 2, 1, 1, "Pause", "Pause"],
-      [8, 4, 1, 1, "Skip", "Skip"],
+      [8, 4, 1, 1, "SkipForward", "Skip fwd"],
       [9, 0, 1, 1, "Record", "Record"],
       [9, 4, 1, 1, "Stop", "Stop"],
       [10, 1, 1, 1, "Number1", "1"],
@@ -257,14 +231,64 @@
       [12, 1, 1, 1, "Number7", "7"],
       [12, 2, 1, 1, "Number8", "8"],
       [12, 3, 1, 1, "Number9", "9"],
-      [13, 1, 1, 1, "Back", "Clear"],
+      [13, 1, 1, 1, "NumberPlus", "Clear"],
       [13, 2, 1, 1, "Number0", "0"],
-      [13, 3, 1, 1, "InputAV", "Enter"]
+      [13, 3, 1, 1, "NumberEnter", "E"]
     ]
   },
   "properties": {
     "_comment": "Which properties this model has, and what its own firmware does with each. applies_to is measured from real configurations of this model; when_absent is read out of its behaviour layer. A property missing here is not offered for this remote at all.",
     "device": {
+      "AudioSwitch": {
+        "applies_to": ["AudioVideoSwitch"],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {"true": 2},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "AutoPower": {
+        "applies_to": ["Television"],
+        "optional": "on 3 of 20 televisions in 18 configurations - a model's property, not the type's",
+        "default": "false",
+        "default_from": "observed",
+        "observed": {"false": 3},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "RecordMedia Removable Dvd": {
+        "applies_to": ["DvdRecorder"],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {"true": 1},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "RecordMedia Removable Videotape": {
+        "applies_to": ["Vcr"],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {"true": 18},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "RevertInput": {
+        "applies_to": ["Television"],
+        "optional": "on 3 of 20 televisions in 18 configurations - a model's property, not the type's",
+        "default": "true",
+        "default_from": "observed",
+        "observed": {"true": 3},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "VideoSwitch": {
+        "applies_to": ["AudioVideoSwitch"],
+        "default": "true",
+        "default_from": "observed",
+        "observed": {"true": 2},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
       "AlwaysOn": {
         "applies_to": "all",
         "default": "false",
@@ -472,6 +496,14 @@
       }
     },
     "activity": {
+      "HideModeListen": {
+        "applies_to": ["VirtualRadioSimple"],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {"False": 16},
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
       "ActivityStartPage": {
         "applies_to": "all",
         "default": "Numbers",

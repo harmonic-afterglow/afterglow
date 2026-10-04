@@ -107,7 +107,8 @@ class DeviceWizard(QWizard):
             "model":             ident.model_edit.text().strip(),
             **cmds.power_fields(),
             "properties":        self.page_props.values(),
-            "always_on":         tim.always_on.isChecked(),
+            "always_on":         (None if tim._always_on_absent
+                                  else tim.always_on.isChecked()),
             "power_delay":       tim.pwr_delay.value(),
             "press_presilence":  tim.pre_sil.value(),
             "press_interkey":    tim.inter_key.value(),
@@ -1119,7 +1120,11 @@ class TimingPage(QWizardPage):
 
         self.always_on = QCheckBox(
             "Always On (device is never powered off by activities or PowerOff macro)")
-        self.always_on.setChecked(existing.get("always_on", False))
+        # None is an imported device with no AlwaysOn at all, which the remote treats
+        # unlike false; it stays None unless the box is actually changed.
+        self._always_on_absent = "always_on" in existing and existing["always_on"] is None
+        self.always_on.setChecked(bool(existing.get("always_on", False)))
+        self.always_on.toggled.connect(lambda _on: setattr(self, "_always_on_absent", False))
         layout.addRow(self.always_on)
         layout.addRow(sep())
 
@@ -1369,7 +1374,8 @@ class DeviceEditor(QDialog):
             "model":             ident.model_edit.text().strip(),
             **cmds.power_fields(),
             "properties":        self.page_props.values(),
-            "always_on":         tim.always_on.isChecked(),
+            "always_on":         (None if tim._always_on_absent
+                                  else tim.always_on.isChecked()),
             "power_delay":       tim.pwr_delay.value(),
             "press_presilence":  tim.pre_sil.value(),
             "press_interkey":    tim.inter_key.value(),
