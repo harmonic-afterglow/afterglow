@@ -147,9 +147,10 @@ the root. The order below is also the order the tests will stop you in.
    `verified`. **No exceptions** - there is no vendor
    server to recover from.
 
-The dedicated process is documented in `docs/first-write.md`. Keep its preparation, apply and
-readback states separate: an interrupted write has an unknown outcome and must never become an
-automatic retry.
+The dedicated process is documented in `docs/first-write.md`; the Flash tab's Test Write
+is the same process, not a second one. Keep its preparation, apply and readback states
+separate: an interrupted write has an unknown outcome and must never become an automatic
+retry. Restoring the captured backup is the one write that may be repeated.
 
 That is the whole job. No Python.
 
