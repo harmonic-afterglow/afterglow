@@ -90,6 +90,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(_act("Save Project",      self.save_project,    "Ctrl+S"))
         file_menu.addAction(_act("Save Project As…",  self.save_project_as))
         file_menu.addSeparator()
+        file_menu.addAction(_act("Make a Shareable Copy of a Dump…", self.share_dump))
+        file_menu.addSeparator()
         file_menu.addAction(_act("Exit", self.close))
 
         settings_menu = mb.addMenu("Settings")
@@ -283,6 +285,34 @@ class MainWindow(QMainWindow):
                 + learned)
         except Exception as e:
             QMessageBox.critical(self, "Import Failed", str(e))
+
+    def share_dump(self, source=None):
+        """Copy a dump with its owner's name and account taken out, for donating it."""
+        from .. import share
+        if not source:
+            source, _ = QFileDialog.getOpenFileName(
+                self, "Dump to share", str(user_files()),
+                "Harmony config (*.ezhex);;All (*)")
+        if not source:
+            return
+        target, _ = QFileDialog.getSaveFileName(
+            self, "Save the shareable copy",
+            str(Path(source).with_name(Path(source).stem + "-shareable.ezhex")),
+            "Harmony config (*.ezhex)")
+        if not target:
+            return
+        try:
+            changes = share.make_shareable(source, target)
+        except Exception as exc:
+            QMessageBox.warning(self, "Shareable copy", str(exc))
+            return
+        QMessageBox.information(
+            self, "Shareable copy",
+            f"Saved {Path(target).name}.\n\n"
+            + ("Your name and account number were replaced. " if changes else
+               "It did not name anyone, so nothing needed replacing. ")
+            + "Device and activity names are kept - they are what makes a dump useful - "
+            "so look them over if any of them say more than you want to share.")
 
     def save_project(self):
         if self._project_path:
