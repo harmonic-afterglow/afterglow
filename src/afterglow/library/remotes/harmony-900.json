@@ -184,12 +184,14 @@
       "Number7", "Number8", "Number9", "NumberPlus", "NumberEnter",
       "Red", "Green", "Yellow", "Blue"
     ],
-    "_hard_key_aliases_comment": "Names this profile once used that no Harmony 900 configuration has, and the key each one meant. A project saved with them is renamed on load; Home and InputHDMI were never keys on this case and have no entry.",
+    "_hard_key_aliases_comment": "Names this profile once used that no Harmony 900 configuration has, and the key each one meant; PageUp and PageDown are what the case prints. A project saved with them is renamed on load; Home and InputHDMI were never keys on this case and have no entry.",
     "hard_key_aliases": {
       "Replay": "SkipBack",
       "Skip": "SkipForward",
       "InputAV": "NumberEnter",
-      "Back": "NumberPlus"
+      "Back": "NumberPlus",
+      "PageUp": "UpArrow",
+      "PageDown": "DownArrow"
     },
     "_hard_key_layout_comment": "The case seen from the front, for drawing it: [row, column, rows, columns, key, printed label]. Every key on it binds.",
     "hard_key_layout": [
