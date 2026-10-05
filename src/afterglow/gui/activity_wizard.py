@@ -16,6 +16,7 @@ from .ui_helpers import (FilterCombo)
 
 from .. import vocabulary
 from .icons import icon as type_icon
+from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
 from .widgets import _new_act_id
 
@@ -40,6 +41,8 @@ class ActivityWizard(QWizard):
         self.addPage(ActivityMacrosPage(devices, e))
         self.addPage(PropertiesPage("activity", e.get("properties"),
                                     kind=e.get("type"), remote=profile))
+        self.power_page = ActivityPowerPage(devices, e)
+        self.addPage(self.power_page)
 
     def initializePage(self, page_id):
         """Before a page is shown, tell it which devices this activity uses.
@@ -91,6 +94,7 @@ class ActivityWizard(QWizard):
         spec["enter"] = p6.enter_macro.get_macro()
         spec["leave"] = p6.leave_macro.get_macro()
         spec["properties"] = p7.values()
+        apply_plan(spec, self.power_page.get_plan())
         self._assets = p3.get_assets()
         return spec
 
@@ -461,6 +465,8 @@ class ActivityEditor(QDialog):
         self.tabs.addTab(self.p3b, "Commands")
         self.tabs.addTab(self.p4, "Physical buttons")
         self.tabs.addTab(self.p5, "Startup / Shutdown")
+        self.power = ActivityPowerPage(devices, e)
+        self.tabs.addTab(self.power, "Power")
         self.p6 = PropertiesEditor("activity", (existing or {}).get("properties"),
                                    kind=(existing or {}).get("type"), remote=profile)
         self.tabs.addTab(self.p6, "Advanced")
@@ -482,7 +488,7 @@ class ActivityEditor(QDialog):
     def _share_participation(self, *_):
         """Tell every tab which devices this activity uses, so they list those first."""
         taking_part = self._participating()
-        for tab in (self.p3, self.p3b, self.p4, self.p5):
+        for tab in (self.p3, self.p3b, self.p4, self.p5, self.power):
             setter = getattr(tab, "set_participating", None)
             if setter:
                 setter(taking_part)
@@ -516,5 +522,6 @@ class ActivityEditor(QDialog):
         spec["enter"] = p5.enter_macro.get_macro()
         spec["leave"] = p5.leave_macro.get_macro()
         spec["properties"] = p6.values()
+        apply_plan(spec, self.power.get_plan())
         self._assets = p3.get_assets()
         return spec
