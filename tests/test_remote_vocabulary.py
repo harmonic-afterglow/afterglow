@@ -296,3 +296,14 @@ def test_the_catalogue_puts_commands_on_the_keys_the_900_has():
     assert _hard_key("Enter", keys) == "NumberEnter"
     assert _hard_key("Clear", keys) == "NumberPlus"
     assert _hard_key("PageUp", keys) == "UpArrow"
+
+
+def test_the_page_keys_by_their_printed_names_bind_on_the_900():
+    """GitHub #5: a hand-edited project bound PageUp and PageDown, which the remote ignores."""
+    from afterglow import project_devices
+    project = {"devices": [], "activities": [{"hard_macros": {
+        "PageUp": [["command", "1", "LeftArrow", "Press"]],
+        "PageDown": [["command", "1", "RightArrow", "Press"]]}}]}
+    assert project_devices.rename_hard_keys(
+        project, remotes.get("harmony-900").hard_key_aliases) == 2
+    assert set(project["activities"][0]["hard_macros"]) == {"UpArrow", "DownArrow"}
