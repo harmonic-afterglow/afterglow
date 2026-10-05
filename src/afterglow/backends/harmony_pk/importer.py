@@ -462,6 +462,9 @@ class _HarmonyPkImport:
                 found = states_mod.input_list(parsed_states)
                 if found:
                     dev["inputs"] = found
+                stepping = states_mod.input_cycle(parsed_states)
+                if stepping:
+                    dev["input_cycle"] = stepping
 
             numeric = states_mod.parse_numeric(d)
             if numeric is not None:

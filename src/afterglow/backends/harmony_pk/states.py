@@ -333,6 +333,32 @@ def input_list(states: list[dict]) -> list[list]:
     return []
 
 
+def input_cycle(states: list[dict]) -> dict:
+    """`{"values", "next", "previous", "delay_ms"}` for an Input state that steps.
+
+    The counterpart of `input_list` for a device whose input is cycled rather than
+    chosen: the interface needs the order of the values and the command that steps,
+    which a list of names with no command cannot say.
+    """
+    for state in states:
+        if state.get("id") != "Input":
+            continue
+        out: dict = {}
+        for action in state.get("actions", []):
+            command = next((c for c in map(_command_of, action["actions"]) if c), None)
+            if command and action["kind"] == "NextAction":
+                out["next"] = [command]
+            elif command and action["kind"] == "PrevAction":
+                out["previous"] = [command]
+        if not out:
+            return {}
+        out["values"] = list(state.get("values", []))
+        if "delay" in state:
+            out["delay_ms"] = state["delay"]
+        return out
+    return {}
+
+
 def set_power(states: list[dict], device_id: str, on: str | None,
               off: str | None, toggle: str | None, delay: int | None) -> list[dict]:
     """Rewrite the Power state to match what the interface was given.

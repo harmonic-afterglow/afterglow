@@ -105,7 +105,8 @@ class StatePicker(QDialog):
         device = self._device() or {}
         for state in device.get("states", []):
             self.state_combo.addItem(state.get("id", "?"), state.get("id"))
-        if not device.get("states") and device.get("inputs"):
+        from ..project_devices import input_names
+        if not device.get("states") and input_names(device):
             self.state_combo.addItem("Input", "Input")
         self._state_changed()
 
@@ -120,8 +121,9 @@ class StatePicker(QDialog):
             for value in names or state.get("values", []):
                 self.value_combo.addItem(value, value)
             return
-        for entry in device.get("inputs", []):
-            self.value_combo.addItem(entry[0] if isinstance(entry, (list, tuple)) else entry)
+        from ..project_devices import input_names
+        for name in input_names(device):
+            self.value_combo.addItem(name)
 
     def accept(self):
         value = self.value_combo.currentText().strip()
@@ -215,8 +217,8 @@ class InputPicker(QDialog):
             return
         # The values the device's Input state can take. Its full command list is not
         # that, and offering it is how a receiver was set to "DSPSimulation".
-        names = [(i[0] if isinstance(i, (list, tuple)) else i)
-                 for i in (device.get("inputs") or [])]
+        from ..project_devices import input_names
+        names = input_names(device)
         if names:
             self.value.lineEdit().setPlaceholderText("type to filter…")
             self.value.set_items([(n, n) for n in names])
