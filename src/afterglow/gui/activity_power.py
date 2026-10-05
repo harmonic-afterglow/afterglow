@@ -51,6 +51,8 @@ class ActivityPowerPage(QWizardPage):
         self.table = QTableWidget(0, 2)
         self.table.setHorizontalHeaderLabels(["Device", "When the activity starts"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table, 1)
