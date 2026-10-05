@@ -265,8 +265,10 @@ def _gen_activity(act, by_id, remote=None):
     # An activity says what to turn ON *and* what to turn OFF. Without the <Off> list
     # the devices from the previous activity stay powered - switching from Watch DVD to
     # Watch TV left the DVD player running, because only <On> was ever written.
-    power_devs = act.get("power_on_devices") or ([disp, vol, ctrl]
-                                                 + list(extra_roles.values()))
+    # An explicit plan wins even when it switches nothing on; only an activity with no
+    # plan at all follows its roles.
+    power_devs = (act["power_on_devices"] if act.get("power_on_devices") is not None
+                  else [disp, vol, ctrl] + list(extra_roles.values()))
     power_devs = [d for d in dict.fromkeys(power_devs) if d and d in by_id]
     off_devs = [d for d in dict.fromkeys(act.get("power_off_devices") or [])
                 if d in by_id and d not in power_devs]
