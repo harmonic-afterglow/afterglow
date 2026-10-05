@@ -87,6 +87,26 @@ def is_portable(device: dict) -> bool:
     return True
 
 
+def input_names(device: dict) -> list[str]:
+    """The inputs a device can be switched to, in order, however it reaches them.
+
+    Directly chosen inputs, the values a cycle steps through, or - for an imported
+    device - the values of its own Input state. A cycle-only device has no direct
+    inputs at all, and offering nothing for it is how an activity could not say which
+    input to end on.
+    """
+    names = [entry[0] if isinstance(entry, (list, tuple)) else entry
+             for entry in device.get("inputs") or []]
+    names += [v for v in (device.get("input_cycle") or {}).get("values", [])
+              if v not in names]
+    if not names:
+        for state in device.get("states") or []:
+            if state.get("id") == "Input":
+                names = [a["name"] for a in state.get("actions", []) if a.get("name")] \
+                    or list(state.get("values", []))
+    return names
+
+
 def rename_hard_keys(project: dict, aliases: dict) -> int:
     """Rename physical-key bindings a remote's profile no longer calls that, in place.
 

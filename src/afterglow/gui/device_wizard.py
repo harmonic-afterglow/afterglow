@@ -16,6 +16,7 @@ from .ui_helpers import FilterCombo
 from .. import remotes
 from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
+from .device_inputs import DeviceInputsPage
 from .properties_editor import PropertiesEditor, PropertiesPage
 from .widgets import RemotePickerDialog, _SuggestBox, _new_id, bold, build_repo_index, sep
 
@@ -50,6 +51,7 @@ class DeviceWizard(QWizard):
             remote=self.profile)
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
+        self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
         self.page_timing   = TimingPage(self._existing)
         self.page_props    = PropertiesPage("device", self._existing.get("properties"),
                                     kind=self._existing.get("type"), remote=self.profile)
@@ -57,6 +59,7 @@ class DeviceWizard(QWizard):
         self.addPage(self.page_search)
         self.addPage(self.page_identity)
         self.addPage(self.page_cmds)
+        self.addPage(self.page_inputs)
         self.addPage(self.page_timing)
         self.addPage(self.page_props)
 
@@ -68,10 +71,14 @@ class DeviceWizard(QWizard):
         """Refresh the summary after a portable waveform was learned."""
         self.page_identity.refresh_protocol()
 
+    def _command_names(self):
+        return [row[0] for row in self.page_cmds.get_commands() if row and row[0]]
+
     def _on_template_selected(self, t):
         t = _portable_if_possible(t)
         self._loaded_tpl = t
         self._inputs = list(t.get("inputs") or [])
+        self.page_inputs.load(t)
         # The type decides which properties are worth offering, so it has to reach the
         # Advanced page before the values do.
         self.page_props.set_kind(t.get("type"))
@@ -119,6 +126,7 @@ class DeviceWizard(QWizard):
             # the one the spec was carried from if the user changed their mind.
             "inputs":            list(self._inputs or []),
         })
+        self.page_inputs.apply(spec)
         spec["signals"] = cmds.updated_signals(command_rows)
         _attach_learned(spec, self._existing, cmds.learned_captures())
         from .. import project_devices
@@ -1257,6 +1265,7 @@ class DeviceEditor(QDialog):
             remote=self.profile)
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
+        self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
         self.page_timing   = TimingPage(self._existing)
         self.page_props    = PropertiesEditor("device", self._existing.get("properties"),
                                       kind=self._existing.get("type"), remote=self.profile)
@@ -1264,6 +1273,10 @@ class DeviceEditor(QDialog):
         self.tabs.addTab(self.page_search, "Search")
         self.tabs.addTab(self.page_identity, "Identity")
         self.tabs.addTab(self.page_cmds, "Commands")
+        self.tabs.addTab(self.page_inputs, "Inputs")
+        self.tabs.currentChanged.connect(
+            lambda _i: self.tabs.currentWidget() is self.page_inputs
+            and self.page_inputs.refresh_commands())
         self.tabs.addTab(self.page_timing, "Timing")
         self.tabs.addTab(self.page_props, "Advanced")
         
@@ -1295,6 +1308,10 @@ class DeviceEditor(QDialog):
         self.page_identity.apply_template(t)
         self.page_cmds.load_template(t)
         self.page_timing.load_template(t)
+        self.page_inputs.load(t)
+
+    def _command_names(self):
+        return [row[0] for row in self.page_cmds.get_commands() if row and row[0]]
 
     def rf_token(self):
         """The IR output the user chose, applied by the caller once the id is known."""
@@ -1325,6 +1342,11 @@ class DeviceEditor(QDialog):
         return used
 
     def accept(self):
+        problem = self.page_inputs.problem()
+        if problem:
+            self.tabs.setCurrentWidget(self.page_inputs)
+            QMessageBox.warning(self, "Inputs", problem)
+            return
         spec = self._collect()
         # Replacing the model can take away a command an activity is built on. The
         # build does not fail for it - the activity simply loses that button, or a
@@ -1383,6 +1405,7 @@ class DeviceEditor(QDialog):
             "hold_interkey":     tim.hold_key.value(),
             "commands":          command_rows,
         })
+        self.page_inputs.apply(spec)
         spec["signals"] = cmds.updated_signals(command_rows)
         _attach_learned(spec, self._existing, cmds.learned_captures())
         from .. import project_devices

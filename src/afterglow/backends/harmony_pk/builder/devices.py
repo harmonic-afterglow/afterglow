@@ -146,6 +146,7 @@ def _gen_device(spec):
     # rather than written; `cycle_without_values` lets the caller say so.
     if not inputs and not cycle.get("values"):
         cycle = {}
+    input_state = ""
     if inputs or cycle:
         sv = "".join(f"<Value>{esc(v)}</Value>" for v, _ in inputs) or "".join(
             f"<Value>{esc(v)}</Value>" for v in cycle.get("values", []))
@@ -169,14 +170,35 @@ def _gen_device(spec):
                 rel += f"<PrevAction>{_input_steps(cycle['previous'])}</PrevAction>"
             if rel:
                 body += f"<RelativeActions>{rel}</RelativeActions>"
-        states_content += f"<State><Id>Input</Id>{body}</State>"
+        input_state = f"<State><Id>Input</Id>{body}</State>"
+        states_content += input_state
     
     # A device imported from a real config carries its whole state machine; emit that
     # rather than the four-field approximation above, which cannot express indirect
     # inputs, Next/Prev cycling, or a discrete power whose On is a ChangeAction. The
     # synthesised version is for devices authored from scratch, which have no block.
     carried = spec.get("states")
-    if carried:
+    if carried and spec.get("inputs_edited"):
+        # Inputs changed in the interface on a device that carries its real states: the
+        # Input state is regenerated from what was edited and every other state is
+        # written back as it was, in its place. No Input state before goes after Power.
+        def one(state):
+            return states_mod.build_states([state])[len("<States>"):-len("</States>")]
+        pieces, placed = [], False
+        for state in carried:
+            if state.get("id") == "Input":
+                pieces.append(input_state)
+                placed = True
+            else:
+                pieces.append(one(state))
+                if state.get("id") == "Power" and not placed and not any(
+                        s.get("id") == "Input" for s in carried):
+                    pieces.append(input_state)
+                    placed = True
+        if not placed:
+            pieces.append(input_state)
+        states = f"<States>{''.join(pieces)}</States>" if any(pieces) else ""
+    elif carried:
         states = states_mod.build_states(carried)
     else:
         # States Logitech declares for this device - `InputType`, `TVInput` and friends -
