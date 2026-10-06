@@ -6,6 +6,15 @@ label's minimum height to its height for the width it actually got.
 """
 from __future__ import annotations
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _remove_the_filter_afterwards():
+    yield
+    from afterglow.gui.ui_helpers import remove_wrapped_label_fix
+    remove_wrapped_label_fix()
+
 
 def test_a_wrapped_label_keeps_room_for_every_line(qapp_or_skip):
     from PyQt6.QtWidgets import QApplication, QLabel

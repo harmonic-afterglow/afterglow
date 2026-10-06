@@ -30,8 +30,22 @@ def keep_wrapped_labels_whole(app) -> None:
         _installed = _WholeWrappedLabels()
         app.installEventFilter(_installed)
         # Taken out before the application starts tearing windows down, so no event
-        # reaches the filter while Python and Qt disagree about who still owns it.
-        app.aboutToQuit.connect(lambda: app.removeEventFilter(_installed))
+        # reaches the filter while Python and Qt disagree about who still owns it - at
+        # quit, and at interpreter exit for a process that never runs the event loop's
+        # quit (a test run crashed with a segfault on the way out without this).
+        app.aboutToQuit.connect(remove_wrapped_label_fix)
+        import atexit
+        atexit.register(remove_wrapped_label_fix)
+
+
+def remove_wrapped_label_fix() -> None:
+    """Undo `keep_wrapped_labels_whole`. Safe to call more than once."""
+    global _installed
+    from PyQt6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if _installed is not None and app is not None:
+        app.removeEventFilter(_installed)
+    _installed = None
 
 
 _installed = None
