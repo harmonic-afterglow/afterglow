@@ -44,6 +44,16 @@ class BuildRequest:
     power_off_label: str | None = None
 
 
+def _build_time() -> str:
+    """Now, as the remote writes it (YYYYMMDD HHMMSS, local time). SOURCE_DATE_EPOCH -
+    the reproducible-builds convention - pins it, so two builds can still be compared
+    byte for byte."""
+    import time
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    moment = time.gmtime(int(epoch)) if epoch and epoch.isdigit() else time.localtime()
+    return time.strftime("%Y%m%d %H%M%S", moment)
+
+
 def _check_unique_ids(specs, activities):
     """Two things sharing an id is silent data loss.
 
@@ -195,6 +205,13 @@ def build(specs, work, request: BuildRequest | None = None):
     locale_node = root.find("User/Properties/Property[@name='LocaleId']")
     if locale_node is not None and settings.get("locale"):
         locale_node.text = settings["locale"]
+
+    # What the remote shows as the configuration's last update (Remote info). The
+    # scaffold's value is from 2020, so every build claimed to be years old; Logitech's
+    # own configurations carry the time they were made, in this same form.
+    updated = root.find("Properties/Property[@name='LastUpdated']")
+    if updated is not None:
+        updated.text = _build_time()
 
     # NewDeviceFound runs the remote's new-device walkthrough over the devices carrying
     # IsNewDevice, so the two have to agree. Claiming one while flagging none is a state
