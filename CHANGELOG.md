@@ -4,6 +4,47 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0-beta.2] - 2026-10-07
+
+The Harmony 1100 joins as an experimental remote, and Afterglow gets a macOS app.
+
+### Added
+
+- **Harmony 1100** (experimental): its configurations are read and imported - every
+  command, activities and their touchscreen pages - and built back. Writing goes
+  through Test write, which backs the remote up first and checks the result.
+- **A macOS app** (`.dmg`) for Apple Silicon, and Intel where the build succeeds. It
+  talks to the Harmony 900/1000/1100 over USB by itself: no driver to install.
+  Logitech's own Mac driver does not work on current macOS.
+- The bundles carry Afterglow's own libconcord
+  ([harmonic-afterglow/concordance](https://github.com/harmonic-afterglow/concordance),
+  branch `usbnet-link`), which reaches the 900/1000/1100 over USB itself wherever it can
+  claim the remote, and falls back to the network link (Logitech's driver on Windows)
+  where it cannot.
+
+### Fixed
+
+- **Skip and replay keys that did nothing**: a device's own command for them -
+  ChapterNext, NextTrack, Replay and the like - now goes on the skip keys when nothing
+  else is there, as in Logitech's configurations. Existing projects are filled once
+  when opened; imported ones are left as they were.
+- A key Logitech bound to a held command sent it only once when held.
+- Reading a configuration from a remote shortly after a reset could crash: the
+  remote's configuration had grown since it was measured. It is now measured again.
+- Under KDE's Breeze, form fields stayed at their smallest size, leaving the role
+  pickers a few letters wide.
+- An activity could not be left without a Display, Control or Volume device.
+
+### Changed
+
+- The tabs run straight on from the title bar, with no frame of their own; on macOS
+  without a line between them. The current tab's name is no longer underlined under
+  Breeze and Oxygen.
+- Device, activity and button pictures are taken from the Harmony 1100's PNGs, without
+  the speckle the 900's left in every shadow.
+- Each remote's profile decides which tabs, editor pages, settings and languages are
+  shown for it.
+
 ## [0.2.0-beta.1] - 2026-10-06
 
 A beta for testing on real remotes. Everything below passes the test suite and the
