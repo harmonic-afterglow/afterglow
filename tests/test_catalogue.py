@@ -35,14 +35,19 @@ def test_every_config_is_identified(configs):
         assert remotes.identify(header).skin is not None
 
 
-def test_only_verified_profiles_ship():
-    """Untested remotes are not shipped at all - see docs/harmony_pk/remote-identities.md.
-
-    A wrong config on a remote nobody has tried cannot be recovered from a vendor
-    server any more, so an identity that has only been read is not offered as a
-    build target.
-    """
-    assert [p.id for p in remotes.load_all() if not p.verified] == []
+def test_no_untested_remote_can_be_written_or_offered_for_building():
+    """See docs/harmony_pk/remote-identities.md. A wrong config on a remote nobody has
+    tried cannot be recovered from a vendor server any more: a profile that is not
+    verified refuses the normal write, and one that has only been read is not even a
+    build target."""
+    for profile in remotes.load_all():
+        if profile.verified:
+            continue
+        with pytest.raises(remotes.NotWritable):
+            profile.require_writable()
+        if profile.status == remotes.READ_ONLY:
+            with pytest.raises(remotes.NotBuildable):
+                profile.require_buildable()
 
 
 def test_read_only_profile_refuses_to_build_or_write():

@@ -44,8 +44,11 @@ An `experimental` profile can also build an artifact, but normal writing is refu
 wrong on a remote nobody has tested means bricking hardware that can no longer be
 recovered from a vendor server, so the default is no.
 
-**Only the Harmony 900 is verified.** The 1000 and 1100 store configurations the same way
-and have donor evidence, but neither has been flashed. The 880, 890 and 76x use a
+**Only the Harmony 900 is verified.** The Harmony 1100 ships `read-only`: its
+configurations are recognised and import, but every command is a recorded sequence
+([ssir-sequences.md](ssir-sequences.md)) and nothing has been built for one. The 1000
+stores configurations the same way as the 900 and has donor evidence, but has not been
+flashed. The 880, 890 and 76x use a
 different architecture and nothing in these documents applies to them.
 
 ## Adding a remote
