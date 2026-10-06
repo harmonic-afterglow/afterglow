@@ -300,9 +300,15 @@ def remote_label(profile) -> str:
 
 
 class SettingsTab(QWidget):
+    # A field the user edited. Only edits: filling the fields from the project (on
+    # open, on refresh) must not mark it unsaved, so the signals are the user-only ones
+    # where Qt has them, and spin boxes are ignored while `_loading`.
+    changed = pyqtSignal()
+
     def __init__(self, project, parent=None):
         super().__init__(parent)
         self.project = project
+        self._loading = False
         layout = QVBoxLayout(self)
         layout.addWidget(bold("Remote Settings", 11))
         layout.addWidget(sep())
@@ -396,6 +402,16 @@ class SettingsTab(QWidget):
         layout.addStretch()
         self._show_what_the_remote_has()
 
+        for field in (self.out_file, self.first_name, self.last_name):
+            field.textEdited.connect(self.changed)
+        self.locale.activated.connect(self.changed)
+        for widget in self.prefs.values():
+            if isinstance(widget, QComboBox):
+                widget.activated.connect(self.changed)
+            else:
+                widget.valueChanged.connect(
+                    lambda _value: None if self._loading else self.changed.emit())
+
     def _show_what_the_remote_has(self):
         """Offer only what the project's remote has: an RF base needs an RF remote, and
         the persisted-preference files are one family's, not every remote's."""
@@ -423,6 +439,7 @@ class SettingsTab(QWidget):
         from .rf_routing import add_receiver
         if add_receiver(self.project, self):
             self._refresh_blasters()
+            self.changed.emit()
 
     def save(self):
         if "settings" not in self.project:
@@ -450,6 +467,13 @@ class SettingsTab(QWidget):
         return [label for key, label in self.REQUIRED if not str(s.get(key, "")).strip()]
 
     def refresh(self):
+        self._loading = True
+        try:
+            self._refresh()
+        finally:
+            self._loading = False
+
+    def _refresh(self):
         s = self.project.get("settings", {})
         self._show_what_the_remote_has()
         self.out_file.setText(s.get("out_file", ""))
