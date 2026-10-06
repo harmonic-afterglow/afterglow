@@ -33,6 +33,9 @@ Nothing is sent anywhere.
 ## Which remotes are supported?
 
 - Harmony 900
+- Harmony 1100 - experimental: configurations are read, imported and built, and
+  written only through **Test write**, which backs the remote up first and checks
+  the result.
 
 ## Before you start
 
