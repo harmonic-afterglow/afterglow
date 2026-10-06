@@ -1,7 +1,12 @@
 # About these images
 
 These are **Logitech's icons**, extracted from a Harmony 900 firmware image
-(`app-main.swf` inside `61.hfw`) by `tools/export_icons.py`. They are included because
+(`app-main.swf` inside `61.hfw`) by `tools/export_icons.py`, then replaced picture by
+picture with the same drawings from a Harmony 1100 firmware (`app/assets/global/` in
+`63.hfw`, 63.7.7) by `tools/export_icons.py 63.hfw --refine`. The 1100 keeps them as plain
+PNG files rather than SWF bitmaps, so they come out without the speckle that undoing the
+SWF's premultiplied alpha leaves in every shadow. Five buttons the 1100 names differently
+(`live`, `podcasts`, `teletext_off`, `teletext_on`, `teletext_onoff`) are still the 900's. They are included because
 they are the pictures the remote itself draws, and a configuration tool that shows a
 device something other than what its owner sees on the remote is harder to use.
 
@@ -23,7 +28,8 @@ names are listed in `TYPES.md`. Delete the folder and the interface shows no ico
 
 ## How they were processed
 
-Two corrections are applied on the way out, both visible if you skip them:
+Two corrections are applied to the SWF bitmaps on the way out, both visible if you skip
+them (the 1100's PNGs need only the second):
 
 * **Un-premultiplied alpha.** The colour in the source bitmaps is already multiplied by
   the alpha, so compositing them normally darkens the drop shadow twice - icons appear to
