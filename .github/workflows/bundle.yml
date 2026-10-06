@@ -410,7 +410,8 @@ jobs:
           # Nothing may still point into Homebrew: that path does not exist on a
           # user's Mac.
           if find "$app" \( -name '*.dylib' -o -name '*.so' \) -type f -print0 \
-               | xargs -0 otool -L | grep -E "/opt/homebrew|/usr/local/(Cellar|opt)"; then
+               | xargs -0 otool -L \
+               | grep -E "^[[:space:]]+(/opt/homebrew|/usr/local/(Cellar|opt|lib))"; then
             echo "a bundled library still links into Homebrew"; exit 1
           fi
           codesign --verify --deep --strict "$app"
