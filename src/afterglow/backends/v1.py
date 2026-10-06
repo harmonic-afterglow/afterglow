@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import os
 from pathlib import Path
 import shutil
@@ -34,6 +35,18 @@ class Backend:
     def import_project(self, source, profile, context) -> ImportResult:
         project = self.module.import_project(source, out_file=context.get("out_file"))
         return ImportResult(project=project)
+
+    @staticmethod
+    def _as_sold(profile, settings: dict):
+        """The profile under the model number the project's remote carries: the
+        Harmony 1100 is sold as skin 62 and 63, and a header names one of them."""
+        skin = settings.get("skin")
+        if skin is None or skin == profile.skin:
+            return profile
+        if skin not in profile.skins:
+            raise ValueError(f"{profile.model} is not sold as skin {skin}; it is "
+                             f"{', '.join(str(s) for s in profile.skins)}")
+        return dataclasses.replace(profile, skin=skin)
 
     def build_project(self, project: dict, profile, context) -> BuildResult:
         """Run the old lowering/tree-builder sequence entirely inside the adapter."""
@@ -102,7 +115,7 @@ class Backend:
             context.log("Re-hashing IrProto.bin...")
             ezhex.rehash(work)
             context.log(f"Packing -> {output}...")
-            ezhex.pack_standalone(work, output, profile=profile)
+            ezhex.pack_standalone(work, output, profile=self._as_sold(profile, settings))
         finally:
             os.chdir(original_cwd)
             shutil.rmtree(work, ignore_errors=True)

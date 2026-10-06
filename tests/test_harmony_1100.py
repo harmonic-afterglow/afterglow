@@ -15,14 +15,29 @@ import zipfile
 
 import pytest
 
-from afterglow import ezhex, project_devices, remotes
+from afterglow import ezhex, ir_signal, project_devices, remotes
 from afterglow.backends.harmony_pk import ssir, ssir_sequence
+
+from conftest import ROOT
 
 
 def _payload(path):
     raw = path.read_bytes()
     _header, start, size, _checksum = ezhex._split(raw)
     return zipfile.ZipFile(io.BytesIO(raw[start:start + size]))
+
+
+def _build(project, out):
+    from afterglow.build_service import ConfigBuildService
+    project["settings"].update(out_file=str(out), remote="harmony-1100")
+    with contextlib.redirect_stdout(io.StringIO()):
+        ConfigBuildService(ROOT, lambda _m: None).build(project)
+    return _payload(out)
+
+
+def _xml(archive):
+    import xml.etree.ElementTree as ET
+    return ET.fromstring(archive.read("userconfig/UserConfiguration.xml"))
 
 
 def _import(config, unpacked):
@@ -39,9 +54,12 @@ def test_both_skin_numbers_are_the_harmony_1100():
     assert not remotes.get("harmony-900").matches({"arch": 11, "skin": 62})
 
 
-def test_it_is_read_only_until_a_build_has_been_flashed_and_booted():
-    with pytest.raises(remotes.NotBuildable):
-        remotes.get("harmony-1100").require_buildable()
+def test_it_builds_but_is_written_only_through_the_test_write_flow():
+    """Experimental until a build has been flashed to one and booted."""
+    profile = remotes.get("harmony-1100")
+    profile.require_buildable()
+    with pytest.raises(remotes.NotWritable):
+        profile.require_writable()
 
 
 def test_its_interface_has_no_rf_and_its_own_settings():
@@ -156,3 +174,102 @@ def test_every_property_the_1100_writes_is_declared_for_it(configs_1100, unpacke
             for item in items:
                 for name in item.get("properties") or {}:
                     assert properties.describe(scope, name, catalog)["known"], (scope, name)
+
+
+# building for one
+def test_a_sequence_table_is_rebuilt_byte_for_byte(configs_1100):
+    for config in configs_1100:
+        stored = _payload(config).read("userconfig/SsIr.bin")
+        assert ssir_sequence.build(ssir_sequence.parse(stored)) == stored
+
+
+def test_an_imported_configuration_rebuilds_as_logitech_wrote_it(configs_1100, unpacked,
+                                                                  tmp_path):
+    """Every command plays the sequences it played, every key and touchscreen button is
+    where it was, and nothing the 1100 does not have is added."""
+    from collections import Counter
+    import xml.etree.ElementTree as ET
+
+    def text(element):
+        return ET.tostring(element, encoding="unicode")
+
+    for config in configs_1100:
+        original = _payload(config)
+        built = _build(_import(config, unpacked), tmp_path / f"{config.stem}.ezhex")
+        assert built.read("userconfig/SsIr.bin") == original.read("userconfig/SsIr.bin")
+        names = set(built.namelist())
+        assert not names & {"userconfig/IrProto.bin", "userconfig/ActionLists.xml",
+                            "platformconfig/XmlUserRfSetting.xml"}
+        header, *_rest = ezhex._split((tmp_path / f"{config.stem}.ezhex").read_bytes())
+        donor_header, *_rest = ezhex._split(config.read_bytes())
+        assert remotes.identity_of(header) == remotes.identity_of(donor_header)
+
+        want, got = _xml(original), _xml(built)
+        assert text(want.find("Controller")) == text(got.find("Controller"))
+        for before, after in zip(want.findall("Device"), got.findall("Device")):
+            assert [c.tag for c in before] == [c.tag for c in after]
+            assert ([text(c) for c in before.findall("Commands/Command")]
+                    == [text(c) for c in after.findall("Commands/Command")])
+        rebuilt = {a.findtext("Id"): a for a in got.findall("Activity")}
+        for activity in want.findall("Activity"):
+            again = rebuilt[activity.findtext("Id")]
+            groups = {g.get("name"): text(g)
+                      for g in again.findall("Presentation/ControlGroup")}
+            for group in activity.findall("Presentation/ControlGroup"):
+                if group.get("name") == "HardButtons":
+                    keys = {b.get("name"): b.findtext("ActionId") for b in group}
+                    assert keys == {b.get("name"): b.findtext("ActionId") for b in
+                                    again.find("Presentation/ControlGroup[@name="
+                                               "'HardButtons']")}
+                else:
+                    assert groups[group.get("name")] == text(group)
+        assert (Counter(text(a) for a in want.findall("ActionList"))
+                == Counter(text(a) for a in got.findall("ActionList")))
+
+
+def _device(device_id, signals):
+    return {"schema": "afterglow-project-device/1", "id": device_id,
+            "label": f"D{device_id}", "type": "Television", "mfr": "T", "model": "M",
+            "commands": [[name, name, "", "", None] for name in signals],
+            "signals": signals, "press_presilence": 500, "hold_presilence": 50}
+
+
+def test_a_device_from_anywhere_is_rendered_into_sequences(tmp_path):
+    """No protocol programs on the 1100: a protocol signal is played from a recording
+    the build makes - one per toggle state, the hold restarting at its repeat."""
+    project = {"settings": {}, "activities": [], "devices": [
+        _device("1", {"PowerToggle": ir_signal.protocol_signal(
+            "nec1", {"address": 4, "command": 8})}),
+        _device("2", {"PowerToggle": ir_signal.protocol_signal(
+            "rc6-mce", {"code": 0x0F040C | 0x8000000}),
+                      "Mute": ir_signal.protocol_signal("rc6-mce", {"code": 0x0F040E | 0x8000000})})]}
+    built = _build(project, tmp_path / "rendered.ezhex")
+    nec, rc6 = ssir_sequence.parse(built.read("userconfig/SsIr.bin"))
+    assert len(nec) == 2 and len(rc6) == 4                 # presses, then holds
+    assert len(nec[0].variants) == 1 and len(rc6[0].variants) == 2
+    assert 37000 < nec[0].carrier_hz < 39000 and 35000 < rc6[0].carrier_hz < 37000
+    for press, hold in ((nec[0], nec[1]), (rc6[0], rc6[2]), (rc6[1], rc6[3])):
+        for variant in press.variants:
+            assert len(variant.segments()) == 1 and variant.repeat_at is None
+            assert variant.segments()[0][0] == -500_000    # PressPreSilence, recorded
+        for variant in hold.variants:
+            assert len(variant.segments()) == 2 and variant.repeat_at
+    xml = _xml(built)
+    data = xml.find("Device[Id='2']/Commands/Command[Name='Mute']/Data")
+    assert data.findtext("Press/SequenceIndex") == "1"
+    assert data.findtext("Hold/SequenceIndex") == "3"
+    assert data.findtext("Press/DeviceIndex") == "1"
+    assert xml.find("Device/ControllerId").text == "0"
+
+
+def test_a_build_for_the_skin_it_was_imported_from(tmp_path):
+    """The same remote sold as 62 and 63: the header names the one it is."""
+    project = {"settings": {"skin": 62}, "activities": [], "devices": [_device("1", {
+        "PowerToggle": ir_signal.protocol_signal("nec1", {"address": 4, "command": 8})})]}
+    _build(project, tmp_path / "62.ezhex")
+    header, *_rest = ezhex._split((tmp_path / "62.ezhex").read_bytes())
+    assert remotes.identity_of(header)["skin"] == 62
+    project["settings"]["skin"] = 61
+    with pytest.raises(ValueError, match="skin 61"):
+        _build(project, tmp_path / "61.ezhex")
+

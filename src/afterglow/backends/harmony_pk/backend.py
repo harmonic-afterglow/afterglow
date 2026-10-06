@@ -399,9 +399,42 @@ def _native_requirement(signal: dict, library, emissions: dict) -> tuple[
     return None, None, None
 
 
+def _lower_for_playback(devices: list[dict], library) -> list[dict]:
+    """Every command as the press and hold sequences a playback remote stores.
+
+    No protocol program is involved, so nothing is refused for lack of one: whatever
+    renders plays. A command that cannot be rendered is named, with its device.
+    """
+    from . import ssir_sequence
+    lowered, problems = [], []
+    for source in devices:
+        device = project_devices.clean(source)
+        device.pop("schema", None)
+        sequences = {}
+        for name, *_rest in device.get("commands") or []:
+            signal = (device.get("signals") or {}).get(name)
+            try:
+                if signal is None:
+                    raise ValueError("it has no signal")
+                sequences[name] = ssir_sequence.for_signal(
+                    signal, press_presilence=int(device.get("press_presilence", 1000)),
+                    hold_presilence=int(device.get("hold_presilence", 50)),
+                    library=library)
+            except (LookupError, ValueError) as exc:
+                problems.append(f"{device.get('label') or device.get('id')} / {name}: {exc}")
+        device["_sequences"] = sequences
+        lowered.append(device)
+    if problems:
+        raise ValueError("these commands cannot be played back on this remote:\n  "
+                         + "\n  ".join(problems))
+    return lowered
+
+
 def lower_devices(devices: list[dict], profile, *, library=None) -> list[dict]:
     """Portable project devices -> transient dictionaries consumed by arch-15 builder."""
     library = ir_protocol.LIBRARY if library is None else library
+    if (profile.infrared or {}).get("playback") == "device-sequence":
+        return _lower_for_playback(devices, library)
     lowered = []
     emissions = {}
     for source in devices:

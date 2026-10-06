@@ -1,0 +1,14 @@
+userconfig/
+userconfig/UserConfiguration.xml
+userconfig/SsRf.bin
+userconfig/SsIr.bin
+.version
+.preinstall
+.postinstall
+META-INF/
+META-INF/MANIFEST.MF
+platformconfig/
+platformconfig/tiltcfg.dat
+platformconfig/sleepcfg.dat
+platformconfig/pmiccfg.dat
+platformconfig/batt_lvls.dat

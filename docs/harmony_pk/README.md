@@ -27,5 +27,6 @@ that invents meaning for bytes it cannot regenerate is worse than one that admit
 
 The Harmony 900 is the only remote verified end to end. The 1000 and 1100 store
 configurations the same way and have donor evidence, but are not claimed compatible until
-a real flash and boot confirms it. The 880, 890 and 76x use a different architecture
+a real flash and boot confirms it; the 1100 builds, for testing through the recovery-backed
+test write. The 880, 890 and 76x use a different architecture
 entirely and none of this applies to them.

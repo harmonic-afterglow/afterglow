@@ -149,3 +149,137 @@ def first_frame(sequence: Sequence) -> list[int]:
     while pulses and pulses[0] < 0:
         pulses.pop(0)
     return pulses
+
+
+def _p24(value: int) -> bytes:
+    if not 0 <= value < 1 << 24:
+        raise ValueError(f"SsIr.bin offset {value:#x} does not fit in three bytes")
+    return bytes((value & 0xFF, value >> 8 & 0xFF, value >> 16))
+
+
+def build(devices: list[list[Sequence]]) -> bytes:
+    """Sequences by DeviceIndex then SequenceIndex -> an `SsIr.bin`.
+
+    Laid out as Logitech's are: each sequence's waveforms, then its carrier descriptors,
+    then its record; after every device's pool, the device tables; the root last. A
+    waveform identical to one already stored is pointed at rather than stored again.
+    """
+    out = bytearray(b"\x00" * 5)
+    tables = []
+    stored: dict[tuple[int, ...], int] = {}      # an identical waveform is stored once
+    for sequences in devices:
+        records = []
+        for sequence in sequences:
+            waves = []
+            for variant in sequence.variants:
+                if variant.words in stored:
+                    waves.append(stored[variant.words])
+                    continue
+                stored[variant.words] = len(out)
+                waves.append(len(out))
+                out += struct.pack(f"<{len(variant.words)}H", *variant.words)
+            carriers = []
+            for descriptor in sequence.carriers:
+                carriers.append(len(out))
+                out += descriptor
+            records.append(len(out))
+            out.append(len(carriers))
+            for position in carriers:
+                out += _p24(position)
+            out.append(len(sequence.variants))
+            for start, variant in zip(waves, sequence.variants):
+                repeat = start + 2 * variant.repeat_at if variant.repeat_at is not None else 0
+                out += _p24(start) + _p24(repeat) + variant.tail
+        tables.append(records)
+    positions = []
+    for records in tables:
+        positions.append(len(out))
+        out += b"\x00" + struct.pack("<H", len(records))
+        for record in records:
+            out += _p24(record)
+    root = len(out)
+    out.append(len(positions))
+    for position in positions:
+        out += _p24(position)
+    struct.pack_into("<H", out, 0, VERSION)
+    out[2:5] = _p24(root)
+    return bytes(out)
+
+
+# from portable signals
+_MAX_VARIANTS = 4                  # toggle states a protocol may cycle through
+
+
+def _words(pulses) -> list[int]:
+    """Signed microseconds -> stored words; a duration over 32767 us is split."""
+    out = []
+    for pulse in pulses:
+        mark, length = pulse > 0, abs(int(pulse))
+        while length > 0:
+            part = min(length, 0x7FFF)
+            out.append((_MARK | part) if mark else part)
+            length -= part
+    return out
+
+
+def carrier_descriptor(carrier_hz: int) -> bytes:
+    """A carrier as the 1100 stores it: the period and half of it as on-time, in ns."""
+    period = round(1e9 / carrier_hz)
+    return b"\x00" + _p24(period) + _p24(period // 2)
+
+
+def _segment(pulses, silence_ms: int = 0) -> list[int]:
+    return _words(([-int(silence_ms) * 1000] if silence_ms else []) + list(pulses)) \
+        + list(SEGMENT_END)
+
+
+def _renders(signal: dict, library) -> tuple[int, list[tuple[list[int], list[int]]]]:
+    """(carrier Hz, [(press pulses, hold pulses) per toggle state])."""
+    from ... import ir_protocol
+    if signal["kind"] == "waveform":
+        pulses = list(signal["pulses_us"])
+        return int(signal.get("carrier_hz") or 38000), [(pulses, pulses)]
+    if signal["kind"] != "protocol":
+        raise ValueError(f"a {signal['kind']} signal has nothing to play back")
+    variants, state, carrier = [], None, 38000
+    for _ in range(_MAX_VARIANTS):
+        press, after = ir_protocol.render_transmission(signal, phase="press", state=state,
+                                                       library=library)
+        hold, _ignored = ir_protocol.render_transmission(signal, phase="hold",
+                                                         state=after, library=library)
+        carrier = press["carrier_hz"] if press else carrier
+        pair = (press["pulses_us"] if press else [],
+                hold["pulses_us"] if hold else [])
+        if variants and pair == variants[0]:
+            break                                   # the toggle state has cycled back
+        variants.append(pair)
+        state = after
+    return carrier, variants
+
+
+def for_signal(signal: dict, *, press_presilence: int, hold_presilence: int,
+               library=None) -> tuple[Sequence, Sequence]:
+    """(press, hold) sequences that play `signal` on a Harmony 1100.
+
+    A signal read from an 1100 carries Logitech's own sequences and gets them back
+    unchanged. Anything else is rendered: one variant per toggle state; a press is the
+    device's press presilence and one frame; a hold is its hold presilence and one
+    frame, then the frame the protocol repeats while held, where it restarts.
+    """
+    from . import NAME
+    evidence = ((signal.get("native") or {}).get(NAME) or {})
+    if evidence.get("format") == "device-sequence" and "press" in evidence:
+        press = Sequence.from_native(evidence["press"])
+        hold = Sequence.from_native(evidence["hold"]) if "hold" in evidence else press
+        return press, hold
+    carrier, renders = _renders(signal, library)
+    descriptor = (carrier_descriptor(carrier),)
+    press_variants, hold_variants = [], []
+    for press, hold in renders:
+        if not press:
+            raise ValueError(f"{signal.get('name') or 'a command'} renders to nothing")
+        press_variants.append(Variant(tuple(_segment(press, press_presilence)), None))
+        start = _segment(press, hold_presilence)
+        hold_variants.append(Variant(tuple(start + _segment(hold or press)), len(start)))
+    return (Sequence(descriptor, tuple(press_variants)),
+            Sequence(descriptor, tuple(hold_variants)))

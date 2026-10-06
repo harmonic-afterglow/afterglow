@@ -47,9 +47,22 @@ def _gen_device(spec):
         """-1 for a recorded waveform: it has no protocol block."""
         return -1 if ssir.is_raw(raw_codes.get(name, "")) else proto_for(name)
 
-    cmd_xml = "".join(
-        f"<Command><Name>{esc(n)}</Name><Data><Protocol>{protocol_of(n)}</Protocol>"
-        f"<Code>{code_for(n,a,c)}</Code></Data></Command>" for n,_l,a,c,_h in cmds)
+    # A remote that plays recorded sequences (the Harmony 1100) names, per command, the
+    # press and hold sequences in SsIr.bin instead of a protocol and a code.
+    # Format reference: docs/harmony_pk/ssir-sequences.md
+    sequence_refs = spec.get("_sequence_refs")
+    if sequence_refs is not None:
+        cmd_xml = "".join(
+            f"<Command><Name>{esc(n)}</Name><Data><ControllerId>0</ControllerId>"
+            f"<Press><DeviceIndex>{sequence_refs[n][0]}</DeviceIndex>"
+            f"<SequenceIndex>{sequence_refs[n][1]}</SequenceIndex></Press>"
+            f"<Hold><DeviceIndex>{sequence_refs[n][0]}</DeviceIndex>"
+            f"<SequenceIndex>{sequence_refs[n][2]}</SequenceIndex></Hold></Data></Command>"
+            for n, *_rest in cmds)
+    else:
+        cmd_xml = "".join(
+            f"<Command><Name>{esc(n)}</Name><Data><Protocol>{protocol_of(n)}</Protocol>"
+            f"<Code>{code_for(n,a,c)}</Code></Data></Command>" for n,_l,a,c,_h in cmds)
     # Defaults, not constants: a device that carries its own timing keeps it.
     pre_sil  = spec.get("press_presilence", 1000)
     inter    = spec.get("press_interkey", 500)
@@ -275,10 +288,16 @@ def _gen_device(spec):
                                         **({"AlwaysOn": always} if always else {})
                                         }.items())
                  + "</Properties>")
-    device = (f"<Device><Id>{did}</Id><Type>{spec['type']}</Type>"
-              f"<Manufacturer>{esc(spec.get('mfr', ''))}</Manufacturer>"
-              f"<Model>{esc(spec.get('model', ''))}</Model>"
-              f"{presentation}{dev_props}{states}{numeric_xml}<Commands>{cmd_props}{cmd_xml}</Commands></Device>")
+    identity = (f"<Device><Id>{did}</Id><Type>{spec['type']}</Type>"
+                f"<Manufacturer>{esc(spec.get('mfr', ''))}</Manufacturer>"
+                f"<Model>{esc(spec.get('model', ''))}</Model>")
+    commands = f"<Commands>{cmd_props}{cmd_xml}</Commands></Device>"
+    if sequence_refs is not None:
+        # Logitech's 1100 order: the controller, then Properties before Presentation.
+        device = (f"{identity}<ControllerId>0</ControllerId>{dev_props}{presentation}"
+                  f"{states}{numeric_xml}{commands}")
+    else:
+        device = f"{identity}{presentation}{dev_props}{states}{numeric_xml}{commands}"
 
     al = "".join(
         f'<ActionList name="{did}_{esc(n)}_Hold"><Action><Target>Device</Target>'
