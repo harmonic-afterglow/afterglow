@@ -65,6 +65,20 @@ class NotBuildable(PermissionError):
     """Refusing to build for a profile that has not entered controlled testing."""
 
 
+def comparable(field: str, value):
+    """An identity value in the form a configuration file and a live remote share.
+
+    The board is major.minor.micro, and only the first two are recorded anywhere but
+    the live remote: Concordance writes every dump's header as `%i.%i.0`, and Logitech's
+    own Harmony 900 files all say 0.1.0, while a live 900 reports its real micro
+    revision (0.1.15 on one). Comparing all three refused remotes that are the same
+    model, so the micro revision is left out of every comparison.
+    """
+    if field == "board" and isinstance(value, str):
+        return ".".join(value.split(".")[:2])
+    return value
+
+
 @dataclass(frozen=True)
 class RemoteProfile:
     id: str
@@ -223,7 +237,7 @@ class RemoteProfile:
             if actual is None or actual == -1:
                 if require_all:
                     mismatches.append(f"{name} is unavailable (expected {expected})")
-            elif actual != expected:
+            elif comparable(name, actual) != comparable(name, expected):
                 mismatches.append(f"{name} is {actual} (expected {expected})")
 
         firmware = identity.get("firmware")

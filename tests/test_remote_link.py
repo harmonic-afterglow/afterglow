@@ -92,6 +92,30 @@ def test_writing_accepts_a_config_for_this_remote(a_config):
     concord.Remote._verify_intended_for(Path(a_config), identity)
 
 
+def test_writing_accepts_a_900_whose_board_micro_revision_differs(a_config):
+    """Every file records the board as major.minor.0 - Concordance writes the micro part
+    as 0 - while a live Harmony 900 reports its real one. A remote saying 0.1.15 was
+    refused a file saying 0.1.0: the same model, turned away for a number no file has."""
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    assert identity["board"] == "0.1.0"
+    identity.update(model="Harmony 900", board="0.1.15")
+    concord.Remote._verify_intended_for(Path(a_config), identity)
+
+
+@pytest.mark.parametrize("board", ["0.2.0", "1.1.0"])
+def test_writing_still_refuses_another_board_major_or_minor(a_config, board):
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Other remote", board=board)
+    with pytest.raises(concord.RemoteError, match="board"):
+        concord.Remote._verify_intended_for(Path(a_config), identity)
+
+
 @pytest.mark.parametrize("field,replacement", [
     ("arch", 12),
     ("flash", "0xff:0xff"),
