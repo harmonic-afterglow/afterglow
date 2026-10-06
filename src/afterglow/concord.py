@@ -621,7 +621,8 @@ class Remote:
         remote_problems = profile.identity_mismatches(identity, require_all=True)
         disagreements = []
         for field in ("arch", "skin", "flash", "board", "software_type"):
-            if wanted.get(field) != identity.get(field):
+            if remotes.comparable(field, wanted.get(field)) != \
+                    remotes.comparable(field, identity.get(field)):
                 disagreements.append(
                     f"{field} differs: file {wanted.get(field)!r}, remote "
                     f"{identity.get(field)!r}")

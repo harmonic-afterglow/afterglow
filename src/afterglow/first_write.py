@@ -85,10 +85,12 @@ def _artifact(path: Path, profile=None) -> tuple[dict, bytes]:
 
 
 def _same_identity(expected: dict, actual: dict, fields=IDENTITY_FIELDS) -> list[str]:
+    from . import remotes
     return [
         f"{field}: expected {expected.get(field)!r}, got {actual.get(field)!r}"
         for field in fields
-        if expected.get(field) != actual.get(field)
+        if remotes.comparable(field, expected.get(field))
+        != remotes.comparable(field, actual.get(field))
     ]
 
 
