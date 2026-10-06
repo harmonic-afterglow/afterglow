@@ -65,12 +65,19 @@ Then:
 
 - **Devices** - from your own library, by **learning codes off the original remote**, from an online database if you enable one, or from a configuration you imported.
 - **Activities** - "Watch TV" turns on the television and the amplifier, switches both to the right input, and routes each key to whichever device should receive it.
+- **Every physical button** in an activity, and **the power plan** - which devices turn on, in what order, and which turn off.
+- **How each device switches inputs** - directly, by stepping through them with one button, or not at all - and how it takes channel numbers.
 - **IR output per device** - the remote's front emitter, or a wireless RF blaster including its two wired mini-emitters. New blasters can be paired from the app.
 - **Remote settings** - clock, key beep, large font, backlight, child lock.
 - **The remote's own artwork** - the device, activity and button icons it draws.
 
 Configurations are built from scratch.
 Importing takes your devices and activities and leaves the other remote's state behind.
+
+**Your files** - projects, backups, your device library and logos - are all in
+`Documents/Afterglow`. To send someone a project, use **File > Export Shareable Project**:
+the `.afterglow` file it writes holds everything needed to build it, and **File > Open**
+reads it.
 
 ## Something went wrong
 
