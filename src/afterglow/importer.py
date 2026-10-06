@@ -1,7 +1,7 @@
 """Dispatch an extracted configuration to its remote architecture backend."""
 from pathlib import Path
 
-from . import backends, remotes
+from . import backends, project_devices, remotes
 
 
 def build_project(extracted_dir, out_file=None):
@@ -13,4 +13,7 @@ def build_project(extracted_dir, out_file=None):
         extracted_dir, profile, {"out_file": out_file})
     # The remote it came off is the remote it is for, until somebody migrates it.
     result.project.setdefault("settings", {})["remote"] = profile.id
+    # Its keys are bound as the configuration had them; none is free to fill.
+    for device in result.project.get("devices") or []:
+        device[project_devices.KEYS_FILLED] = True
     return result.project
