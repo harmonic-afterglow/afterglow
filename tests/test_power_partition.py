@@ -16,7 +16,6 @@ times on and 132 off, and the remote's `Activity.lua` is what declines to power 
 whose AlwaysOn is true.
 """
 import contextlib
-import glob
 import io
 import tempfile
 import xml.etree.ElementTree as ET
@@ -25,11 +24,11 @@ import pytest
 
 from afterglow import ezhex
 from afterglow.importer import build_project
-from conftest import ROOT
+from conftest import donors_of
 
 
 def donor_files():
-    return sorted(glob.glob(str(ROOT / "configs" / "*" / "*.ezhex")))
+    return donors_of("harmony-900")
 
 
 def partition_of(xml_root):

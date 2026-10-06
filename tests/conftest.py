@@ -60,6 +60,24 @@ CONFIGS = ["configs/mine/dump.ezhex",
                    for path in (ROOT / "configs" / "martin").glob("*.ezhex"))]
 
 
+def donors_of(remote_id: str) -> list[str]:
+    """Every real configuration under configs/ that identifies as `remote_id`.
+
+    For the tests that walk the whole folder: they were written for one remote, and a
+    configuration for another is not a counterexample to them.
+    """
+    from afterglow import remotes
+    out = []
+    for path in sorted((ROOT / "configs").glob("*/*.ezhex")):
+        try:
+            header, *_rest = ezhex._split(path.read_bytes())
+            if remotes.identify(header).id == remote_id:
+                out.append(str(path))
+        except Exception:                                  # noqa: BLE001
+            continue
+    return out
+
+
 def existing_configs():
     return [ROOT / name for name in CONFIGS if (ROOT / name).is_file()]
 

@@ -9,12 +9,11 @@ remote's own interface is what notices. Two invariants, held by all six donor co
   it walking an empty list.
 * `<Protocols>` comes last.
 """
-import glob
 import xml.etree.ElementTree as ET
 
 import pytest
 
-from conftest import ROOT
+from conftest import donors_of
 
 REAL_ORDER = ["Properties", "User", "Controller", "Device", "Activity", "Protocols"]
 
@@ -55,7 +54,7 @@ def one_device():
 
 
 # what real configurations do
-@pytest.mark.parametrize("path", sorted(glob.glob(str(ROOT / "configs" / "*" / "*.ezhex"))),
+@pytest.mark.parametrize("path", donors_of("harmony-900"),
                          ids=lambda p: "/".join(p.split("/")[-2:]))
 def test_a_real_config_never_claims_a_new_device_without_flagging_one(path, unpacked):
     root = ET.parse(f'{unpacked(path)}/userconfig/UserConfiguration.xml').getroot()
@@ -63,7 +62,7 @@ def test_a_real_config_never_claims_a_new_device_without_flagging_one(path, unpa
         assert flagged_new(root), "claims a new device but flags none"
 
 
-@pytest.mark.parametrize("path", sorted(glob.glob(str(ROOT / "configs" / "*" / "*.ezhex"))),
+@pytest.mark.parametrize("path", donors_of("harmony-900"),
                          ids=lambda p: "/".join(p.split("/")[-2:]))
 def test_a_real_config_ends_with_protocols(path, unpacked):
     root = ET.parse(f'{unpacked(path)}/userconfig/UserConfiguration.xml').getroot()
