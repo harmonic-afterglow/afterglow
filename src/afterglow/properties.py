@@ -100,6 +100,14 @@ def describe(scope: str, name: str, cat: dict | None = None) -> dict:
     name is still presentable rather than a hole in the interface."""
     cat = cat if cat is not None else catalog()
     entry = dict(cat.get(scope, {}).get(name) or {})
+    if not entry:
+        # Not one this remote declares - carried from a configuration - but if its
+        # meaning is known, show it by name rather than as a bare identifier. It still
+        # reads as unrecognised for this remote below.
+        shared = definitions().get(scope, {}).get(name)
+        if isinstance(shared, dict):
+            entry = {k: v for k, v in shared.items() if k in ("type", "casing", "label",
+                                                              "description", "values")}
     entry.setdefault("type", "text")
     entry.setdefault("label", name)
     entry.setdefault("description", "")

@@ -25,6 +25,54 @@
       "label": "Show hard buttons",
       "type": "bool"
     },
+    "ControlGroup_HardButtons": {
+      "casing": "title",
+      "description": "Show the physical-button group. The Harmony 1100's spelling of ControlGroup_Hard Buttons.",
+      "label": "Show hard buttons",
+      "type": "bool"
+    },
+    "ControlGroup_Transport": {
+      "casing": "title",
+      "description": "Show the touchscreen page of transport buttons: play, pause, skip.",
+      "label": "Show transport buttons",
+      "type": "bool"
+    },
+    "ControlGroup_Numbers": {
+      "casing": "title",
+      "description": "Show the touchscreen number pad.",
+      "label": "Show number pad",
+      "type": "bool"
+    },
+    "ControlGroup_Misc": {
+      "casing": "title",
+      "description": "Show the touchscreen page of the activity's own extra buttons.",
+      "label": "Show extra buttons",
+      "type": "bool"
+    },
+    "ControlGroup_Discs": {
+      "casing": "title",
+      "description": "Show the touchscreen page for choosing a disc in a changer.",
+      "label": "Show disc buttons",
+      "type": "bool"
+    },
+    "ControlGroup_GameController": {
+      "casing": "title",
+      "description": "Show the touchscreen game-controller page.",
+      "label": "Show game controller",
+      "type": "bool"
+    },
+    "ControlGroup_Favorites": {
+      "casing": "title",
+      "description": "Show the touchscreen page of favourite channels.",
+      "label": "Show favourite channels",
+      "type": "bool"
+    },
+    "HideModePlayGroup": {
+      "casing": "title",
+      "description": "Hide the Play group page.",
+      "label": "Hide Play group page",
+      "type": "bool"
+    },
     "ControlGroup_Soft Buttons": {
       "casing": "title",
       "description": "Show the on-screen button group.",
