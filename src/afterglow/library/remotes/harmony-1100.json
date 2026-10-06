@@ -182,7 +182,7 @@
     "hard_key_layout": []
   },
   "properties": {
-    "_comment": "The Harmony 900's, until measured on 1100 configurations; the one examined uses no property outside them except HideModePlayGroup, which is carried as unrecognised.",
+    "_comment": "The Harmony 900's, until measured on 1100 configurations, plus what the one examined uses that the 900 does not: its touchscreen page groups (ControlGroup_*, spelt HardButtons without the 900's space) and HideModePlayGroup, measured from its five activities.",
     "device": {
       "AudioSwitch": {
         "applies_to": [
@@ -503,16 +503,6 @@
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
-      "ControlGroup_Hard Buttons": {
-        "applies_to": "all",
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 23
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
       "ControlGroup_Soft Buttons": {
         "applies_to": [
           "VirtualDvd",
@@ -789,6 +779,106 @@
         "default_from": "observed",
         "observed": {
           "False": 20
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_HardButtons": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualDvd",
+          "VirtualGameConsole",
+          "VirtualGeneric",
+          "VirtualRadioSimple"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 5
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Misc": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualDvd",
+          "VirtualGameConsole",
+          "VirtualGeneric",
+          "VirtualRadioSimple"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 5
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Numbers": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualDvd",
+          "VirtualGameConsole",
+          "VirtualGeneric",
+          "VirtualRadioSimple"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 5
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Transport": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualDvd",
+          "VirtualGameConsole",
+          "VirtualGeneric"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 4
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Discs": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualDvd"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 2
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_GameController": {
+        "applies_to": [
+          "VirtualGameConsole"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 1
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "HideModePlayGroup": {
+        "applies_to": [
+          "VirtualCdJukebox"
+        ],
+        "default": "False",
+        "default_from": "observed",
+        "observed": {
+          "False": 1
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"

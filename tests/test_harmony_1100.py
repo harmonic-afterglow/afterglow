@@ -143,3 +143,16 @@ def test_remote_settings_for_an_1100_show_its_settings_and_no_blasters(qapp_or_s
     assert tab.prefs["backlight_level"].maximum() == 255
     assert tab.prefs["backlight_level"].value() == 10
     assert not tab.form.isRowVisible(tab.blaster_row)
+
+
+def test_every_property_the_1100_writes_is_declared_for_it(configs_1100, unpacked):
+    """Shown as a setting of this remote, not as an unrecognised carry-over."""
+    from afterglow import properties
+    catalog = properties.catalog(remotes.get("harmony-1100"))
+    for config in configs_1100:
+        project = _import(config, unpacked)
+        for scope, items in (("device", project["devices"]),
+                             ("activity", project["activities"])):
+            for item in items:
+                for name in item.get("properties") or {}:
+                    assert properties.describe(scope, name, catalog)["known"], (scope, name)
