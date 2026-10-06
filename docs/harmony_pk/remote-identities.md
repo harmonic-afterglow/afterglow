@@ -44,9 +44,10 @@ An `experimental` profile can also build an artifact, but normal writing is refu
 wrong on a remote nobody has tested means bricking hardware that can no longer be
 recovered from a vendor server, so the default is no.
 
-**Only the Harmony 900 is verified.** The Harmony 1100 ships `read-only`: its
-configurations are recognised and import, but every command is a recorded sequence
-([ssir-sequences.md](ssir-sequences.md)) and nothing has been built for one. The 1000
+**Only the Harmony 900 is verified.** The Harmony 1100 is `experimental`: its
+configurations import and build - every command rendered into recorded sequences
+([ssir-sequences.md](ssir-sequences.md)), a Logitech configuration rebuilding to the same
+sequence table byte for byte - but no build has yet been flashed to one. The 1000
 stores configurations the same way as the 900 and has donor evidence, but has not been
 flashed. The 880, 890 and 76x use a
 different architecture and nothing in these documents applies to them.

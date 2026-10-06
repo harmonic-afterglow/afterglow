@@ -441,10 +441,23 @@ class _HarmonyPkImport:
                 return remotes.identify(handle.read())
         return remotes.default()
 
+    def _skin(self):
+        from ... import remotes
+        header = os.path.join(self._extracted_dir, ".ezhex_header")
+        if not os.path.isfile(header):
+            return None
+        with open(header, "rb") as handle:
+            return remotes.identity_of(handle.read()).get("skin")
+
     def _read_settings(self):
         rf = extract_rf(self._extracted_dir)
         if rf:
             self._project["settings"]["rf"] = rf
+        # One remote sold under several model numbers (the 1100 is skin 62 and 63) is
+        # built for the number this one carries, not the profile's first.
+        skin = self._skin()
+        if skin is not None and skin != self._remote().skin:
+            self._project["settings"]["skin"] = skin
         self._project["settings"].update(
             read_preferences(self._extracted_dir, self._remote()))
     
@@ -682,6 +695,46 @@ class _HarmonyPkImport:
             from .backend import migrate_legacy_device
             self._project["devices"].append(migrate_legacy_device(dev))
 
+    def _screen_groups(self, activity):
+        """The activity's touchscreen pages, as stored, when they are more than one list.
+
+        The Harmony 1100 lays an activity out in named pages - Transport, Numbers,
+        GameController, Discs - and pins buttons to named places on them (SideBarLeft1,
+        Play, Number7). The plain list of on-screen buttons keeps neither, so an activity
+        with either is kept page by page, every button in its place. Returns None for one
+        that is a plain list, which stays in `soft_buttons`.
+        """
+        groups = [cg for cg in activity.findall('Presentation/ControlGroup')
+                  if cg.attrib.get('name') != 'HardButtons']
+        plain = all(cg.attrib.get('name') in ('Misc', 'SoftButtons')
+                    and not any(b.attrib.get('name') for b in cg.findall('Button'))
+                    for cg in groups)
+        if plain:
+            return None
+        out = []
+        for cg in groups:
+            buttons = []
+            for btn in cg.findall('Button'):
+                action_id = btn.findtext('ActionId') or ""
+                entry = {}
+                if btn.attrib.get('name'):
+                    entry["slot"] = btn.attrib['name']
+                entry["label"] = html.unescape(btn.findtext('Label') or "")
+                if btn.findtext('Icon'):
+                    entry["icon"] = btn.findtext('Icon')
+                if btn.findtext('Position') is not None:
+                    entry["position"] = int(btn.findtext('Position'))
+                if action_id in self._macros:
+                    entry["macro"] = self._macros[action_id]
+                else:
+                    did, cmd = parse_action_id(action_id)
+                    if not (did and cmd):
+                        continue
+                    entry.update(device=did, command=cmd)
+                buttons.append(entry)
+            out.append([cg.attrib.get('name'), buttons])
+        return out
+
     def _read_activities(self):
         # 4. Extract Activities
         for a in self._root.findall('Activity'):
@@ -750,11 +803,14 @@ class _HarmonyPkImport:
             from .builder.activities import _default_hard_buttons
             implied_hard = _default_hard_buttons(
                 act, {device["id"]: device for device in self._project["devices"]})
+            screen_groups = self._screen_groups(a)
+            if screen_groups:
+                act["screen_groups"] = screen_groups
             for cg in a.findall('Presentation/ControlGroup'):
                 # An activity's on-screen buttons are stored in a group named "Misc" - which is
                 # what the builder writes too. Reading only "SoftButtons" meant a config this
                 # tool produced could not be imported back: the buttons were simply not seen.
-                if cg.attrib.get('name') in ('Misc', 'SoftButtons'):
+                if cg.attrib.get('name') in ('Misc', 'SoftButtons') and not screen_groups:
                     for btn in cg.findall('Button'):
                         label = html.unescape(btn.find('Label').text or "")
                         did, cmd = parse_action_id(btn.find('ActionId').text)

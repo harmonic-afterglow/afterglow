@@ -67,3 +67,29 @@ RC6) has one per toggle state, in the order the firmware plays them: the Xbox 36
 PowerOff press is `800ff429` then `800f7429`, identical but for RC6's toggle bit. The
 firmware does no toggling of its own. Other protocols have one variant. In the
 configuration examined, all 518 sequences follow this table exactly.
+
+## Building
+
+A build for the 1100 (`"playback": "device-sequence"` in its profile) gives every
+command a press and a hold sequence and numbers them as Logitech does: a device with
+`n` commands has its presses at `0..n-1` and its holds at `n..2n-1`, in command order;
+`DeviceIndex` is the device's position in the configuration.
+
+- A command imported from an 1100 keeps the sequences it was read from, unchanged.
+- Anything else is rendered from its signal (`ssir_sequence.for_signal`): one variant
+  per toggle state, until the protocol's state comes back round; a press is the device's
+  `PressPreSilence` and one frame; a hold is its `HoldPreSilence` and one frame, then the
+  frame repeated while held, where the repeat point is. The carrier descriptor's on-time
+  is half its period, as in every descriptor seen.
+
+The table is laid out as Logitech's are - each sequence's waveforms, its carrier
+descriptors, its record; then the device tables; the root last - and a waveform
+identical to one already written is pointed at rather than written again. Rebuilt this
+way, the configuration examined reproduces its `SsIr.bin` byte for byte.
+
+The rest of the configuration differs from the 900's only where the 1100 does: each
+device has `<ControllerId>0</ControllerId>` and its Properties before its Presentation;
+the action lists go inside `UserConfiguration.xml`, after the activities; there is no
+`ActionLists.xml`, `IrProto.bin` or RF map. An activity's touchscreen pages (Transport,
+Numbers, GameController, Discs, and buttons pinned to SideBar places) are kept page by
+page.

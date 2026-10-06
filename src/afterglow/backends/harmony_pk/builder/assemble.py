@@ -140,26 +140,40 @@ def build(specs, work, request: BuildRequest | None = None):
     # pass a transient it owns; copying here makes that a property of this function
     # instead of something each caller has to know.
     specs = deepcopy(specs)
-    # Recorded waveforms: carry only the ones the devices actually use, renumbered to
-    # their place in the rebuilt table. An index is a position, not an identity - the
-    # same rule the protocol assembler follows.
-    raw_entries, raw_remap = ssir.collect(specs)
-    for spec in specs:
-        for name, code in list((spec.get("raw_codes") or {}).items()):
-            new = raw_remap.get((spec["id"], name))
-            if new:
-                spec["raw_codes"][name] = new
-
     _check_unique_ids(specs, activities)
-    protocols.validate(specs)
-    block_order = protocols.resolve(specs)
-    # Per-protocol metadata (toggle bits) re-emitted at whatever index each block
-    # landed at this time round. Carried by id, written by position.
-    protocol_meta = {block_id: (protocol_meta_by_id or {}).get(block_id)
-                     for block_id in block_order}
-    protocol_entries = "".join(
-        f'<Protocol index="{index}">{inner}</Protocol>'
-        for index, (block_id, inner) in enumerate(protocol_meta.items()) if inner)
+    # A remote that plays recorded sequences (the Harmony 1100) has no protocol table:
+    # lowering gave every command a press and a hold sequence, which are numbered here -
+    # presses 0..n-1, then holds n..2n-1, as Logitech's are - and written to SsIr.bin.
+    playback = any("_sequences" in spec for spec in specs)
+    device_sequences = []
+    if playback:
+        for index, spec in enumerate(specs):
+            names = [command[0] for command in spec["commands"]]
+            presses = [spec["_sequences"][name][0] for name in names]
+            holds = [spec["_sequences"][name][1] for name in names]
+            spec["_sequence_refs"] = {name: (index, i, len(names) + i)
+                                      for i, name in enumerate(names)}
+            device_sequences.append(presses + holds)
+        raw_entries, block_order, protocol_entries = [], [], ""
+    else:
+        # Recorded waveforms: carry only the ones the devices actually use, renumbered
+        # to their place in the rebuilt table. An index is a position, not an identity -
+        # the same rule the protocol assembler follows.
+        raw_entries, raw_remap = ssir.collect(specs)
+        for spec in specs:
+            for name, code in list((spec.get("raw_codes") or {}).items()):
+                new = raw_remap.get((spec["id"], name))
+                if new:
+                    spec["raw_codes"][name] = new
+        protocols.validate(specs)
+        block_order = protocols.resolve(specs)
+        # Per-protocol metadata (toggle bits) re-emitted at whatever index each block
+        # landed at this time round. Carried by id, written by position.
+        protocol_meta = {block_id: (protocol_meta_by_id or {}).get(block_id)
+                         for block_id in block_order}
+        protocol_entries = "".join(
+            f'<Protocol index="{index}">{inner}</Protocol>'
+            for index, (block_id, inner) in enumerate(protocol_meta.items()) if inner)
 
     # The all-off activity. When a config was imported it says which devices it turns
     # off; otherwise every device that can be powered off is listed.
@@ -270,16 +284,21 @@ def build(specs, work, request: BuildRequest | None = None):
     # settings["rf"]="front" rewrites it so every device emits from this remote's front
     # IR LED (see harmony_pk.rf.apply_rf_setting). Stale assignments are pruned so the map can never
     # reference a device this config does not have.
+    #
+    # A remote without RF blasters (the Harmony 1100) has no RF map at all, and a project
+    # carries the "front" default whatever its remote, so it is never written for one.
+    from .... import remotes
+    profile = remotes.for_project({"settings": settings or {}})
     rf = (settings or {}).get("rf")
     if isinstance(rf, dict) and rf.get("assign"):
         ids = {str(s.get("id")) for s in specs}
         rf = {**rf, "assign": {d: t for d, t in rf["assign"].items() if str(d) in ids}}
-    apply_rf_setting(work, rf)
+    if "rf_blasters" in profile.settings_fields:
+        apply_rf_setting(work, rf)
     # The remote's own preferences live in platformconfig/system_*.dat. The time format
     # is ALSO an XML property below; both have to be written or the config disagrees with
     # itself and the remote follows the file, not the XML.
-    from .... import remotes
-    apply_preferences(work, settings, remotes.for_project({"settings": settings or {}}))
+    apply_preferences(work, settings, profile)
     # The scaffold's <Protocols> holds only a <Hash>; put the carried per-protocol
     # entries back in front of it, where real configs keep them.
     if protocol_entries:
@@ -289,6 +308,18 @@ def build(specs, work, request: BuildRequest | None = None):
     # on Windows: a command name outside it stops the build with a UnicodeEncodeError, and
     # one inside it is written as cp1252 bytes in a file that says it is UTF-8. `esc()`
     # escapes only & < >, so any non-ASCII command name reaches here as itself.
+    if playback:
+        # The 1100 keeps its action lists inside UserConfiguration.xml, after the
+        # activities, and has no ActionLists.xml or IrProto.bin of its own.
+        new_uc = new_uc[:new_uc.rindex("</Root>")] + "".join(actionlists) + "</Root>"
+        from .. import ssir_sequence
+        with open(f"{work}/userconfig/UserConfiguration.xml", "w", encoding="utf-8") as file:
+            file.write(new_uc)
+        with open(os.path.join(work, "userconfig", "SsIr.bin"), "wb") as file:
+            file.write(ssir_sequence.build(device_sequences))
+        sequences = sum(len(found) for found in device_sequences)
+        print(f"built {len(specs)} device(s), {sequences} recorded sequence(s) -> {work}/")
+        return
     with open(f"{work}/userconfig/UserConfiguration.xml", "w", encoding="utf-8") as file:
         file.write(new_uc)
     with open(os.path.join(work, "userconfig", "ActionLists.xml"),

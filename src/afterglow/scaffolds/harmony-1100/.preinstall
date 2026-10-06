@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if test -z "$CONFIGHOME"; then
+    CONFIGHOME=/usr/data
+    export CONFIGHOME
+fi
+
+rm -rf $CONFIGHOME/userconfig
+

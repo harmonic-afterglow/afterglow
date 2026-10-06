@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root><Properties><Property name="version">1.0</Property><Property name="LastUpdated">20260101 000000</Property></Properties><User><Id>10000000</Id><Properties><Property name="LocaleId">enu</Property></Properties><Presentation><FirstName>Harmony</FirstName><LastName>User</LastName></Presentation></User><Controller><Id>0</Id><Type>Device Sequence</Type><Manufacturer>Logitech</Manufacturer><Model>Harmony 1000-ish</Model><Properties/><Presentation><Label>Harmony 1000-ish</Label></Presentation></Controller></Root>

@@ -20,10 +20,26 @@ _ACT_DEFAULTS = {
 }
 
 
-def _act_props(act):
+def _defaults_for(remote=None) -> dict:
+    """The new-activity defaults this remote has, under the name it spells them with.
+
+    Models spell some properties differently - the Harmony 1100 writes
+    ControlGroup_HardButtons where the 900 writes ControlGroup_Hard Buttons - and a
+    default the remote does not declare at all is not one of its settings.
+    """
+    declared = set(vocabulary_profile(remote).properties.get("activity") or {})
+    if not declared:
+        return dict(_ACT_DEFAULTS)
+    by_squashed = {name.replace(" ", ""): name for name in declared}
+    return {by_squashed[name.replace(" ", "")]: value
+            for name, value in _ACT_DEFAULTS.items()
+            if name.replace(" ", "") in by_squashed}
+
+
+def _act_props(act, remote=None):
     # An imported activity's properties are complete as they are: adding a default the
     # configuration did not have changes what the remote does with it.
-    defaults = {} if act.get("properties_complete") else _ACT_DEFAULTS
+    defaults = {} if act.get("properties_complete") else _defaults_for(remote)
     props = {**defaults, **(act.get("properties") or {})}
     return ("<Properties>"
             + "".join(f'<Property name="{esc(k)}">{esc(str(v))}</Property>'
@@ -132,6 +148,36 @@ def _held_command(macro) -> bool:
             and macro[0][3] == "Hold")
 
 
+def _screen_groups_xml(act):
+    """An activity's touchscreen pages, page by page (the Harmony 1100's layout).
+
+    Returns (the ControlGroups' XML, the ActionLists their macro buttons need).
+    """
+    groups, action_lists = [], []
+    for g, (name, buttons) in enumerate(act["screen_groups"]):
+        out = []
+        for b, button in enumerate(buttons):
+            if button.get("macro"):
+                aid = f'{act["id"]}_screen{g}_{b}'
+                action_lists.append(f'<ActionList name="{aid}">'
+                                    + "".join(_action(s) for s in button["macro"])
+                                    + '</ActionList>')
+            else:
+                aid = f'{button["device"]}_{esc(button["command"])}_Hold'
+            label = button.get("label") or ""
+            if button.get("icon"):
+                _check_icon(button["icon"], label)
+            slot = f' name="{esc(button["slot"])}"' if button.get("slot") else ""
+            out.append(f'<Button{slot}>'
+                       + (f'<Label>{esc(label)}</Label>' if label else '<Label />')
+                       + (f'<Icon>{esc(button["icon"])}</Icon>' if button.get("icon") else '')
+                       + (f'<Position>{button["position"]}</Position>'
+                          if button.get("position") is not None else '')
+                       + f'<ActionId>{aid}</ActionId></Button>')
+        groups.append(f'<ControlGroup name="{esc(name)}">{"".join(out)}</ControlGroup>')
+    return "".join(groups), action_lists
+
+
 def _gen_activity(act, by_id, remote=None):
     """An activity = a scene. `act` keys:
         id, label, type?,
@@ -143,6 +189,10 @@ def _gen_activity(act, by_id, remote=None):
         soft_buttons? [ (Label, deviceId, command[, icon])                      single-cmd button
                         | {label, device, command, icon?}                        single-cmd button
                         | {label, icon?, macro:[action-step,...]} ]              macro button
+        screen_groups? [ [group name, [ {slot?, label, icon?, position?,
+                                         device, command | macro}, ...]], ...]
+                       touchscreen pages as the Harmony 1100 keeps them; replaces
+                       soft_buttons when present,
         channels?, channel_confirm?, channels_via_numeric?  (favorite channels).
     Returns (activity_xml, [extra ActionList xml]) -- macros need their own named ActionLists.
     Every distinct non-AlwaysOn device among {display, volume, control} powers on."""
@@ -210,6 +260,9 @@ def _gen_activity(act, by_id, remote=None):
             btns.append(f'<Button><Label>{esc(label)}</Label>{icon_xml}'
                         f'<Position>{i}</Position><ActionId>{aid}</ActionId></Button>')
         soft_xml = '<ControlGroup name="Misc">' + "".join(btns) + '</ControlGroup>'
+    if act.get("screen_groups"):
+        soft_xml, screen_als = _screen_groups_xml(act)
+        macro_als.extend(screen_als)
         
     enter_actions = "".join(_action(s) for s in act.get("enter", []))
     if act.get("input"):
@@ -301,7 +354,7 @@ def _gen_activity(act, by_id, remote=None):
     activity_type = act.get("type", "VirtualTelevisionN")
     _check_activity_type(activity_type, act.get("label", act["id"]), remote)
     xml = (f'<Activity><Id>{act["id"]}</Id><Type>{activity_type}</Type>'
-           f'{_act_props(act)}<Presentation><Label>{esc(act["label"])}</Label>{chan_xml}'
+           f'{_act_props(act, remote)}<Presentation><Label>{esc(act["label"])}</Label>{chan_xml}'
            f'<ControlGroup name="HardButtons">{btn_xml}</ControlGroup>{soft_xml}</Presentation>'
            f'{role_xml}<EnterActions>{enter}</EnterActions>'
            f'<LeaveActions>{leave}</LeaveActions><Power>{power}</Power></Activity>')
