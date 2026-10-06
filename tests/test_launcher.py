@@ -64,7 +64,7 @@ def test_the_application_finds_its_data_from_anywhere(tmp_path):
                # configuration or an archive record. The remotes it *does* ship still
                # have to be found.
                "assert paths.library('remotes').is_dir(), 'no remote profiles'\n"
-               "assert paths.user_library().parent == paths.data_dir(), 'wrong private library'\n"
+               "assert paths.user_library().parent == paths.app_dir(), 'wrong library'\n"
                "assert paths.icons('buttons').is_dir(), 'no artwork'\n"
                "assert paths.scaffolds('harmony-900').is_dir(), 'no scaffold'\n",
                tmp_path)
@@ -114,9 +114,9 @@ def test_the_users_files_go_to_their_documents_not_application_data(tmp_path,
     """Projects and built configurations are files a person opens by hand.
 
     They belong somewhere visible - `Documents/Afterglow` - not in application data,
-    which is hidden on Linux and buried on Windows. The application's *own* storage
-    (the device library, the copied link helper) stays in `data_dir()`, because nobody
-    opens those.
+    which is hidden on Linux and buried on Windows. So does the device library. Only the
+    application's plumbing (the instance lock, the copied link helper) stays in
+    `data_dir()`, because nobody opens those.
 
     Linux records the documents folder in `~/.config/user-dirs.dirs` rather than the
     environment, and it is localised, so the file is read before guessing at `Documents`.

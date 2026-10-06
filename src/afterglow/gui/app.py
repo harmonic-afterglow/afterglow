@@ -33,6 +33,10 @@ class MainWindow(QMainWindow):
 
         self.project   = empty_project()
         from .. import paths
+        from .activity_buttons import previous_prepared_dir
+        # Earlier versions kept the library and logos in application data. Brought into
+        # Documents/Afterglow once, here, before anything reads them.
+        self._adopted = paths.adopt_previous_library(previous_prepared_dir())
         paths.user_library("devices").mkdir(parents=True, exist_ok=True)
         self.templates = load_repo_templates(paths.user_library())
         self.source_preferences = SourcePreferences.load()
