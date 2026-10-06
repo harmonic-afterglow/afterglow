@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QLabel,
-    QMainWindow, QMessageBox, QRadioButton, QTabWidget, QVBoxLayout, QWidget
+    QMainWindow, QMessageBox, QRadioButton, QTabWidget, QVBoxLayout
 )
 from PyQt6.QtCore import QRectF, QSettings, QSize, Qt, QUrl
 from PyQt6.QtGui import (QAction, QDesktopServices, QIcon, QIconEngine,
@@ -20,7 +20,8 @@ from .constants import USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY, user_files
 from .project import drop_retired_fields, retire_new_devices
 from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
-from .remote_bar import ChooseRemoteDialog, MigrationDialog, RemoteBar
+from .remote_bar import ChooseRemoteDialog, MigrationDialog
+from .status_bar import ProjectStatusBar
 from .tabs import ActivitiesTab, DevicesTab, SettingsTab, UpdateTab, remote_profiles
 from .widgets import load_repo_templates
 
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow):
         self.templates = load_repo_templates(paths.user_library())
         self.source_preferences = SourcePreferences.load()
         self._project_path = None
+        self._dirty = False
 
         # Build tabs
         self.tabs = QTabWidget()
@@ -59,21 +61,24 @@ class MainWindow(QMainWindow):
         self.devices_tab.changed.connect(self.activities_tab.refresh)
         self.devices_tab.changed.connect(self._mark_dirty)
         self.activities_tab.changed.connect(self._mark_dirty)
+        self.settings_tab.changed.connect(self._mark_dirty)
         self.update_tab.flash_succeeded.connect(self._retire_flashed_devices)
         self.update_tab.migrate_requested.connect(self.change_remote)
 
-        # The remote sits above the tabs: every tab follows it, and changing it is a
-        # migration of the whole project rather than a setting on one of them.
-        self.remote_bar = RemoteBar()
-        self.remote_bar.change_requested.connect(self.change_remote)
-        central = QWidget()
-        column = QVBoxLayout(central)
-        column.setContentsMargins(6, 6, 6, 0)
-        column.addWidget(self.remote_bar)
-        column.addWidget(self.tabs, 1)
-        self.setCentralWidget(central)
+        self.setCentralWidget(self.tabs)
+        # What the project is and whether it is saved, along the bottom. The remote is
+        # there too: every tab follows it, and clicking it migrates the whole project.
+        self.status = ProjectStatusBar()
+        self.status.remote_clicked.connect(self.change_remote)
+        self.status.contents_clicked.connect(
+            lambda: self.tabs.setCurrentWidget(self.devices_tab))
+        self.status.file_clicked.connect(self._open_project_folder)
+        self.status.saved_clicked.connect(self.save_project)
+        self.setStatusBar(self.status)
         self._setup_menu()
-        self._show_remote()
+        self._show_state()
+        for note in self._adopted:
+            self.status.showMessage(note[0].upper() + note[1:], 15000)
 
     # Menu bar
     def _setup_menu(self):
@@ -122,11 +127,43 @@ class MainWindow(QMainWindow):
             self.source_preferences.save()
             self.devices_tab.source_preferences = self.source_preferences
 
-    # Dirty tracking
+    # Saved state
     def _mark_dirty(self):
-        title = self.windowTitle()
-        if not title.endswith(" *"):
-            self.setWindowTitle(title + " *")
+        self._dirty = True
+        self._show_state()
+
+    def _mark_clean(self):
+        self._dirty = False
+        self._show_state()
+
+    def _show_state(self):
+        """The title and the status bar, from the project, its file and whether it is
+        saved. Qt shows `[*]` as an asterisk while the window is marked modified."""
+        name = Path(self._project_path).name if self._project_path else "Untitled"
+        if name == "project.json":
+            name = Path(self._project_path).parent.name
+        self.setWindowTitle(f"{name}[*] — Afterglow")
+        self.setWindowModified(self._dirty)
+        self.status.show_project(self.project, self._project_path, self._profile(),
+                                 self._dirty)
+
+    def _open_project_folder(self):
+        if self._project_path:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(self._project_path).parent)))
+
+    def _keep_or_discard_changes(self) -> bool:
+        """Before the project is replaced: save, discard, or stay. False means stay."""
+        if not self._dirty:
+            return True
+        answer = QMessageBox.question(
+            self, "Unsaved Changes",
+            "This project has unsaved changes. Save them first?",
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel)
+        if answer == QMessageBox.StandardButton.Save:
+            self.save_project()
+            return not self._dirty               # a cancelled Save As keeps us here
+        return answer == QMessageBox.StandardButton.Discard
 
     def _retire_flashed_devices(self, device_ids):
         """Make a successful flash's one-time device flags durable in the project."""
@@ -148,12 +185,9 @@ class MainWindow(QMainWindow):
         except LookupError:
             return None
 
-    def _show_remote(self):
-        self.remote_bar.set_profile(self._profile())
-
     def _reload_tabs(self):
         """Everything shown depends on the project and on its remote; redraw it all."""
-        self._show_remote()
+        self._show_state()
         self.devices_tab.refresh()
         self.activities_tab.refresh()
         self.settings_tab.refresh()
@@ -199,12 +233,14 @@ class MainWindow(QMainWindow):
         migrated.get("settings", {}).pop("out_file", None)   # its build is not this one's
         self.project.clear()
         self.project.update(migrated)
-        self._write_project(path)
         self._project_path = path
         self._reload_tabs()
+        self._write_project(path)
 
     # Project I/O
     def new_project(self):
+        if not self._keep_or_discard_changes():
+            return
         project = empty_project()
         # Asked only when there is a choice to make; with one remote, it is that one.
         if len(remote_profiles()) > 1:
@@ -216,7 +252,7 @@ class MainWindow(QMainWindow):
         self.project.clear()
         self.project.update(project)
         self._project_path = None
-        self.setWindowTitle("Afterglow")
+        self._dirty = False
         self._reload_tabs()
 
     def open_project(self):
@@ -225,7 +261,7 @@ class MainWindow(QMainWindow):
             self, "Open Project", str(user_files()),
             f"Projects (*.json *{project_bundle.SUFFIX});;"
             f"Shareable project (*{project_bundle.SUFFIX});;JSON Project (*.json);;All (*)")
-        if not path:
+        if not path or not self._keep_or_discard_changes():
             return
         if path.lower().endswith(project_bundle.SUFFIX):
             self.open_bundle(path)
@@ -237,7 +273,7 @@ class MainWindow(QMainWindow):
             self.project.clear()
             self.project.update(data)
             self._project_path = path
-            self.setWindowTitle(f"Afterglow - {Path(path).name}")
+            self._dirty = False
             self._reload_tabs()
         except Exception as e:
             QMessageBox.critical(self, "Open Failed", str(e))
@@ -256,9 +292,9 @@ class MainWindow(QMainWindow):
             return
         self.project.clear()
         self.project.update(drop_retired_fields(data))
-        self._write_project(folder / "project.json")
         self._project_path = str(folder / "project.json")
         self._reload_tabs()
+        self._write_project(folder / "project.json")
         QMessageBox.information(
             self, "Shareable project",
             f"Opened {Path(path).name}. It is saved as its own project in\n{folder}\n"
@@ -298,7 +334,7 @@ class MainWindow(QMainWindow):
         it), and load the result as an editable project that rebuilds on the donor's own tree."""
         path, _ = QFileDialog.getOpenFileName(
             self, "Import .ezhex", str(user_files()), "Harmony Config (*.ezhex);;All (*)")
-        if not path:
+        if not path or not self._keep_or_discard_changes():
             return
         try:
             from .. import ezhex as harmony_ezhex
@@ -319,7 +355,7 @@ class MainWindow(QMainWindow):
             self.project.clear()
             self.project.update(data)
             self._project_path = None
-            self.setWindowTitle(f"Afterglow - {stem} (imported) *")
+            self._dirty = True                   # imported, and not saved anywhere yet
             self._reload_tabs()
             # Everything this config can teach goes into the library: unseen protocols,
             # the devices' command sets, any recorded waveforms. Without it the knowledge
@@ -357,14 +393,14 @@ class MainWindow(QMainWindow):
             self, "Save Project As", str(user_files() / "project.json"),
             "JSON Project (*.json);;All (*)")
         if path:
-            self._write_project(path)
             self._project_path = path
+            self._write_project(path)
 
     def _write_project(self, path):
         self.settings_tab.save()
         Path(path).write_text(json.dumps(self.project, indent=2))
-        name = Path(path).name
-        self.setWindowTitle(f"Afterglow - {name}")
+        self._mark_clean()
+        self.status.showMessage(f"Saved {path}", 5000)
 
     def _about(self):
         # Deliberately no list of supported remotes. It is in the README, and the
@@ -389,18 +425,9 @@ class MainWindow(QMainWindow):
         box.exec()
 
     def closeEvent(self, event):
-        if self.windowTitle().endswith(" *"):
-            r = QMessageBox.question(
-                self, "Unsaved Changes",
-                "You have unsaved changes. Save before closing?",
-                QMessageBox.StandardButton.Save |
-                QMessageBox.StandardButton.Discard |
-                QMessageBox.StandardButton.Cancel)
-            if r == QMessageBox.StandardButton.Save:
-                self.save_project()
-            elif r == QMessageBox.StandardButton.Cancel:
-                event.ignore()
-                return
+        if not self._keep_or_discard_changes():
+            event.ignore()
+            return
         event.accept()
 def _driver_reminder(parent) -> None:
     """Say once, where the platform needs it, that a driver must be installed first.
