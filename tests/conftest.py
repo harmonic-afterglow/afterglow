@@ -15,6 +15,19 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+# Nothing a test does may land in the real user's folders. Opening the main window moves
+# the device library into Documents, a bundle test unpacks a project there and the logo
+# test prepares pictures there - all of which reached a real home directory before
+# these were set. Set before `afterglow` is imported, since `paths` caches its answers.
+_SANDBOX = Path(__import__("tempfile").mkdtemp(prefix="afterglow-tests-"))
+for _name, _folder in (("AFTERGLOW_HOME", "Documents/Afterglow"),
+                       ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"),
+                       ("XDG_CONFIG_HOME", "config")):
+    os.environ[_name] = str(_SANDBOX / _folder)
+# Builds stamp the time they were made; comparing two builds byte for byte needs the
+# same stamp in both. `test_last_updated.py` clears this to check the real clock.
+os.environ.setdefault("SOURCE_DATE_EPOCH", "1767225600")
+
 from afterglow import ezhex, ir_protocol  # noqa: E402
 
 # The application ships **no** protocol definitions: every protocol it uses is either
