@@ -20,7 +20,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 
-from . import backends, device_json, logitech_archive, paths, remotes
+from . import backends, device_json, logitech_archive, paths, project_devices, remotes
 
 
 # The archive is read at a **pinned commit**, not from a moving branch.
@@ -223,7 +223,13 @@ class LogitechCatalog:
             if hard_key:
                 entry["hard_key"] = hard_key
             commands.append(entry)
-
+        # A device whose skips are called NextTrack or ChapterNext gets them on the
+        # skip keys, as Logitech placed them.
+        stand_ins = project_devices.free_key_assignments(
+            {e["name"]: e.get("hard_key") for e in commands}, self.profile.hard_keys)
+        for entry in commands:
+            if entry["name"] in stand_ins:
+                entry["hard_key"] = stand_ins[entry["name"]]
         if not commands:
             reasons = sorted({entry["reason"] for entry in report})
             raise ValueError(

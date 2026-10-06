@@ -107,6 +107,60 @@ def input_names(device: dict) -> list[str]:
     return names
 
 
+# What Logitech's own Harmony 900 configurations put on the transport skip keys when the
+# device has no command of the key's own name, most common first (measured over the
+# donors: NextTrack 12, ChapterNext 10, Replay 10, ...). A device whose skip is called
+# ChapterNext or NextTrack otherwise left both keys doing nothing.
+KEY_STAND_INS = {
+    "SkipForward": ("SkipForward", "NextTrack", "ChapterNext", "NextChapter", "Skip",
+                    "Advance", "Next"),
+    "SkipBack": ("SkipBack", "SkipBackward", "PreviousTrack", "ChapterPrev",
+                 "PrevChapter", "PreviousChapter", "Replay", "Prev"),
+}
+KEYS_FILLED = "free_keys_filled"
+
+
+def free_key_assignments(bound: dict, available) -> dict:
+    """{command name: key} for the skip keys nothing is bound to yet.
+
+    `bound` is {command name: its key, a list of keys, or None}. Only commands with no
+    key of their own are offered, and only keys the remote has.
+    """
+    taken = set()
+    for keys in bound.values():
+        taken.update(keys if isinstance(keys, list) else [keys] if keys else [])
+    out = {}
+    for key, names in KEY_STAND_INS.items():
+        if key in taken or key not in available:
+            continue
+        for name in names:
+            if name in bound and not bound[name] and name not in out:
+                out[name] = key
+                break
+    return out
+
+
+def fill_free_keys(project: dict, available) -> int:
+    """Bind each device's skip keys to its own equivalent, once per device. Returns how
+    many were bound. A device is marked when done, so a key its owner clears later stays
+    clear."""
+    filled = 0
+    for device in project.get("devices") or []:
+        if device.get(KEYS_FILLED):
+            continue
+        commands = [c for c in device.get("commands") or [] if c]
+        bound = {c[0]: (c[4] if len(c) > 4 else None) for c in commands}
+        new = free_key_assignments(bound, available)
+        for command in commands:
+            if command[0] in new:
+                while len(command) < 5:
+                    command.append(None)
+                command[4] = new[command[0]]
+                filled += 1
+        device[KEYS_FILLED] = True
+    return filled
+
+
 def rename_hard_keys(project: dict, aliases: dict) -> int:
     """Rename physical-key bindings a remote's profile no longer calls that, in place.
 
@@ -141,6 +195,7 @@ def normalise_project(project: dict) -> dict:
 
     profile = remotes.for_project(project)
     rename_hard_keys(project, profile.hard_key_aliases)
+    fill_free_keys(project, profile.hard_keys)
     backend = backends.for_profile(profile)
     migrated = []
     for device in project.get("devices") or []:

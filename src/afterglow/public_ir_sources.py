@@ -17,7 +17,7 @@ import re
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from . import backends, device_json, ir_signal, remotes
+from . import backends, device_json, ir_signal, project_devices, remotes
 from .corpus_provider import Manufacturer, _hard_key, _inputs, _power
 from .flipper import parse_ir_text
 
@@ -263,6 +263,13 @@ class _PublicCatalog:
             if hard_key:
                 entry["hard_key"] = hard_key
             commands.append(entry)
+        # A device whose skips are called NextTrack or ChapterNext gets them on the
+        # skip keys, as Logitech placed them.
+        stand_ins = project_devices.free_key_assignments(
+            {e["name"]: e.get("hard_key") for e in commands}, self.profile.hard_keys)
+        for entry in commands:
+            if entry["name"] in stand_ins:
+                entry["hard_key"] = stand_ins[entry["name"]]
         if not commands:
             reasons = sorted({entry["reason"] for entry in report})
             raise ValueError(
