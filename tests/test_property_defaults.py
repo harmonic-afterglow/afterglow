@@ -192,14 +192,13 @@ def test_a_donor_device_has_nothing_left_unset(qapp_or_skip):
     """Filtered by type, a configuration written by the original software fills every
     property that applies - so the page shows no gaps at all."""
     import contextlib
-    import glob
     import io
     import tempfile
     from afterglow import ezhex
     from afterglow.importer import build_project
-    from conftest import ROOT
+    from conftest import donors_of
 
-    donors = sorted(glob.glob(str(ROOT / "configs" / "*" / "*.ezhex")))
+    donors = donors_of("harmony-900")
     if not donors:
         pytest.skip("no donor configurations available")
     work = tempfile.mkdtemp()

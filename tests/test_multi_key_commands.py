@@ -11,7 +11,6 @@ read-modify-write cycle the set-top box's Menu and Play keys stopped working, wh
 and Pause - the very same two commands - still did.
 """
 import contextlib
-import glob
 import io
 import tempfile
 import xml.etree.ElementTree as ET
@@ -20,13 +19,13 @@ import pytest
 
 from afterglow import ezhex
 from afterglow.importer import build_project
-from conftest import ROOT
+from conftest import donors_of
 
 
 def projects():
     """Every donor configuration available, imported."""
     found = {}
-    for path in sorted(glob.glob(str(ROOT / "configs" / "*" / "*.ezhex"))):
+    for path in donors_of("harmony-900"):
         work = tempfile.mkdtemp()
         with contextlib.redirect_stdout(io.StringIO()):
             ezhex.unpack(path, work)
