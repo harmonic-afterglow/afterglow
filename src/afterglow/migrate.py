@@ -52,8 +52,8 @@ def migrate(project: dict, target) -> tuple[dict, list[dict]]:
         _touchscreen(out, report)
     if not target.can("rf_blaster"):
         _rf(out, report)
-    if not target.can("platform_preferences"):
-        _preferences(out, report)
+    if source is not None:
+        _preferences(out, source, target, report)
     _properties(out, source, target, report)
     _signals(out, target, report)
     return out, report
@@ -140,15 +140,29 @@ def _rf(project, report):
              "every device now uses its own infrared")
 
 
-def _preferences(project, report):
+def _preferences(project, source, target, report):
+    """Keep the remote's own settings the target has, as long as their value fits it."""
     from . import preferences
     settings = project.get("settings", {})
-    dropped = [key for key in preferences.PREFERENCES if key in settings]
-    for key in dropped:
-        del settings[key]
+    wanted = preferences.definitions(target)
+    dropped = []
+    for key in preferences.definitions(source):
+        if key not in settings:
+            continue
+        definition = wanted.get(key)
+        value = str(settings[key])
+        fits = definition is not None and (
+            value in {v for _label, v in preferences.choices(definition)}
+            if definition.get("choices") else
+            value.isdigit() and preferences.bounds(definition)[0] <= int(value)
+            <= preferences.bounds(definition)[1])
+        if not fits:
+            del settings[key]
+            dropped.append(key)
     if dropped:
         _row(report, "Remote's own settings", "removed",
-             f"{', '.join(dropped)}: the remote does not keep them this way")
+             f"{', '.join(dropped)}: the target remote does not keep "
+             f"{'it' if len(dropped) == 1 else 'them'} this way")
 
 
 def _properties(project, source, target, report):

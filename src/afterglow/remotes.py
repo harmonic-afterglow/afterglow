@@ -65,6 +65,60 @@ class NotBuildable(PermissionError):
     """Refusing to build for a profile that has not entered controlled testing."""
 
 
+# What the interface can offer, and the order it offers it in. Every profile's
+# `interface` section has to name the subset its remote has - there is no default, since
+# a default is a guess about a remote nobody described.
+TABS = ("devices", "activities", "settings", "flash")
+DEVICE_PAGES = ("search", "identity", "commands", "inputs", "timing", "advanced")
+ACTIVITY_PAGES = ("identity", "roles", "favourites", "screen_buttons", "hard_buttons",
+                  "startup", "power", "advanced")
+SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "preferences")
+# What each list may contain, and what it must: a device is its commands, and so on.
+INTERFACE = {
+    "tabs": (TABS, ("devices", "flash")),
+    "device_pages": (DEVICE_PAGES, ("identity", "commands")),
+    "activity_pages": (ACTIVITY_PAGES, ("identity", "roles")),
+    "settings": (SETTINGS_FIELDS, ("output_file",)),
+}
+
+
+def _check_interface(profile_id: str, interface, preferences) -> None:
+    """Refuse a profile whose interface section is missing, incomplete or unknown."""
+    if not isinstance(interface, dict):
+        raise ValueError(f"{profile_id}: no interface section - a profile must name the "
+                         "tabs, editor pages, settings and languages its remote has")
+    for key, (known, required) in INTERFACE.items():
+        listed = interface.get(key)
+        if not isinstance(listed, list):
+            raise ValueError(f"{profile_id}: interface.{key} must be a list")
+        unknown = [name for name in listed if name not in known]
+        if unknown:
+            raise ValueError(f"{profile_id}: unknown interface.{key} {unknown}; "
+                             f"known: {list(known)}")
+        missing = [name for name in required if name not in listed]
+        if missing:
+            raise ValueError(f"{profile_id}: interface.{key} must include {missing}")
+    languages = interface.get("languages")
+    if not isinstance(languages, list) or not languages or not all(
+            isinstance(pair, list) and len(pair) == 2 for pair in languages):
+        raise ValueError(f"{profile_id}: interface.languages must list [label, LocaleId]")
+    offered = {k for k in (preferences or {}) if not k.startswith("_")}
+    if "preferences" in interface["settings"] and not offered:
+        raise ValueError(f"{profile_id}: interface.settings offers preferences but the "
+                         "profile defines none")
+    if offered and "preferences" not in interface["settings"]:
+        raise ValueError(f"{profile_id}: preferences are defined but interface.settings "
+                         "does not offer them")
+    for key, spec in (preferences or {}).items():
+        if key.startswith("_"):
+            continue
+        for required in ("file", "label", "default"):
+            if required not in spec:
+                raise ValueError(f"{profile_id}: preference {key} has no {required}")
+        if ("choices" in spec) == ("range" in spec):
+            raise ValueError(f"{profile_id}: preference {key} needs choices or a range")
+
+
 def comparable(field: str, value):
     """An identity value in the form a configuration file and a live remote share.
 
@@ -105,7 +159,53 @@ class RemoteProfile:
     # The <Property> entries this model has. Same reasoning as `vocabulary`: the sets
     # differ between models, so this is not something to keep in the code.
     vocabulary_properties: dict = field(default_factory=dict)
+    # What the interface shows for this model - tabs, editor pages, settings rows, the
+    # languages its firmware has - and the remote's own settings files. Both are the
+    # profile's to say: models differ in all of them.
+    interface: dict = field(default_factory=dict)
+    preference_definitions: dict = field(default_factory=dict)
+    # Other skin numbers for the same remote: the same firmware sold under another
+    # model number (the Harmony 1100 is skin 63 and 62). Matched like `skin`.
+    other_skins: tuple = ()
     notes: str = ""
+
+    @property
+    def skins(self) -> tuple:
+        return tuple(s for s in (self.skin, *self.other_skins) if s is not None)
+
+    def _offered(self, key: str) -> tuple:
+        """The listed names, in the interface's own order (checked when loaded)."""
+        known, _required = INTERFACE[key]
+        listed = self.interface[key]
+        return tuple(name for name in known if name in listed)
+
+    @property
+    def tabs(self) -> tuple:
+        """The main window's tabs this model has, in window order."""
+        return self._offered("tabs")
+
+    @property
+    def device_pages(self) -> tuple:
+        return self._offered("device_pages")
+
+    @property
+    def activity_pages(self) -> tuple:
+        return self._offered("activity_pages")
+
+    @property
+    def settings_fields(self) -> tuple:
+        return self._offered("settings")
+
+    @property
+    def languages(self) -> tuple:
+        """(label, LocaleId) pairs this model's firmware has, in menu order."""
+        return tuple(tuple(pair) for pair in self.interface["languages"])
+
+    @property
+    def preferences(self) -> dict:
+        """{key: definition} for the remote's own settings files, in display order."""
+        return {k: v for k, v in (self.preference_definitions or {}).items()
+                if not k.startswith("_")}
 
     @property
     def verified(self) -> bool:
@@ -224,6 +324,9 @@ class RemoteProfile:
         must pass ``require_all=True`` and prove every declared constraint.
         """
         mismatches = []
+        skin = identity.get("skin")
+        if self.other_skins and skin in self.other_skins:
+            identity = {**identity, "skin": self.skin}      # the same remote
         for name, expected in (
             ("arch", self.arch),
             ("skin", self.skin),
@@ -270,12 +373,14 @@ class RemoteProfile:
                 **({"firmware": {k: v for k, v in (("min", self.firmware_min),
                                                     ("max", self.firmware_max)) if v}}
                    if self.firmware_min or self.firmware_max else {}),
+                **({"other_skins": list(self.other_skins)} if self.other_skins else {}),
             },
             "payload": self.payload, "backend": self.backend, "status": self.status,
             "capabilities": self.capabilities,
             "infrared": {k: v for k, v in self.infrared.items() if k != "backend"},
             "vocabulary": self.vocabulary,
-            "properties": self.vocabulary_properties, "notes": self.notes,
+            "properties": self.vocabulary_properties, "interface": self.interface,
+            "preferences": self.preference_definitions, "notes": self.notes,
         }
 
 
@@ -342,17 +447,22 @@ def _from_json(data: dict) -> RemoteProfile:
     if firmware.get("min") and firmware.get("max") \
             and _version(firmware["min"]) > _version(firmware["max"]):
         raise ValueError("identity.firmware min is newer than max")
+    payload, backend = _required_payload(data), _required_backend(data)
+    _check_interface(data.get("id"), data.get("interface"), data.get("preferences"))
     return RemoteProfile(
         id=data["id"], model=data["model"],
         arch=ident.get("arch"), skin=ident.get("skin"), flash=ident.get("flash"),
         board=ident.get("board"), software_type=ident.get("software_type"),
         firmware_min=firmware.get("min"), firmware_max=firmware.get("max"),
-        payload=_required_payload(data), backend=_required_backend(data),
+        payload=payload, backend=backend,
         status=_status(data),
         capabilities=data.get("capabilities", {}),
         infrared=data.get("infrared", {}),
         vocabulary=data.get("vocabulary", {}),
         vocabulary_properties=data.get("properties", {}),
+        interface=data["interface"],
+        preference_definitions=data.get("preferences", {}),
+        other_skins=tuple(ident.get("other_skins") or ()),
         notes=data.get("notes", ""),
     )
 

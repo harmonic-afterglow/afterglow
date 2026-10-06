@@ -621,6 +621,9 @@ class Remote:
         remote_problems = profile.identity_mismatches(identity, require_all=True)
         disagreements = []
         for field in ("arch", "skin", "flash", "board", "software_type"):
+            if field == "skin" and {wanted.get(field), identity.get(field)} <= \
+                    set(profile.skins):
+                continue                    # one remote sold under several numbers
             if remotes.comparable(field, wanted.get(field)) != \
                     remotes.comparable(field, identity.get(field)):
                 disagreements.append(

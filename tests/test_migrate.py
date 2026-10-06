@@ -28,6 +28,9 @@ def _small_remote(**changes):
     vocabulary["activity_types"] = [["Watch TV", "VirtualTelevisionN"],
                                     ["Custom", "VirtualGeneric"]]
     data["properties"]["device"].pop("Dimmer")
+    # No RF and none of the 900's own settings files: its interface says so.
+    data["preferences"] = {}
+    data["interface"]["settings"] = ["output_file", "owner", "language"]
     profile = remotes._from_json(data)
     return replace(profile, **changes) if changes else profile
 

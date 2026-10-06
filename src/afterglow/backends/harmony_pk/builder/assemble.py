@@ -278,7 +278,8 @@ def build(specs, work, request: BuildRequest | None = None):
     # The remote's own preferences live in platformconfig/system_*.dat. The time format
     # is ALSO an XML property below; both have to be written or the config disagrees with
     # itself and the remote follows the file, not the XML.
-    apply_preferences(work, settings)
+    from .... import remotes
+    apply_preferences(work, settings, remotes.for_project({"settings": settings or {}}))
     # The scaffold's <Protocols> holds only a <Hash>; put the carried per-protocol
     # entries back in front of it, where real configs keep them.
     if protocol_entries:

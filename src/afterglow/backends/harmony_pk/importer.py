@@ -380,11 +380,21 @@ class _HarmonyPkImport:
                 self.rejects[block_id] = (str(exc), len(codes))
         _report_unpromotable(self.rejects)
 
+    def _remote(self):
+        """The profile this configuration is for: its header says, else the default."""
+        from ... import remotes
+        header = os.path.join(self._extracted_dir, ".ezhex_header")
+        if os.path.isfile(header):
+            with open(header, "rb") as handle:
+                return remotes.identify(handle.read())
+        return remotes.default()
+
     def _read_settings(self):
         rf = extract_rf(self._extracted_dir)
         if rf:
             self._project["settings"]["rf"] = rf
-        self._project["settings"].update(read_preferences(self._extracted_dir))
+        self._project["settings"].update(
+            read_preferences(self._extracted_dir, self._remote()))
     
         # Whose remote this is. Carried so a re-import round-trips the owner's name; the
         # account/login ids that sat beside it are not read - they addressed a service that
