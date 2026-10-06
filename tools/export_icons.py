@@ -12,6 +12,15 @@ what the remote actually supports, rather than what a name suggests it might.
 This walks the firmware zip → region → SWF → tags, resolves each named clip to the
 bitmaps it draws, and writes them out with their real names.
 
+    python3 tools/export_icons.py path/to/63.hfw --refine [--out icons]
+
+`--refine` takes a later firmware whose interface keeps the same drawings as plain PNG
+files (the Harmony 1100's, under `app/assets/global/`) and replaces each picture already
+in `--out` with its counterpart, by name. Those files carry straight alpha, so they need
+only trimming; the 900's SWF bitmaps need their alpha un-premultiplied, which amplifies
+the rounding in every soft shadow into visible speckle. Names are never added or changed
+here: the button names are what a configuration's `<Icon>` holds.
+
 **The artwork is Logitech's.** Exporting it locally to see what an icon looks like, or to
 redraw your own version, is the point; the output directory is not for redistribution.
 """
@@ -288,11 +297,53 @@ def save_image(code: int, data: bytes, path_base: Path) -> Path | None:
     return None
 
 
+# Where a firmware with a PNG interface keeps each group's pictures.
+REFINE_SOURCES = {
+    "activities": "app/assets/global/icons/",
+    "devices": "app/assets/global/icons/devices/",
+    "buttons": "app/assets/global/placeables/large/",
+}
+
+
+def refine(firmware: Path, out: Path) -> None:
+    """Replace each picture in `out` with the same-named PNG from `firmware`."""
+    from PIL import Image
+    files = {}
+    with zipfile.ZipFile(firmware) as fw:
+        for region in fw.namelist():
+            blob = fw.read(region)
+            if not region.lower().endswith(".ezhex") or blob[:2] != b"PK":
+                continue
+            with zipfile.ZipFile(io.BytesIO(blob)) as inner:
+                for name in inner.namelist():
+                    if name.lower().endswith(".png"):
+                        files[name] = inner.read(name)
+    for group, prefix in REFINE_SOURCES.items():
+        folder = out / group
+        available = {name[len(prefix):]: data for name, data in files.items()
+                     if name.startswith(prefix) and "/" not in name[len(prefix):]}
+        replaced, kept = 0, []
+        for existing in sorted(folder.glob("*.png")):
+            data = available.get(existing.name)
+            if data is None:
+                kept.append(existing.name)
+                continue
+            trim(Image.open(io.BytesIO(data)).convert("RGBA")).save(existing)
+            replaced += 1
+        print(f"  {group:11} {replaced} replaced, {len(kept)} kept"
+              + (f": {', '.join(kept)}" if kept else ""))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("firmware", type=Path, help="a .hfw firmware image")
     parser.add_argument("--out", type=Path, default=ROOT / "icons")
+    parser.add_argument("--refine", action="store_true",
+                        help="replace existing pictures with this firmware's PNGs")
     args = parser.parse_args(argv)
+    if args.refine:
+        refine(args.firmware, args.out)
+        return
 
     # firmware zip -> the region holding app/ -> app-main.swf
     swf = None
