@@ -6,10 +6,13 @@
 #
 # ## Why libconcord is built here rather than installed
 #
-# The distribution packages are far behind upstream, so the build follows the default
-# branch of `jaymzh/concordance`. That is a deliberate trade: it tracks fixes that have
-# not been released, and it means a broken upstream commit breaks this workflow rather
-# than a user's remote. The commit that was built is recorded in the artifact.
+# The distribution packages are far behind upstream, and Afterglow needs more than
+# upstream has: the build follows Afterglow's own fork, `harmonic-afterglow/concordance`,
+# branch `usbnet-link`, whose libconcord reaches the 900/1000/1100 over USB by itself
+# (libusb, no network driver, no DHCP server). That is the only way to a remote on macOS,
+# and it removes the dnsmasq helper's job on Linux. Where libusb cannot claim the remote -
+# Logitech's driver holds it on Windows - libconcord falls back to the old network path.
+# The commit that was built is recorded in the artifact.
 #
 # `concord.py` loads the library through `ctypes` by name, which PyInstaller cannot see,
 # so `AFTERGLOW_BUNDLE_LIBCONCORD` names the file explicitly and `concord._load()` looks
@@ -81,7 +84,8 @@ permissions:
   contents: read
 
 env:
-  CONCORDANCE_REPO: https://github.com/jaymzh/concordance
+  CONCORDANCE_REPO: https://github.com/harmonic-afterglow/concordance
+  CONCORDANCE_REF: usbnet-link
 
 jobs:
   # What this build calls itself, and what its artifacts are named. A tag build is the
@@ -130,11 +134,11 @@ jobs:
             libusb-1.0-0-dev libzip-dev libcurl4-openssl-dev libhidapi-dev \
             libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3
 
-      - name: Build libconcord from the default branch
+      - name: Build libconcord from Afterglow's fork
         id: libconcord
         run: |
           set -euxo pipefail
-          git clone --depth 1 "$CONCORDANCE_REPO" /tmp/concordance
+          git clone --depth 1 --branch "$CONCORDANCE_REF" "$CONCORDANCE_REPO" /tmp/concordance
           echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           cd /tmp/concordance/libconcord
           # Concordance ships autotools input, not a configure script.
@@ -220,12 +224,12 @@ jobs:
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-hidapi
 
-      - name: Build libconcord from the default branch
+      - name: Build libconcord from Afterglow's fork
         id: libconcord
         shell: msys2 {0}
         run: |
           set -euxo pipefail
-          git clone --depth 1 "$CONCORDANCE_REPO" /tmp/concordance
+          git clone --depth 1 --branch "$CONCORDANCE_REF" "$CONCORDANCE_REPO" /tmp/concordance
           echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           cd /tmp/concordance/libconcord
           autoreconf --install --force
@@ -313,7 +317,120 @@ jobs:
           path: dist/afterglow.exe
           if-no-files-found: error
 
-  # Publish the two executables as a GitHub release.
+  # macOS: an application bundle in a disk image, per architecture.
+  #
+  # Apple Silicon is the build that matters and has to pass. Intel is built too while
+  # runners and Homebrew still support it, but does not hold the release back: Homebrew
+  # has been dropping x86_64.
+  #
+  # The app is ad-hoc signed (PyInstaller does it; arm64 code must carry a signature) and
+  # not notarized, so a downloaded copy has to be allowed once in System Settings >
+  # Privacy & Security - the release notes say so.
+  macos:
+    needs: identify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            required: true
+          - runner: macos-15-intel
+            arch: x86_64
+            required: false
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ !matrix.required }}
+    outputs:
+      libconcord: ${{ steps.libconcord.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: brew install autoconf automake libtool pkg-config libusb hidapi libzip
+
+      - name: Build libconcord from Afterglow's fork
+        id: libconcord
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch "$CONCORDANCE_REF" "$CONCORDANCE_REPO" /tmp/concordance
+          echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cd /tmp/concordance/libconcord
+          mkdir -p m4
+          autoreconf --install --force
+          brew_prefix="$(brew --prefix)"
+          # The IR-learning code needs C++11; older Apple compilers default to C++98.
+          CPPFLAGS="-I${brew_prefix}/include" LDFLAGS="-L${brew_prefix}/lib" \
+            CXXFLAGS="-std=c++11 -O2" \
+            ./configure --prefix=/tmp/libconcord-install --disable-mime-update \
+            | tee /tmp/configure.log
+          # Without libusb this would build, and bundle, a libconcord that cannot reach
+          # a remote on macOS at all.
+          grep -q "over USB (libusb-1.0): yes" /tmp/configure.log
+          make -j"$(sysctl -n hw.ncpu)"
+          make install
+          ls -l /tmp/libconcord-install/lib/
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # `.[gui]` brings Pillow too, which PyInstaller uses to turn the .ico into
+          # the app icon.
+          pip install -e ".[gui]"
+          pip install pyinstaller
+
+      - name: Stamp the build version
+        run: |
+          set -euo pipefail
+          printf 'VERSION = "%s"\n' '${{ needs.identify.outputs.version }}' \
+            > src/afterglow/_build.py
+          cat src/afterglow/_build.py
+
+      - name: Build the app
+        env:
+          AFTERGLOW_BUNDLE_LIBCONCORD: /tmp/libconcord-install/lib/libconcord.6.dylib
+        run: pyinstaller --noconfirm packaging/afterglow.spec
+
+      - name: Check the app carries what it needs
+        run: |
+          set -euxo pipefail
+          app="$GITHUB_WORKSPACE/dist/Afterglow.app"
+          test -x "$app/Contents/MacOS/afterglow"
+          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            "$app/Contents/MacOS/afterglow" --self-check
+          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            "$app/Contents/MacOS/afterglow" --concord-check
+          # The bundled libconcord has to be the one with the USB link: on macOS it is
+          # the only way to a 900/1000/1100.
+          lib="$(find "$app" -name 'libconcord*.dylib' -type f | head -1)"
+          nm -gU "$lib" | grep -q UsbNetLink_Open
+          # Nothing may still point into Homebrew: that path does not exist on a
+          # user's Mac.
+          if find "$app" \( -name '*.dylib' -o -name '*.so' \) -type f -print0 \
+               | xargs -0 otool -L | grep -E "/opt/homebrew|/usr/local/(Cellar|opt)"; then
+            echo "a bundled library still links into Homebrew"; exit 1
+          fi
+          codesign --verify --deep --strict "$app"
+
+      - name: Make the disk image
+        run: |
+          set -euxo pipefail
+          mkdir -p dmg
+          cp -R dist/Afterglow.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Afterglow -srcfolder dmg -ov -format UDZO \
+            "afterglow-macos-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: afterglow-macos-${{ matrix.arch }}${{ needs.identify.outputs.suffix }}
+          path: afterglow-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  # Publish the executables and disk images as a GitHub release.
   #
   # Only on a tag: `workflow_dispatch` exists so a bundle can be built and downloaded as
   # an artifact without publishing anything.
@@ -327,8 +444,13 @@ jobs:
   # `download-artifact` is v8 while `upload-artifact` is v7: the two are separate actions
   # and their majors do not track each other. Check both when bumping.
   release:
-    needs: [linux, windows]
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux, windows, macos]
+    # `always()` and the explicit checks: an optional macOS build that failed must not
+    # cancel the release, but a failed Linux or Windows build must.
+    if: >-
+      always() && startsWith(github.ref, 'refs/tags/')
+      && needs.linux.result == 'success' && needs.windows.result == 'success'
+      && needs.macos.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       # Write is granted here and nowhere else; the build jobs stay read-only.
@@ -348,6 +470,9 @@ jobs:
              release/afterglow-linux-x86_64
           cp artifacts/afterglow-windows-x86_64/afterglow.exe \
              release/afterglow-windows-x86_64.exe
+          # Whichever macOS builds succeeded; Apple Silicon is required, Intel is not.
+          test -f artifacts/afterglow-macos-arm64/afterglow-macos-arm64.dmg
+          cp artifacts/afterglow-macos-*/afterglow-macos-*.dmg release/
           cd release
           # Checksums, so a download can be verified without trusting the transport.
           sha256sum ./* > SHA256SUMS
@@ -357,6 +482,7 @@ jobs:
         env:
           LINUX_LIBCONCORD: ${{ needs.linux.outputs.libconcord }}
           WINDOWS_LIBCONCORD: ${{ needs.windows.outputs.libconcord }}
+          MACOS_LIBCONCORD: ${{ needs.macos.outputs.libconcord }}
         run: |
           set -euo pipefail
           # Only what is specific to THIS build. Setup instructions live in the README
@@ -367,8 +493,12 @@ jobs:
           |---|---|
           | `afterglow-windows-x86_64.exe` | Windows |
           | `afterglow-linux-x86_64` | Linux - `chmod +x` it first |
+          | `afterglow-macos-arm64.dmg` | macOS, Apple Silicon |
+          | `afterglow-macos-x86_64.dmg` | macOS, Intel (when present) |
 
-          Standalone; no Python needed. **Windows and macOS need Logitech's driver
+          Standalone; no Python needed. **macOS needs no driver.** The app is not
+          notarized: the first time, open it, then allow it in System Settings >
+          Privacy & Security ("Open Anyway"). **Windows needs Logitech's driver
           installed first** - see the
           [README](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#before-you-start).
 
@@ -382,6 +512,7 @@ jobs:
             echo
             echo "- Linux \`${LINUX_LIBCONCORD}\`"
             echo "- Windows \`${WINDOWS_LIBCONCORD}\`"
+            echo "- macOS \`${MACOS_LIBCONCORD}\`"
           } >> notes.md
           cat notes.md
 

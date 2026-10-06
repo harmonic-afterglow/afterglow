@@ -36,9 +36,12 @@ Nothing is sent anywhere.
 
 ## Before you start
 
-**Windows and macOS** need Logitech's Harmony Remote Software installed first, for its
+**Windows** needs Logitech's Harmony Remote Software installed first, for its
 driver. Afterglow cannot replace it. Logitech's servers are gone, so it now comes from
 archives - [Logitech Harmony Software 7.8](https://archive.org/details/logitech-harmony-software-7-8)
+
+**macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
+(Logitech's own Mac driver does not work on current macOS.)
 
 **Linux** needs nothing. Afterglow offers to set the USB link up the first time you run
 it, and again from Settings > Set up the USB link.
@@ -48,7 +51,9 @@ it, and again from Settings > Set up the USB link.
 Download the build for your platform from
 [Releases](https://github.com/harmonic-afterglow/afterglow/releases). They are standalone - no Python installation needed.
 
-There is no macOS build, because nobody has reached a remote from macOS yet. You can still author configurations there by running from source - see [Contributing](#contributing).
+On macOS, open the `.dmg` and drag Afterglow to Applications. The app is not notarized,
+so the first time macOS will refuse to open it: open it once, then go to
+**System Settings > Privacy & Security** and choose **Open Anyway**.
 
 > [!IMPORTANT]
 > **Save a backup before anything else.** On the **Flash** tab, choose **Read from
