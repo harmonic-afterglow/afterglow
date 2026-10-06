@@ -46,6 +46,13 @@ class MainWindow(QMainWindow):
 
         # Build tabs
         self.tabs = QTabWidget()
+        # Pages of the window, not a box inside it: no frame of their own. macOS keeps its
+        # centred segmented tabs, which document mode would turn into a flat strip;
+        # there the title bar's own line is what goes (`_join_title_bar`).
+        self.tabs.setDocumentMode(sys.platform != "darwin")
+        # Clicks and Ctrl+Tab switch tabs. Taking keyboard focus as well only had Breeze
+        # and Oxygen underline the current tab's name from the moment the window opened.
+        self.tabs.tabBar().setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.devices_tab = DevicesTab(
             self.project, self.templates, source_preferences=self.source_preferences)
@@ -683,6 +690,55 @@ def _application_icon():
     return QIcon(_MarkIconEngine())
 
 
+def _join_title_bar(window):
+    """On macOS, run the title bar straight on into the tabs below it.
+
+    The title bar is made transparent over a window background in the colour Qt paints
+    the tabs' row with, and its separator line is dropped, so nothing divides the two.
+    Qt has no setting for either, so they are set on the NSWindow directly (the
+    separator from macOS 11; older systems keep the line). The colour follows light
+    and dark mode.
+    """
+    if sys.platform != "darwin":
+        return
+    import ctypes
+    import ctypes.util
+    try:
+        objc = ctypes.CDLL(ctypes.util.find_library("objc"))
+    except OSError:
+        return
+    objc.sel_registerName.restype = ctypes.c_void_p
+    objc.sel_registerName.argtypes = [ctypes.c_char_p]
+    objc.objc_getClass.restype = ctypes.c_void_p
+    objc.objc_getClass.argtypes = [ctypes.c_char_p]
+
+    def send(receiver, selector, *args, restype=ctypes.c_void_p, argtypes=()):
+        objc.objc_msgSend.restype = restype
+        objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, *argtypes]
+        return objc.objc_msgSend(receiver, objc.sel_registerName(selector), *args)
+
+    nswindow = send(int(window.winId()), b"window")      # winId is the NSView
+    if not nswindow:
+        return
+    send(nswindow, b"setTitlebarAppearsTransparent:", True, argtypes=(ctypes.c_bool,))
+    separator = objc.sel_registerName(b"setTitlebarSeparatorStyle:")
+    if send(nswindow, b"respondsToSelector:", separator,
+            restype=ctypes.c_bool, argtypes=(ctypes.c_void_p,)):
+        send(nswindow, b"setTitlebarSeparatorStyle:", 1,   # NSTitlebarSeparatorStyleNone
+             argtypes=(ctypes.c_long,))
+
+    def paint():
+        colour = window.palette().window().color()
+        nscolour = send(objc.objc_getClass(b"NSColor"),
+                        b"colorWithSRGBRed:green:blue:alpha:",
+                        colour.redF(), colour.greenF(), colour.blueF(), 1.0,
+                        argtypes=(ctypes.c_double,) * 4)
+        send(nswindow, b"setBackgroundColor:", nscolour, argtypes=(ctypes.c_void_p,))
+
+    paint()
+    QApplication.styleHints().colorSchemeChanged.connect(lambda _scheme: paint())
+
+
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Afterglow")
@@ -698,6 +754,7 @@ def main():
 
     win = MainWindow()
     win.show()
+    _join_title_bar(win)
     _driver_reminder(win)
     _usb_link_offer(win)
     sys.exit(app.exec())
