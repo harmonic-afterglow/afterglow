@@ -843,10 +843,6 @@ class CommandsPage(QWizardPage):
         self.add_btn.clicked.connect(self._add_empty)
         self.remove_btn.clicked.connect(self._remove_selected)
         self.learn_btn.clicked.connect(self._learn_command)
-        from .. import concord
-        if not concord.available():
-            self.learn_btn.setEnabled(False)
-            self.learn_btn.setToolTip("libconcord is not installed - see the README")
 
     # - Template loading ---------------------------------------------
     def load_template(self, t):
@@ -1038,7 +1034,22 @@ class CommandsPage(QWizardPage):
         """
         from PyQt6.QtWidgets import QInputDialog, QMessageBox
 
+        from .. import concord
         from .remote_ops import run_with_progress
+
+        # A greyed-out button with the reason in a tooltip read as "this device cannot
+        # learn". Saying why when it is pressed is the same check, and gets read.
+        if not concord.available():
+            try:
+                concord._load()
+                reason = ""
+            except concord.NotAvailable as error:
+                reason = f"{error}\n\n"
+            QMessageBox.information(
+                self, "Learning needs libconcord",
+                f"{reason}Once it is installed, Learn from remote adds the key to this "
+                "device as a recording of what the original remote sends.")
+            return
 
         name, ok = QInputDialog.getText(
             self, "Learn a command",
