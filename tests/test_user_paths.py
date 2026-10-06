@@ -97,3 +97,49 @@ def test_the_windows_dll_names_are_among_the_ones_we_try():
     assert "libconcord-6.dll" in concord.LIBRARY_NAMES
     assert any(n.endswith(".dylib") for n in concord.LIBRARY_NAMES)
     assert any(n.endswith(".so.6") for n in concord.LIBRARY_NAMES)
+
+
+def test_the_device_library_and_logos_are_in_documents(monkeypatch, tmp_path):
+    monkeypatch.setenv("AFTERGLOW_HOME", str(tmp_path / "Afterglow"))
+    paths.app_dir.cache_clear()
+    try:
+        assert paths.user_library("devices") == tmp_path / "Afterglow" / "Library" / "devices"
+        assert paths.logos_dir() == tmp_path / "Afterglow" / "Logos"
+    finally:
+        paths.app_dir.cache_clear()
+
+
+def test_an_old_library_is_moved_once_and_never_lost(monkeypatch, tmp_path):
+    """Copied into Documents, existing files there win, and the old folder is renamed -
+    not deleted - so a second start does nothing and nothing is gone."""
+    monkeypatch.setenv("AFTERGLOW_HOME", str(tmp_path / "Afterglow"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    paths.app_dir.cache_clear()
+    paths.data_dir.cache_clear()
+    try:
+        old = tmp_path / "data" / "afterglow" / "library"
+        (old / "devices").mkdir(parents=True)
+        (old / "devices" / "tv.json").write_text("old tv")
+        (old / "protocols").mkdir()
+        (old / "protocols" / "p.json").write_text("protocol")
+        new = paths.user_library()
+        (new / "devices").mkdir(parents=True)
+        (new / "devices" / "tv.json").write_text("newer tv")
+        logos = tmp_path / "qt" / "logos"
+        logos.mkdir(parents=True)
+        (logos / "bbc.png").write_bytes(b"png")
+
+        notes = paths.adopt_previous_library(logos)
+        assert len(notes) == 2
+        assert (new / "devices" / "tv.json").read_text() == "newer tv"
+        assert (new / "protocols" / "p.json").read_text() == "protocol"
+        assert not old.exists()
+        moved = old.parent / ("library" + paths.MOVED_SUFFIX)
+        assert (moved / "devices" / "tv.json").exists()
+        assert (paths.logos_dir() / "bbc.png").read_bytes() == b"png"
+        assert (logos / "bbc.png").exists()          # projects still name the old file
+
+        assert paths.adopt_previous_library(logos) == []
+    finally:
+        paths.app_dir.cache_clear()
+        paths.data_dir.cache_clear()

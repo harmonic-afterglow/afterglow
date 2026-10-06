@@ -119,10 +119,11 @@ def app_dir() -> Path:
     and looks for again, so they belong somewhere visible: `Documents/Afterglow`, beside
     everything else they own.
 
-    That is a different question from where the application keeps *its* things - the
-    device library and the copied helper scripts - which stay in `data_dir()`, under
-    `LOCALAPPDATA` on Windows and `~/.local/share` on Linux, because nobody needs to open
-    those by hand.
+    The device library and prepared logos live here too, in `Library` and `Logos`: they
+    are the user's own devices and pictures, and the first thing anyone sharing a problem
+    was asked to dig out of a hidden folder. Only plumbing stays in `data_dir()` - the
+    instance lock and the copied helper scripts - and disposable downloads in
+    `cache_dir()`, neither of which belongs in a folder a sync client uploads.
 
     Never the source checkout: an installed copy has no writable one, and a frozen
     executable's directory is read-only.
@@ -180,11 +181,11 @@ def cache_dir() -> Path:
 
 @lru_cache(maxsize=1)
 def data_dir() -> Path:
-    """Persistent private application data owned by the current user.
+    """Private application plumbing: the instance lock and the copied helper scripts.
 
-    Unlike :func:`app_dir`, this is not a project/save location, and unlike
-    :func:`root`, it is never part of the installed package or source checkout.
-    Learned and imported devices belong here because they describe the user's home.
+    Unlike :func:`app_dir`, nothing here is a file a person opens, and unlike
+    :func:`root`, it is never part of the installed package or source checkout. The
+    device library used to live here; :func:`adopt_previous_library` moves it.
     """
     configured = _xdg("XDG_DATA_HOME")
     if configured:
@@ -193,8 +194,57 @@ def data_dir() -> Path:
 
 
 def user_library(*parts) -> Path:
-    """The current user's private dumped, learned, and saved device library."""
-    return data_dir().joinpath("library", *parts)
+    """The current user's dumped, learned and saved devices, in `Documents/Afterglow`."""
+    return app_dir().joinpath("Library", *parts)
+
+
+def logos_dir() -> Path:
+    """Logos prepared for the favourites grid, which projects refer to by path."""
+    return app_dir() / "Logos"
+
+
+# What a previous version left in application data, and what it was renamed to once
+# moved, so a second start does not move it again and nothing is deleted.
+MOVED_SUFFIX = "-moved-to-Documents"
+
+
+def _merge_into(source: Path, target: Path) -> int:
+    """Copy every file under `source` that `target` does not already have."""
+    import shutil
+    copied = 0
+    for item in sorted(source.rglob("*")):
+        if not item.is_file():
+            continue
+        destination = target / item.relative_to(source)
+        if destination.exists():
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(item, destination)
+        copied += 1
+    return copied
+
+
+def adopt_previous_library(old_logos: Path | None = None) -> list[str]:
+    """Bring the device library (and logos) from where earlier versions kept them.
+
+    Called once at start-up by the application, never on import: a test or a script
+    must not reach into the real application data. The library is copied and the old
+    folder renamed, so it is never used again and never lost. Logos are only copied:
+    saved projects name the old files by path, and must keep building.
+    """
+    notes = []
+    old = data_dir() / "library"
+    if old.is_dir():
+        copied = _merge_into(old, user_library())
+        with contextlib.suppress(OSError):
+            old.rename(old.with_name(old.name + MOVED_SUFFIX))
+        if copied:
+            notes.append(f"moved {copied} library files from {old} to {user_library()}")
+    if old_logos is not None and old_logos.is_dir() and old_logos != logos_dir():
+        copied = _merge_into(old_logos, logos_dir())
+        if copied:
+            notes.append(f"copied {copied} logos from {old_logos} to {logos_dir()}")
+    return notes
 
 
 def library(*parts) -> Path:

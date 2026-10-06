@@ -557,12 +557,19 @@ _TARGET_FILL = 0.30
 _MIN_PADDING = 8
 
 
-def prepared_dir() -> Path:
-    """Where normalised logos are kept, outside the project so it stays portable."""
+def previous_prepared_dir() -> Path | None:
+    """Where versions before 0.2 kept normalised logos: Qt's application data."""
     from PyQt6.QtCore import QStandardPaths
     base = QStandardPaths.writableLocation(
         QStandardPaths.StandardLocation.AppDataLocation)
-    folder = Path(base or Path.home() / ".afterglow") / "logos"
+    return Path(base) / "logos" if base else None
+
+
+def prepared_dir() -> Path:
+    """Where normalised logos are kept: `Documents/Afterglow/Logos`, beside the projects
+    that use them, outside any one project so it stays portable."""
+    from .. import paths
+    folder = paths.logos_dir()
     folder.mkdir(parents=True, exist_ok=True)
     return folder
 
