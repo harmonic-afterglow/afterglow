@@ -10,6 +10,7 @@ stay short and point here rather than re-explaining the format in comments.
 | [configuration.md](configuration.md) | The unpacked tree: `UserConfiguration.xml`, `platformconfig`, install scripts |
 | [irproto.md](irproto.md) | `IrProto.bin`: the IR bytecode blocks and the `<Code>` values that select them |
 | [ssir.md](ssir.md) | `SsIr.bin`: recorded waveforms for commands no protocol describes |
+| [ssir-sequences.md](ssir-sequences.md) | `SsIr.bin` on the Harmony 1100: every command as a recorded device sequence |
 | [remote-identities.md](remote-identities.md) | Which remote a configuration is for, and which are supported |
 
 ## Status of the information

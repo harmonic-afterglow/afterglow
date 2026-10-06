@@ -314,6 +314,16 @@ class _HarmonyPkImport:
         # Recorded waveforms, for commands no protocol describes. Carried with the device
         # that uses them: without this its buttons import as codes pointing at nothing.
         ssir_path = os.path.join(self._extracted_dir, "userconfig", "SsIr.bin")
+        # A "Device Sequence" controller (the Harmony 1100) plays every command back
+        # from SsIr.bin, which then has a different layout altogether.
+        self._sequences = None
+        self.sequence_rejects: dict[str, str] = {}
+        if self._root.findtext("Controller/Type") == "Device Sequence":
+            from . import ssir_sequence
+            with open(ssir_path, "rb") as handle:
+                self._sequences = ssir_sequence.parse(handle.read())
+            self._raw_waveforms = []
+            return
         try:
             self._raw_waveforms = ssir.read(ssir_path) if os.path.exists(ssir_path) else []
         except ValueError as exc:
@@ -328,7 +338,49 @@ class _HarmonyPkImport:
         self._read_assets()
         self._read_devices()
         self._read_activities()
+        if self.sequence_rejects:
+            print(f"Warning: {len(self.sequence_rejects)} command(s) could not be read "
+                  "from their recorded sequences and were left out:")
+            for name, why in sorted(self.sequence_rejects.items()):
+                print(f"  {name}: {why}")
         return self._project
+
+    def _sequence_signal(self, command, device_label: str):
+        """A Press/Hold sequence command as a portable waveform.
+
+        The waveform is the first frame of the press, which is what any other remote
+        needs; Logitech's sequences ride along whole as native evidence, so rebuilding
+        for this remote writes back exactly what was read - toggle variants, lead-in
+        silences and repeat points included. Returns None when it cannot be read, with
+        the reason recorded.
+        """
+        from . import NAME, ssir_sequence
+        name = command.findtext("Name")
+        found = {}
+        for phase in ("Press", "Hold"):
+            device = command.findtext(f"Data/{phase}/DeviceIndex")
+            index = command.findtext(f"Data/{phase}/SequenceIndex")
+            if device is None or index is None:
+                continue
+            try:
+                found[phase.lower()] = self._sequences[int(device)][int(index)]
+            except (ValueError, IndexError):
+                self.sequence_rejects[f"{device_label} / {name}"] = (
+                    f"{phase} points at device {device}, sequence {index}, which "
+                    "SsIr.bin does not have")
+                return None
+        if "press" not in found:
+            self.sequence_rejects[f"{device_label} / {name}"] = "no Press sequence"
+            return None
+        native = {"format": "device-sequence",
+                  **{phase: sequence.to_native() for phase, sequence in found.items()}}
+        pulses = ssir_sequence.first_frame(found["press"])
+        provenance = {"kind": "imported-config", "backend": NAME}
+        if not pulses:
+            return ir_signal.backend_opaque({NAME: native}, name=name,
+                                            provenance=provenance)
+        return ir_signal.waveform(pulses, name=name, carrier_hz=found["press"].carrier_hz,
+                                  provenance=provenance, native={NAME: native})
 
     def _read_protocol_meta(self):
         # Per-protocol metadata from <Protocols>: an RC5/RC6-family protocol declares
@@ -482,6 +534,7 @@ class _HarmonyPkImport:
 
             cmds = d.find('Commands')
             command_protocol_indexes = {}
+            sequence_signals = {}
             if cmds is not None:
                 props = cmds.find('Properties')
                 if props is not None:
@@ -495,6 +548,12 @@ class _HarmonyPkImport:
             
                 for c in cmds.findall('Command'):
                     cname = c.find('Name').text
+                    if self._sequences is not None:
+                        signal = self._sequence_signal(c, dev["label"] or did)
+                        if signal is not None:
+                            sequence_signals[cname] = signal
+                            dev["commands"].append([cname, cname, "00", "00", None])
+                        continue
                     # <Protocol>-1</Protocol> marks a raw command: it has no protocol block,
                     # its Code indexes SsIr.bin instead. Taking the device's protocol from
                     # one of those loses the protocol its other commands really use.
@@ -610,6 +669,7 @@ class _HarmonyPkImport:
                 signals[cmd_name] = ir_signal.backend_opaque(
                     {"harmony-pk": native}, name=cmd_name,
                     provenance={"kind": "imported-config"})
+            signals.update(sequence_signals)
             if signals:
                 dev["signals"] = signals
             if portable_definitions:

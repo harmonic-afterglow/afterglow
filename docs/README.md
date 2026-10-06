@@ -14,4 +14,5 @@ Reference documentation for supported remote architectures and configuration for
 - [configuration.md](harmony_pk/configuration.md) — The unpacked tree: `UserConfiguration.xml`, `platformconfig`, install scripts
 - [irproto.md](harmony_pk/irproto.md) — `IrProto.bin`: the IR bytecode blocks and the `<Code>` values that select them
 - [ssir.md](harmony_pk/ssir.md) — `SsIr.bin`: recorded waveforms for commands no protocol describes
+- [ssir-sequences.md](harmony_pk/ssir-sequences.md) — `SsIr.bin` on the Harmony 1100: every command a recorded device sequence
 - [remote-identities.md](harmony_pk/remote-identities.md) — Which remote a configuration is for, and profile status

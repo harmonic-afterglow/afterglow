@@ -60,6 +60,20 @@ CONFIGS = ["configs/mine/dump.ezhex",
                    for path in (ROOT / "configs" / "martin").glob("*.ezhex"))]
 
 
+# Harmony 1100 configurations, kept apart: every test written against CONFIGS assumes a
+# Harmony 900.
+CONFIGS_1100 = sorted(f"configs/1100/{path.name}"
+                      for path in (ROOT / "configs" / "1100").glob("*.ezhex"))
+
+
+@pytest.fixture(scope="session")
+def configs_1100():
+    found = [ROOT / name for name in CONFIGS_1100 if (ROOT / name).is_file()]
+    if not found:
+        pytest.skip("no real Harmony 1100 configurations available")
+    return found
+
+
 def donors_of(remote_id: str) -> list[str]:
     """Every real configuration under configs/ that identifies as `remote_id`.
 
