@@ -126,6 +126,12 @@ def _check_icon(name, label):
            " See icons/buttons/ for the names it does have."))
 
 
+def _held_command(macro) -> bool:
+    """A macro that is only one held command: a key bound straight to it."""
+    return (len(macro) == 1 and len(macro[0]) == 4 and macro[0][0] == "command"
+            and macro[0][3] == "Hold")
+
+
 def _gen_activity(act, by_id, remote=None):
     """An activity = a scene. `act` keys:
         id, label, type?,
@@ -158,7 +164,12 @@ def _gen_activity(act, by_id, remote=None):
         buttons.setdefault(slot, (ctrl, None))
     btn_xml = ""
     for slot, (dev, cmd) in buttons.items():
-        if slot in hard_macros:
+        if slot in hard_macros and _held_command(hard_macros[slot]):
+            # One held command is that command's own ActionList, as Logitech binds it.
+            _kind, target, command, *_hold = hard_macros[slot][0]
+            btn_xml += (f'<Button name="{slot}"><Label /><ActionId>{target}_{esc(command)}'
+                        f'_Hold</ActionId></Button>')
+        elif slot in hard_macros:
             macro = hard_macros[slot]
             aid = f'{act["id"]}_hardmacro_{slot}'
             macro_als.append(f'<ActionList name="{aid}">' + "".join(_action(s) for s in macro) + '</ActionList>')
