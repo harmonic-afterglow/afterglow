@@ -1,7 +1,40 @@
 """Small reusable Qt presentation helpers."""
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtWidgets import (QComboBox, QCompleter, QFrame, QLabel,
                              QListView)
+
+
+class _WholeWrappedLabels(QObject):
+    """Give every word-wrapped label the height its text needs at the width it got.
+
+    A layout asks a wrapped label for its height before it knows the final width, and
+    some styles (KDE's Breeze in a QFormLayout) never ask again: the label is then laid
+    out narrower than it was measured, and its last lines are cut off - the help text
+    under a property, half a line of a hint. Pinning the minimum height to the height
+    for the actual width whenever a label is resized makes the layout make room.
+    """
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Resize and isinstance(watched, QLabel) \
+                and watched.wordWrap():
+            needed = watched.heightForWidth(watched.width())
+            if needed > 0 and watched.minimumHeight() != needed:
+                watched.setMinimumHeight(needed)
+        return False
+
+
+def keep_wrapped_labels_whole(app) -> None:
+    """Install the wrapped-label fix for every window `app` opens. Call once."""
+    global _installed
+    if _installed is None:
+        _installed = _WholeWrappedLabels()
+        app.installEventFilter(_installed)
+        # Taken out before the application starts tearing windows down, so no event
+        # reaches the filter while Python and Qt disagree about who still owns it.
+        app.aboutToQuit.connect(lambda: app.removeEventFilter(_installed))
+
+
+_installed = None
 
 
 def separator() -> QFrame:
