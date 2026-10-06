@@ -9,6 +9,7 @@ import contextlib
 import io
 import json
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -112,5 +113,5 @@ def test_opening_a_bundle_twice_never_unpacks_over_the_first(
     first = window._project_path
     window.open_bundle(str(bundle))
     assert first != window._project_path
-    assert first.endswith("living-room/project.json")
-    assert window._project_path.endswith("living-room-2/project.json")
+    assert Path(first).parts[-2:] == ("living-room", "project.json")
+    assert Path(window._project_path).parts[-2:] == ("living-room-2", "project.json")
