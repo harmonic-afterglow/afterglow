@@ -795,8 +795,10 @@ class _HarmonyPkImport:
                         # is not an activity macro and storing it as one expands every key
                         # into a redundant ActionList on import/rebuild. Preserve only a
                         # real override whose target differs from the implied assignment.
+                        # It is the device's own held command, which repeats while the key
+                        # is down; stored without the Hold it came back as a single press.
                         if did and cmd and implied_hard.get(hname) != (did, cmd):
-                            act["hard_macros"][hname] = [["command", did, cmd]]
+                            act["hard_macros"][hname] = [["command", did, cmd, "Hold"]]
                         
             if not act["hard_macros"]: del act["hard_macros"]
             if not act["soft_buttons"]: del act["soft_buttons"]
