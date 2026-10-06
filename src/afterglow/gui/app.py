@@ -646,6 +646,8 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Afterglow")
     app.setOrganizationName("Afterglow")
+    from .ui_helpers import keep_wrapped_labels_whole
+    keep_wrapped_labels_whole(app)
     # Held for this process's lifetime so the session USB helper can tell when the last
     # window has gone; see `usb_link.hold_instance_lock`.
     from .. import usb_link
