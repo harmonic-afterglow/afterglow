@@ -19,6 +19,7 @@ import zipfile
 
 
 from afterglow import preferences as prefs
+from afterglow import remotes
 
 
 def value_in(path, filename):
@@ -39,7 +40,7 @@ def test_every_preference_reaches_the_package(build, tmp_path):
     out = build({"devices": [device], "activities": [], "assets": [],
                  "settings": dict(chosen)})
     for key, value in chosen.items():
-        filename = prefs.PREFERENCES[key][0]
+        filename = prefs.definitions(remotes.get("harmony-900"))[key]["file"]
         assert value_in(out, filename) == value, f"{key} did not reach the package"
 
 

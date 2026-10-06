@@ -15,6 +15,11 @@ from afterglow import preferences, properties, remotes
 
 
 # remote profiles
+# The least a profile has to say about its interface (remotes.INTERFACE).
+MINIMAL_INTERFACE = {"tabs": ["devices", "flash"], "device_pages": ["identity", "commands"],
+                     "activity_pages": ["identity", "roles"], "settings": ["output_file"],
+                     "languages": [["English", "enu"]]}
+
 def test_profiles_load():
     profiles = remotes.load_all()
     assert profiles, "no remote profiles"
@@ -58,7 +63,7 @@ def test_experimental_profile_can_build_but_not_write():
 
 def test_legacy_untested_status_migrates_to_read_only():
     profile = remotes._from_json({
-        "schema": remotes.SCHEMA,
+        "schema": remotes.SCHEMA, "interface": MINIMAL_INTERFACE,
         "id": "legacy",
         "model": "Legacy profile",
         "payload": "pk",
@@ -191,43 +196,53 @@ def test_every_device_and_activity_property_is_catalogued(configs, unpacked):
                         "library/properties.json")
 
 
-# preferences
+# preferences - each remote's own, defined in its profile
+def _900_preferences():
+    return preferences.definitions(remotes.get("harmony-900"))
+
+
 def test_a_preference_maps_to_one_file_each():
-    """One setting, one file - and no two settings may claim the same file."""
-    files = [filename for filename, _v, _x in preferences.PREFERENCES.values()]
-    assert len(files) == len(set(files))
-    for filename in files:
-        assert filename.endswith(".dat")
+    """One setting, one file - and no two settings may claim the same file, on any
+    remote."""
+    for profile in remotes.load_all():
+        files = [d["file"] for d in preferences.definitions(profile).values()]
+        assert len(files) == len(set(files)), profile.id
+        for filename in files:
+            assert filename.endswith(".dat"), (profile.id, filename)
 
 
 def test_unset_preferences_are_not_written(tmp_path):
     """A preference the project does not mention must be left alone: the scaffold's
     value is a real remote's value, and replacing it with a guess is worse."""
     (tmp_path / "platformconfig").mkdir()
-    written = preferences.apply(str(tmp_path), {"time_format": "Civilian"})
+    written = preferences.apply(str(tmp_path), {"time_format": "Civilian"},
+                                remotes.get("harmony-900"))
     assert written == ["system_timeformat.dat"]
     assert not (tmp_path / "platformconfig" / "system_sound.dat").exists()
 
 
-def test_preferences_are_labelled():
-    for key in preferences.PREFERENCES:
-        assert key in preferences.LABELS, f"{key} has no label for the interface"
+def test_a_preference_the_remote_does_not_have_is_never_written(tmp_path):
+    """Carried in from another remote's project, a setting with no home on this one
+    stays out of the build."""
+    (tmp_path / "platformconfig").mkdir()
+    profile = remotes.get("harmony-900")
+    assert preferences.apply(str(tmp_path), {"not_on_this_remote": "1"}, profile) == []
 
 
 def test_every_preference_has_a_value_to_show():
-    """No preference may present as "unset".
+    """No preference may present as "unset", on any remote.
 
     A setting the user can see is one the build writes, so each is either a choice
     with a default among its options, or a number with a range.
     """
-    for key in preferences.PREFERENCES:
-        default = preferences.DEFAULTS[key]
-        choices = preferences.CHOICES.get(key)
-        if choices:
-            assert str(default) in [value for _label, value in choices], key
-        else:
-            low, high = preferences.RANGES[key]
-            assert low <= int(default) <= high, key
+    for profile in remotes.load_all():
+        for key, definition in preferences.definitions(profile).items():
+            choices = preferences.choices(definition)
+            if choices:
+                assert definition["default"] in [v for _label, v in choices], key
+            else:
+                low, high = preferences.bounds(definition)
+                assert low <= int(definition["default"]) <= high, key
 
 
 def test_theme_values_are_the_firmware_order_not_the_menu_order():
@@ -236,22 +251,15 @@ def test_theme_values_are_the_firmware_order_not_the_menu_order():
     and the artwork is prefixed in a third order again. Reading the values off the
     menu gives two of the four themes the wrong number.
     """
-    assert dict(preferences.CHOICES["theme"]) == {
+    assert dict(preferences.choices(_900_preferences()["theme"])) == {
         "Default (Hennessey)": "0", "Diode": "1", "Polymer": "2", "Tron": "3"}
 
 
 def test_backlight_timeout_stays_within_two_digits():
     """The remote parses its own field with `int(text.substr(0, 2))`, so a 3-digit
     timeout reads back truncated and silently changes when that screen is opened."""
-    _low, high = preferences.RANGES["backlight_timeout"]
+    _low, high = preferences.bounds(_900_preferences()["backlight_timeout"])
     assert high <= 99
-
-
-def test_a_declared_choice_matches_what_the_file_accepts():
-    for key, (_file, values, _xml) in preferences.PREFERENCES.items():
-        if values and key in preferences.CHOICES:
-            offered = {value for _label, value in preferences.CHOICES[key]}
-            assert offered <= set(values), f"{key} offers a value the remote has no name for"
 
 
 # icons
@@ -367,7 +375,7 @@ def test_remote_settings_are_shown_and_editable(qapp_or_skip):
     from afterglow.gui.tabs import SettingsTab
 
     tab = SettingsTab({"settings": {}})
-    for key in preferences.PREFERENCES:
+    for key in preferences.definitions(remotes.get("harmony-900")):
         assert key in tab.prefs, f"{key} disappeared from the interface"
         assert tab.prefs[key].isEnabled(), f"{key} is still locked"
     # The things that do work must stay editable.

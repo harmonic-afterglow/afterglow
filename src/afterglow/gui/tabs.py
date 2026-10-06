@@ -317,8 +317,10 @@ class SettingsTab(QWidget):
         self.form = form
         s = project.get("settings", {})
 
-        # Which remote this is for is not set here: it is shown above the tabs, and
-        # changing it migrates the project (gui/remote_bar.py).
+        # Which remote this is for is not set here: it is shown in the status bar, and
+        # changing it migrates the project. Everything below is what that remote's
+        # profile says it has (`interface.settings`, `interface.languages`,
+        # `preferences`); nothing is shown for a remote that does not declare it.
 
         self.out_file   = QLineEdit(s.get("out_file", ""))
         self.first_name = QLineEdit(s.get("first_name", ""))
@@ -328,18 +330,6 @@ class SettingsTab(QWidget):
                             (self.last_name, "your last name")):
             field.setPlaceholderText(hint)
         self.locale = QComboBox()
-        locales = [
-            ("English", "enu"), ("Spanish", "esp"), ("Russian", "rus"),
-            ("German", "deu"), ("Dutch", "nld"), ("Danish", "dan"),
-            ("Finnish", "fin"), ("Italian", "ita"), ("Swedish", "sve")
-        ]
-        for name, code in locales:
-            self.locale.addItem(name, code)
-            
-        saved_locale = s.get("locale", "enu")
-        idx = self.locale.findData(saved_locale)
-        if idx >= 0:
-            self.locale.setCurrentIndex(idx)
 
         form.addRow("Output .ezhex file:", self.out_file)
         form.addRow("First Name:", self.first_name)
@@ -361,67 +351,76 @@ class SettingsTab(QWidget):
         form.addRow("RF blasters:", blaster_row)
         self._refresh_blasters()
 
-        # The remote's own preferences (platformconfig/system_*.dat). These are
-        # writable: see `payloads.pk.mode_for` for why their file mode matters.
+        # The remote's own preferences (platformconfig/system_*.dat), rebuilt from the
+        # profile whenever the remote changes: models keep different ones.
+        self.prefs_box = QWidget()
+        self.prefs_form = QFormLayout(self.prefs_box)
+        self.prefs_form.setContentsMargins(0, 0, 0, 0)
+        form.addRow(self.prefs_box)
+        self.prefs = {}
+        self._profile_id = None
+
+        layout.addLayout(form)
+        layout.addStretch()
+
+        for field in (self.out_file, self.first_name, self.last_name):
+            field.textEdited.connect(self.changed)
+        self.locale.activated.connect(self.changed)
+        self.refresh()
+
+    def _profile(self):
+        try:
+            return project_remote(self.project)
+        except LookupError:
+            return None
+
+    def _show_what_the_remote_has(self, profile):
+        """Offer only what the project's remote declares it has."""
+        shown = profile.settings_fields if profile else ()
+        for widget, field in ((self.first_name, "owner"), (self.last_name, "owner"),
+                              (self.locale, "language"), (self.blaster_row, "rf_blasters"),
+                              (self.prefs_box, "preferences")):
+            self.form.setRowVisible(widget, field in shown)
+        if profile is None or profile.id == self._profile_id:
+            return
+        self._profile_id = profile.id
+        self.locale.clear()
+        for name, code in profile.languages:
+            self.locale.addItem(name, code)
+        self._build_preferences(profile)
+
+    def _build_preferences(self, profile):
         from .. import preferences as prefs
-        self.pref_rows = [sep()]
-        form.addRow(self.pref_rows[0])
-        heading = bold("Remote's own settings")
-        self.pref_rows.append(heading)
-        form.addRow(heading)
+        while self.prefs_form.rowCount():
+            self.prefs_form.removeRow(0)
+        self.prefs = {}
+        definitions = prefs.definitions(profile)
+        if not definitions:
+            return
+        self.prefs_form.addRow(sep())
+        self.prefs_form.addRow(bold("Remote's own settings"))
         note = QLabel(
             "These are applied when you flash. The remote keeps its own copy, so a "
             "setting you change on the device under Options stays until the next flash "
             "overwrites it.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray;")
-        self.pref_rows.append(note)
-        form.addRow(note)
-
-        self.prefs = {}
-        for key in prefs.PREFERENCES:
-            current = str(s.get(key, prefs.DEFAULTS.get(key, "")))
-            choices = prefs.CHOICES.get(key)
+        self.prefs_form.addRow(note)
+        for key, definition in definitions.items():
+            choices = prefs.choices(definition)
             if choices:
                 widget = QComboBox()
                 for label, value in choices:
                     widget.addItem(label, value)
-                idx = widget.findData(current)
-                widget.setCurrentIndex(idx if idx >= 0 else 0)
-            else:
-                widget = QSpinBox()          # numeric, so it cannot be given a non-number
-                low, high = prefs.RANGES[key]
-                widget.setRange(low, high)
-                widget.setValue(int(current) if current.isdigit() else prefs.DEFAULTS[key])
-            widget.setToolTip("Applied to the remote when you flash this configuration.")
-            self.prefs[key] = widget
-            self.pref_rows.append(widget)
-            form.addRow(QLabel(prefs.LABELS[key] + ":"), widget)
-
-        layout.addLayout(form)
-        layout.addStretch()
-        self._show_what_the_remote_has()
-
-        for field in (self.out_file, self.first_name, self.last_name):
-            field.textEdited.connect(self.changed)
-        self.locale.activated.connect(self.changed)
-        for widget in self.prefs.values():
-            if isinstance(widget, QComboBox):
                 widget.activated.connect(self.changed)
             else:
+                widget = QSpinBox()          # numeric, so it cannot be given a non-number
+                widget.setRange(*prefs.bounds(definition))
                 widget.valueChanged.connect(
                     lambda _value: None if self._loading else self.changed.emit())
-
-    def _show_what_the_remote_has(self):
-        """Offer only what the project's remote has: an RF base needs an RF remote, and
-        the persisted-preference files are one family's, not every remote's."""
-        try:
-            profile = project_remote(self.project)
-        except LookupError:
-            return
-        self.form.setRowVisible(self.blaster_row, profile.can("rf_blaster"))
-        for widget in self.pref_rows:
-            self.form.setRowVisible(widget, profile.can("platform_preferences"))
+            widget.setToolTip("Applied to the remote when you flash this configuration.")
+            self.prefs[key] = widget
+            self.prefs_form.addRow(QLabel(definition["label"] + ":"), widget)
 
     def _refresh_blasters(self):
         from .rf_routing import rf_receivers
@@ -444,27 +443,33 @@ class SettingsTab(QWidget):
     def save(self):
         if "settings" not in self.project:
             self.project["settings"] = {}
-        self.project["settings"]["out_file"]    = self.out_file.text().strip()
-        self.project["settings"]["first_name"]  = self.first_name.text().strip()
-        self.project["settings"]["last_name"]   = self.last_name.text().strip()
-        self.project["settings"]["locale"]      = self.locale.currentData()
-        for key, widget in getattr(self, "prefs", {}).items():
-            self.project["settings"][key] = (
-                widget.currentData() if hasattr(widget, "currentData")
-                else str(widget.value()))
+        settings = self.project["settings"]
+        settings["out_file"] = self.out_file.text().strip()
+        profile = self._profile()
+        shown = profile.settings_fields if profile else ()
+        if "owner" in shown:
+            settings["first_name"] = self.first_name.text().strip()
+            settings["last_name"] = self.last_name.text().strip()
+        if "language" in shown and self.locale.currentData():
+            settings["locale"] = self.locale.currentData()
+        for key, widget in self.prefs.items():
+            settings[key] = (widget.currentData() if isinstance(widget, QComboBox)
+                             else str(widget.value()))
         # Clean up obsolete settings from old projects
-        if "work_dir" in self.project["settings"]:
-            del self.project["settings"]["work_dir"]
+        settings.pop("work_dir", None)
 
-    REQUIRED = (("out_file", "Output .ezhex file"),
-                ("first_name", "First name"),
-                ("last_name", "Last name"))
+    REQUIRED = (("out_file", "Output .ezhex file", "output_file"),
+                ("first_name", "First name", "owner"),
+                ("last_name", "Last name", "owner"))
 
     def missing(self):
         """Required settings the user has not filled in yet."""
         self.save()
         s = self.project.get("settings", {})
-        return [label for key, label in self.REQUIRED if not str(s.get(key, "")).strip()]
+        profile = self._profile()
+        shown = profile.settings_fields if profile else ("output_file",)
+        return [label for key, label, field in self.REQUIRED
+                if field in shown and not str(s.get(key, "")).strip()]
 
     def refresh(self):
         self._loading = True
@@ -474,28 +479,27 @@ class SettingsTab(QWidget):
             self._loading = False
 
     def _refresh(self):
+        from .. import preferences as prefs
         s = self.project.get("settings", {})
-        self._show_what_the_remote_has()
+        profile = self._profile()
+        self._show_what_the_remote_has(profile)
         self.out_file.setText(s.get("out_file", ""))
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
-        
-            
         idx = self.locale.findData(s.get("locale", "enu"))
-        if idx >= 0:
-            self.locale.setCurrentIndex(idx)
-
+        self.locale.setCurrentIndex(idx if idx >= 0 else 0)
         self._refresh_blasters()
         # An imported config brings its own preferences; show those, not the defaults.
-        from .. import preferences as prefs
-        for key, widget in getattr(self, "prefs", {}).items():
-            current = str(s.get(key, prefs.DEFAULTS.get(key, "")))
-            if hasattr(widget, "currentData"):
+        definitions = prefs.definitions(profile) if profile else {}
+        for key, widget in self.prefs.items():
+            current = str(s.get(key, definitions[key]["default"]))
+            if isinstance(widget, QComboBox):
                 idx = widget.findData(current)
-                if idx >= 0:
-                    widget.setCurrentIndex(idx)
-            elif current.isdigit():
+                widget.setCurrentIndex(idx if idx >= 0 else 0)
+            elif current.lstrip("-").isdigit():
                 widget.setValue(int(current))
+            else:
+                widget.setValue(int(definitions[key]["default"]))
 
 
 class UpdateTab(QWidget):

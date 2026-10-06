@@ -56,12 +56,11 @@ class DeviceWizard(QWizard):
         self.page_props    = PropertiesPage("device", self._existing.get("properties"),
                                     kind=self._existing.get("type"), remote=self.profile)
 
-        self.addPage(self.page_search)
-        self.addPage(self.page_identity)
-        self.addPage(self.page_cmds)
-        self.addPage(self.page_inputs)
-        self.addPage(self.page_timing)
-        self.addPage(self.page_props)
+        # Only the pages this remote's profile lists. The others are still built, from
+        # the device as it is, so collecting from them hands back exactly what was there.
+        for name, page in self._pages().items():
+            if name in self.profile.device_pages:
+                self.addPage(page)
 
         # When a model is chosen on the search page, pre-fill the later pages
         self.page_search.template_selected.connect(self._on_template_selected)
@@ -70,6 +69,12 @@ class DeviceWizard(QWizard):
     def _on_learned(self):
         """Refresh the summary after a portable waveform was learned."""
         self.page_identity.refresh_protocol()
+
+    def _pages(self) -> dict:
+        """Every page by the name a profile's `interface.device_pages` uses."""
+        return {"search": self.page_search, "identity": self.page_identity,
+                "commands": self.page_cmds, "inputs": self.page_inputs,
+                "timing": self.page_timing, "advanced": self.page_props}
 
     def _command_names(self):
         return [row[0] for row in self.page_cmds.get_commands() if row and row[0]]
@@ -1281,15 +1286,17 @@ class DeviceEditor(QDialog):
         self.page_props    = PropertiesEditor("device", self._existing.get("properties"),
                                       kind=self._existing.get("type"), remote=self.profile)
         
-        self.tabs.addTab(self.page_search, "Search")
-        self.tabs.addTab(self.page_identity, "Identity")
-        self.tabs.addTab(self.page_cmds, "Commands")
-        self.tabs.addTab(self.page_inputs, "Inputs")
+        # Only the pages this remote's profile lists; see DeviceWizard.
+        titles = {"search": "Search", "identity": "Identity", "commands": "Commands",
+                  "inputs": "Inputs", "timing": "Timing", "advanced": "Advanced"}
+        pages = {"search": self.page_search, "identity": self.page_identity,
+                 "commands": self.page_cmds, "inputs": self.page_inputs,
+                 "timing": self.page_timing, "advanced": self.page_props}
+        for name in self.profile.device_pages:
+            self.tabs.addTab(pages[name], titles[name])
         self.tabs.currentChanged.connect(
             lambda _i: self.tabs.currentWidget() is self.page_inputs
             and self.page_inputs.refresh_commands())
-        self.tabs.addTab(self.page_timing, "Timing")
-        self.tabs.addTab(self.page_props, "Advanced")
         
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save |

@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status)
         self._setup_menu()
         self._show_state()
+        self._show_tabs()
         for note in self._adopted:
             self.status.showMessage(note[0].upper() + note[1:], 15000)
 
@@ -185,9 +186,18 @@ class MainWindow(QMainWindow):
         except LookupError:
             return None
 
+    def _show_tabs(self):
+        """The tabs this project's remote has, as its profile lists them."""
+        profile = self._profile()
+        offered = profile.tabs if profile else ("devices", "flash")
+        for name, tab in (("devices", self.devices_tab), ("activities", self.activities_tab),
+                          ("settings", self.settings_tab), ("flash", self.update_tab)):
+            self.tabs.setTabVisible(self.tabs.indexOf(tab), name in offered)
+
     def _reload_tabs(self):
         """Everything shown depends on the project and on its remote; redraw it all."""
         self._show_state()
+        self._show_tabs()
         self.devices_tab.refresh()
         self.activities_tab.refresh()
         self.settings_tab.refresh()

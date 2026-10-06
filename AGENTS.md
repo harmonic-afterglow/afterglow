@@ -137,7 +137,12 @@ the root. The order below is also the order the tests will stop you in.
 **If evidence shows it uses the same `PK\x03\x04` payload and IR runtime:**
 
 1. Add `library/remotes/<model>.json`: `identity` (skin id), `payload`, `infrared`,
-   `capabilities`, `vocabulary`, `properties`. Copy `harmony-900.json` and edit.
+   `capabilities`, `vocabulary`, `properties`, `interface` and `preferences`. Copy
+   `harmony-900.json` and edit. `interface` is what the GUI shows for that remote - its
+   tabs, device and activity editor pages, settings rows and languages - and
+   `preferences` defines its own settings files. Both are required and checked when the
+   profile loads: a remote that does not say what it has is refused, never given the
+   900's answer.
 2. Add `scaffolds/<model>/` - a sanitised real configuration from that remote. It cannot
    be synthesised, and one from a *different* model must never be substituted: it carries
    that remote's calibration and persisted settings.

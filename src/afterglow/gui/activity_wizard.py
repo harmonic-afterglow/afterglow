@@ -33,16 +33,23 @@ class ActivityWizard(QWizard):
         self.result_spec = None
         e = self._existing = existing or {}
 
-        self.addPage(ActivityIdentityPage(e, remote=profile))
-        self.addPage(ActivityRolesPage(devices, e))
-        self.addPage(FavouritesPage(devices, e))
-        self.addPage(ScreenButtonsPage(devices, e))
-        self.addPage(ActivityHardButtonsPage(devices, e, remote=profile))
-        self.addPage(ActivityMacrosPage(devices, e))
-        self.addPage(PropertiesPage("activity", e.get("properties"),
-                                    kind=e.get("type"), remote=profile))
+        self.identity = ActivityIdentityPage(e, remote=profile)
+        self.roles = ActivityRolesPage(devices, e)
+        self.favourites = FavouritesPage(devices, e)
+        self.screen_buttons = ScreenButtonsPage(devices, e)
+        self.hard_buttons = ActivityHardButtonsPage(devices, e, remote=profile)
+        self.startup = ActivityMacrosPage(devices, e)
         self.power_page = ActivityPowerPage(devices, e)
-        self.addPage(self.power_page)
+        self.advanced = PropertiesPage("activity", e.get("properties"),
+                                       kind=e.get("type"), remote=profile)
+        # Only the pages this remote's profile lists. The others are still built, from
+        # the activity as it is, so collecting from them hands back what was there.
+        pages = {"identity": self.identity, "roles": self.roles,
+                 "favourites": self.favourites, "screen_buttons": self.screen_buttons,
+                 "hard_buttons": self.hard_buttons, "startup": self.startup,
+                 "power": self.power_page, "advanced": self.advanced}
+        for name in profile.activity_pages:
+            self.addPage(pages[name])
 
     def initializePage(self, page_id):
         """Before a page is shown, tell it which devices this activity uses.
@@ -57,7 +64,7 @@ class ActivityWizard(QWizard):
             setter(self._participating())
 
     def _participating(self):
-        roles = self.page(self.pageIds()[1])
+        roles = self.roles
         ids = [roles.disp_combo.currentData(), roles.vol_combo.currentData(),
                roles.ctrl_combo.currentData()]
         ids += list((roles.get_roles() or {}).values())
@@ -68,8 +75,8 @@ class ActivityWizard(QWizard):
         super().accept()
 
     def _collect(self):
-        ids = self.pageIds()
-        p0, p1, p3, p4, p5, p6, p7 = (self.page(i) for i in ids[:7])
+        p0, p1, p3, p4 = self.identity, self.roles, self.favourites, self.screen_buttons
+        p5, p6, p7 = self.hard_buttons, self.startup, self.advanced
         # Everything the activity already said, including the parts no page here shows.
         spec = _carry_activity(self._existing)
         spec.update({
@@ -459,17 +466,18 @@ class ActivityEditor(QDialog):
         self.p4 = ActivityHardButtonsPage(devices, e, remote=profile)
         self.p5 = ActivityMacrosPage(devices, e)
 
-        self.tabs.addTab(self.p0, "Identity")
-        self.tabs.addTab(self.p1, "Roles")
-        self.tabs.addTab(self.p3, "Favourites")
-        self.tabs.addTab(self.p3b, "Commands")
-        self.tabs.addTab(self.p4, "Physical buttons")
-        self.tabs.addTab(self.p5, "Startup / Shutdown")
         self.power = ActivityPowerPage(devices, e)
-        self.tabs.addTab(self.power, "Power")
         self.p6 = PropertiesEditor("activity", (existing or {}).get("properties"),
                                    kind=(existing or {}).get("type"), remote=profile)
-        self.tabs.addTab(self.p6, "Advanced")
+        # Only the pages this remote's profile lists; see ActivityWizard.
+        pages = {"identity": (self.p0, "Identity"), "roles": (self.p1, "Roles"),
+                 "favourites": (self.p3, "Favourites"),
+                 "screen_buttons": (self.p3b, "Commands"),
+                 "hard_buttons": (self.p4, "Physical buttons"),
+                 "startup": (self.p5, "Startup / Shutdown"),
+                 "power": (self.power, "Power"), "advanced": (self.p6, "Advanced")}
+        for name in profile.activity_pages:
+            self.tabs.addTab(*pages[name])
         
         btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         btns.accepted.connect(self.accept)

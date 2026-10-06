@@ -18,6 +18,11 @@ PORTABLE = (
 )
 
 
+# The least a profile has to say about its interface (remotes.INTERFACE).
+MINIMAL_INTERFACE = {"tabs": ["devices", "flash"], "device_pages": ["identity", "commands"],
+                     "activity_pages": ["identity", "roles"], "settings": ["output_file"],
+                     "languages": [["English", "enu"]]}
+
 def outside_backends():
     return [path for path in PACKAGE.rglob("*.py")
             if BACKENDS not in path.parents and path.name != "__init__.py"]
@@ -61,7 +66,7 @@ def test_legacy_nested_backend_is_migrated_to_the_top_level():
     from afterglow import remotes
 
     profile = remotes._from_json({
-        "schema": remotes.SCHEMA,
+        "schema": remotes.SCHEMA, "interface": MINIMAL_INTERFACE,
         "id": "legacy",
         "model": "Legacy profile",
         "payload": "pk",
@@ -79,7 +84,7 @@ def test_conflicting_backend_selectors_are_rejected():
 
     with pytest.raises(ValueError, match="conflicting backends"):
         remotes._from_json({
-            "schema": remotes.SCHEMA,
+            "schema": remotes.SCHEMA, "interface": MINIMAL_INTERFACE,
             "id": "conflict",
             "model": "Conflicting profile",
             "payload": "pk",

@@ -15,8 +15,7 @@
     "rf_blaster": true,
     "touchscreen": true,
     "ir_learning": true,
-    "hard_keys": true,
-    "platform_preferences": true
+    "hard_keys": true
   },
   "infrared": {
     "native_protocols": [
@@ -822,6 +821,54 @@
         "read_by": "touchscreen",
         "when_absent": "unknown"
       }
+    }
+  },
+  "interface": {
+    "_comment": "What Afterglow shows for this model. Every list is required: nothing is assumed for a remote that does not say.",
+    "tabs": ["devices", "activities", "settings", "flash"],
+    "device_pages": ["search", "identity", "commands", "inputs", "timing", "advanced"],
+    "activity_pages": ["identity", "roles", "favourites", "screen_buttons", "hard_buttons",
+                       "startup", "power", "advanced"],
+    "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
+    "languages": [
+      ["English", "enu"], ["Spanish", "esp"], ["Russian", "rus"], ["German", "deu"],
+      ["Dutch", "nld"], ["Danish", "dan"], ["Finnish", "fin"], ["Italian", "ita"],
+      ["Swedish", "sve"]
+    ]
+  },
+  "preferences": {
+    "_comment": "The remote's own settings: platformconfig/system_*.dat, read at boot through /system/<name> (SysService.lua). xml_property is a second home the value must also be written to, or the configuration contradicts itself.",
+    "time_format": {
+      "file": "system_timeformat.dat", "label": "Clock", "default": "Military",
+      "choices": [["24-hour", "Military"], ["12-hour", "Civilian"]],
+      "xml_property": "TimeDisplayFormat"
+    },
+    "sound": {
+      "file": "system_sound.dat", "label": "Key beep", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
+    },
+    "theme": {
+      "_comment": "Stored values are not the on-screen order: GeneralOptions.done_theme() writes hennessey 0, diode 1, polymer 2, tron 3, and content_enu.txt calls Hennessey Default.",
+      "file": "system_theme.dat", "label": "Theme", "default": "0",
+      "choices": [["Default (Hennessey)", "0"], ["Diode", "1"], ["Polymer", "2"], ["Tron", "3"]]
+    },
+    "large_font": {
+      "file": "system_uselargefont.dat", "label": "Large font", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
+    },
+    "backlight_level": {
+      "_comment": "A master brightness on 0-100: SysService.lua ramps 0..backlightlevel. The remote's own screen writes 33/66/100; the dumps store 60.",
+      "file": "system_backlightlevel.dat", "label": "Backlight brightness (%)", "default": "60",
+      "range": [0, 100]
+    },
+    "backlight_timeout": {
+      "_comment": "Two digits: the remote reads its own field back with int(text.substr(0,2)), so a stored 120 would return as 12.",
+      "file": "system_backlighttimeout.dat", "label": "Backlight timeout (s)", "default": "10",
+      "range": [1, 99]
+    },
+    "child_lock": {
+      "file": "system_childlock.dat", "label": "Child lock", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
     }
   }
 }
