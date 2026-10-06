@@ -1,6 +1,7 @@
 """Small reusable Qt presentation helpers."""
 from PyQt6.QtCore import QEvent, QObject, Qt
-from PyQt6.QtWidgets import (QComboBox, QCompleter, QFrame, QLabel,
+from PyQt6.QtWidgets import (QComboBox, QCompleter, QFormLayout, QFrame, QLabel,
+                             QProxyStyle, QStyle,
                              QListView)
 
 
@@ -46,6 +47,26 @@ def remove_wrapped_label_fix() -> None:
     if _installed is not None and app is not None:
         app.removeEventFilter(_installed)
     _installed = None
+
+
+class _FormsGrow(QProxyStyle):
+    """The platform's style, except that a form's fields take the width they are given.
+
+    Some styles (KDE's Breeze, macOS) ask forms to keep every field at its size hint, so
+    a drop-down of device names in a wide window was drawn a few letters wide - "T'"
+    for "TV". A form here is a page of choices, never a dialog laid out to look native.
+    """
+
+    def styleHint(self, hint, option=None, widget=None, return_data=None):
+        if hint == QStyle.StyleHint.SH_FormLayoutFieldGrowthPolicy:
+            return QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow.value
+        return super().styleHint(hint, option, widget, return_data)
+
+
+def let_form_fields_grow(app) -> None:
+    """Install `_FormsGrow` over the application's current style. Call once."""
+    if not isinstance(app.style(), _FormsGrow):
+        app.setStyle(_FormsGrow(app.style().name()))
 
 
 _installed = None

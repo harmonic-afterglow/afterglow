@@ -184,15 +184,19 @@ class ActivityRolesPage(QWizardPage):
             combo.setEditable(False)
             likely = [d for d in devices if suits(d)]
             unlikely = [d for d in devices if not suits(d)]
-            combo.set_items([(d.get("label", "?"), d["id"]) for d in likely + unlikely])
+            # "(none)" first: an activity need not have every role - Logitech's own
+            # configurations leave Display out of a radio activity, and one has only
+            # passthrough devices. Without it the first device was shown instead, and
+            # saving the editor quietly gave the activity that device as its screen.
+            combo.set_items([("(none)", None)]
+                            + [(d.get("label", "?"), d["id"]) for d in likely + unlikely])
             # A real separator, so it cannot be chosen. The first version was an
             # ordinary entry carrying no device, which was selectable and would have
             # cleared the role.
             if likely and unlikely:
-                combo.insertSeparator(len(likely))
+                combo.insertSeparator(1 + len(likely))
             value = existing.get(field)
-            if value in dev_ids:
-                combo.select_data(value)
+            combo.select_data(value if value in dev_ids else None)
             return combo
 
         self.disp_combo = make_combo("display", suits_display)
