@@ -32,8 +32,11 @@ class _StubSettings:
 
 
 @pytest.mark.parametrize("platform", ["linux", "darwin", "win32"])
-def test_every_supported_platform_says_something_concrete(monkeypatch, platform):
+@pytest.mark.parametrize("usb_link", [False, True])
+def test_every_supported_platform_says_something_concrete(monkeypatch, platform,
+                                                           usb_link):
     monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(concord, "has_usb_link", lambda: usb_link)
     status, explanation = concord.link_support()
     assert status in ("tested", "untested")
     assert len(explanation) > 40, "an explanation that says nothing is not an explanation"
@@ -44,8 +47,9 @@ def test_only_a_platform_someone_has_used_claims_to_be_tested(monkeypatch):
 
     Flipping one of these to "tested" requires actually reaching a remote from that
     platform. Linux and Windows qualify; Windows needs Logitech's driver installed. macOS
-    remains untried, and no MDLM driver exists for it.
+    qualifies only with Afterglow's own libconcord: there is no working driver for it.
     """
+    monkeypatch.setattr(concord, "has_usb_link", lambda: False)
     for platform, expected in (("linux", "tested"), ("win32", "tested"),
                                ("darwin", "untested")):
         monkeypatch.setattr(sys, "platform", platform)
@@ -64,6 +68,7 @@ def test_an_untested_platform_still_says_authoring_works(monkeypatch, platform):
     """The message must not read as "this tool does not work here". The whole format and
     build layer is portable and covered by CI on all three platforms."""
     monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(concord, "has_usb_link", lambda: False)
     assert "uthoring" in concord.link_support()[1]
 
 
@@ -92,6 +97,7 @@ def test_the_flash_tab_warns_on_an_untested_platform(qapp_or_skip, monkeypatch):
     from afterglow.gui.tabs import UpdateTab
 
     monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: False)
     tab = UpdateTab({"settings": {}, "devices": [], "activities": []}, _StubSettings())
     shown = " ".join(w.text() for w in tab.findChildren(QLabel))
     assert "untested on this system" in shown
@@ -709,24 +715,53 @@ def test_a_failed_setup_says_so_and_stops_asking_but_leaves_a_way_back(qapp_or_s
     assert len(shown) == 2, "Settings must reach the offer whatever was answered before"
 
 
-def test_macos_needs_the_driver_too_and_says_so(monkeypatch):
-    """macOS is untested but not unexplained.
-
-    Logitech's 7.8 release covers macOS as well as Windows, so the driver requirement is
-    the same on both. Saying only "untested" would leave a macOS user with nothing to
-    try; the honest position is that the driver exists, nobody has confirmed reaching a
-    remote with it, and authoring works regardless.
-    """
+def test_macos_without_our_libconcord_says_what_it_needs(monkeypatch):
+    """Upstream libconcord has no way to the remote on macOS, and Logitech's last driver
+    (MUSBLAN, 7.9.0) crashes on macOS 13. The honest position: untested, with a pointer
+    to what does work, and authoring unaffected."""
     from afterglow import concord
 
     monkeypatch.setattr(concord.sys, "platform", "darwin")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: False)
     status, explanation = concord.link_support()
 
     assert status == "untested"
-    assert concord.needs_driver(), "the driver is needed whether or not anyone has tried"
+    assert concord.needs_driver()
     assert "README" in explanation
     assert "uthoring" in explanation, "must not read as 'this tool does not work here'"
 
+
+def test_macos_with_our_libconcord_needs_nothing_installed(monkeypatch):
+    """With the USB link built in, macOS was proven against a Harmony 900 (macOS 13):
+    no driver, so neither the driver dialog nor the driver advice may appear."""
+    from afterglow import concord
+
+    monkeypatch.setattr(concord.sys, "platform", "darwin")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: True)
+    status, explanation = concord.link_support()
+
+    assert status == "tested"
+    assert not concord.needs_driver()
+    assert "driver" in explanation and "needed" in explanation
+    assert concord.DRIVER_ADVICE not in concord.connection_advice()
+
+
+def test_the_usb_link_is_recognised_by_its_symbol(monkeypatch):
+    class WithLink:
+        _Z15UsbNetLink_Openj = object()
+
+    class Without:
+        pass
+
+    monkeypatch.setattr(concord, "_load", lambda: WithLink())
+    assert concord.has_usb_link()
+    monkeypatch.setattr(concord, "_load", lambda: Without())
+    assert not concord.has_usb_link()
+
+    def missing():
+        raise concord.NotAvailable("no libconcord")
+    monkeypatch.setattr(concord, "_load", missing)
+    assert not concord.has_usb_link()
 
 def test_the_window_icon_uses_the_drawing_made_for_each_size(qapp_or_skip):
     """Small sizes must be their own drawings, not the large one scaled.

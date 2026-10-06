@@ -31,6 +31,8 @@
 # protocol comes from the IrProto blocks of the configuration being imported, or is
 # generated from an archive record.
 import os
+import sys
+import tomllib
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
@@ -73,7 +75,10 @@ datas = [
 # reading and writing the remote works without it.
 #
 # On Windows there is no package manager to defer to, so bundling `libconcord-6.dll` and
-# its MinGW dependencies is the only practical route.
+# its MinGW dependencies is the only practical route. On macOS the same, and more: the
+# remote is only reachable there with Afterglow's own libconcord (the USB link), which no
+# package manager has. PyInstaller rewrites its libusb/hidapi/libzip references to the
+# copies it bundles.
 #
 # Set `AFTERGLOW_BUNDLE_LIBCONCORD` to the library file to include it.
 binaries = []
@@ -102,19 +107,64 @@ analysis = Analysis(                      # noqa: F821
 )
 pyz = PYZ(analysis.pure)                  # noqa: F821
 
-exe = EXE(                                # noqa: F821
-    pyz,
-    analysis.scripts,
-    analysis.binaries,
-    analysis.datas,
-    [],
-    name="afterglow",
-    debug=False,
-    strip=False,
-    upx=False,
-    console=False,
-    # The executable's own icon, as Explorer and the taskbar show it. Separate from the
-    # window icon the application sets at runtime: this one is read from the file on
-    # disk, before any of our code runs. PyInstaller ignores it off Windows.
-    icon=str(PACKAGE / "branding" / "afterglow.ico"),
-)
+if sys.platform != "darwin":
+    exe = EXE(                            # noqa: F821
+        pyz,
+        analysis.scripts,
+        analysis.binaries,
+        analysis.datas,
+        [],
+        name="afterglow",
+        debug=False,
+        strip=False,
+        upx=False,
+        console=False,
+        # The executable's own icon, as Explorer and the taskbar show it. Separate from
+        # the window icon the application sets at runtime: this one is read from the file
+        # on disk, before any of our code runs. PyInstaller ignores it off Windows.
+        icon=str(PACKAGE / "branding" / "afterglow.ico"),
+    )
+else:
+    # ## macOS: an application bundle
+    #
+    # A one-file executable inside an .app is deprecated for windowed apps - it
+    # re-extracts itself on every launch, which Gatekeeper treats as new code each time -
+    # so this is a one-folder build wrapped as `Afterglow.app`. The data and libconcord
+    # land in Contents/Frameworks (sys._MEIPASS), where `paths.root()` and
+    # `concord._bundled_candidates()` already look.
+    #
+    # The icon is converted from the .ico by PyInstaller (Pillow, from the `gui` extra).
+    version = tomllib.loads((PROJECT / "pyproject.toml").read_text())["project"]["version"]
+    exe = EXE(                            # noqa: F821
+        pyz,
+        analysis.scripts,
+        [],
+        exclude_binaries=True,
+        name="afterglow",
+        debug=False,
+        strip=False,
+        upx=False,
+        console=False,
+        argv_emulation=False,
+    )
+    collected = COLLECT(                  # noqa: F821
+        exe,
+        analysis.binaries,
+        analysis.datas,
+        strip=False,
+        upx=False,
+        name="afterglow",
+    )
+    app = BUNDLE(                         # noqa: F821
+        collected,
+        name="Afterglow.app",
+        icon=str(PACKAGE / "branding" / "afterglow.ico"),
+        bundle_identifier="io.github.harmonic-afterglow.afterglow",
+        version=os.environ.get("AFTERGLOW_VERSION", version),
+        info_plist={
+            "CFBundleDisplayName": "Afterglow",
+            "NSHighResolutionCapable": True,
+            # 11 covers both architectures; the USB link is proven on 13.
+            "LSMinimumSystemVersion": "11.0",
+        },
+    )

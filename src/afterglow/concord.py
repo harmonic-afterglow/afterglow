@@ -231,8 +231,9 @@ def _load():
             pass
     install = {
         "linux": "build and install that, then run ldconfig",
-        "darwin": "build and install that (see its INSTALL.mac); Homebrew covers the "
-                  "dependencies",
+        "darwin": "on macOS it has to be Afterglow's own build, from "
+                  "github.com/harmonic-afterglow/concordance (branch usbnet-link; see "
+                  "its INSTALL.mac) - the macOS download already includes it",
         "win32": "build it with MinGW (see its INSTALL.windows) and put libconcord-6.dll "
                  "somewhere on PATH",
     }.get(sys.platform, "build and install it for this platform")
@@ -263,6 +264,22 @@ def _load():
 # it. The 7.8 release covers Windows and macOS.
 NEEDS_DRIVER = frozenset({"win32", "darwin"})
 
+# Afterglow's own libconcord (github.com/harmonic-afterglow/concordance, branch
+# usbnet-link) reaches the 900/1000/1100 over USB itself: no network driver, no DHCP
+# server, no root. It is the only way in on macOS, where Logitech's last driver (the
+# MUSBLAN DriverKit extension in 7.9.0) crashes on macOS 13. Recognised by the function
+# it exports - the C++ name, as GCC and Clang both mangle it.
+USB_LINK_SYMBOL = "_Z15UsbNetLink_Openj"
+
+
+def has_usb_link() -> bool:
+    """Whether the libconcord in use reaches usbnet remotes over USB by itself."""
+    try:
+        return hasattr(_load(), USB_LINK_SYMBOL)
+    except Exception:                                              # noqa: BLE001
+        return False
+
+
 LINK_SUPPORT = {
     # No instruction to run anything: Afterglow sets the USB link up itself now,
     # and telling somebody to run a script we already ran is how a fixed problem keeps
@@ -271,14 +288,21 @@ LINK_SUPPORT = {
               "The remote waits for a DHCP lease before it will answer, which Afterglow "
               "arranges - see Settings → Set up the USB link."),
     "darwin": ("untested",
-               "Nobody has reached a remote from macOS yet. It needs Logitech's old "
-               "Harmony Remote Software installed for its driver - see the README for "
-               "where to get it. Authoring and building configurations work normally."),
+               "Reaching the remote from macOS needs Afterglow's own libconcord, which "
+               "the macOS download includes; Logitech's driver crashes on macOS 13 and "
+               "later. See the README. Authoring and building configurations work "
+               "normally."),
     "win32": ("tested",
               "Install Logitech's old Harmony Remote Software first. Afterglow needs "
               "its driver to reach the remote and cannot replace it; see the README for "
               "where to get it. Confirmed working on Windows 10 and Windows 11."),
 }
+
+
+# With Afterglow's libconcord, macOS needs nothing installed: proven on macOS 13
+# Ventura with a Harmony 900 (identity, dumps, a reset and a config write).
+DARWIN_USB_LINK = ("Afterglow reaches the remote over USB itself, so no driver or other "
+                   "software is needed. Tested on macOS 13 Ventura.")
 
 
 def link_support() -> tuple[str, str]:
@@ -288,6 +312,8 @@ def link_support() -> tuple[str, str]:
     materialises the script beside the user's files - a side effect that has no business
     running at import time, and would run on every import of this module.
     """
+    if sys.platform == "darwin" and has_usb_link():
+        return ("tested", DARWIN_USB_LINK)
     return LINK_SUPPORT.get(
         sys.platform,
         ("untested", "This platform has never been tried against a remote. Authoring "
@@ -727,4 +753,6 @@ def learned_capture(carrier_hz: int, durations: list[int], name: str) -> dict:
 
 def needs_driver() -> bool:
     """Whether this platform needs a driver Afterglow does not install."""
+    if sys.platform == "darwin" and has_usb_link():
+        return False
     return sys.platform in NEEDS_DRIVER
