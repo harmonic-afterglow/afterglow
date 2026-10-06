@@ -406,7 +406,9 @@ jobs:
           # The bundled libconcord has to be the one with the USB link: on macOS it is
           # the only way to a 900/1000/1100.
           lib="$(find "$app" -name 'libconcord*.dylib' -type f | head -1)"
-          nm -gU "$lib" | grep -q UsbNetLink_Open
+          # Not grep -q: it stops reading at the first match, nm dies of SIGPIPE, and
+          # pipefail fails a check that passed.
+          nm -gU "$lib" | grep UsbNetLink_Open > /dev/null
           # Nothing may still point into Homebrew: that path does not exist on a
           # user's Mac.
           if find "$app" \( -name '*.dylib' -o -name '*.so' \) -type f -print0 \
