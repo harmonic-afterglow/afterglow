@@ -25,6 +25,16 @@ from . import ir_compile, protocol_json, ssir
 from .mappings import protocol as protocol_mapping
 
 
+
+def rf_link():
+    """This family's RF blaster pairing over the remote's event channel.
+
+    Shared code reaches it through `backends.rf_link(profile)`, which asks only when the
+    profile offers RF blasters at all.
+    """
+    from . import rf_pairing
+    return rf_pairing
+
 def _native_evidence(signal: dict) -> dict:
     native = signal.get("native") or {}
     for name in BACKEND_NAMES:

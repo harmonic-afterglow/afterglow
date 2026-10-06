@@ -47,10 +47,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from afterglow.hao import (ADD_RECEIVER, DESTRUCTIVE, IDENTIFY_RECEIVER,  # noqa: F401
-                           LIST_RECEIVERS, PORTS, READY, REMOTE_IP, Channel,
-                           NotReachable, event_name, identify_receiver, pair_receiver,
-                           probe as _probe)
+from afterglow.hao import (PORTS, REMOTE_IP, Channel,  # noqa: F401
+                           NotReachable, event_name, probe as _probe)
+# The Harmony 900 family's RF messages and settings format live in its backend.
+from afterglow.backends.harmony_pk.rf_pairing import (  # noqa: F401
+    ADD_RECEIVER, DESTRUCTIVE, IDENTIFY_RECEIVER, LIST_RECEIVERS, READY,
+    identify_receiver, pair_receiver)
 
 
 def probe(host: str = REMOTE_IP, timeout: float = 1.0) -> dict:
@@ -68,7 +70,7 @@ def show(config: Path) -> int:
     import tempfile
 
     from afterglow import ezhex
-    from afterglow.rf import extract_rf
+    from afterglow.backends.harmony_pk.rf import extract_rf
 
     work = tempfile.mkdtemp()
     with contextlib.redirect_stdout(io.StringIO()):
@@ -125,7 +127,7 @@ def main(argv=None):
                 print("then re-read the remote and import.")
             return 0
 
-    # Both branches below call afterglow.hao rather than re-implementing its message
+    # Both branches below call the backend's rf_pairing rather than re-implementing its message
     # exchange. They used to open-code it against an older API (`HaoChannel`, `MESSAGES`,
     # `name_of`, `pair`) that no longer exists, so every use of --identify, and the
     # default pairing path, raised NameError before reaching the remote.

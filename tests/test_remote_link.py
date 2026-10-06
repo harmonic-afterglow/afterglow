@@ -226,17 +226,20 @@ def test_learning_does_not_disturb_existing_captures():
 def test_the_pairing_message_is_what_the_remote_itself_sends():
     """Taken from the remote's own app-main.swf (AddReceiver.as). If this drifts, the
     remote ignores it and pairing silently never starts."""
-    assert hao.ADD_RECEIVER == ("<Event><Payload><Name>RF:AddReceiver</Name>"
-                                "<Params></Params></Payload></Event>")
-    assert hao.READY == "<Event><Payload><Name>RF:ReadyForRF</Name></Payload></Event>"
+    from afterglow.backends.harmony_pk import rf_pairing
+    assert rf_pairing.ADD_RECEIVER == ("<Event><Payload><Name>RF:AddReceiver</Name>"
+                                       "<Params></Params></Payload></Event>")
+    assert rf_pairing.READY == ("<Event><Payload><Name>RF:ReadyForRF</Name></Payload>"
+                                "</Event>")
 
 
 def test_destructive_rf_messages_are_documented_but_unused():
     """ResetNetwork forgets every pairing. Nothing should send it by accident."""
-    source = Path(hao.__file__).read_text()
-    for name in hao.DESTRUCTIVE:
+    from afterglow.backends.harmony_pk import rf_pairing
+    source = Path(rf_pairing.__file__).read_text()
+    for name in rf_pairing.DESTRUCTIVE:
         assert f'"{name}"' not in source.split("DESTRUCTIVE")[1].split("}")[1], (
-            f"{name} is sent somewhere in hao.py")
+            f"{name} is sent somewhere in rf_pairing.py")
 
 
 def test_event_names_are_parsed():
@@ -595,7 +598,7 @@ def test_the_log_reports_outcomes_in_words_and_keeps_the_advice_readable(qapp_or
 def test_rf_settings_are_parsed_from_a_string_not_only_a_directory():
     """The same file arrives two ways: inside a configuration dump, and live over HTTP
     from the remote. One parser, so the live path cannot drift from the stored one."""
-    from afterglow import rf
+    from afterglow.backends.harmony_pk import rf
     xml = """<RemoteInfo><Controllers>
       <Controller><Guid>0</Guid><Label>0</Label></Controller>
       <Controller><Guid>00:04:20:e0:00:00:00:01</Guid><Label>1</Label>
@@ -614,15 +617,16 @@ def test_pairing_waits_for_the_address_to_be_saved():
     """`rfsExportDbAsXML` ends in a fire-and-forget POST, and nothing acknowledges it
     on the event channel - so "a receiver joined" and "the settings say so" are two
     different moments. Reading immediately can read the old file."""
-    assert hasattr(hao, "wait_for_new_receiver")
-    source = Path(hao.__file__).read_text()
+    from afterglow.backends.harmony_pk import rf_pairing
+    source = Path(rf_pairing.__file__).read_text()
     body = source.split("def wait_for_new_receiver")[1].split("\ndef ")[0]
     assert "deadline" in body and "before" in body, "it must poll, not read once"
 
     pytest.importorskip("PyQt6.QtWidgets")
-    from afterglow.gui import remote_ops
-    pair = Path(remote_ops.__file__).read_text().split("def _pair")[1].split("\n    def ")[0]
-    assert "wait_for_new_receiver" in pair, "pairing must wait for the saved address"
+    from afterglow.gui import blaster_scan
+    tick = Path(blaster_scan.__file__).read_text().split("def _tick")[1].split(
+        "\n    def ")[0]
+    assert "_receivers(" in tick, "the scan must keep re-reading the saved list"
 
 
 def test_a_receiver_already_known_is_not_reported_as_new():
@@ -636,17 +640,21 @@ def test_a_receiver_already_known_is_not_reported_as_new():
 # finding blasters
 def _stub_remote(monkeypatch, receivers):
     """A dialog driven against a fake remote, so the logic is testable without a radio."""
+    from types import SimpleNamespace
+
     from afterglow.gui import blaster_scan
     state = {"receivers": list(receivers), "reset": 0, "started": 0}
-    monkeypatch.setattr(blaster_scan.hao, "receivers_now",
-                        lambda *a, **k: list(state["receivers"]))
+    LINK["current"] = SimpleNamespace(
+        receivers_now=lambda *a, **k: list(state["receivers"]),
+        start_pairing=lambda *a, **k: state.update(started=state["started"] + 1),
+        reset_network=lambda *a, **k: state.update(reset=state["reset"] + 1))
     monkeypatch.setattr(blaster_scan.hao, "probe",
                         lambda *a, **k: {blaster_scan.hao.HAO_PORT: True})
-    monkeypatch.setattr(blaster_scan.hao, "start_pairing",
-                        lambda *a, **k: state.update(started=state["started"] + 1))
-    monkeypatch.setattr(blaster_scan.hao, "reset_network",
-                        lambda *a, **k: state.update(reset=state["reset"] + 1))
     return state
+
+
+# The fake RF link the dialogs below are given, set by `_stub_remote`.
+LINK: dict = {}
 
 
 def test_a_blaster_already_in_the_project_cannot_be_added_twice(qapp_or_skip,
@@ -656,7 +664,7 @@ def test_a_blaster_already_in_the_project_cannot_be_added_twice(qapp_or_skip,
     from PyQt6.QtCore import Qt
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "AA:AA", "label": 1}])
-    dialog = BlasterScanDialog({"AA:AA"})
+    dialog = BlasterScanDialog({"AA:AA"}, LINK["current"])
     item = dialog._list.item(0)
     assert "already in this project" in item.text()
     assert not item.flags() & Qt.ItemFlag.ItemIsEnabled
@@ -667,7 +675,7 @@ def test_a_blaster_already_in_the_project_cannot_be_added_twice(qapp_or_skip,
 def test_only_the_newly_found_blasters_are_returned(qapp_or_skip, monkeypatch):
     from afterglow.gui.blaster_scan import BlasterScanDialog
     state = _stub_remote(monkeypatch, [{"mac": "AA:AA", "label": 1}])
-    dialog = BlasterScanDialog({"AA:AA"})
+    dialog = BlasterScanDialog({"AA:AA"}, LINK["current"])
     dialog._window = dialog._left = 2
     dialog.start()
     state["receivers"].append({"mac": "BB:BB", "label": 2})
@@ -682,7 +690,7 @@ def test_the_window_counts_down_and_can_be_cut_short(qapp_or_skip, monkeypatch):
     stops on request."""
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [])
-    dialog = BlasterScanDialog(set())
+    dialog = BlasterScanDialog(set(), LINK["current"])
     dialog._window = dialog._left = 60
     dialog.start()
     assert "60s left" in dialog._clock.text()
@@ -699,7 +707,7 @@ def test_scanning_never_erases_the_pairing_table(qapp_or_skip, monkeypatch):
     association is not in the configuration. Reachability makes it unnecessary."""
     from afterglow.gui.blaster_scan import BlasterScanDialog
     state = _stub_remote(monkeypatch, [])
-    dialog = BlasterScanDialog(set())
+    dialog = BlasterScanDialog(set(), LINK["current"])
     dialog._window = dialog._left = 1
     dialog.start()
     assert state["reset"] == 0, "a scan must not erase anything"
@@ -712,7 +720,7 @@ def test_a_blaster_paired_long_ago_still_counts_as_found(qapp_or_skip, monkeypat
     anything first."""
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "BB", "label": 2, "status": 1}])
-    dialog = BlasterScanDialog(set())              # not in the project yet
+    dialog = BlasterScanDialog(set(), LINK["current"])   # not in the project yet
     dialog._window = dialog._left = 1
     dialog.start()
     dialog.finish()
@@ -726,7 +734,7 @@ def test_a_known_but_silent_blaster_is_not_offered(qapp_or_skip, monkeypatch):
     from PyQt6.QtCore import Qt
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "CC", "label": 3, "status": 0}])
-    dialog = BlasterScanDialog(set())
+    dialog = BlasterScanDialog(set(), LINK["current"])
     dialog._window = dialog._left = 1
     dialog.start()
     dialog.finish()
@@ -751,7 +759,7 @@ def test_nothing_found_explains_why(qapp_or_skip, monkeypatch):
     """An empty result has to say why or it reads as a broken feature."""
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "AA:AA", "label": 1, "status": 1}])
-    dialog = BlasterScanDialog({"AA:AA"})
+    dialog = BlasterScanDialog({"AA:AA"}, LINK["current"])
     dialog._window = dialog._left = 1
     dialog.start()
     dialog.finish()
@@ -796,7 +804,7 @@ def test_an_existing_blaster_is_not_announced_as_new_before_any_scan(qapp_or_ski
     """
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "AA", "label": 1, "status": 1}])
-    dialog = BlasterScanDialog(set())          # not in the project yet
+    dialog = BlasterScanDialog(set(), LINK["current"])          # not in the project yet
     assert "newly paired" not in dialog._list.item(0).text()
     assert "already paired, responding" in dialog._list.item(0).text()
 
@@ -807,7 +815,7 @@ def test_a_blaster_that_joins_during_the_window_is_marked_new(qapp_or_skip,
     was not there at the start really is new."""
     from afterglow.gui.blaster_scan import BlasterScanDialog
     state = _stub_remote(monkeypatch, [{"mac": "AA", "label": 1, "status": 1}])
-    dialog = BlasterScanDialog(set())
+    dialog = BlasterScanDialog(set(), LINK["current"])
     dialog._window = dialog._left = 2
     dialog.start()
     state["receivers"].append({"mac": "BB", "label": 2, "status": 1})
@@ -820,10 +828,12 @@ def test_a_blaster_that_joins_during_the_window_is_marked_new(qapp_or_skip,
 def test_the_dialog_opens_even_if_the_remote_is_unreachable(qapp_or_skip, monkeypatch):
     """The window is where the user finds out the remote is asleep; it cannot itself
     fail to open because of it."""
+    from types import SimpleNamespace
+
     from afterglow.gui import blaster_scan
-    monkeypatch.setattr(blaster_scan.hao, "receivers_now",
-                        lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
-    dialog = blaster_scan.BlasterScanDialog(set())
+    asleep = SimpleNamespace(
+        receivers_now=lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
+    dialog = blaster_scan.BlasterScanDialog(set(), asleep)
     assert dialog._list.count() == 0
 
 

@@ -124,31 +124,6 @@ class RemoteWorker(QThread):
         self.result.emit(capture)
         self.done.emit(True, f"Learned a code at {carrier} Hz.")
 
-    def _pair(self):
-        before = set(self.kwargs.get("before") or ())
-        self.log.emit("Asking the remote to start pairing...")
-        joined = hao.pair_receiver(
-            wait=float(self.kwargs.get("wait", 45)),
-            on_event=lambda name: self.log.emit(f"  {name}"))
-        if not joined:
-            self.result.emit([])
-            self.done.emit(False, "No blaster joined. Put it in pairing mode and try "
-                                  "again.")
-            return
-        # The radio is done; the settings file is written separately. Wait for it
-        # rather than reading a file that may still say what it said before.
-        self.log.emit("Paired - waiting for the remote to save the address...")
-        receivers = hao.wait_for_new_receiver(before)
-        if not receivers:
-            self.result.emit([])
-            self.done.emit(False, "A blaster joined, but the remote has not saved its "
-                                  "address yet. Try adding it again.")
-            return
-        for receiver in receivers:
-            self.log.emit(f"  Base {receiver.get('label')}  {receiver.get('mac')}")
-        self.result.emit(receivers)
-        self.done.emit(True, f"Added {len(receivers)} blaster(s).")
-
 
 def run_with_progress(parent, operation: str, title: str, message: str, **kwargs):
     """Run a remote operation without freezing the interface.

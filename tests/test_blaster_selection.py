@@ -40,8 +40,8 @@ def untick(dialog, mac):
 def dialog(qapp_or_skip, monkeypatch):
     from afterglow.gui import blaster_scan
 
-    monkeypatch.setattr(blaster_scan, "_receivers", lambda: [])
-    return blaster_scan.BlasterScanDialog(known_macs=[])
+    monkeypatch.setattr(blaster_scan, "_receivers", lambda _link: [])
+    return blaster_scan.BlasterScanDialog(known_macs=[], link=None)
 
 
 THREE = [receiver("00:11:22:33:44:01", 1),
@@ -78,7 +78,7 @@ def test_only_enabled_rows_are_returned_by_accept(dialog):
     returned as a new choice."""
     from afterglow.gui import blaster_scan
 
-    dlg = blaster_scan.BlasterScanDialog(known_macs=["00:11:22:33:44:01"])
+    dlg = blaster_scan.BlasterScanDialog(known_macs=["00:11:22:33:44:01"], link=None)
     dlg._refresh_list(THREE)
     dlg._accept()
     assert "00:11:22:33:44:01" not in {r["mac"] for r in dlg.chosen}

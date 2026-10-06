@@ -11,7 +11,7 @@ import shutil
 import xml.etree.ElementTree as ET
 
 from ....preferences import apply as apply_preferences
-from ....rf import apply_rf_setting
+from ..rf import apply_rf_setting
 from .. import irproto, ssir
 from . import protocols
 from .activities import _gen_activity
@@ -268,7 +268,7 @@ def build(specs, work, request: BuildRequest | None = None):
     #
     # A donor base tree ships an RF map pointing at the donor's wireless blaster;
     # settings["rf"]="front" rewrites it so every device emits from this remote's front
-    # IR LED (see rf.apply_rf_setting). Stale assignments are pruned so the map can never
+    # IR LED (see harmony_pk.rf.apply_rf_setting). Stale assignments are pruned so the map can never
     # reference a device this config does not have.
     rf = (settings or {}).get("rf")
     if isinstance(rf, dict) and rf.get("assign"):

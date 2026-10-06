@@ -8,7 +8,7 @@ updating as receivers join.
 Two things make it behave rather than guess:
 
 * the remote saves its RF settings with a fire-and-forget POST, so the list is read
-  live from `http://<remote>/xmluserrfsetting` (`hao.receivers_now`) rather than
+  live from `http://<remote>/xmluserrfsetting` (the link's `receivers_now`) rather than
   inferred from the pairing event, which fires earlier;
 * a receiver the remote already knows does not announce itself as *new*, so "what is
   out there?" cannot be answered from the pairing event alone. It is answered from
@@ -33,18 +33,18 @@ from .. import hao
 DEFAULT_WINDOW = 60          # seconds; the remote's own dialog waits about this long
 
 
-def _receivers():
+def _receivers(link):
     """The remote's receiver list, empty if it cannot be read.
 
     Opening the dialog must not fail because the remote is asleep - the window is where
     the user is told about that. This is the interface boundary, so it catches
-    everything on purpose: `hao.receivers_now` handles the situations it can name, and
+    everything on purpose: `receivers_now` handles the situations it can name, and
     anything it cannot must still leave a window the user can read.
 
     (The former name, `_receivers_or_none`, promised a `None` it never returned.)
     """
     try:
-        return hao.receivers_now()
+        return link.receivers_now()
     except Exception:                    # noqa: BLE001 - a dialog must still open
         return []
 
@@ -63,17 +63,19 @@ def responding(receiver: dict) -> bool:
 class BlasterScanDialog(QDialog):
     """Run an inclusion window, then let the user choose what to add."""
 
-    def __init__(self, known_macs, parent=None, window: int = DEFAULT_WINDOW):
+    def __init__(self, known_macs, link, parent=None, window: int = DEFAULT_WINDOW):
+        """`link` is the remote's RF pairing, from `backends.rf_link(profile)`."""
         super().__init__(parent)
         self.setWindowTitle("Add blasters")
         self.resize(560, 420)
+        self._link = link
         self._known = set(known_macs or ())
         # Everything the remote already knows, as of opening this dialog. Populated
         # here and not only in start(): the list is drawn once before any scan, and
         # with this empty every blaster fell into the "newly paired" branch - a base
         # that had been paired for weeks was announced as new the moment the window
         # opened.
-        self._before: set = {r.get("mac") for r in _receivers()}
+        self._before: set = {r.get("mac") for r in _receivers(self._link)}
         self._scanned = False
         self._window = window
         self._left = window
@@ -121,7 +123,7 @@ class BlasterScanDialog(QDialog):
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._refresh_list(_receivers())
+        self._refresh_list(_receivers(self._link))
 
     # the listening window
     def start(self):
@@ -133,8 +135,8 @@ class BlasterScanDialog(QDialog):
                 "Options → RF Receiver Settings → Advanced → Add.")
             return
         try:
-            self._before = {r.get("mac") for r in _receivers()}
-            hao.start_pairing()
+            self._before = {r.get("mac") for r in _receivers(self._link)}
+            self._link.start_pairing()
             self._scanned = True
         except hao.NotReachable as exc:
             QMessageBox.warning(self, "Could not start", str(exc))
@@ -156,7 +158,7 @@ class BlasterScanDialog(QDialog):
         self._clock.setText(f"Listening - {self._left}s left. "
                             "Press the pairing button on each blaster now.")
         self._bar.setValue(self._window - self._left)
-        self._refresh_list(_receivers())
+        self._refresh_list(_receivers(self._link))
         if self._left <= 0:
             self.finish()
             return
@@ -173,7 +175,7 @@ class BlasterScanDialog(QDialog):
         self._timer.stop()
         self._stop.setEnabled(False)
         self._bar.setVisible(False)
-        receivers = _receivers()
+        receivers = _receivers(self._link)
         self._refresh_list(receivers)
         offerable = [r for r in receivers
                      if responding(r) and r.get("mac") not in self._known]
