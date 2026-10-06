@@ -24,7 +24,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from afterglow import ezhex, rf as rf_module          # noqa: E402
+from afterglow import ezhex                          # noqa: E402
+from afterglow.backends.harmony_pk import rf as rf_module  # noqa: E402
 
 
 def _open(path):

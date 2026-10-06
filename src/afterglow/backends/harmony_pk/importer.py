@@ -13,7 +13,7 @@ import html
 
 from ... import ir_signal
 from ...preferences import read as read_preferences
-from ...rf import extract_rf
+from .rf import extract_rf
 from . import ssir, states as states_mod
 
 def parse_action_id(action_id):

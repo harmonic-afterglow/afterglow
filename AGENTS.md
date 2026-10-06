@@ -76,12 +76,15 @@ src/afterglow/
   ir_signal.py            PORTABLE signal envelope - no backend may be imported here
   ir_protocol.py          PORTABLE protocol grammar - likewise
   device_json.py          portable database record -> portable project device
-  rf.py, hao.py, concord.py, flipper.py ...
+  hao.py                  the remote's event channel over the USB link - no RF format
+  concord.py, flipper.py ...
   backends/               ONE ARCHITECTURE'S ENCODING. Selected by the remote profile.
     __init__.py           dynamic registry + required backend contract
     harmony_pk/           PK\x03\x04 payload import, lowering and build: builder/, importer,
-                          states, irproto, ssir, protocol_json, ir_emit, ir_vm and the
-                          generated-native registry
+                          states, irproto, ssir, protocol_json, ir_emit, ir_vm, the
+                          generated-native registry, and its RF blasters: rf (the
+                          XmlUserRfSetting format) and rf_pairing (reached through
+                          backends.rf_link(profile), only for a remote offering them)
   payloads/               container formats, selected by profile.payload: pk, blob
   gui/                    PyQt6 authoring app ONLY
     app.py                MainWindow + main() entry point

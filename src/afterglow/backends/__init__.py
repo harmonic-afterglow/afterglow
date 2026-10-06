@@ -68,6 +68,18 @@ def for_profile(profile):
     return get(name)
 
 
+def rf_link(profile):
+    """The RF blaster pairing for `profile`'s remote, or None if it has no RF.
+
+    None both for a remote whose profile does not offer RF blasters and for a backend
+    that has no pairing to offer: either way there is nothing to pair with.
+    """
+    if "rf_blasters" not in profile.settings_fields:
+        return None
+    provider = getattr(for_profile(profile), "rf_link", None)
+    return provider() if callable(provider) else None
+
+
 def installed() -> list[str]:
     """Every backend package present, discovered rather than listed."""
     from pkgutil import iter_modules

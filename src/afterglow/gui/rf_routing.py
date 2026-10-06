@@ -70,9 +70,14 @@ def add_receiver(project, parent=None) -> bool:
     What the host can do is open the remote's inclusion window, watch the remote's own
     list, and let the user pick. See `blaster_scan`.
     """
+    from .. import backends, remotes
     from .blaster_scan import BlasterScanDialog
 
-
+    link = backends.rf_link(remotes.for_project(project))
+    if link is None:
+        QMessageBox.information(parent, "RF blasters",
+                                "This remote has no RF blasters to pair.")
+        return False
     settings = project.setdefault("settings", {})
     existing = settings.get("rf") if isinstance(settings.get("rf"), dict) else {}
     previous = list(existing.get("receivers", []))
@@ -81,7 +86,7 @@ def add_receiver(project, parent=None) -> bool:
     # even when the labels come back in a different order.
     routing = assignments_by_mac(previous, existing.get("assign"))
 
-    dialog = BlasterScanDialog(set(known), parent)
+    dialog = BlasterScanDialog(set(known), link, parent)
     if not dialog.exec():
         return False
 
