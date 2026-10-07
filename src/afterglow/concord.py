@@ -27,8 +27,12 @@ server to recover from any more. So:
 
 ## Threading
 
-Every call blocks, some for tens of seconds. The GUI runs them on a worker thread; the
-progress callback is invoked from inside the library on that same thread.
+Every call blocks, some for tens of seconds. The GUI runs them on worker threads, but
+libconcord itself only ever runs on one thread of its own (`_LibraryThread`): hidapi
+ties its device manager to the thread that first initialised it and libconcord never
+releases it, so a call from the next worker used a manager whose thread had ended -
+Apple Silicon killed the app for it on the second remote operation. The progress
+callback is invoked from inside the library, on that thread.
 """
 from __future__ import annotations
 
@@ -36,9 +40,12 @@ import contextlib
 import ctypes
 import ctypes.util
 import os
+import queue
 import shutil
 import sys
 import tempfile
+import threading
+from concurrent.futures import Future
 from pathlib import Path
 
 # Every name libconcord is installed under, across the platforms it builds for. The
@@ -329,6 +336,53 @@ def available() -> bool:
         return False
 
 
+class _LibraryThread:
+    """The library's functions, each called on the one thread libconcord runs on.
+
+    A thread that stays: hidapi schedules its device manager on the run loop of the
+    thread that called `hid_init`, and libconcord calls that once per process. It stays
+    until the process is gone, too - a daemon, so interpreter shutdown does not stop it:
+    libconcord releases hidapi from a C `atexit` handler, after Python has finished, and
+    that unschedules from the same run loop. Calls from the thread itself - a progress
+    callback reaching back in - go straight through.
+    """
+
+    NAME = "libconcord"
+    _queue = None
+    _lock = threading.Lock()
+
+    def __init__(self, lib):
+        self._lib = lib
+
+    def __getattr__(self, name):
+        function = getattr(self._lib, name)
+        if not callable(function):
+            return function
+        return lambda *args: self.call(function, *args)
+
+    @classmethod
+    def _serve(cls, jobs):
+        while True:
+            future, function, args = jobs.get()
+            try:
+                future.set_result(function(*args))
+            except BaseException as exc:                           # noqa: BLE001
+                future.set_exception(exc)
+
+    @classmethod
+    def call(cls, function, *args):
+        if threading.current_thread().name == cls.NAME:
+            return function(*args)
+        with cls._lock:
+            if cls._queue is None:
+                cls._queue = queue.SimpleQueue()
+                threading.Thread(target=cls._serve, args=(cls._queue,), name=cls.NAME,
+                                 daemon=True).start()
+        future = Future()
+        cls._queue.put((future, function, args))
+        return future.result()
+
+
 class Remote:
     """A connected remote. Use as a context manager; every call may raise RemoteError.
 
@@ -340,6 +394,7 @@ class Remote:
     def __init__(self):
         self.lib = _load()
         self._bind()
+        self.lib = _LibraryThread(self.lib)
         self._open = False
         # Set by restart(): libconcord's message when the remote was not seen coming
         # back. Not an error - see restart() - but worth showing once.
