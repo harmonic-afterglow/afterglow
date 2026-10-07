@@ -24,6 +24,10 @@ The Harmony 1100 joins as an experimental remote, and Afterglow gets a macOS app
 
 ### Fixed
 
+- **The macOS app crashing on Apple Silicon** when talking to a remote a second time,
+  or on quitting after it had: every call into libconcord now runs on one thread.
+- **Searching the Logitech database failing on macOS** with a certificate error: the
+  app now checks downloads against the system's own certificates.
 - **Skip and replay keys that did nothing**: a device's own command for them -
   ChapterNext, NextTrack, Replay and the like - now goes on the skip keys when nothing
   else is there, as in Logitech's configurations. Existing projects are filled once
