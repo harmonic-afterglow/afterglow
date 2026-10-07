@@ -65,7 +65,7 @@ def linux_link_note() -> str:
         return ""
     return ("\n\nOn Linux the USB network link also has to come back up before the "
             "remote can be reached over the network. If it does not, use "
-            "Settings \u2192 Set up the USB link.")
+            "Settings \u2192 Remote connection.")
 
 
 class NotReachable(RuntimeError):

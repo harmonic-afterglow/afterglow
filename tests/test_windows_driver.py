@@ -26,11 +26,12 @@ def test_only_a_remote_not_on_winusb_needs_switching():
     assert windows_driver.needs_switch([ON_WINUSB, ON_LOGITECH])
 
 
-def test_each_driver_is_named_for_a_person():
-    assert "WinUSB" in windows_driver.describe(ON_WINUSB)
-    assert "Logitech" in windows_driver.describe(ON_LOGITECH)
+def test_the_connection_is_named_in_plain_words():
+    assert windows_driver.describe(ON_WINUSB) == "direct access"
+    assert windows_driver.describe(ON_LOGITECH) == "Logitech's driver"
     assert windows_driver.describe(ON_NOTHING) == "no driver"
-    assert "SomethingElse" in windows_driver.describe(dict(ON_NOTHING, service="SomethingElse"))
+    other = windows_driver.describe(dict(ON_NOTHING, service="SomethingElse"))
+    assert other == "another driver", "no service names in front of the user"
 
 
 def test_nothing_is_looked_for_off_windows(monkeypatch):

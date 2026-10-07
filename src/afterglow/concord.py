@@ -172,8 +172,8 @@ DRIVER_ADVICE = (
 
 
 WINUSB_ADVICE = (
-    "If it never connects: Settings > USB driver shows which driver Windows gave the "
-    "remote, and switches it to Windows' own WinUSB driver.")
+    "If it never connects: Settings > Remote connection shows how the remote is connected "
+    "and turns on direct access.")
 
 
 def connection_advice() -> str:
@@ -302,7 +302,7 @@ LINK_SUPPORT = {
     # looking like an unfixed one.
     "linux": ("tested",
               "The remote waits for a DHCP lease before it will answer, which Afterglow "
-              "arranges - see Settings → Set up the USB link."),
+              "arranges - see Settings → Remote connection."),
     "darwin": ("untested",
                "Reaching the remote from macOS needs Afterglow's own libconcord, which "
                "the macOS download includes; Logitech's driver crashes on macOS 13 and "
@@ -321,10 +321,15 @@ DARWIN_USB_LINK = ("Afterglow reaches the remote over USB itself, so no driver o
                    "software is needed. Tested on macOS 13 Ventura.")
 
 
-WINDOWS_USB_LINK = ("Afterglow reaches the remote over USB itself, through Windows' own "
-                    "WinUSB driver: no Logitech software is needed. The first time a "
-                    "remote is connected, Afterglow offers to switch it to WinUSB, which "
-                    "asks for administrator permission once.")
+WINDOWS_USB_LINK = ("Afterglow reaches the remote with direct access, over USB through a "
+                    "driver that comes with Windows: no Logitech software is needed. The "
+                    "first time a remote is connected, Afterglow offers to turn it on, "
+                    "which asks for administrator permission once.")
+
+
+LINUX_USB_LINK = ("Afterglow reaches the remote with direct access, over USB, with no "
+                  "network setup. Settings → Remote connection turns it on, which asks "
+                  "for your password once.")
 
 
 def link_support() -> tuple[str, str]:
@@ -338,6 +343,8 @@ def link_support() -> tuple[str, str]:
         return ("tested", DARWIN_USB_LINK)
     if sys.platform == "win32" and has_usb_link():
         return ("tested", WINDOWS_USB_LINK)
+    if sys.platform.startswith("linux") and has_usb_link():
+        return ("tested", LINUX_USB_LINK)
     return LINK_SUPPORT.get(
         sys.platform,
         ("untested", "This platform has never been tried against a remote. Authoring "

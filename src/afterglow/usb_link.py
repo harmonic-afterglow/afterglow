@@ -69,6 +69,10 @@ from . import paths
 # anything, and a wrong answer here only ever means one redundant question.
 RULE_PATH = Path("/etc/udev/rules.d/99-harmony-usbnet.rules")
 HELPER_PATH = Path("/usr/local/bin/harmony_net.sh")
+# Direct access: Afterglow's libconcord opens the remote over USB, and this rule lets the
+# signed-in user do that. Replaces the network link, which `install_harmony_udev.sh
+# direct` removes.
+DIRECT_RULE_PATH = Path("/etc/udev/rules.d/70-afterglow-harmony.rules")
 
 ABSENT, CURRENT, STALE = "absent", "current", "stale"
 
@@ -104,6 +108,24 @@ def rule_state() -> str:
     except OSError:
         # Unreadable is not absent, and offering to reinstall over something that
         # cannot be inspected is worse than staying quiet.
+        return CURRENT
+    return CURRENT
+
+
+def direct_possible() -> bool:
+    """Whether the libconcord in use can open the remote over USB itself."""
+    from . import concord
+    return applicable() and concord.has_usb_link()
+
+
+def direct_state() -> str:
+    """`absent`, `current` or `stale` for the direct-access rule."""
+    try:
+        if DIRECT_RULE_PATH.read_bytes() != _shipped("70-afterglow-harmony.rules"):
+            return STALE
+    except FileNotFoundError:
+        return ABSENT
+    except OSError:
         return CURRENT
     return CURRENT
 
@@ -267,6 +289,8 @@ def link_handled() -> bool:
 
 def manual_command(action: str) -> str:
     """What to run in a terminal, for when there is no polkit agent to ask."""
+    if action == "direct":
+        return f"sudo {paths.usable_helper('install_harmony_udev.sh')} direct"
     if action == "udev":
         return f"sudo {paths.usable_helper('install_harmony_udev.sh')}"
     return f"sudo {paths.usable_helper('harmony_net.sh')}"
@@ -290,31 +314,24 @@ def _no_way_to_ask(action: str) -> str:
             f"leave it running:\n\n{manual_command(action)}")
 
 
-def install_rule() -> tuple[bool, str]:
-    """Install the udev rule and helper for good. Returns `(ok, what to tell the user)`.
+def _run_installer(args: list[str], installed: str) -> tuple[bool, str]:
+    """Run `install_harmony_udev.sh` as root with `args`. `(ok, what to tell the user)`.
 
     Tries each available elevator in turn, because "pkexec exists" and "pkexec can ask
-    anybody anything" are different facts and only the second one matters.
-
-    The installer is run from the materialised copy rather than from inside the bundle:
-    a frozen build's data lives in a directory that is deleted when the process exits, so
-    a rule pointing into it would work until the first restart and then silently stop.
+    anybody anything" are different facts and only the second one matters. Run from the
+    materialised copy: a frozen build's own files vanish when it exits.
     """
-    # The installer copies its two siblings out of the directory it is run from, which
-    # works because `usable_helper` materialises the whole `linux/` set rather than the
-    # one file asked for.
     script = paths.usable_helper("install_harmony_udev.sh")
     attempts = []
     for name, prefix, extra in elevators():
         try:
-            done = subprocess.run([*prefix, str(script)], capture_output=True, text=True,
-                                  timeout=300, env={**os.environ, **extra})
+            done = subprocess.run([*prefix, str(script), *args], capture_output=True,
+                                  text=True, timeout=300, env={**os.environ, **extra})
         except (OSError, subprocess.SubprocessError) as exc:
             attempts.append(f"{name}: {exc}")
             continue
         if done.returncode == 0:
-            return True, ("Installed. Unplug the remote and plug it back in - the link "
-                          "will come up on its own from now on, with no password.")
+            return True, installed
         if _no_agent(done):
             attempts.append(f"{name}: nothing available to show a prompt")
             continue
@@ -322,9 +339,22 @@ def install_rule() -> tuple[bool, str]:
             return False, "Permission was declined, so nothing was changed."
         detail = (done.stderr or done.stdout or "").strip()
         return False, f"The installer failed: {detail or f'exit {done.returncode}'}"
+    action = "direct" if args else "udev"
     if attempts:
-        return False, _no_way_to_ask("udev") + "\n\nTried: " + "; ".join(attempts)
-    return False, _no_way_to_ask("udev")
+        return False, _no_way_to_ask(action) + "\n\nTried: " + "; ".join(attempts)
+    return False, _no_way_to_ask(action)
+
+
+def install_rule() -> tuple[bool, str]:
+    """Install the network link's udev rule and helper for good."""
+    return _run_installer([], "Installed. Unplug the remote and plug it back in - the link "
+                              "will come up on its own from now on, with no password.")
+
+
+def install_direct() -> tuple[bool, str]:
+    """Install the direct-access rule, replacing the network link."""
+    return _run_installer(["direct"], "Direct access is on. Unplug the remote and plug it "
+                                      "back in; no password is needed from now on.")
 
 
 def start_helper() -> tuple[bool, str]:
@@ -336,12 +366,11 @@ def start_helper() -> tuple[bool, str]:
     in whether the remote answers.
     """
     if rule_state() == CURRENT:
-        return False, ("The udev rule is already installed, so the link comes up by "
+        return False, ("The network link is already installed and comes up by "
                        "itself. Starting a second copy would fight the first.")
     if link_handled():
-        return False, ("Something is already bringing the link up - either the helper "
-                       "or an address configured another way. Starting a second "
-                       "DHCP server would break it.")
+        return False, ("Something is already bringing the network link up. Starting "
+                       "a second copy would break it.")
     available = elevators()
     if not available:
         return False, _no_way_to_ask("session")
@@ -360,7 +389,7 @@ def start_helper() -> tuple[bool, str]:
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True, env={**os.environ, **extra})
     except (OSError, subprocess.SubprocessError) as exc:
-        return False, f"The helper could not be started: {exc}"
+        return False, f"The network link could not be started: {exc}"
     return True, ("Starting the link. It stops when you close Afterglow, and you will "
                   "be asked again next time unless you install the rule.")
 
@@ -380,16 +409,21 @@ def link_warning(choice: str) -> str | None:
     running" from here - and being wrong must cost a stale log line rather than a button
     that will not work.
     """
+    if applicable() and choice == "direct":
+        if direct_state() == CURRENT:
+            return None
+        return ("Warning: direct access is not set up, so Afterglow may not be able to "
+                "open the remote. Turn it on again from Settings \u2192 Remote connection.")
     if not applicable() or choice not in ("udev", "session") or link_handled():
         return None
     if rule_state() == CURRENT:
         # udev starts the helper when the remote appears, so the rule being installed and
         # nothing running usually means the remote is not plugged in at all.
-        return ("Warning: the USB link helper is not running. The system rule is "
-                "installed, so plugging the remote in should start it - if it is already "
-                "plugged in, unplug it and plug it back in.")
-    return ("Warning: the USB link helper is not running, so the remote may not get a "
-            "network address. Set it up again from Settings \u2192 Set up the USB link.")
+        return ("Warning: the network link is not running. It is installed, so "
+                "plugging the remote in should start it - if it is already plugged in, "
+                "unplug it and plug it back in.")
+    return ("Warning: the network link is not running, so the remote may not get a "
+            "network address. Set it up again from Settings \u2192 Remote connection.")
 
 
 def should_ask() -> bool:
@@ -400,4 +434,6 @@ def should_ask() -> bool:
     "don't ask again" preference, so that someone who installs the rule stops being asked
     without having had to opt out of a question that no longer applies.
     """
+    if direct_possible():
+        return direct_state() != CURRENT
     return applicable() and rule_state() != CURRENT and not link_handled()

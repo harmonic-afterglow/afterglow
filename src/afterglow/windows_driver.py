@@ -120,13 +120,17 @@ class DriverError(RuntimeError):
     pass
 
 
+def _failed(step: str, ctypes) -> DriverError:
+    return DriverError(f"Windows could not {step} (error {ctypes.get_last_error()}).")
+
+
 def _each_remote(api):
     """Yield `(device_set, devinfo, instance_id)` for each remote plugged in."""
     ctypes = api.ctypes
     handle = api.setupapi.SetupDiGetClassDevsW(None, "USB", None,
                                                DIGCF_PRESENT | DIGCF_ALLCLASSES)
     if not handle or handle == INVALID_HANDLE:
-        raise DriverError(f"cannot list USB devices (error {ctypes.get_last_error()})")
+        raise _failed("list the USB devices", ctypes)
     try:
         index = 0
         while True:
@@ -180,13 +184,13 @@ def needs_switch(found=None) -> bool:
 
 
 def describe(remote: dict) -> str:
-    service = remote["service"]
-    if service.upper() == WINUSB:
-        return "Windows' USB driver (WinUSB)"
-    if service:
-        return f"Logitech's driver ({service})" if "USBLAN" in service.upper() \
-            else f"another driver ({service})"
-    return "no driver"
+    """How the remote is connected, in words for the user."""
+    service = remote["service"].upper()
+    if service == WINUSB:
+        return "direct access"
+    if "USBLAN" in service:
+        return "Logitech's driver"
+    return "another driver" if service else "no driver"
 
 
 def _bind(api, handle, dev, ident) -> None:
@@ -195,7 +199,7 @@ def _bind(api, handle, dev, ident) -> None:
     klass = (_USB_DEVICE_CLASS + "\0").encode("utf-16-le")
     if not api.setupapi.SetupDiSetDeviceRegistryPropertyW(
             handle, ctypes.byref(dev), SPDRP_CLASSGUID, klass, len(klass)):
-        raise DriverError(f"setting the device class failed (error {ctypes.get_last_error()})")
+        raise _failed("prepare the remote", ctypes)
     import uuid
     guid = uuid.UUID(_USB_DEVICE_CLASS)
     dev.ClassGuid = api.GUID.from_buffer_copy(guid.bytes_le)
@@ -204,17 +208,17 @@ def _bind(api, handle, dev, ident) -> None:
     params.cbSize = ctypes.sizeof(params)
     if not api.setupapi.SetupDiGetDeviceInstallParamsW(handle, ctypes.byref(dev),
                                                        ctypes.byref(params)):
-        raise DriverError(f"reading install parameters failed (error {ctypes.get_last_error()})")
+        raise _failed("prepare the remote", ctypes)
     params.Flags |= DI_ENUMSINGLEINF
     params.FlagsEx |= DI_FLAGSEX_ALLOWEXCLUDEDDRVS
     params.DriverPath = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "INF",
                                      "winusb.inf")
     if not api.setupapi.SetupDiSetDeviceInstallParamsW(handle, ctypes.byref(dev),
                                                        ctypes.byref(params)):
-        raise DriverError(f"setting install parameters failed (error {ctypes.get_last_error()})")
+        raise _failed("prepare the remote", ctypes)
     if not api.setupapi.SetupDiBuildDriverInfoList(handle, ctypes.byref(dev),
                                                    SPDIT_CLASSDRIVER):
-        raise DriverError(f"listing winusb.inf failed (error {ctypes.get_last_error()})")
+        raise _failed("find its own USB driver", ctypes)
 
     index = 0
     while True:
@@ -223,23 +227,22 @@ def _bind(api, handle, dev, ident) -> None:
         if not api.setupapi.SetupDiEnumDriverInfoW(handle, ctypes.byref(dev),
                                                    SPDIT_CLASSDRIVER, index,
                                                    ctypes.byref(driver)):
-            raise DriverError("Windows' winusb.inf has no WinUsb Device model")
+            raise DriverError("Windows' own USB driver was not found on this PC")
         index += 1
         if driver.Description == _WINUSB_MODEL:
             break
     if not api.setupapi.SetupDiSetSelectedDriverW(handle, ctypes.byref(dev),
                                                   ctypes.byref(driver)):
-        raise DriverError(f"selecting WinUSB failed (error {ctypes.get_last_error()})")
+        raise _failed("switch the remote", ctypes)
     reboot = api.wintypes.BOOL()
     if not api.newdev.DiInstallDevice(None, handle, ctypes.byref(dev), ctypes.byref(driver),
                                       0, ctypes.byref(reboot)):
-        raise DriverError(f"installing WinUSB on {ident} failed "
-                          f"(error {ctypes.get_last_error()})")
+        raise _failed("switch the remote", ctypes)
 
 
 def _remove(api, handle, dev, ident) -> None:
     if not api.setupapi.SetupDiCallClassInstaller(DIF_REMOVE, handle, api.ctypes.byref(dev)):
-        raise DriverError(f"removing {ident} failed (error {api.ctypes.get_last_error()})")
+        raise _failed("switch the remote back", api.ctypes)
 
 
 def _rescan(api) -> None:
@@ -264,7 +267,7 @@ def _settle(want_winusb: bool, seconds: float = 15.0) -> list[dict]:
 def switch(action: str) -> str:
     """`install` or `restore` for each remote plugged in. Needs an administrator."""
     if not applicable():
-        raise DriverError("only Windows has drivers to switch")
+        raise DriverError("Only Windows has a driver to switch.")
     api = _api()
     done = []
     for handle, dev, ident in _each_remote(api):
@@ -278,10 +281,10 @@ def switch(action: str) -> str:
     if action == RESTORE and done:
         _rescan(api)
     if not done:
-        return ("No remote needed changing." if remotes()
+        return ("Nothing needed changing." if remotes()
                 else "No Harmony 900, 1000 or 1100 is plugged in.")
     found = _settle(want_winusb=action == INSTALL)
-    now = "; ".join(describe(remote) for remote in found) or "not plugged in"
+    now = " and ".join(sorted({describe(remote) for remote in found})) or "not plugged in"
     return f"The remote now uses {now}."
 
 

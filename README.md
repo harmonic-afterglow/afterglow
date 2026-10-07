@@ -40,16 +40,19 @@ Nothing is sent anywhere.
 ## Before you start
 
 **Windows** needs nothing installed first. The first time a Harmony 900, 1000 or 1100
-is connected, Afterglow offers to switch it to Windows' own USB driver (WinUSB, which
-comes with Windows) and Windows asks for administrator permission once. Settings > USB
-driver switches back. Logitech's Harmony Remote Software is no longer needed; where its
-driver is installed and loads, Afterglow can still use it.
+is connected, Afterglow offers to turn on **direct access**: it then talks to the remote
+over USB itself, through a driver that comes with Windows, and Windows asks for
+administrator permission once. That is faster and more reliable than Logitech's driver,
+which is no longer maintained and is refused by many current PCs. Logitech's Harmony
+Remote Software is not needed; where its driver is installed and loads, Afterglow can
+still use it. Settings > Remote connection switches either way.
 
 **macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
 (Logitech's own Mac driver does not work on current macOS.)
 
-**Linux** needs nothing. Afterglow offers to set the USB link up the first time you run
-it, and again from Settings > Set up the USB link.
+**Linux** needs nothing. The first time you run it, Afterglow offers to turn on
+**direct access**, so it talks to the remote over USB itself; that asks for your password
+once. Settings > Remote connection has it, and the old network link, at any time.
 
 ## Using it
 
@@ -95,7 +98,7 @@ reads it.
 
 **Flashing succeeded but the remote rejected the configuration.** Re-flash your backup, then open an issue with what you built.
 
-**On Linux the link stops working.** Settings > Set up the USB link.
+**On Linux or Windows the remote is not found.** Settings > Remote connection, and turn on direct access.
 
 ## Contributing
 

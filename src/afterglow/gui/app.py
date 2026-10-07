@@ -118,10 +118,10 @@ class MainWindow(QMainWindow):
         # reach it again.
         from .. import usb_link
         if usb_link.applicable():
-            settings_menu.addAction(_act("Set up the USB link…", self.setup_usb_link))
+            settings_menu.addAction(_act("Remote connection…", self.setup_usb_link))
         from .. import windows_driver
         if windows_driver.applicable():
-            settings_menu.addAction(_act("USB driver…", self.usb_driver))
+            settings_menu.addAction(_act("Remote connection…", self.usb_driver))
 
         help_menu = mb.addMenu("Help")
         help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
         _usb_link_offer(self, forced=True)
 
     def usb_driver(self):
-        """Which driver the remote is on, and switching it either way (Windows)."""
+        """How the remote is connected, and switching it either way (Windows)."""
         from .usb_driver import driver_dialog
         driver_dialog(self)
 
@@ -503,9 +503,8 @@ def connection_help(parent) -> None:
     ]
     if sys.platform == "win32" and not concord.needs_driver():
         steps.append(
-            "The first time, Afterglow offers to switch the remote to Windows' own USB "
-            "driver. Accept, and allow the change when Windows asks; Logitech's software "
-            "is not needed.")
+            "The first time, Afterglow offers to turn on direct access. Accept, and "
+            "allow the change when Windows asks; Logitech's software is not needed.")
     steps += [
         "Press Read from Remote to save what is on it now. Keep that file: it is how "
         "you get back to where you started.",
@@ -523,7 +522,8 @@ def connection_help(parent) -> None:
 
 
 def _usb_link_offer(parent, forced: bool = False) -> None:
-    """Offer, once, to make the Linux USB link come up by itself.
+    """Offer, once, to set up the Linux connection: direct access where our libconcord
+    has it, otherwise the network link that comes up by itself.
 
     The remote waits for a DHCP lease that only arrives if something runs
     `harmony_net.sh` as root, so on Linux flashing simply does not work until someone
@@ -550,14 +550,22 @@ def _usb_link_offer(parent, forced: bool = False) -> None:
             return
 
     dialog = QDialog(parent)
-    dialog.setWindowTitle("Connecting to a remote on Linux")
+    dialog.setWindowTitle("Remote connection")
     layout = QVBoxLayout(dialog)
-    state = usb_link.rule_state()
-    if state == usb_link.CURRENT:
-        headline = ("The automatic link is already installed. You can reinstall it if "
+    direct_possible = usb_link.direct_possible()
+    if direct_possible and usb_link.direct_state() == usb_link.CURRENT:
+        headline = ("Direct access is already on. You can set it up again if the remote "
+                    "is not found.")
+    elif direct_possible:
+        headline = ("Afterglow can talk to the remote over USB itself - direct access. "
+                    "It is faster and more reliable than the old network link, which "
+                    "needs a DHCP helper running and can be disturbed by the network "
+                    "manager. Turning it on asks for your password once.")
+    elif usb_link.rule_state() == usb_link.CURRENT:
+        headline = ("The network link is already installed. You can reinstall it if "
                     "something is not working.")
-    elif state == usb_link.STALE:
-        headline = "An older version of the automatic link is installed and needs replacing."
+    elif usb_link.rule_state() == usb_link.STALE:
+        headline = "An older version of the network link is installed and needs replacing."
     else:
         headline = ("A Harmony waits for this computer to give it a network address, "
                     "which needs one privileged helper. Without it, flashing will not "
@@ -566,11 +574,13 @@ def _usb_link_offer(parent, forced: bool = False) -> None:
     label.setWordWrap(True)
     layout.addWidget(label)
 
-    permanent = QRadioButton("Install the system rule (asks for your password once)")
-    permanent.setChecked(True)
-    session = QRadioButton("Start the helper for this session (asks each time)")
-    decline = QRadioButton("Neither - flashing will not work")
-    for button in (permanent, session, decline):
+    direct = QRadioButton("Direct access (recommended, asks for your password once)")
+    permanent = QRadioButton("The network link, the old way (asks for your password once)")
+    session = QRadioButton("The network link for this session only (asks each time)")
+    decline = QRadioButton("Neither - Afterglow may not reach the remote")
+    choices = ([direct] if direct_possible else []) + [permanent, session, decline]
+    choices[0].setChecked(True)
+    for button in choices:
         layout.addWidget(button)
 
     never = QCheckBox("Don't ask again")
@@ -590,28 +600,29 @@ def _usb_link_offer(parent, forced: bool = False) -> None:
     # Someone who asked for the link and then flashes without it running has hit
     # something that went wrong; someone who declined has not, and telling them the same
     # thing on every button would be nagging about a decision they already made.
-    choice = ("udev" if permanent.isChecked()
+    choice = ("direct" if direct.isChecked() else "udev" if permanent.isChecked()
               else "session" if session.isChecked() else "declined")
     settings.setValue(USB_LINK_CHOICE_KEY, choice)
     settings.sync()
 
     if decline.isChecked():
         return
-    ok, message = (usb_link.install_rule() if permanent.isChecked()
+    ok, message = (usb_link.install_direct() if direct.isChecked()
+                   else usb_link.install_rule() if permanent.isChecked()
                    else usb_link.start_helper())
     if not ok:
         # Whatever went wrong - a dismissed password prompt, no agent, a failed install -
         # say so and then stop asking at startup. Repeating an unanswered question every
         # launch is how a dialog becomes something people close without reading, and
-        # Settings -> Set up the USB link is always there for a second attempt.
+        # Settings -> Remote connection is always there for a second attempt.
         settings.setValue(USB_LINK_ASK_KEY, True)
         settings.sync()
         QMessageBox.warning(
-            parent, "The link was not set up",
+            parent, "The connection was not set up",
             f"{message}\n\nAfterglow will not ask again at startup. You can try again "
-            f"from Settings \u2192 Set up the USB link.")
+            f"from Settings \u2192 Remote connection.")
         return
-    QMessageBox.information(parent, "USB link", message)
+    QMessageBox.information(parent, "Remote connection", message)
 
 
 # Which drawing to use, by the pixel size actually being drawn. Below 32px these are
