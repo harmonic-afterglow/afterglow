@@ -8,6 +8,7 @@ here instead.
 """
 from __future__ import annotations
 
+import sys
 from importlib import import_module
 
 
@@ -51,6 +52,13 @@ def run() -> int:
             problems.append(f"shipped data is missing: {marker}")
     if not paths.helper("harmony_net.sh").is_file():
         problems.append("the USB link helper is missing")
+
+    # A bundle carries no certificate file of its own; without the system's store every
+    # download (the Logitech database, the public IR sources) fails verification.
+    from .certificates import use_system_store
+    if getattr(sys, "frozen", False) and not use_system_store():
+        problems.append("downloads cannot use the system's certificates "
+                        "(truststore is missing)")
 
     profiles = [profile.id for profile in remotes.load_all()]
     if not profiles:
