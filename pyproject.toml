@@ -22,7 +22,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-gui = ["PyQt6>=6.5", "Pillow>=10"]
+gui = ["PyQt6>=6.5", "Pillow>=10", "truststore>=0.9"]
 # `ruff` belongs here, not only in CI. It was installed by the workflow alone, so
 # `pip install -e '.[dev]'` produced an environment that could not run the gate CI
 # enforces - and it went uninstalled long enough for four F821 name errors to reach the

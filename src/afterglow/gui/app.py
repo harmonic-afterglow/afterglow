@@ -740,6 +740,8 @@ def _join_title_bar(window):
 
 
 def main():
+    from ..certificates import use_system_store
+    use_system_store()
     app = QApplication(sys.argv)
     app.setApplicationName("Afterglow")
     app.setOrganizationName("Afterglow")
