@@ -903,3 +903,40 @@ def test_a_learned_capture_survives_a_zero_space_end_to_end():
     capture = concord.learned_capture(37944, [9000, 0, 560, 1690, 560], "VolumeUp")
     assert capture["pulses_us"] == [9560, -1690, 560]
     assert capture["carrier_hz"] == 37944
+
+
+def test_every_library_call_runs_on_one_thread_that_stays():
+    # hidapi ties its device manager to the thread that initialised it, and libconcord
+    # never releases it: a remote operation on a fresh worker thread used a manager whose
+    # thread had gone, which Apple Silicon kills the process for.
+    import threading
+
+    seen = []
+
+    class Library:
+        def init_concord(self):
+            seen.append(threading.get_ident())
+            return 0
+
+        def get_identity(self, callback):
+            seen.append(threading.get_ident())
+            return callback()                 # a callback calling back in must not wait
+
+    lib = concord._LibraryThread(Library())
+    lib.get_identity(lambda: lib.init_concord())
+    for _ in range(3):
+        worker = threading.Thread(target=lib.init_concord)
+        worker.start()
+        worker.join()
+
+    assert len(seen) == 5
+    assert len(set(seen)) == 1
+    assert seen[0] != threading.get_ident()
+    # libconcord releases hidapi from a C atexit handler, after Python has shut down;
+    # a thread the interpreter joins at exit is gone by then.
+    [thread] = [t for t in threading.enumerate() if t.name == concord._LibraryThread.NAME]
+    assert thread.daemon
+    # libconcord releases hidapi from a C atexit handler, after Python has shut down;
+    # a thread the interpreter joins at exit is gone by then.
+    [thread] = [t for t in threading.enumerate() if t.name == concord._LibraryThread.NAME]
+    assert thread.daemon
