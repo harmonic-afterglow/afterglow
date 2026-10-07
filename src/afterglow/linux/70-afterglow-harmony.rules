@@ -1,0 +1,3 @@
+# Direct access for Afterglow: lets the signed-in user open a Harmony 900/1000/1100 over USB,
+# so no network link or DHCP server is needed. Installed by install_harmony_udev.sh direct.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="046d", ATTR{idProduct}=="c11f", TAG+="uaccess"

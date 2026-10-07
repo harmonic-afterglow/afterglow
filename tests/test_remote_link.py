@@ -261,7 +261,7 @@ def test_unreachable_remote_gives_the_same_advice_as_every_other_link_failure():
     message = str(caught.value)
     assert concord.NOT_CONNECTED_ADVICE in message
     assert message.index("127.0.0.1:1") < message.index(concord.NOT_CONNECTED_ADVICE)
-    assert ("Set up the USB link" in message) is _sys.platform.startswith("linux")
+    assert ("Remote connection" in message) is _sys.platform.startswith("linux")
     assert "harmony_net" not in message, "do not tell them to run what we already ran"
 
 
@@ -564,7 +564,7 @@ def test_a_missed_reboot_is_reported_as_written_and_not_as_a_linux_chore(qapp_or
     assert said["ok"] is True, "a missed reboot is not a failed write"
     assert said["text"].startswith("The configuration was written")
     assert "20 seconds" in said["text"] and "plug it back in" in said["text"]
-    assert ("Set up the USB link" in said["text"]) is _sys.platform.startswith("linux")
+    assert ("Remote connection" in said["text"]) is _sys.platform.startswith("linux")
     assert "harmony_net" not in said["text"]
 
 

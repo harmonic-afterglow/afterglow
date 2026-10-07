@@ -338,6 +338,7 @@ def test_an_installed_rule_means_there_is_nothing_to_ask(monkeypatch, tmp_path):
     monkeypatch.setattr(usb_link, "RULE_PATH", rule)
     monkeypatch.setattr(usb_link, "HELPER_PATH", helper)
     monkeypatch.setattr(usb_link, "link_handled", lambda: False)
+    monkeypatch.setattr(usb_link, "direct_possible", lambda: False)
     monkeypatch.setattr(usb_link.sys, "platform", "linux")
 
     assert usb_link.rule_state() == usb_link.ABSENT
@@ -704,7 +705,7 @@ def test_a_failed_setup_says_so_and_stops_asking_but_leaves_a_way_back(qapp_or_s
     gui_app._usb_link_offer(None)
     assert len(told) == 1, "a failure has to be reported, not swallowed"
     assert "declined" in told[0]
-    assert "Set up the USB link" in told[0], "say where the second attempt lives"
+    assert "Remote connection" in told[0], "say where the second attempt lives"
     assert settings.value(gui_app.USB_LINK_ASK_KEY, False, type=bool) is True
 
     # Startup now stays quiet...
@@ -995,6 +996,48 @@ def test_windows_with_our_libconcord_needs_no_logitech_software(monkeypatch):
 
     assert status == "tested"
     assert not concord.needs_driver()
-    assert "WinUSB" in explanation and "Logitech" in explanation
+    assert "direct access" in explanation and "Logitech" in explanation
     assert concord.DRIVER_ADVICE not in concord.connection_advice()
-    assert "USB driver" in concord.connection_advice()
+    assert "Remote connection" in concord.connection_advice()
+
+
+def test_with_direct_access_possible_the_offer_is_about_direct_access(monkeypatch, tmp_path):
+    """Our libconcord opens the remote over USB itself: then the question is the
+    direct-access rule, and a working network link no longer settles it."""
+    from afterglow import paths, usb_link
+
+    rule = tmp_path / "70-afterglow-harmony.rules"
+    monkeypatch.setattr(usb_link, "DIRECT_RULE_PATH", rule)
+    monkeypatch.setattr(usb_link, "direct_possible", lambda: True)
+    monkeypatch.setattr(usb_link, "link_handled", lambda: True)
+    monkeypatch.setattr(usb_link.sys, "platform", "linux")
+
+    assert usb_link.direct_state() == usb_link.ABSENT
+    assert usb_link.should_ask() is True
+    assert "turn it on" in usb_link.link_warning("direct").lower()
+
+    rule.write_bytes(b"# an older rule\n")
+    assert usb_link.direct_state() == usb_link.STALE
+    assert usb_link.should_ask() is True
+
+    rule.write_bytes(paths.helper("70-afterglow-harmony.rules").read_bytes())
+    assert usb_link.direct_state() == usb_link.CURRENT
+    assert usb_link.should_ask() is False
+    assert usb_link.link_warning("direct") is None
+
+
+def test_the_direct_access_rule_gives_the_seat_user_the_remote():
+    from afterglow import paths
+
+    rule = paths.helper("70-afterglow-harmony.rules").read_text()
+    [line] = [line for line in rule.splitlines() if line and not line.startswith("#")]
+    assert 'ATTR{idVendor}=="046d"' in line and 'ATTR{idProduct}=="c11f"' in line
+    assert 'TAG+="uaccess"' in line, "the signed-in user, not everyone"
+    assert "MODE" not in line
+
+
+def test_direct_access_has_a_terminal_command_too(monkeypatch, tmp_path):
+    from afterglow import paths, usb_link
+
+    monkeypatch.setattr(paths, "data_dir", lambda: tmp_path)
+    assert usb_link.manual_command("direct").endswith("install_harmony_udev.sh direct")
