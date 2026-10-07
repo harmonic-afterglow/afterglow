@@ -171,9 +171,18 @@ DRIVER_ADVICE = (
     "installed, for its USB driver (Help > Connecting a Remote says where to get it).")
 
 
+WINUSB_ADVICE = (
+    "If it never connects: Settings > USB driver shows which driver Windows gave the "
+    "remote, and switches it to Windows' own WinUSB driver.")
+
+
 def connection_advice() -> str:
     """What to try when the remote cannot be reached, for this platform."""
-    return NOT_CONNECTED_ADVICE + (f"\n\n{DRIVER_ADVICE}" if needs_driver() else "")
+    if needs_driver():
+        return f"{NOT_CONNECTED_ADVICE}\n\n{DRIVER_ADVICE}"
+    if sys.platform == "win32":
+        return f"{NOT_CONNECTED_ADVICE}\n\n{WINUSB_ADVICE}"
+    return NOT_CONNECTED_ADVICE
 
 
 def _bundled_candidates():
@@ -266,9 +275,9 @@ def _load():
 # Platforms where a driver has to be installed before a remote can be reached, whether or
 # not the path is proven. Kept apart from `LINK_SUPPORT` because the two answer different
 # questions: that one says whether anyone has done it, this one says whether something
-# must be installed first. Windows is now `tested` *and* still needs the driver.
-# Both need Logitech's own software installed for its driver; Afterglow cannot replace
-# it. The 7.8 release covers Windows and macOS.
+# must be installed first - with *upstream* libconcord, which only knows the network
+# path: then both need Logitech's software for its driver. Afterglow's own libconcord
+# needs neither (see `needs_driver`).
 NEEDS_DRIVER = frozenset({"win32", "darwin"})
 
 # Afterglow's own libconcord (github.com/harmonic-afterglow/concordance, branch
@@ -312,6 +321,12 @@ DARWIN_USB_LINK = ("Afterglow reaches the remote over USB itself, so no driver o
                    "software is needed. Tested on macOS 13 Ventura.")
 
 
+WINDOWS_USB_LINK = ("Afterglow reaches the remote over USB itself, through Windows' own "
+                    "WinUSB driver: no Logitech software is needed. The first time a "
+                    "remote is connected, Afterglow offers to switch it to WinUSB, which "
+                    "asks for administrator permission once.")
+
+
 def link_support() -> tuple[str, str]:
     """`("tested"|"untested", explanation)` for reaching a remote on this platform.
 
@@ -321,6 +336,8 @@ def link_support() -> tuple[str, str]:
     """
     if sys.platform == "darwin" and has_usb_link():
         return ("tested", DARWIN_USB_LINK)
+    if sys.platform == "win32" and has_usb_link():
+        return ("tested", WINDOWS_USB_LINK)
     return LINK_SUPPORT.get(
         sys.platform,
         ("untested", "This platform has never been tried against a remote. Authoring "
@@ -807,7 +824,12 @@ def learned_capture(carrier_hz: int, durations: list[int], name: str) -> dict:
 
 
 def needs_driver() -> bool:
-    """Whether this platform needs a driver Afterglow does not install."""
-    if sys.platform == "darwin" and has_usb_link():
+    """Whether this platform needs a driver Afterglow does not install.
+
+    With Afterglow's own libconcord neither macOS nor Windows does: macOS needs no driver,
+    and on Windows the driver is Windows' own WinUSB, which Afterglow puts on the remote
+    itself (`windows_driver`).
+    """
+    if sys.platform in ("darwin", "win32") and has_usb_link():
         return False
     return sys.platform in NEEDS_DRIVER

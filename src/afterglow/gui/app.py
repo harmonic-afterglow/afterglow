@@ -119,6 +119,9 @@ class MainWindow(QMainWindow):
         from .. import usb_link
         if usb_link.applicable():
             settings_menu.addAction(_act("Set up the USB link…", self.setup_usb_link))
+        from .. import windows_driver
+        if windows_driver.applicable():
+            settings_menu.addAction(_act("USB driver…", self.usb_driver))
 
         help_menu = mb.addMenu("Help")
         help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
@@ -127,6 +130,11 @@ class MainWindow(QMainWindow):
     def setup_usb_link(self):
         """Re-open the startup offer on demand, whatever was answered before."""
         _usb_link_offer(self, forced=True)
+
+    def usb_driver(self):
+        """Which driver the remote is on, and switching it either way (Windows)."""
+        from .usb_driver import driver_dialog
+        driver_dialog(self)
 
     def configure_sources(self):
         dialog = SourceSettingsDialog(self.source_preferences, self)
@@ -492,6 +500,13 @@ def connection_help(parent) -> None:
     steps += [
         "Plug the remote in and wait until its screen says it is connected over USB.",
         "In Afterglow, open the Flash tab and press Check Connection.",
+    ]
+    if sys.platform == "win32" and not concord.needs_driver():
+        steps.append(
+            "The first time, Afterglow offers to switch the remote to Windows' own USB "
+            "driver. Accept, and allow the change when Windows asks; Logitech's software "
+            "is not needed.")
+    steps += [
         "Press Read from Remote to save what is on it now. Keep that file: it is how "
         "you get back to where you started.",
     ]

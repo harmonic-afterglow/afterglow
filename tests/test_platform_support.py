@@ -169,7 +169,7 @@ def test_a_bundled_library_is_found_whatever_the_bundler_named_it(tmp_path, monk
     assert concord._bundled_candidates() == [dll]
 
 
-def test_windows_is_tested_and_still_says_the_driver_is_required(monkeypatch):
+def test_windows_with_upstream_libconcord_still_says_the_driver_is_required(monkeypatch):
     """Two questions, both answered, and neither collapses into the other.
 
     Windows reads and flashes remotes, so the status is `tested` and the Flash tab stays
@@ -184,6 +184,7 @@ def test_windows_is_tested_and_still_says_the_driver_is_required(monkeypatch):
     from afterglow import concord
 
     monkeypatch.setattr(concord.sys, "platform", "win32")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: False)
     status, explanation = concord.link_support()
 
     assert status == "tested"
@@ -980,3 +981,20 @@ def test_a_remote_that_will_not_connect_points_at_the_driver_where_one_is_needed
     assert "Harmony Remote Software" in concord.connection_advice()
     monkeypatch.setattr(concord.sys, "platform", "linux")
     assert "Harmony Remote Software" not in concord.connection_advice()
+
+
+def test_windows_with_our_libconcord_needs_no_logitech_software(monkeypatch):
+    """With the USB link, Windows reaches the remote through Windows' own WinUSB driver,
+    which Afterglow switches the remote to itself - proven against a Harmony 900 on
+    Windows 10, from Logitech's driver and from none."""
+    from afterglow import concord
+
+    monkeypatch.setattr(concord.sys, "platform", "win32")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: True)
+    status, explanation = concord.link_support()
+
+    assert status == "tested"
+    assert not concord.needs_driver()
+    assert "WinUSB" in explanation and "Logitech" in explanation
+    assert concord.DRIVER_ADVICE not in concord.connection_advice()
+    assert "USB driver" in concord.connection_advice()

@@ -139,6 +139,8 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
     from PyQt6.QtCore import QEventLoop, Qt
     from PyQt6.QtWidgets import QProgressDialog
 
+    from .usb_driver import offer_before_operation
+    offer_before_operation(parent)
     dialog = QProgressDialog(message, None, 0, 0, parent)
     dialog.setWindowTitle(title)
     dialog.setWindowModality(Qt.WindowModality.WindowModal)
