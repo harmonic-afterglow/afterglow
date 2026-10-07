@@ -30,6 +30,12 @@ class RemoteWorker(QThread):
     def _on_progress(self, stage, current, total):
         self.progress.emit(stage, current, total)
 
+    def _remote(self):
+        """The remote, saying so first: finding it alone can take 20 seconds."""
+        self.progress.emit("Connecting to the remote", 0, 0)
+        self.log.emit("Connecting to the remote...")
+        return concord.Remote()
+
     def run(self):
         try:
             getattr(self, f"_{self.operation}")()
@@ -42,7 +48,7 @@ class RemoteWorker(QThread):
 
     # the operations
     def _identify(self):
-        with concord.Remote() as remote:
+        with self._remote() as remote:
             identity = remote.identity(self._on_progress)
         self.log.emit(f"{identity['mfg']} {identity['model']} "
                       f"(skin {identity['skin']}, firmware {identity['firmware']})")
@@ -55,8 +61,8 @@ class RemoteWorker(QThread):
 
     def _read(self):
         target = Path(self.kwargs["path"])
-        with concord.Remote() as remote:
-            identity = remote.identity()
+        with self._remote() as remote:
+            identity = remote.identity(self._on_progress)
             self.log.emit(f"Reading from {identity['model']}...")
             size = remote.save_config(target, self._on_progress)
         self.log.emit(f"Saved {target}")
@@ -65,8 +71,8 @@ class RemoteWorker(QThread):
 
     def _write(self):
         path = Path(self.kwargs["path"])
-        with concord.Remote() as remote:
-            identity = remote.identity()
+        with self._remote() as remote:
+            identity = remote.identity(self._on_progress)
             self.log.emit(f"Writing {path.name} to {identity['model']}...")
             remote.write_config(path, self._on_progress)
             # The write succeeded or write_config would have raised. Only the restart
@@ -97,7 +103,7 @@ class RemoteWorker(QThread):
     def _learn(self):
         mode = self.kwargs.get("mode", concord.LEARN_SINGLE)
         timeout = int(self.kwargs.get("timeout_ms", 5000))
-        with concord.Remote() as remote:
+        with self._remote() as remote:
             if remote.set_learning_mode(mode, timeout):
                 self.log.emit("Ready - press the key on the other remote.")
             else:
