@@ -39,9 +39,11 @@ Nothing is sent anywhere.
 
 ## Before you start
 
-**Windows** needs Logitech's Harmony Remote Software installed first, for its
-driver. Afterglow cannot replace it. Logitech's servers are gone, so it now comes from
-archives - [Logitech Harmony Software 7.8](https://archive.org/details/logitech-harmony-software-7-8)
+**Windows** needs nothing installed first. The first time a Harmony 900, 1000 or 1100
+is connected, Afterglow offers to switch it to Windows' own USB driver (WinUSB, which
+comes with Windows) and Windows asks for administrator permission once. Settings > USB
+driver switches back. Logitech's Harmony Remote Software is no longer needed; where its
+driver is installed and loads, Afterglow can still use it.
 
 **macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
 (Logitech's own Mac driver does not work on current macOS.)

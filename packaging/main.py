@@ -17,6 +17,11 @@ def main() -> int:
         from afterglow import __version__
         print(__version__)
         return 0
+    if "--usb-driver" in sys.argv[1:]:
+        # The elevated half of switching the remote's Windows driver: started by the
+        # running application through Windows' consent prompt, never by hand.
+        from afterglow.windows_driver import main as usb_driver
+        return usb_driver()
     if "--self-check" in sys.argv[1:]:
         from afterglow.selfcheck import run
         return run()

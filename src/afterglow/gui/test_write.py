@@ -119,6 +119,8 @@ class TestWriteDialog(QDialog):
         self.restore_btn.setEnabled(not busy and status in first_write.RESTORABLE)
 
     def _run(self, call, then):
+        from .usb_driver import offer_before_operation
+        offer_before_operation(self)
         self._show_state(busy=True)
         self._step = _Step(call, self)
         self._step.finished_with.connect(lambda ok, result: self._done(ok, result, then))

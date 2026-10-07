@@ -645,6 +645,8 @@ class UpdateTab(QWidget):
     def _run(self, operation, **kwargs):
         """Start a remote operation on a worker thread and wire it to the log."""
         from .remote_ops import RemoteWorker
+        from .usb_driver import offer_before_operation
+        offer_before_operation(self)
         self._warn_if_the_link_is_down()
         self._busy(True)
         self._worker = RemoteWorker(operation, self, **kwargs)
