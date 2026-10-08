@@ -169,6 +169,31 @@ def test_a_bundled_library_is_found_whatever_the_bundler_named_it(tmp_path, monk
     assert concord._bundled_candidates() == [dll]
 
 
+def test_afterglow_libconcord_wins_over_bundled_and_system(monkeypatch, tmp_path):
+    """A chosen build is loaded before anything the loader would pick by name."""
+    from afterglow import concord
+
+    loaded = []
+    monkeypatch.setattr(concord.ctypes, "CDLL", lambda name: loaded.append(name) or name)
+    monkeypatch.setattr(concord.sys, "_MEIPASS", str(tmp_path), raising=False)
+    (tmp_path / "libconcord.so.6").write_bytes(b"")
+    chosen = tmp_path / "fork" / "libconcord.so.6"
+    monkeypatch.setenv("AFTERGLOW_LIBCONCORD", str(chosen))
+    assert concord._load() == str(chosen)
+    assert loaded == [str(chosen)]
+
+
+def test_afterglow_libconcord_that_will_not_load_is_not_silently_replaced(monkeypatch):
+    from afterglow import concord
+
+    def refuse(name):
+        raise OSError("cannot open shared object file")
+    monkeypatch.setattr(concord.ctypes, "CDLL", refuse)
+    monkeypatch.setenv("AFTERGLOW_LIBCONCORD", "/nowhere/libconcord.so.6")
+    with pytest.raises(concord.NotAvailable, match="AFTERGLOW_LIBCONCORD"):
+        concord._load()
+
+
 def test_windows_with_upstream_libconcord_still_says_the_driver_is_required(monkeypatch):
     """Two questions, both answered, and neither collapses into the other.
 

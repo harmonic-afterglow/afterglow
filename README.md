@@ -112,6 +112,10 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev,gui]'
 .venv/bin/python -m pytest
 ```
 
+From source it uses the libconcord installed on the system. To use Afterglow's own build
+instead (needed for direct access), point `AFTERGLOW_LIBCONCORD` at the library file, for
+example `AFTERGLOW_LIBCONCORD=~/concordance/libconcord/.libs/libconcord.so.6`.
+
 ## Special Thanks
 
 - **[Concordance / libconcord](https://github.com/jaymzh/concordance)** — for reverse engineering the Harmony USB protocol and maintaining `libconcord`.

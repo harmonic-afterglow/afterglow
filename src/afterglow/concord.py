@@ -258,6 +258,14 @@ LOAD_ERRORS: list[str] = []
 
 def _load():
     LOAD_ERRORS.clear()
+    # A particular build, such as Afterglow's own when running from source on a system
+    # that also has upstream Concordance installed: by name the loader picks that one.
+    chosen = os.environ.get("AFTERGLOW_LIBCONCORD")
+    if chosen:
+        try:
+            return ctypes.CDLL(str(Path(chosen).expanduser()))
+        except OSError as exc:
+            raise NotAvailable(f"AFTERGLOW_LIBCONCORD could not be loaded: {exc}") from exc
     for candidate in _bundled_candidates():
         try:
             return ctypes.CDLL(str(candidate))
