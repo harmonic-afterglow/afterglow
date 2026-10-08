@@ -499,10 +499,12 @@ jobs:
           | `afterglow-macos-arm64.dmg` | macOS, Apple Silicon |
           | `afterglow-macos-x86_64.dmg` | macOS, Intel (when present) |
 
-          Standalone; no Python needed. **macOS needs no driver.** The app is not
-          notarized: the first time, open it, then allow it in System Settings >
-          Privacy & Security ("Open Anyway"). **Windows needs Logitech's driver
-          installed first** - see the
+          Standalone; no Python needed, and no driver to install. **Windows and
+          Linux** offer *direct access* the first time a remote is connected, which
+          asks for administrator permission (Windows) or your password (Linux) once.
+          **macOS** needs nothing; the app is not notarized, so the first time, open
+          it, then allow it in System Settings > Privacy & Security ("Open Anyway").
+          See the
           [README](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#before-you-start).
 
           ```
