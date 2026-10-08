@@ -32,7 +32,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Afterglow")
         self.resize(900, 600)
 
-        self.project   = empty_project()
+        from .default_remote import default_remote_id
+        self.project   = empty_project(default_remote_id())
         from .. import paths
         from .activity_buttons import previous_prepared_dir
         # Earlier versions kept the library and logos in application data. Brought into
@@ -123,6 +124,8 @@ class MainWindow(QMainWindow):
         if windows_driver.applicable():
             settings_menu.addAction(_act("Remote connection…", self.usb_driver))
         settings_menu.addAction(_act("Flash a Configuration File…", self.flash_file))
+        if len(remote_profiles()) > 1:
+            settings_menu.addAction(_act("Default Remote…", self.choose_default_remote))
 
         help_menu = mb.addMenu("Help")
         help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
@@ -225,12 +228,14 @@ class MainWindow(QMainWindow):
         self.update_tab.refresh()
 
     def _choose_remote(self, title, intro, exclude=None):
+        from .default_remote import default_remote_id
         choices = [p for p in remote_profiles() if p.id != exclude]
         if not choices:
             QMessageBox.information(
                 self, title, "There is no other remote Afterglow can build for yet.")
             return None
-        dialog = ChooseRemoteDialog(choices, title, intro, self)
+        dialog = ChooseRemoteDialog(choices, title, intro, self,
+                                    selected=default_remote_id())
         return dialog.chosen() if dialog.exec() else None
 
     def change_remote(self, target_id=None):
@@ -267,6 +272,23 @@ class MainWindow(QMainWindow):
         self._project_path = path
         self._reload_tabs()
         self._write_project(path)
+        from .default_remote import offer_after_change
+        offer_after_change(self, target)
+
+    def start_with_default_remote(self, remote_id):
+        """The startup project is for the remote just chosen, if nothing was done in it."""
+        untouched = not self._project_path and not self._dirty and \
+            not self.project.get("devices") and not self.project.get("activities")
+        profile = self._profile()
+        if not remote_id or not untouched or (profile and profile.id == remote_id):
+            return
+        self.project.clear()
+        self.project.update(empty_project(remote_id))
+        self._reload_tabs()
+
+    def choose_default_remote(self):
+        from .default_remote import choose_default_remote
+        self.start_with_default_remote(choose_default_remote(self))
 
     # Project I/O
     def new_project(self):
@@ -791,4 +813,6 @@ def main():
     _join_title_bar(win)
     _driver_reminder(win)
     _usb_link_offer(win)
+    from .default_remote import ask_at_first_start
+    win.start_with_default_remote(ask_at_first_start(win))
     sys.exit(app.exec())

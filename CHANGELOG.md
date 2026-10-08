@@ -11,6 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Settings > Flash a Configuration File** writes any `.ezhex` onto the remote as it
   is - a backup, to put the remote back how it was - like `concordance -C`. A file
   made for a different remote is refused unless **Force** is ticked.
+- **A default remote.** The first start asks which Harmony you have, after the
+  connection questions, and Afterglow then starts with a project for it instead of
+  always the Harmony 900. Moving a project to another remote offers to make that one
+  the default (with "Don't ask again"); **Settings > Default Remote** changes it.
 
 ## [0.2.0-beta.2] - 2026-10-07
 
