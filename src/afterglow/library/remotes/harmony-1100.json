@@ -10,12 +10,15 @@
     ],
     "flash": "0x01:0x49",
     "board": "0.3.0",
-    "software_type": 0
+    "software_type": 0,
+    "other_boards": [
+      "0.5.0"
+    ]
   },
   "payload": "pk",
   "backend": "harmony-pk",
   "status": "experimental",
-  "notes": "Identity from a Logitech-generated configuration (skin 62) and firmware 62.7.7/63.7.7, which are byte-identical but for the skin: the same remote sold under two model numbers. Every command is a recorded device sequence (docs/harmony_pk/ssir-sequences.md). Configurations can be read, imported and built; a built one has not yet been written to a remote, so writing goes through the test-write flow, which backs the remote up first.",
+  "notes": "Identity from a Logitech-generated configuration (skin 62) and firmware 62.7.7/63.7.7, which are byte-identical but for the skin: the same remote sold under two model numbers. Its board is 0.3.0 on the first configuration and 0.5.0 on a later one; both run that firmware. Every command is a recorded device sequence (docs/harmony_pk/ssir-sequences.md). Configurations can be read, imported and built; a built one has not yet been written to a remote, so writing goes through the test-write flow, which backs the remote up first.",
   "capabilities": {
     "rf_blaster": false,
     "touchscreen": true,
