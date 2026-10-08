@@ -65,7 +65,8 @@ class RemoteBar(QFrame):
 class ChooseRemoteDialog(QDialog):
     """Pick a remote that configurations can be built for."""
 
-    def __init__(self, profiles, title: str, intro: str, parent=None):
+    def __init__(self, profiles, title: str, intro: str, parent=None,
+                 selected: str | None = None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(460, 320)
@@ -80,7 +81,8 @@ class ChooseRemoteDialog(QDialog):
             item.setToolTip(profile.notes or "")
             self.list.addItem(item)
         if self.list.count():
-            self.list.setCurrentRow(0)
+            ids = [profile.id for profile in profiles]
+            self.list.setCurrentRow(ids.index(selected) if selected in ids else 0)
         self.list.itemDoubleClicked.connect(lambda _item: self.accept())
         layout.addWidget(self.list, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
