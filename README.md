@@ -66,7 +66,7 @@ so the first time macOS will refuse to open it: open it once, then go to
 > [!IMPORTANT]
 > **Save a backup before anything else.** On the **Flash** tab, choose **Read from
 > Remote** and keep the file somewhere safe. It is your only way back to the setup you
-> have now.
+> have now: **Settings > Flash a Configuration File** puts it back.
 
 Then:
 
@@ -96,7 +96,7 @@ reads it.
 
 **The remote will not connect.** Give it a few seconds - it is not ready the instant it is plugged in. If it still will not connect after 20 seconds, unplug it and plug it back in.
 
-**Flashing succeeded but the remote rejected the configuration.** Re-flash your backup, then open an issue with what you built.
+**Flashing succeeded but the remote rejected the configuration.** Re-flash your backup with **Settings > Flash a Configuration File**, then open an issue with what you built.
 
 **On Linux or Windows the remote is not found.** Settings > Remote connection, and turn on direct access.
 

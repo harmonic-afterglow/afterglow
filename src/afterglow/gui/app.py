@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
         from .. import windows_driver
         if windows_driver.applicable():
             settings_menu.addAction(_act("Remote connection…", self.usb_driver))
+        settings_menu.addAction(_act("Flash a Configuration File…", self.flash_file))
 
         help_menu = mb.addMenu("Help")
         help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
@@ -135,6 +136,11 @@ class MainWindow(QMainWindow):
         """How the remote is connected, and switching it either way (Windows)."""
         from .usb_driver import driver_dialog
         driver_dialog(self)
+
+    def flash_file(self):
+        """Write any configuration file, such as a backup, as `concordance -C` would."""
+        from .flash_file import flash_file_dialog
+        flash_file_dialog(self, user_files())
 
     def configure_sources(self):
         dialog = SourceSettingsDialog(self.source_preferences, self)
