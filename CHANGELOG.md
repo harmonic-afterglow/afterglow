@@ -4,6 +4,14 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Settings > Flash a Configuration File** writes any `.ezhex` onto the remote as it
+  is - a backup, to put the remote back how it was - like `concordance -C`. A file
+  made for a different remote is refused unless **Force** is ticked.
+
 ## [0.2.0-beta.2] - 2026-10-07
 
 The Harmony 1100 joins as an experimental remote, and Afterglow gets a macOS app.

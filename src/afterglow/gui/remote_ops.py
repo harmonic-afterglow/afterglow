@@ -82,6 +82,20 @@ class RemoteWorker(QThread):
             # failed will flash again, which is the wrong instinct on a remote with no
             # vendor recovery.
             missed_restart = remote.last_restart_error
+        self._written(missed_restart)
+
+    def _flash(self):
+        path = Path(self.kwargs["path"])
+        force = bool(self.kwargs.get("force"))
+        with self._remote() as remote:
+            identity = remote.identity(self._on_progress)
+            self.log.emit(f"Writing {path.name} to {identity['model']}"
+                          f"{' (forced)' if force else ''}...")
+            remote.flash_file(path, self._on_progress, force=force)
+            missed_restart = remote.last_restart_error
+        self._written(missed_restart)
+
+    def _written(self, missed_restart):
         if missed_restart:
             self.log.emit(f"(the remote stopped answering while it rebooted: "
                           f"{missed_restart})")

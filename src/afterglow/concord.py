@@ -20,6 +20,8 @@ server to recover from any more. So:
 
   * `write_config()` refuses a file that is not a configuration for the remote that is
     actually attached. It checks every identity constraint declared by the profile.
+  * `flash_file()` writes any configuration file, such as a backup, the way
+    `concordance -C` does. It refuses one made for a different remote unless forced.
   * flash is invalidated by `update_configuration` itself, which is also what re-reads
     and verifies afterwards. This module does not reimplement that sequence.
   * nothing here writes unless asked to. Reading, identifying and learning are safe and
@@ -150,6 +152,44 @@ def _place(source: Path, target: Path) -> None:
 
 class RemoteError(RuntimeError):
     """The library refused an operation. Carries libconcord's own message."""
+
+
+LC_FILE_TYPE_CONFIGURATION = 2
+IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
+
+
+def file_mismatches(path, identity: dict) -> list[str]:
+    """How the configuration file at `path` was made for a remote other than `identity`.
+
+    Only the file's own header is compared, so this works for any remote libconcord can
+    write, with or without an Afterglow profile. Empty when they agree.
+    """
+    from . import ezhex, remotes
+
+    try:
+        header, *_rest = ezhex._split(Path(path).read_bytes())
+    except Exception:                                              # noqa: BLE001
+        return ["it is not a Harmony configuration file"]
+    wanted = remotes.identity_of(header)
+    try:
+        skins = set(remotes.identify(header).skins)
+    except remotes.UnknownRemote:
+        skins = set()
+    problems = []
+    for field in IDENTITY_FIELDS:
+        theirs, ours = wanted.get(field), identity.get(field)
+        if field == "skin" and {theirs, ours} <= skins:
+            continue                        # one remote sold under several numbers
+        if theirs is None:
+            problems.append(f"it does not say which {field} it is for")
+            continue
+        theirs, ours = remotes.comparable(field, theirs), remotes.comparable(field, ours)
+        if isinstance(theirs, str) and isinstance(ours, str):
+            theirs, ours = theirs.lower(), ours.lower()
+        if theirs != ours:
+            problems.append(f"{field}: the file says {wanted.get(field)}, the remote is "
+                            f"{identity.get(field)}")
+    return problems
 
 
 # Every way of reaching the remote fails the same way and has the same answer, so they
@@ -617,6 +657,27 @@ class Remote:
         self._verify_intended_for(path, identity)
         self._apply_config(path, on_progress=on_progress, reset=reset)
 
+    def flash_file(self, path, on_progress=None, force=False) -> None:
+        """Write any configuration file, such as a backup, as `concordance -C` would.
+
+        Refuses a file made for a different remote, or one libconcord does not take for
+        a configuration, unless `force`. Forcing skips only those two checks.
+        """
+        path = Path(path)
+        if not path.is_file():
+            raise RemoteError(f"no such file: {path}")
+        identity = self.identity()
+        if not identity["can_write"]:
+            raise RemoteError(f"{identity['model']} does not support configuration "
+                              "updates through libconcord")
+        if not force:
+            problems = file_mismatches(path, identity)
+            if problems:
+                raise RemoteError(
+                    f"{path.name} was not made for this {identity.get('model') or 'remote'}"
+                    f" ({'; '.join(problems)}). Nothing was written.")
+        self._apply_config(path, on_progress=on_progress, force=force)
+
     def _authorize_experimental_config(self, path, expected_identity: dict) -> None:
         """Repeat every read-only first-write check on the current connection.
 
@@ -647,7 +708,7 @@ class Remote:
         if not identity["can_write"]:
             raise RemoteError(f"{identity['model']} does not support configuration updates")
 
-    def _apply_config(self, path, on_progress=None, reset=True) -> None:
+    def _apply_config(self, path, on_progress=None, reset=True, force=False) -> None:
         """Parse and apply a config whose safety policy has already authorized it."""
         path = Path(path)
 
@@ -657,6 +718,10 @@ class Remote:
             self._check(self.lib.read_and_parse_file(native_path(staged),
                                                      ctypes.byref(kind)),
                         f"reading {path.name}")
+        if kind.value != LC_FILE_TYPE_CONFIGURATION and not force:
+            self.lib.delete_opfile_obj()
+            raise RemoteError(f"{path.name} is not a configuration file. Nothing was "
+                              "written.")
         try:
             # Always 1 (== do not reset), because we do the restart ourselves below.
             #
