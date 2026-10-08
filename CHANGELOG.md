@@ -4,7 +4,9 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-beta.4] - 2026-10-08
+
+Every Harmony 1100 is recognised now, whichever model number and board it has.
 
 ### Fixed
 
