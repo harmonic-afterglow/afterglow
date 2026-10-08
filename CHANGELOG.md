@@ -4,10 +4,22 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-beta.3] - 2026-10-08
+
+Afterglow talks to the remote over USB itself on Windows and Linux too, and backups
+can be put back from inside the app.
 
 ### Added
 
+- **Direct access on Windows.** The first time a Harmony 900, 1000 or 1100 is
+  connected, Afterglow offers to put it on a USB driver that comes with Windows
+  instead of Logitech's, which is no longer maintained and is refused by many current
+  PCs. Windows asks for administrator permission once. **Settings > Remote
+  connection** shows how the remote is connected and switches either way. A remote
+  plugged into a different USB port is a new device to Windows, so Afterglow asks
+  again there.
+- **Direct access on Linux**, offered on the first start alongside the network link: a
+  udev rule that lets you open the remote, installed with one password prompt.
 - **Settings > Flash a Configuration File** writes any `.ezhex` onto the remote as it
   is - a backup, to put the remote back how it was - like `concordance -C`. A file
   made for a different remote is refused unless **Force** is ticked.
@@ -15,6 +27,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   connection questions, and Afterglow then starts with a project for it instead of
   always the Harmony 900. Moving a project to another remote offers to make that one
   the default (with "Don't ask again"); **Settings > Default Remote** changes it.
+
+### Changed
+
+- Reading from and writing to the remote say **Connecting to the remote** while it is
+  being found, which can take up to 20 seconds.
+- Running from source, `AFTERGLOW_LIBCONCORD` names the libconcord to use, ahead of the
+  one installed on the system.
 
 ## [0.2.0-beta.2] - 2026-10-07
 
