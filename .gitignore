@@ -12,7 +12,7 @@ src/afterglow/_build.py
 *.EZHex
 *.EZHEX
 *_extracted/
-configs/
+configs
 channel_logos/
 
 # Private device libraries and captures. The application writes its live library under
