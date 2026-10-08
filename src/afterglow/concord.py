@@ -172,14 +172,18 @@ def file_mismatches(path, identity: dict) -> list[str]:
         return ["it is not a Harmony configuration file"]
     wanted = remotes.identity_of(header)
     try:
-        skins = set(remotes.identify(header).skins)
+        profile = remotes.identify(header)
     except remotes.UnknownRemote:
-        skins = set()
+        profile = None
+    skins = set(profile.skins) if profile else set()
     problems = []
     for field in IDENTITY_FIELDS:
         theirs, ours = wanted.get(field), identity.get(field)
         if field == "skin" and {theirs, ours} <= skins:
             continue                        # one remote sold under several numbers
+        if field == "board" and profile and theirs is not None and ours is not None \
+                and profile.same_board(theirs, ours):
+            continue                        # another board revision of the same remote
         if theirs is None:
             problems.append(f"it does not say which {field} it is for")
             continue
@@ -802,6 +806,9 @@ class Remote:
             if field == "skin" and {wanted.get(field), identity.get(field)} <= \
                     set(profile.skins):
                 continue                    # one remote sold under several numbers
+            if field == "board" and wanted.get(field) and identity.get(field) and \
+                    profile.same_board(wanted[field], identity[field]):
+                continue                    # another board revision of the same remote
             if remotes.comparable(field, wanted.get(field)) != \
                     remotes.comparable(field, identity.get(field)):
                 disagreements.append(

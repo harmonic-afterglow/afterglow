@@ -4,6 +4,18 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Harmony 1100s with the newer board (0.5)** were "not supported" and could not be
+  backed up: the profile knew only board 0.3. Both boards, and both model numbers
+  (skins 62 and 63), are the same remote.
+- Test write's backup of a Harmony 1100 failed asking for `ActionLists.xml`, a Harmony
+  900 file the 1100 never has.
+- "Configuration memory: … of 1 bytes used" on the 900, 1000 and 1100, whose total
+  libconcord cannot know: only the size is shown.
+
 ## [0.2.0-beta.3] - 2026-10-08
 
 Afterglow talks to the remote over USB itself on Windows and Linux too, and backups

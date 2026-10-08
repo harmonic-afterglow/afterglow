@@ -582,13 +582,15 @@ def import_project(extracted_dir, out_file=None) -> dict:
     return importer._build_project_harmony_pk(extracted_dir, out_file=out_file)
 
 
-def validate_payload(payload: bytes, _profile) -> dict:
+def validate_payload(payload: bytes, profile) -> dict:
     """Validate the PK carrier independently of the builder that produced it."""
-    required = {
-        "userconfig/UserConfiguration.xml",
-        "userconfig/ActionLists.xml",
-        "userconfig/SsIr.bin",
-    }
+    # A remote that plays stored sequences (the 1100) keeps its action lists inside
+    # UserConfiguration.xml and has no ActionLists.xml.
+    playback = ((getattr(profile, "infrared", None) or {}).get("playback")
+                == "device-sequence")
+    required = {"userconfig/UserConfiguration.xml", "userconfig/SsIr.bin"}
+    if not playback:
+        required.add("userconfig/ActionLists.xml")
     try:
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
             bad = archive.testzip()
@@ -598,8 +600,9 @@ def validate_payload(payload: bytes, _profile) -> dict:
             missing = sorted(required - names)
             if missing:
                 raise ValueError(f"configuration is missing {', '.join(missing)}")
-            for name in ("userconfig/UserConfiguration.xml",
-                         "userconfig/ActionLists.xml"):
+            xml_files = [name for name in ("userconfig/UserConfiguration.xml",
+                                            "userconfig/ActionLists.xml") if name in names]
+            for name in xml_files:
                 ET.fromstring(archive.read(name))
             if "userconfig/IrProto.bin" in names:
                 irproto = archive.read("userconfig/IrProto.bin")
@@ -609,8 +612,7 @@ def validate_payload(payload: bytes, _profile) -> dict:
                 actual_crc = zlib.crc32(irproto[8:]) & 0xFFFFFFFF
                 if stored_size != len(irproto) - 8 or stored_crc != actual_crc:
                     raise ValueError("IrProto.bin length or CRC32 is stale")
-                for name in ("userconfig/UserConfiguration.xml",
-                             "userconfig/ActionLists.xml"):
+                for name in xml_files:
                     hashes = re.findall(
                         rb"(?:ProtocolCacheHash\">|<Hash>)(0x[0-9A-Fa-f]+)",
                         archive.read(name))

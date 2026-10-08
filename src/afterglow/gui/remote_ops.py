@@ -53,9 +53,13 @@ class RemoteWorker(QThread):
         self.log.emit(f"{identity['mfg']} {identity['model']} "
                       f"(skin {identity['skin']}, firmware {identity['firmware']})")
         used, total = identity["config_used"], identity["config_total"]
-        if total:
-            self.log.emit(f"Configuration memory: {used} of {total} bytes used "
+        # libconcord cannot learn the size of the configuration region on the usbnet
+        # remotes (900, 1000, 1100) and reports 1 for it.
+        if total > 1 and used <= total:
+            self.log.emit(f"Configuration memory: {used:,} of {total:,} bytes used "
                           f"({used * 100 // total}%)")
+        elif used:
+            self.log.emit(f"Configuration: {used:,} bytes")
         self.result.emit(identity)
         self.done.emit(True, f"Connected to {identity['model']}.")
 

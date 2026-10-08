@@ -167,11 +167,24 @@ class RemoteProfile:
     # Other skin numbers for the same remote: the same firmware sold under another
     # model number (the Harmony 1100 is skin 63 and 62). Matched like `skin`.
     other_skins: tuple = ()
+    # Other board revisions of the same remote (the Harmony 1100 is board 0.3 and 0.5).
+    # Matched like `board`.
+    other_boards: tuple = ()
     notes: str = ""
 
     @property
     def skins(self) -> tuple:
         return tuple(s for s in (self.skin, *self.other_skins) if s is not None)
+
+    @property
+    def boards(self) -> tuple:
+        return tuple(b for b in (self.board, *self.other_boards) if b is not None)
+
+    def same_board(self, a, b) -> bool:
+        """Whether two board revisions are this remote's, or simply equal."""
+        known = {comparable("board", board) for board in self.boards}
+        a, b = comparable("board", a), comparable("board", b)
+        return a == b or {a, b} <= known
 
     def _offered(self, key: str) -> tuple:
         """The listed names, in the interface's own order (checked when loaded)."""
@@ -327,6 +340,9 @@ class RemoteProfile:
         skin = identity.get("skin")
         if self.other_skins and skin in self.other_skins:
             identity = {**identity, "skin": self.skin}      # the same remote
+        board = identity.get("board")
+        if self.other_boards and isinstance(board, str) and self.same_board(board, self.board):
+            identity = {**identity, "board": self.board}    # another revision of it
         for name, expected in (
             ("arch", self.arch),
             ("skin", self.skin),
@@ -374,6 +390,7 @@ class RemoteProfile:
                                                     ("max", self.firmware_max)) if v}}
                    if self.firmware_min or self.firmware_max else {}),
                 **({"other_skins": list(self.other_skins)} if self.other_skins else {}),
+                **({"other_boards": list(self.other_boards)} if self.other_boards else {}),
             },
             "payload": self.payload, "backend": self.backend, "status": self.status,
             "capabilities": self.capabilities,
@@ -463,6 +480,7 @@ def _from_json(data: dict) -> RemoteProfile:
         interface=data["interface"],
         preference_definitions=data.get("preferences", {}),
         other_skins=tuple(ident.get("other_skins") or ()),
+        other_boards=tuple(ident.get("other_boards") or ()),
         notes=data.get("notes", ""),
     )
 
@@ -546,10 +564,11 @@ def identify(header: bytes, library: Path | str = LIBRARY) -> RemoteProfile:
         if profile.matches(identity):
             return profile
     known = models(library).get(str(identity.get("skin")), {}).get("model")
+    have = ", ".join(sorted({profile.model for profile in load_all(library)}))
     raise UnknownRemote(
         f"no profile for identity {identity}"
         + (f" (skin {identity.get('skin')} is a {known})" if known else "")
-        + ". Afterglow only has a profile for the Harmony 900 - see "
+        + f". Afterglow has profiles for: {have} - see "
           "docs/harmony_pk/remote-identities.md for what is known about the others."
     )
 
