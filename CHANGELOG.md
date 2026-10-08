@@ -35,6 +35,11 @@ can be put back from inside the app.
 - Running from source, `AFTERGLOW_LIBCONCORD` names the libconcord to use, ahead of the
   one installed on the system.
 
+### Known issues
+
+- With a large configuration, the Harmony 900's screen can stay white after a restart
+  until the remote has gone to sleep once; it is normal from then on.
+
 ## [0.2.0-beta.2] - 2026-10-07
 
 The Harmony 1100 joins as an experimental remote, and Afterglow gets a macOS app.
