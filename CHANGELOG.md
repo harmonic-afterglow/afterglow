@@ -4,6 +4,28 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-10
+
+The first stable release of 0.2.0. Since 0.1.1, across four betas: Harmony 900
+configurations no longer freeze the remote, every physical button can be mapped, a macOS
+app, direct USB access on Windows and Linux without Logitech's driver, Test write with
+automatic backup, shareable projects, and the Harmony 1100 as an experimental remote. The
+betas below list each change.
+
+The **Harmony 1100 stays experimental**: it is written only through Test write, which
+backs the remote up first. Its configurations have been checked against the 1100's own
+firmware (6.9 to 7.7), two real remotes' configurations rebuild exactly, and one tester
+has flashed a build - but few have tried it yet. Please report how it goes.
+
+### Fixed
+
+- **Held buttons on an imported Harmony 1100 could send garbage.** Logitech stores the
+  repeat signal some devices send while a button is held (NEC's) once per device, and
+  points the other held commands at it; a rebuilt configuration pointed them at the
+  wrong place. They now point where Logitech's did, byte for byte.
+- An imported Harmony 1100 on the newer board (0.5) was rebuilt naming board 0.3.
+- The Harmony 1100's favourite-channels page setting showed as unrecognised.
+
 ## [0.2.0-beta.4] - 2026-10-08
 
 Every Harmony 1100 is recognised now, whichever model number and board it has.
