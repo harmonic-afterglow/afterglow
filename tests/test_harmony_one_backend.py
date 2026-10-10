@@ -560,10 +560,11 @@ def test_drawing_walks_follow_shared_prologue_calls():
 
 
 def test_mode_zero_bitmap_resources_are_bounded_by_their_dimensions():
-    payload = b"\x00\x02\x00\x01" + b"\x12\x34\x56\x78"
+    # mode, then width and height as u16s, then two bytes a pixel
+    payload = b"\x00\x02\x00\x01\x00" + b"\x12\x34\x56\x78"
 
     assert ui_index._bitmap_resource(payload, 0) == {
-        "offset": 0, "mode": 0, "width": 2, "height": 1, "size": 8,
+        "offset": 0, "mode": 0, "width": 2, "height": 1, "size": 9,
     }
 
 
@@ -579,6 +580,7 @@ def test_activity_enter_hooks_resolve_state_transitions_to_indexed_commands():
         "engine_transitions": 1,
         "activities": 1,
         "determined_activities": 1,
+        "state_only_activities": 0,
         "menu_activities": 0,
         "mixed_device_screens": 0,
         "engine_commands": 1,
@@ -1788,9 +1790,19 @@ def test_the_whole_program_graph_can_be_laid_out_somewhere_else():
     body, mapping = drawing.lay_out(blocks, at)
     image = relocation.repair_integrity(payload[:at] + body)
 
-    assert set(mapping) == set(blocks)
-    for old, new in mapping.items():
-        read = ui_index.drawing_program(image, new)["instructions"]
+    # The map names every block, and also the glyph bytes of every inline text, because
+    # a `text` instruction's target is always another instruction's inline payload
+    # rather than a string of its own. Those entries are what keep the sharing alive
+    # across a layout, so they are part of the contract, not noise.
+    inline = {
+        item["offset"] + 3
+        for instructions in blocks.values() for item in instructions
+        if item["opcode"] == "inline_text"
+    }
+    assert set(mapping) == set(blocks) | inline
+    assert inline.isdisjoint(blocks)
+    for old, new_at in ((old, mapping[old]) for old in blocks):
+        read = ui_index.drawing_program(image, new_at)["instructions"]
         assert [item["opcode"] for item in read] == [
             item["opcode"] for item in blocks[old]]
         # every internal reference now names the block's new home
@@ -1812,7 +1824,7 @@ def test_a_context_rebuilds_the_bytes_it_was_read_from():
 
 
 def test_a_slot_that_binds_no_key_still_has_a_register():
-    assert authoring.key_register([]) == b"\x00"
+    assert authoring.key_register([]) == b"\x00\x00"
     # A screen's own button map is a 55-row register, so 39 was never a format rule.
     assert len(authoring.key_register([(index, 0, 0x7F) for index in range(55)])) == 221
     with pytest.raises(ValueError, match="at most 255 entries"):
@@ -1840,6 +1852,74 @@ def test_re_emitting_an_image_keeps_everything_it_does_not_lay_out():
     assert key_index.inspect(result)["counts"] == key_index.inspect(payload)["counts"]
     assert ui_index.activity_rows(result)["counts"] == ui_index.activity_rows(payload)["counts"]
     assert ui_index.device_menus(result)["counts"] == ui_index.device_menus(payload)["counts"]
+
+
+def test_section_five_points_into_section_four_rather_than_copying_it():
+    """A device's sub-table is its section-4 run, not a second copy of it.
+
+    All 20 sub-tables across the four donors begin exactly where their device's run
+    inside section 4 begins, so emitting both would write every command pointer twice
+    and give the image a shape no native one has.
+    """
+    payload = gspm_payload_with_activity_menu()
+
+    result, _report = compose.recompose(payload)
+
+    start = gspm.section_ranges(result)[4][0]
+    run = start + authoring.COMMAND_INDEX_HEAD_SIZE
+    layout = authoring.section5_layout(result)
+    assert layout, "the fixture must contain at least one device"
+    for device in layout:
+        assert device["subtable"] == run
+        run += len(authoring.command_subtable(
+            [command["record_offset"] for command in device["commands"]]))
+    # and the runs stay inside section 4
+    assert run <= gspm.section_ranges(result)[4][1]
+
+
+def test_a_text_pointer_follows_the_inline_glyphs_it_shares():
+    """`text` never names a string of its own, so a layout must carry the sharing.
+
+    Every one of the 1,028 text targets across the four donors is the inline payload of
+    an `inline_text` instruction, content and all. If a layout did not map those
+    addresses, each pointer would have to be redirected to a private copy and the image
+    would grow a string pool the format does not have.
+    """
+    payload = gspm_payload_with_command_screen(paged=True)
+    roots = [slot["program_offset"]
+             for screen in ui_index.screen_slots(payload) for slot in screen["slots"]]
+    blocks = drawing.program_blocks(payload, roots)
+
+    # find an inline text and the address its glyph bytes live at
+    root = next(offset for offset, block in sorted(blocks.items())
+                if any(item["opcode"] == "inline_text" for item in block))
+    cursor, shared, glyphs = root, None, None
+    for item in blocks[root]:
+        if item["opcode"] == "inline_text" and shared is None:
+            shared, glyphs = cursor + 3, item["glyphs"]
+        cursor += len(drawing.encode(item))
+    assert shared is not None
+    assert payload[shared:shared + len(glyphs) // 2].hex() == glyphs
+
+    # a second block draws the same string through a pointer instead of inline
+    borrower = max(blocks) + max(1, len(drawing.encode_program(blocks[max(blocks)])))
+    blocks[borrower] = [
+        {"offset": borrower, "opcode": "text", "x": 3, "y": 4, "target": shared},
+        {"offset": borrower + 6, "opcode": "end"},
+    ]
+
+    at = int.from_bytes(payload[4:8], "little") - gspm.BASE - 2
+    body, mapping = drawing.lay_out(blocks, at)
+    image = relocation.repair_integrity(payload[:at] + body)
+
+    assert shared in mapping, "the layout must name the glyph bytes, not only the block"
+    moved = ui_index.drawing_program(image, mapping[borrower])["instructions"][0]
+    assert moved["opcode"] == "text"
+    assert moved["target"] == mapping[shared]
+    # and the glyphs really are there, still inside the block that carries them inline
+    assert image[moved["target"]:moved["target"] + len(glyphs) // 2].hex() == glyphs
+    assert mapping[root] < moved["target"] < mapping[root] + len(
+        drawing.encode_program(blocks[root]))
 
 
 def test_the_composed_sections_each_cover_their_own_table():
@@ -2020,18 +2100,28 @@ def test_the_build_stamp_round_trips_through_its_markers():
     read = authoring.read_stamp(bytes(payload))
     assert read["year"] == 2023 and read["month"] == 7 and read["day"] == 22
     assert (read["hour"], read["minute"], read["second"]) == (22, 35, 26)
-    assert read["unexplained"] == 3
+    assert read["weekday"] == 3
+    assert read["weekday_agrees"] is True
     assert read["in_range"] is True
 
 
 def test_a_stamp_outside_its_measured_ranges_is_refused():
     with pytest.raises(ValueError, match="month is outside"):
-        authoring.stamp(0, 0, 0, 1, 13, 2023, 0)
+        authoring.stamp(0, 0, 0, 1, 13, 2023)
     with pytest.raises(ValueError, match="hour is outside"):
-        authoring.stamp(0, 0, 24, 1, 1, 2023, 0)
+        authoring.stamp(0, 0, 24, 1, 1, 2023)
 
 
 def test_every_section_has_a_way_of_being_produced():
+    """No section may be left without a way of generating it.
+
+    This briefly named 13 and 15 as unknown, after they turned out not to be the tables
+    of drawing programs they had been labelled as - their entries are fixed-stride
+    records the drawing decoder happens to accept, each decoding as a suffix of the one
+    before. What settled them was not decoding them but the factory configuration in
+    firmware 54.2.5: it counts zero of each, so an image generated from nothing emits a
+    count and no entries, and their contents never have to be understood.
+    """
     report = scaffold.plan()
 
     assert report["by_state"].get(scaffold.UNKNOWN, []) == []
@@ -2136,20 +2226,23 @@ def test_a_picture_larger_than_the_display_is_refused():
         bitmap.encode([[(0, 0, 0)] * 177])
 
 
-def test_the_two_picture_encodings_keep_their_own_byte_order():
-    # Stored whole and run encoded disagree, so a colour written one way and read the
-    # other comes back wrong. Guard the split rather than the individual orders.
-    assert bitmap.RAW_ORDER != bitmap.RUN_ORDER
+def test_both_picture_encodings_share_a_five_byte_header_and_big_endian_pixels():
+    # Donor pictures stored whole sit exactly 5 + 2 * width * height apart. Read with a
+    # four-byte header they had looked little-endian, and generated ones came out a byte
+    # short, their last byte taken from whatever followed.
     colour = (255, 128, 0)
     rows = [[colour, None]]
 
     raw = bitmap.encode([[colour, colour]], mode=bitmap.RAW)
     runs = bitmap.encode(rows, mode=bitmap.RUNS)
 
-    word = bitmap.to_rgb565(colour)
-    assert raw[4:6] == word.to_bytes(2, bitmap.RAW_ORDER)
+    word = bitmap.to_rgb565(colour).to_bytes(2, "big")
+    assert raw[:5] == bytes([bitmap.RAW, 2, 0, 1, 0])
+    assert raw[5:] == word * 2
+    assert bitmap.decode(raw, 0)["size"] == len(raw) == 9
     # header, then the run length, then the pixel
-    assert runs[6:8] == word.to_bytes(2, bitmap.RUN_ORDER)
+    assert runs[:5] == bytes([bitmap.RUNS, 2, 0, 1, 0])
+    assert runs[6:8] == word
 
 
 def test_the_model_holds_the_pictures_and_strings_its_programs_draw():
@@ -2235,3 +2328,102 @@ def test_a_screens_button_map_moves_with_it():
 
     after = compose.read(result)
     assert [s["header"] for s in after["screens"]] == [s["header"] for s in model["screens"]]
+
+
+def test_an_empty_name_chain_is_read_the_way_the_factory_writes_one():
+    """A chain with no records declares zero, not the five bytes it occupies.
+
+    The configuration a Harmony One ships with - `Region_3.EZHex` in firmware 54.2.5 -
+    writes `ed fe 00 00 00 ef be` there, and the remote runs it. A reader that computed
+    the length and insisted on it would refuse the vendor's own image, which is a gate
+    stricter than the runtime it protects.
+    """
+    payload = bytearray(gspm_payload(0x320))
+    section = b"\xed\xfe\x00\x00\x00\xef\xbe"
+    delta = len(section) - 0x10
+    for index in range(1, gspm.SECTION_COUNT):
+        if index == gspm.ABSENT_SECTION:
+            continue
+        field = 0x0C + 4 * index
+        struct.pack_into(
+            "<I", payload, field, struct.unpack_from("<I", payload, field)[0] + delta)
+    payload[0x100:0x100 + len(section)] = section
+    marker = len(payload) - 4
+    payload[marker - 2:marker] = bytes(gspm.checksum(payload, marker - 2))
+
+    report = named_index.inspect(bytes(payload))
+
+    assert report["counts"]["records"] == 0
+    assert named_index.leaf_names(report) == {}
+
+
+def test_section_fourteen_splits_into_clock_platform_and_household():
+    payload = gspm_payload_with_activity_menu()
+
+    shape = activity_index.engine_shape(payload)
+
+    assert len(shape["clock"]) <= activity_index.CLOCK_PROPERTIES
+    assert shape["counts"]["ambiguous"] == 0
+    for record in shape["clock"]:
+        assert record["transitions"] == [] or all(
+            row["from"] == activity_index.ANY_STATE for row in record["transitions"])
+
+
+def test_a_household_property_drives_at_most_one_device():
+    """Every household record that sends anything sends it to exactly one device.
+
+    5, 8, 11 and 5 records across the four donors, never two devices in one record, which
+    is what makes a property a device's own state rather than an activity's.
+    """
+    payload = gspm_payload_with_activity_menu()
+
+    shape = activity_index.engine_shape(payload)
+
+    for property_id, devices in shape["driven"].items():
+        assert len(devices) <= 1, f"property {property_id} drives {devices}"
+
+
+def test_a_configuration_with_no_activities_names_no_current_one():
+    payload = gspm_payload_with_activity_menu()
+
+    assert activity_index.current_activity(payload, 0) is None
+
+
+def test_an_activity_that_drives_nothing_is_named_rather_than_left_unresolved():
+    """All Off writes state and sends nothing, which is a fact rather than a failure.
+
+    In every donor one context reaches no command: it writes eight properties, none of
+    them one that drives a device, and its set is always a subset of what a real activity
+    writes. Reporting that as undetermined confuses "this backend could not follow it"
+    with "it genuinely drives nothing", and its command path is not in section 14.
+    """
+    payload = gspm_payload_with_activity_menu()
+
+    report = activity_index.inspect(payload)
+
+    counts = report["counts"]
+    assert counts["determined_activities"] + counts["state_only_activities"] == (
+        counts["activities"])
+    for activity in report["activities"]:
+        assert not (activity["determined"] and activity["state_only"])
+
+
+def test_all_off_is_every_driving_property_returning_to_zero():
+    """The All Off context stores no commands because it does not need to.
+
+    Every property that drives a device has exactly one transition to state zero and that
+    transition carries a command - 5, 8, 11 and 5 properties across the four donors,
+    without exception - so turning everything off is driving each of them to zero. A
+    driving property with no way back to zero would leave a device on, which is why that
+    is reported rather than assumed away.
+    """
+    payload = gspm_payload_with_activity_menu()
+
+    report = activity_index.all_off(payload)
+
+    assert report["properties_without_an_off"] == []
+    for property_id, item in report["properties"].items():
+        assert item["command_ids"], f"property {property_id} cannot be turned off"
+        if item["power_toggle"]:
+            assert item["limit"] == 1
+    assert report["command_ids"] == sorted(set(report["command_ids"]))

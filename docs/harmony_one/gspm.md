@@ -228,8 +228,10 @@ not truncated.
 
 A press waveform begins with a lead-in space; 50 ms is the measured majority default. It ends in
 the protocol's final gap followed by a separate 1 microsecond space. A hold waveform has no
-lead-in and contains one hold-phase transmission followed by the same short terminator. The two
-consecutive final spaces let the native reader find the end of the waveform.
+lead-in and contains one hold-phase transmission followed by the same short terminator. Both
+then end with a zero `u16`: every press and hold waveform in every donor ends `... 1 0`. Without
+the zero a reader runs on past the `1` into whatever block or record follows, so a generated
+waveform carries its own.
 
 A release waveform uses a distinct representation. It begins directly with a mark, ends with a
 mark, and is followed by a literal zero `u16` sentinel. It has no press lead-in, final protocol
@@ -284,7 +286,10 @@ pointer, a little-endian `u16` slot count, and that many absolute slot pointers.
 slot contains a template byte plus absolute pointers to its key register and drawing program.
 
 A key register begins with a one-byte count followed by entries of `{key code u8, object index u16,
-class u8}`. Class `0x7f` selects a section-11 object. A command binding resolves either directly or
+class u8}`. A leading zero is not a count of zero: it selects the wide form, `00 count {flags, tag,
+u16 operand, opcode}`, whose count is the next byte. An empty register is therefore `00 00`, as
+every empty list in the donors is; a lone `00` makes the reader take the following byte as a
+count. Class `0x7f` selects a section-11 object. A command binding resolves either directly or
 through one further `0x7f` object reference to a `0x7d` command ID and optional `0x7c` runtime
 device ID. The command ID must exist in section 5, and any device ID must have the same high byte.
 The importer retains screen ordinal, slot, template, raw key code, object index, key-register
@@ -527,7 +532,8 @@ and 26, matching when those backups were taken. One of the seven is unexplained;
 3 where the weekdays are Saturday, Wednesday, Wednesday and Sunday, so two identical weekdays carry
 different values and it is not a day of the week.
 
-Section 4 turned out to be a second index of the same commands section 5 reaches. It opens with 126
+Section 4 holds every command again, grouped by device, and section 5's sub-tables are its
+device runs rather than copies of them (see below). It opens with 126
 bytes identical in all four - two `u24` headers and thirty `{u24 key, u8 value}` records mapping
 keys 10 to 39 onto 1 to 29 and 0 - and then lists every command record again, grouped by device:
 a `u16` count and that many `u24` pointers to the record plus eleven, each run after the first
@@ -572,22 +578,31 @@ Bitmaps are most of a configuration: 1.1 to 1.5 MB of the 1.3 to 1.8 MB in the f
 measured, around 85 per cent. Every backdrop, frame, softkey and icon the remote shows is stored
 in the configuration rather than in firmware, which is why a generated one has to supply them.
 
-Pixels are RGB565, and the two encodings disagree about their byte order. Mode 0 stores every pixel
-of every row after a four-byte header, little-endian. Mode 1 runs them big-endian - a byte with the
-high bit set leaves that many pixels untouched, a byte without it introduces that many stored
-pixels, `80` closes a row and `00` closes the picture - which is the same run encoding, and the
-same byte order, that a font glyph uses. The last row carries no separator, because the picture's
-terminator closes it. There is no alpha channel: a run simply declines to write, and whatever was
+Both encodings open with the same five-byte header: the mode, then width and height as
+little-endian `u16`s. Pixels are RGB565 and big-endian in both. Mode 0 stores every pixel of
+every row after the header. Mode 1 runs them - a byte with the high bit set leaves that many
+pixels untouched, a byte without it introduces that many stored pixels, `80` closes a row and
+`00` closes the picture - which is the same run encoding, and the same byte order, that a font
+glyph uses. The last row carries no separator, because the picture's terminator closes it. There is no alpha channel: a run simply declines to write, and whatever was
 on the screen shows through.
 
-The images are the only authority on that split, and it is measurable. Taking the mean difference
-between horizontally neighbouring pixels, a 62x42 panel stored whole reads at 14.4; the six
-run-encoded panels of the same size in the same image read at 48 to 53 little-endian and 17 to 27
-big-endian. Across the two broader donors, run-encoded pictures average 33 read little-endian
-against 14 to 15 read big-endian, where stored-whole pictures average 7.8.
+The byte order is measurable from the images: taking the mean difference between horizontally
+neighbouring pixels, run-encoded pictures average 33 read little-endian against 14 to 15 read
+big-endian, and a 163x83 panel stored whole reads 98 little-endian against 47 big-endian. This
+section used to say the two encodings disagree, stored-whole pictures being little-endian. That
+was the four-byte header below: read a byte early, little-endian takes each pixel's high byte
+correctly and its low byte from the pixel before, which looks nearly right.
 
 The encoder is the reader's exact inverse. Every picture the four donors draw rebuilds its own
 bytes: 294 pictures, 268 stored whole and 26 run-encoded.
+
+That round trip once hid a wrong header. Mode 0 was read with four bytes - mode, width, a zero,
+height - so the height's high byte was taken as part of the first pixel and every stored pixel
+was read a byte out. Writing it back the same way rebuilt the donor's bytes all but the last, so
+the check passed while every generated stored-whole picture came out one byte short, its last
+byte read from whatever followed: the 17 one-byte overlaps Danny Bloe's coverage reported in the
+upstairs round trip. Donor pictures sit exactly `5 + 2 * width * height` apart, and the
+scaffold's 33 stored-whole pictures were re-extracted with the corrected reader.
 
 The same eight shapes appear in all four images, at the same places:
 
@@ -601,6 +616,692 @@ The same eight shapes appear in all four images, at the same places:
 | 88x22 | up to 6 | (0,198) (88,198) | softkey backgrounds |
 | 22x18 | 2-6 | (128,0) | small indicator |
 | 164x85, 62x33 | 1-2 | (3,118), (57,95) | larger panels |
+
+## What a configuration generated from nothing contains
+
+`Region_3.EZHex` inside firmware 54.2.5 is the configuration a Harmony One ships with:
+8,902 bytes, and by definition what the vendor produced with no previous configuration to
+work from. It maps at `0x2000` rather than `0x040000`, and it settles what a generated
+image is actually obliged to contain.
+
+| section | in the factory image |
+| --- | --- |
+| 0 | 7 bytes: a `FEED` header and a `BEEF` terminator, no records |
+| 4 | the 125-byte head alone, no device runs |
+| 5 | one byte, `00`: no devices |
+| 6 | 5,815 bytes: 30 screens, all the platform ones |
+| 7 | one font |
+| 10 | one context |
+| 11 | five objects |
+| 12 | `00 00`: no status overlays at all |
+| 13 | one byte, `00`: no timers (see "Section 13 is the timer table") |
+| 14 | 65 bytes |
+| 15 | `00`, then its 151-byte tail |
+| 16 | 11 pointers, into section 15's tail |
+| 19 | one touch template |
+
+The two sections nothing could be generated for are answered by their counts being zero,
+so their contents never have to be understood. Section 16's pointers land inside section
+15's own tail at the same eleven offsets here as in every donor, and that tail differs
+from the donors' in exactly three of its 151 bytes - it is a platform table with three
+parameters, not a constant.
+
+## Section 13 is the timer table
+
+`u8 count`, then a `u24` pointer per timer, each a 7-byte record: `u8 flags` (1 in every donor),
+a `u24` duration, and the instruction it runs when it expires (`u16 operand, u8 opcode`).
+Opcode `0x1F` band `EB` starts timer `n` and band `EA` stops it; there are four running slots.
+Read on the Harmony 800's firmware (below) and borne out by every One donor, 30 to 32 timers
+each. Upstairs' timer 3 is "after 4, call object 0x1023", whose atoms redraw status overlays 3
+and 0 and start timer 3 again: the status bar's refresh. Every platform screen starts timer 3
+when it is entered and stops it when it is left, and two platform objects use timers 0 and 9.
+
+The factory image's section 13 is empty, and generated images copied that - but they also
+carry the platform screens' handlers, which the factory's screens do not have. So every
+generated mode started a timer past the end of an empty table, reading whatever followed as
+its record. The platform model now carries the timers its handlers name, with their actions,
+and a generated section 13 holds those three, renumbered.
+
+## What the Harmony 800's firmware says about the format
+
+The Harmony 800 (STM32F102, firmware 0.7.1) reads `GSGD`, a sibling of this format, and its
+code is plain ARM, so the reader can be read rather than inferred. Its findings are hints for
+the One until a One donor bears them out; each one below has been checked against the donors.
+
+- **Boot.** Once a configuration's checksum passes, `main()` runs section 9's leading list
+  with index 1: if its count is at least 1, its first instruction is queued, and nothing else
+  starts the interface. Danny Bloe read the same call with a literal 1 on the Harmony 700.
+  Every One image carries `01 xx xx 7f`; every probe that failed to boot read its first page
+  register here instead, and with opcode `00` that is an instruction that does nothing.
+- **Instructions** are `u16 operand, u8 opcode`, run from a queue. Opcodes from `0x80` write
+  variable `opcode & 0x7f`; `7F` runs an object (section 11); `7E` enters a mode; `73` draws a
+  section-12 program; `70`/`71` compare a variable with the accumulator or byte register (low
+  nibble of the operand's high byte picks the test, bit 7 inverts it) and drop the next
+  instruction when it fails; `07` with `FD`/`FC` pushes and pops the current mode.
+  `1F` bands: `FF` select the running context, `FE`/`FD` push and pop the key stack, `FB` load
+  the byte register, `FA`/`F9`/`F8` add, multiply, divide, `EB`/`EA` start and stop a timer.
+  `3F` bands: `F0` sets a timer length (`F064` = 100, as the factory and both donors have it),
+  `B0` runs entry n of section 9's leading list.
+- **Entering a mode** runs the old mode's tag 7 (page list, then mode list), then the new
+  mode's tag 6 from its own list, posts event `2E`, and draws the page unless the entry flag
+  has bit 0 set. Nothing computes a list's end. A USB change posts `2D`, then `2B` or `2C`.
+- **Drawing.** `16` call saves a single return address, so a fragment cannot call further;
+  any opcode the VM does not know ends the program.
+- **Lists differ.** The 800's wide list header is `00 00 count` and its narrow entries carry a
+  `u16` tag; the One's are `00 count` and a `u8` key. All 164 empty One registers in three
+  donors are exactly `00 00`, so the One reader stops there.
+
+`afterglow-research/one-tools/boot_trace.py` follows a One image's boot by these rules.
+
+## Section 14, the activity engine
+
+Section 14 is a counted index - `u16` count, the count less one, a one, the count less one
+again, then a pointer per record - over records that are state machines. A record is a
+`u16` initial value, a `u16` limit, a `u16` transition count and a padding byte, then that
+many eight-byte transitions of `{u8 flags, u16 from, u16 to, u16 operand, u8 category}`.
+`0xfffe` appears as `from` throughout and behaves as "whatever the current state is".
+
+Not one field in a record is an address. States are numbers, and a transition's operand is
+an index into section 11 rather than a pointer, so a record moves without anything being
+repaired: all 45, 48, 51 and 44 records in the four donors re-encode byte for byte from
+their fields alone. That is what lets composition model section 14 instead of carrying it,
+and a generated image emit whatever records it is given.
+
+An operand whose high byte is `0xf8` or above is not a value but an expression. The
+application firmware dispatches on it from 0x23042: `0xfb` loads the low byte into an
+accumulator, `0xfa` adds to it, `0xf9` loads through the table pointer, and each of
+`0xf8` to `0xff` has its own handler. That is what the `0xf202` and `0xfb01` operands seen
+with category `0x1f` are. See `tools/harmony_one_firmware.py`.
+
+The table has three parts. Records 0 to 6 are the real-time clock. Records 7 to 17 are
+platform properties, byte-identical in the factory configuration and all four donors -
+limits 2, 3, 7, 7, 32, 1, 1, 4, 3, 1, 3, initial values 0, 0, 5, 0, 0, 0, 1, 2, 0, 0, 0,
+no transitions - except record 14, which is identical across the donors and differs from
+the factory. The last record is a terminator: limit `0xfefd`, initial zero, no
+transitions, in every image. What lies between record 17 and the terminator is what a
+household configuration adds.
+
+### What a household property is
+
+A household property is one device's discrete state. Its limit is the highest state it
+reaches, and each transition names a section-11 object holding the commands that get
+there. One donor's record is an input selector, and the objects say so plainly: limit 4,
+and five transitions whose objects send a setup command, then the input command as many
+times as the state number, then a confirm. That is how a device whose input is cycled by a
+single button is driven.
+
+Every household property that sends anything sends it to exactly one device - 5, 8, 11 and
+5 records across the four donors, and never two devices in one record. The rest send
+nothing at all: 21, 21, 21 and 20 properties the remote tracks but cannot drive.
+
+One property counts the activities. Its limit is one less than how many the configuration
+has - 2 against 3, 8 against 9, 10 against 11, 1 against 2 - and its initial value is the
+activity that was running when the configuration was saved: 2, 8, 9 and 1, each a valid
+index. Where a configuration has few activities that limit is shared with the boolean
+properties, so a non-zero initial is what singles it out, which means an image saved in
+activity zero cannot be told from one naming no activity at all.
+
+An earlier hypothesis was tested and refused. The records with a limit of 1 number 17, 20,
+21 and 19 against 3, 6, 7 and 4 devices - devices plus fourteen in three of the four -
+which looked like a power flag per device. It is not: none of them drives a device. The
+first attempt to check this also looked only at transitions whose category is `7f` and
+read the device out of the atom directly, missing both the transitions whose category is
+zero - whose operand is always zero, a null action - and the fact that a device is named
+in the high byte of a nested object's atom rather than by the atom itself.
+
+### How an activity reaches its commands, and where All Off does not
+
+A context's rows carry hooks by key code: `01` on entering, `02` on leaving, `05` on
+refresh. A hook names an object, that object writes `(property, value)` pairs, and each
+write is resolved by finding the property's transition whose `to` matches the value and
+following its object to the commands it sends. That path is what makes an activity
+determined, and it works: 2 of 3, 8 of 9, 10 of 11 and 1 of 2 activities in the four
+donors resolve to between 5 and 9 indexed commands across 4 to 6 devices.
+
+The one context per donor that resolves to nothing is All Off, and it is not unresolved.
+It writes exactly eight properties in every image, **none of them a property that drives
+a device**, and its set is always a subset of what a real activity writes - a real
+activity writes those eight and adds the driving ones, 5, 7, 8 and 5 of them.
+
+All Off stores no commands because it does not need to. **Every property that drives a
+device has exactly one transition to state zero, and that transition carries a command** -
+5, 8, 11 and 5 properties across the four donors, without a single exception - so turning
+everything off is driving every property to zero, using the transitions the activities
+themselves installed. `all_off` returns those commands: 6, 9, 11 and 5 of them, covering
+every device that has a driving property at all.
+
+A property whose limit is 1 and which drives a device is a power toggle, state 1 on and
+state 0 off, and most devices have one: 3 of 3, 5 of 6, 7 of 7 and 4 of 4. Where a device
+has none its power sits inside a property with more states, which is why counting limit-1
+records alone never gave the device count - and why the earlier attempt at that failed. It
+counted every limit-1 record, and the silent ones outnumber the driving ones four to one.
+
+The leave hook was checked for it and does not hold it either. Every activity but All Off
+carries one, each writing eight properties, and in all four donors not one of those writes
+reaches an indexed command. `inspect` follows it anyway rather than reading it and dropping
+it, and reports an activity that reaches no command as `state_only` rather than
+undetermined, so that determined and state-only together account for every context.
+
+### The clock, and section 3's unexplained byte
+
+Records 0 to 6 have limits 59, 59, 23, 30, 6, 11 and a year, and their initial values are
+section 3's timestamp fields: second, minute, hour, day, weekday, month, year. All 35
+fields agree across the factory configuration and all four donors.
+
+Those limits settle how the fields count. A day whose limit is 30 counts from zero, and so
+does a month whose limit is 11. Read that way the fifth byte of section 3 - the one nothing
+had accounted for - is the weekday with Sunday as zero, and every image agrees:
+
+| image | date | weekday | stored |
+| --- | --- | --- | --- |
+| factory | 2007-10-25 | Thursday | 4 |
+| downstairs | 2023-08-23 | Wednesday | 3 |
+| upstairs | 2024-12-28 | Saturday | 6 |
+| backup-One | 2015-08-02 | Sunday | 0 |
+| HarmonyONE | 2026-05-06 | Wednesday | 3 |
+
+Read one-based instead, two of those dates fall on the same weekday and carry different
+values, which is exactly why the byte stayed unexplained. `stamp` now derives the weekday
+from the date, refuses one that disagrees with it, and takes the day and month from zero -
+so it accepts a zeroth day and month, which it used to reject, and refuses month twelve,
+which it used to accept and no remote could hold.
+
+## Both fields of a command object are packed
+
+A command object is `02`, a `u16`, `7d`, a `u16`, `7c`, and the second field has been read
+here as a device id. It is not one. Both fields carry the device index in their high byte -
+1,471 command objects across the four donors agree and none disagrees - and no high byte
+ever reaches the image's device count, over 1,502 atoms. The first field's low byte is the
+command's ordinal within its device. The second field's low byte is a repeat count: 1 in
+1,297 of the atoms measured, the rest 0, 5, 8, 10, 15, 20, 25, 30, 40, 50 and 100, which
+is what a device needing a command held rather than tapped would carry.
+
+## Section 12, the status overlays
+
+A picture is reachable only from a `bitmap` instruction, and for a long time the only programs this
+backend rooted were the ones a screen slot names. That left 14 to 18 pictures per image apparently
+undrawn, almost all of them 20x11. They are not undrawn. They belong to section 12, which no screen
+calls, and every one of them is reached once the section-12 table is used as a root set: 14 of 14 in
+three images and 18 of 18 in the fourth.
+
+Section 12 opens with overlay programs, and the four kinds are identical in shape in every image
+measured, differing only in their order in the table and in how many copies of each an image carries.
+
+| blocks | switches, as (selector, cases, ranges) | draws | at |
+| --- | --- | --- | --- |
+| 10 | (9, 8, 0) | 8 pictures of 20x11 | (153, 4) |
+| 140 | (15,2,1) (9,1,2) (0,60,0) (0,60,0) (9,8,0) | 13 pictures of 20x11 | (153, 4) |
+| 4 | (17, 1, 1) | 2 pictures of 22x18 | (128, 0) |
+| 95 | (4,7,0) (2,24,0) (1,60,0) (1,60,0) (2,24,0) (1,60,0) | 1 picture of 88x10 | (88, 19) |
+
+A 20x11 icon at (153, 4) is the top right corner of a 176 wide screen, which is the status bar. The
+`switch` opcode dispatches on a firmware state rather than on anything the configuration holds:
+selector 9 has exactly eight cases, which is a battery level; selector 15 chooses between power
+modes; and the two sixty-case switches cycle three icons each, which is why three of the pictures
+are pointed at 50, 50 and 20 times.
+
+The order of these entries is not fixed. Two images open the table with the eight-case battery
+program and two do not, and one image carries five copies of the 88x10 program and four of the
+22x18 one. Whatever selects an overlay, it is not the section-12 ordinal.
+
+After the overlays the table holds five-byte stubs, roughly four per activity plus twelve, then
+eight entries of 29 bytes and one of 38. What those do is not established.
+
+Two consequences follow. A generated configuration has to emit section 12 and its pictures, because
+the remote draws its own battery and charge state out of the configuration like everything else. And
+a coverage or composition pass that roots drawing programs only at screens is measuring the wrong
+thing: section 12 is a root set of its own.
+
+## There are no standalone strings
+
+A `text` instruction carries a pointer where `inline_text` carries its glyphs directly, which reads
+like a string table. There is no string table. Every text target in the four images - 229, 300, 305
+and 194, 1,028 in all - lands exactly on the glyph bytes of an `inline_text` instruction somewhere
+in the program graph, with matching content, and not one lands anywhere else. A shared string is
+another instruction's inline payload.
+
+That is why a layout has to map those addresses and not only the blocks. Redirecting each pointer to
+a freshly placed copy renders the same glyphs, but it gives the image a pool of standalone strings
+that no native configuration has, and it duplicates every string that more than one screen draws.
+`lay_out` therefore registers each `inline_text`'s glyph address alongside its block's, and
+composition places no strings of its own.
+
+## Section 5 points into section 4
+
+Section 4 was described here as a second index of the same commands section 5 reaches. It is not a
+second copy. Each of section 5's per-device sub-tables begins exactly where that device's run inside
+section 4 begins - all 20 sub-tables across the four images - and the two have the same shape, a
+zero byte, a `u16` count and one pointer to record-plus-eleven per command. Section 5's top-level
+table is a list of pointers into section 4, so a composed image emits section 4 once and points
+section 5 at it.
+
+## A waveform terminator can be a record's first word
+
+Press and hold waveforms end with the word `1`, a space of one microsecond, and then a zero word,
+in every waveform in every image. Where a command record begins immediately after one, it begins
+at the `1`, four bytes *before* the waveform ends, so the `1 0` terminator and the record's first
+four bytes are the same bytes. The record's own self-pointer at plus eleven confirms where it
+starts, so both readings are right and the overlap is real.
+
+It is deliberate rather than accidental. Every record that starts on a waveform terminator opens
+`01 00 00 00 00` - 220, 400, 388 and 189 of them, without exception - while records that do not
+share carry the other prefixes the donors use: 0, 4, 5, 6 and one `2f 81`. The producer overlapped
+the two only when the record's flag made those bytes identical anyway. Composition emits them
+separately, which costs two bytes per command and is otherwise faithful.
+
+## The first forty screens belong to the firmware
+
+A screen's ordinal is not free. The firmware selects its own screens by index, and the
+first forty are its: both household donors draw the same text with the same instruction
+shape in all forty, and nothing an owner owns appears before ordinal 40 in one or 44 in
+the other.
+
+| ordinals | what they are |
+| --- | --- |
+| 0, 9 | notices with an OK button: the battery warning, the charging-problem screen with a support URL |
+| 1 to 8 | "USB Connected", "Update Successful", "Upgrade Success", "Update in progress", "Learning...", "Firmware upgrade in progress" |
+| 10 to 39 | the thirty diagnostics the factory configuration carries as its own screens 0 to 29 |
+
+The factory configuration is those thirty and nothing else - 30 screens with no devices -
+which is what makes it the witness for this. They run from "Go to Website to update
+settings" through the FLASH memory and ADC calibration failures to "Missing License", and
+they include **"Invalid Configuration"** and **"Configuration Corrupted"**: the two screens
+the remote would use to say it had rejected the configuration it was given.
+
+So a generated image that starts its own screens at ordinal 0 is not merely missing the
+platform's; its first command page stands where the low-battery notice belongs.
+
+These forty are Logitech's own work, delivered rather than dumped. Both donor containers
+carry `TRANSFERTYPE Winsock` and post to `members.harmonyremote.com`, hold exactly one
+payload member, and match their own declared checksum: they are what the vendor's server
+generated and sent to a remote, and the screens are in it. The firmware keeps its own copy
+of thirty of them in `Configuration_Static`, which is how a remote with no configuration
+at all can still say `Battery Low`.
+
+They are structurally constant but not byte-constant. All forty draw the same text with
+the same instruction shape in both donors and their programs occupy the same address range
+- `0x00015a` to `0x0012f7` in each - yet only 2 of the 40 programs are byte-identical,
+because each one points at pictures and glyph strings that sit elsewhere in each
+configuration. So the vendor emitted them from a fixed template and linked them afresh
+every time, and carrying them means carrying a model and linking it, not copying bytes.
+
+### How a build carries them
+
+A screen is linked to the rest of an image in two ways. Addresses - to blocks, pictures and
+glyph strings - move with layout and the linker repairs them. Indices do not: a program's
+`atom` names a section-11 object by number, a section-12 overlay by number, a font by
+attribute, and a slot names a section-19 template by number. So the question was what the
+forty screens reach through indices, and whether it is theirs.
+
+It mostly is. The 37 objects their programs queue are leaves - `(3, 73) (X, 73)`, "draw the
+progress overlay and the status bar" - and the only value in them that differs between
+donors is X, which names the status program and differs exactly as far as each donor orders
+its overlays. Emitting the overlays in one donor's order carries them unchanged. The two OK
+buttons, on screens 0 and 9, lead into the rest of the donor's interface. And each screen's
+trailer header - what the physical keys do while it shows - is where the per-owner content
+comes in: 204 of their 348 rows bind objects whose chains reach that owner's help flow, and
+screens 0, 1 and 9 bind the whole keypad.
+
+So `platform/system-screens.json` holds the forty as a model: 329 blocks whose targets are
+names - a block number, a picture role, an object number - with `text` rewritten as
+`inline_text`, the 37 status objects, the four overlays, and each screen's header rows by
+category. Null bindings are identical in all four donors, 74 of 74, and carried. Category
+`1f` bindings carry that donor's constants - only `eb03`/`eb07` on key 6 and `ea03`/`ea07`
+on key 7 ever appear - which is coherent because the fonts, pictures and overlay order all
+come from the same donor. Object bindings are dropped. The OK buttons open the first screen
+the project owns instead, through `authoring.navigation_object`.
+
+A build then emits the platform's objects first, the overlays into section 12, the fonts in
+attribute order so the programs' attribute numbers mean what they meant, templates 0 to 2
+ahead of any page's, and the forty screens at ordinals 0 to 39. Against the donor it was
+taken from, all 40 draw the same text with the same instruction shape, and a render of a
+generated configuration leaves no pixel undrawn. The thirty diagnostics each draw a
+`System Message: N` heading, numbered 0 to 29; screens 2 and 3 draw no text of their own in
+any donor either.
+
+Planning this caught a defect in the command pages that preceded it. A page measured its
+labels in the button font but set no attribute before drawing them, so it drew in whichever
+attribute the previous program left - correct only while that happened to be the font it
+had measured with. A page now sets its attribute first, as every donor page does.
+
+Two more things a real configuration has that a generated one does not. The activities
+menu carries an `Options` softkey, so there is a settings path. And a quarter of a
+household configuration is the help flow: "Is the Amplifier on?" with Yes and No, one
+screen per device per activity, behind "Attemping to fix the problem..." - 25 screens of
+157 in one donor and 81 of 339 in the other.
+
+## Mode 0's list follows `LWJL`
+
+The byte after `LWJL` counts the entries of **mode 0's own list**, and the entries follow it
+directly: `u8` event code, `u16` operand, `u8` instruction. Mode 0 is the "battery level is
+low" screen, and the firmware reads the list at that fixed place rather than through a
+pointer. Every Harmony One user configuration carries the same 55 entries - 52 key presses
+and three mode events (codes `06`, `07`, `2D` at positions 7, 9 and 46) - each calling, with
+instruction `0x7F`, the object numbered by its own position. So objects 0 to 54 are mode 0's
+handlers; in the user configurations they are three empty atoms, a deliberate swallow, except
+46, which draws the status overlays. The safe-mode configuration counts 2.
+
+Generated images used to write the count of 55 and none of the entries, so the firmware read
+the first 220 bytes of objects as this list. None of those probes booted (2026-10-04). They
+now carry the list byte for byte and number their own objects from 55. Source: Danny Bloe's
+`harmony-explorations`, `docs/config-format.md`, "The key table".
+
+## Every mode has an enter and a leave handler
+
+Every mode record on a Harmony One carries exactly one tag 6 entry, run when the mode is
+entered, and one tag 7, run when it is left; the firmware's own screens also bind tag 2D,
+which draws the status overlays. These are object bindings, and the platform model used to
+drop every object binding as part of the per-device help flow - so 6 of a generated image's
+41 modes had no enter or leave handler and none of the forty platform screens redrew its
+overlays. The extractor now carries a platform screen's 6, 7 and 2D rows with the objects
+they reach (one to eight each; tag 30 on screen 9 reaches 48 and stays dropped, as do key
+rows), and a screen a build owns gets the platform's enter, leave and redraw. Mode 0's
+record is the list after `LWJL` itself, so its table entry points there. Checked with Danny
+Bloe's reader (`harmony-explorations`): 0 of 41 generated modes lack either handler, against
+0 of 157 and 0 of 339 in the two donors.
+
+## A mode is laid out contiguously
+
+Every mode in every donor is one run of bytes, in this order:
+
+```
+[handler list] then per page: [fragment] [page program] [7-byte page record]
+then the entry: flag, u24 -> list, u16 page count, u24 per page record
+```
+
+The page program opens with a call (`16`) to the fragment that sits right after the list,
+and the fragment ends with a return and then an end byte (`17 00`). Upstairs' mode 0 is list
+`0x67`, fragment `0x144`, page program `0x15a`, page record `0x186`, entry `0x18d`, and mode
+1's list follows at `0x196`. Each of the forty platform screens has a fragment that no other
+program calls. Danny Bloe's reader takes a mode's program to be the bytes after its list, so
+whether or not the firmware ever computes "list end" itself, nothing else may sit there.
+
+Generated images used to scatter these pieces: lists, page records, entries and programs in
+separate runs, with objects 0 to 54 right after mode 0's list. Now each mode is reserved whole
+and its programs are written once the pictures they draw have addresses; a program's size
+does not depend on its addresses. The objects follow the modes. A mode the image owns gets a
+fragment that draws the backdrop, and its page program calls it. Generated mode 0 lands at
+exactly the donor's addresses.
+
+## Section 9 opens with the list that starts the image
+
+Section 9 is not only key registers. It opens with one ordinary action list of its own,
+`u8 count; {u16 operand; u8 opcode}[count]`, and the page registers follow it. On the Harmony
+One the list is a single call, `01 xx xx 7f`: object 0 in the factory image (`Region_3.EZHex`)
+and object `0xEE` in all four household images (both donors and both of Kate's). Danny Bloe's
+reading (`harmony-explorations`, config-format "Base slot 8", findings sections 83 and 286) has
+the firmware use this list as a table of entry points it indexes and queues, and on the 650 it is
+what starts the introduction tour after a reload.
+
+The factory routine is three objects:
+
+```
+obj 0  (FE00 1F) (0 7E) (F064 3F) (3 7F)     push context 0, enter mode 0, ?, call 3
+obj 3  (FB01 1F) (4 7F)                      byte register = 1, call 4
+obj 4  (0010 71) (1C 7E)                     if variable 0x10 matches, enter mode 28
+```
+
+Mode 0 there is "Go to Website to update settings" and mode 28 is "USB CONNECTED"; variable
+`0x10` is the USB flag (section 14 property 16, `(0, 1)`). The household routine is 86 objects
+that also initialise the configuration's own state variables, but it ends with the same USB
+check: `FB01`, compare `0x10`, enter mode 1, which is the platform's "USB Connected" screen.
+Band `0xFE` of opcode `0x1F` pushes a section-10 context onto the key stack, and `FD` stands
+for the current mode.
+
+**Every probe that failed to boot lacked this list**, B to L included: the firmware read their
+first page register as it (M read `[0x00 0x99B1]`). A, the donor control, has it and boots.
+B also had other faults, so this is a strong candidate rather than a proven cause. A generated
+image now writes the factory's shape: push its context and the current mode, enter the first
+screen it owns (the one every OK button opens), carry `F064 3F` as the factory has it, and
+show the platform's USB screen when variable `0x10` is set.
+
+## Generating a configuration from a project
+
+`generate.skeleton` builds an image without reading one. It lays out the header, every
+section and the bodies they point at; the artwork comes from the scaffold and the commands
+from a project. Empty it is 517 bytes - one screen, one context, one object, and a count of
+zero everywhere the factory image has one. With the scaffold's ten 14-pixel fonts and 41
+pictures it is 366,350, and with a two-device project of ten NEC commands 368,471.
+
+The layout follows from how a section's range is derived. `section_ranges` ends a section
+where the next begins and `_sections` refuses duplicate pointers, so the bodies are placed
+first, then the nineteen tables contiguously in ascending order, then the checksum and
+`PTYY`. Each section's range then covers its own table and nothing else - and no section
+may be empty, because a zero-byte section would share a pointer with its neighbour.
+
+A command's waveforms are placed before its record, because the record points at them, and
+its section-0 name follows. Its objects are numbered with all the others and placed after the
+modes. Every pulse of a generated command reads back
+identical to the project's own; the carrier returns 38,001 Hz for 38,000 because the period
+is stored in whole nanoseconds.
+
+### Only the pictures something draws
+
+A generated image places a picture only when a program draws it: a platform block, a menu
+page or a command page. Every donor's pictures are all reached, so Logitech's builder evidently
+does the same, and the scaffold carries more than any one image needs - fifteen row icons where
+three devices draw three, and the menu's artwork where a project has no devices. Placing them
+all cost about 250 KB. The upstairs round trip went from 852,654 bytes at 88.9 % coverage to
+761,062 at 99.6 %, and the empty, one- and three-device probes from 58-79 % to 99.8 %. What
+is left uncovered is 64 KiB window padding and platform blocks no reachable program enters.
+
+### First hardware results, and what they changed (2026-10-09)
+
+W, X and Y boot on a tester's One (MickBim, #test-one): W shows "No devices", X and Y show
+their device menus and send without crashing. Q to S, from before the timer and variable
+fixes, froze or rebooted when a button was pressed. Two things were left, both fixed here:
+
+- **The clock came late.** Every platform fragment draws the status bar itself, with two
+  drawing atoms (opcode `11`, which queues an instruction): `(2, 0x73)` draws overlay 2 and
+  an object of `(3, 0x73) (0, 0x73)` draws overlays 3 and 0. Owned fragments drew only the
+  backdrop, so the clock and battery waited for the refresh timer and vanished whenever a
+  page redrew. Owned fragments now queue the same two.
+- **No way back from a device.** The right side strip led back to the menu, with nothing on
+  screen to say so. Command pages now carry the donors' "Devices" softkey: the bottom strip's
+  right half (raw touch `x 2406, y 271`, tag `0x2B`), its label at (110, 202) in the
+  scaffold's softkey font, bound to the device's menu page.
+
+### The hub: Activities, Devices and back
+
+Every Logitech configuration boots into its Activities screen, devices or not, and OK on a
+firmware notice opens it. Its bottom strip carries Options on the left and Devices on the
+right; the device list carries Activities on the left; a device's pages carry Activities
+on the left and Devices on the right. Upstairs draws the labels in their own fonts and
+colours - Options in attribute 13 at (22, 202), Activities in 6 at (16, 202), Devices in 9
+at (110, 202) - and binds them through the screen's touch template: zones 0x30/0x31 on
+Activities, the menu template's 0x33 on the device list, 0x2B/0x2C on a device page. On the
+device list Logitech's Activities runs a section-15 switch that reads "Current Activity"
+while one is running; with no activities it is a plain navigation.
+
+A generated image now has the same hub: ordinal 40 is Activities ("No activities" until
+activities exist), the device list starts at 41 and is there with no devices ("No
+devices"), and command pages carry both softkeys. Options follows with the Options screens.
+
+### Options
+
+Upstairs' Options screen (mode 276) has two pages: Turn Remote Assistant On, Tutorial and
+Date and Time, then Turn Screen Sounds Off and Screen Sensitivity. Date and Time, Screen
+Sensitivity and Screen Sounds are the builder's boilerplate - they set the remote's clock
+and its touch screen - while Remote Assistant runs a configuration's power checks and help
+flow and Tutorial names its own activities, so those two are left out until activities exist.
+
+`tools/harmony_one_extract_options.py` carries the rest into the scaffold as
+`platform/options.json`, as the firmware's screens are carried: the 16 screens Date and Time
+and Screen Sensitivity reach, their 72 drawing blocks, 510 objects, 4 timers, 3 section-15
+switch tables and 6 state variables, every reference a name, and the 9 green frames they draw
+as `images/options/`. The walk stops where a screen leads back to Options or to the hub.
+
+**Section 15 is a set of switch tables.** Opcode `0x72` with operand `group << 8 | variable`
+reads the variable and runs, in the drawing VM, the program the group assigns to its value:
+`u8 lead (2), u8 n, n {u16 value, u24 program}, u8 m, m {u16 low, u16 high, u24 program}`.
+A program queues its action through drawing atoms, so one key does different things by state
+- Screen Sounds toggles its flag this way, and the date picker steps through its fields.
+Section 15's pointers come first and the 151-byte platform table after them, so section 16's
+pointers move with the count. A generated image had no tables at all before.
+
+A generated image numbers it all afresh: Options at 41, the carried screens from 42, the
+device list after them; the carried variables after the platform's 18 in section 14, before
+the terminator; the carried timers after the platform's. The Options screen itself is drawn
+by the build on upstairs' three row frames, labels centred in its row font (attribute 5),
+with Screen Sounds' label a drawing switch on its flag ("Off" at 0, "On" at 1) placed last so
+each case can end the program. Activities gains its Options softkey.
+
+### A device's power and inputs are state variables
+
+As downstairs and upstairs build them (arch 12):
+
+- **Sending a command** is an object `(command id, 0x7D) (device << 8 | tenths, 0x7C)`: on arch
+  12 `0x7C`'s high byte is the device and its low byte a wait in tenths of a second.
+- **`<Label>_Power_2`**, values 0 and 1: going 1 to 0 runs the device's off send, 0 to 1 a list
+  of its on send and then the power-on delay as `0x7C` waits a hundred tenths at a time
+  (downstairs' amplifier waits `0x264` then `0x214`, 12 s). A device with one power command
+  sends it both ways.
+- **`<Label>_Input_<n>`**, values 0 to n-1: inputs chosen directly get one transition each from
+  `0xFFFD` ("from any value") to the input, running its send; inputs reached by stepping get
+  one transition per ordered pair, stepping as many times as it takes.
+- **Section 0 names them**: `Root` and `State` containers, then one leaf per state variable
+  whose id is the variable's index - `TV_Power_2`, `TV_Input_11`, `CurrentLocation_1`,
+  `CurrentActivityState_0_3`, `ButtonSoundVolume_2` (the Screen Sounds flag). No donor names
+  a command. Generated images used to name every command there, whose ids collide with the
+  variables'; they now name the variables, as the donors do.
+
+A generated image builds them from the project's device fields - `power_on_cmd`,
+`power_off_cmd` or a toggle `power_cmd`, `power_delay`, `inputs`, `input_cycle` - after the
+Options screens' variables. Nothing sets them yet: activities will, by writing a device's
+power and input variables on entry.
+
+### Labels that do not fit
+
+A generated label wider than its place wraps rather than being refused, by the donors' own
+rules above: a button's two lines sit 11 pixels apart around its single-line baseline (53 and
+64 for 58), a menu row's 12 apart (51 and 63 for 57). Words wrap at spaces, a word wider than a
+whole line is split where it stops fitting, and anything left after the second line is cut and
+marked `..`. The upstairs round trip now keeps every device name whole - "Game Console (With
+DVD)" and "AV Receiver- Room 1" draw on two lines - where it used to trim them.
+
+### The device menu
+
+A generated configuration's first owned screen is the device menu, at ordinal 40, so every
+firmware notice's OK button reaches it. It draws one row per device - a full-width frame,
+the device's icon, and its name - three rows to a page, and each row's touch key opens that
+device's first command page.
+
+A menu row is bound the same way a command button is, through an object, and in a generated
+image that object is a navigation, `(kind, 0x75) (screen, 0x7e)`: the row's screen is the
+ordinal a press opens. Donor rows carry one more atom, `(1, 0x99)`, which this section used to
+call a constant device-row marker. It is an instruction: opcodes from `0x80` write variable
+`opcode & 0x7f`, so it sets the donor's own variable 25, whose range and readers differ from
+donor to donor (limit 121, 3 and 1 in the three). A generated image has 19 variables, so its
+rows write nothing.
+
+### Nothing a generated image names is missing
+
+`afterglow-research/one-tools/refcheck.py` resolves every instruction in an image - objects,
+mode and page lists, timers, section 9's leading list - against the table it indexes, by the
+Harmony 800's reading: objects, modes, overlays, contexts, timers and variables. The three
+donors come out clean over about 13,000 references, which is what makes the reading credible
+for the One. Generated images had three kinds of dangling reference: the menu rows' variable
+25, the platform timers (above), and platform handlers carried from upstairs that set and test
+the donor's own variables (24, 30, 32, 41, 19) and push its contexts 2 and 3 - screens 0, 1,
+2, 3 and 9 marking themselves shown. The extractor now leaves that bookkeeping out (17 atoms,
+with the `07 FFFF` modifier before a write and the instruction a test guards), and generated
+images resolve every reference.
+
+The menu's touch geometry - three device rows, a header strip and two side strips - is
+identical in every donor, so it is carried in the scaffold like the platform screens' own
+templates and emitted at whatever index a generated menu slot needs.
+
+A menu holds three rows a page and a device's commands six a page, and both page with the
+same primitive: the two side-strip touch zones every screen template carries, `0xae` and
+`0xaf`, bound to go-to-screen objects. Menu pages form a cycle, so from the last you reach
+the first; a device's command pages run forward and lead back to the menu the device sits
+on. Every command is reachable however many devices a project has and however many commands
+a device has, up to the format's own ceilings - 255 devices, 256 commands each.
+
+The section-6 ordinal is what makes this straightforward: an ordinal is a screen's position
+in the index, not its emission order, so every page's ordinal is assigned before any page is
+written and a navigation can name a page that does not exist yet. The menu pages take the
+first owned ordinals, the command pages follow device by device, and each row and side strip
+is given the ordinal it should open directly.
+
+The donors page differently - one screen with a slot per page and a `0x72` page-control atom
+that the firmware advances in place - and that native mechanism is not reproduced here.
+Navigation between whole screens is instead the one primitive already proven to work, since
+it is exactly what a menu row and a notice's OK button do. Which of the two a real remote
+prefers on the side strips is a question for the first hardware test.
+
+### A page you can press
+
+A command page is four things, and a generated one now builds all four. Its drawing program
+draws the backdrop, then each button's frame and a label centred over it - nothing in the
+format clears the screen, so a page that draws no backdrop shows whatever the last one
+drew. Its key register binds one key code per button, from `0xb0` upward in reading order.
+Its section-19 template gives each button a touch zone. And its slot joins the three.
+
+A button is bound to a command through two objects, not one. The key register row names an
+object whose atoms are a constant `(0xfca, 0x75)` - present in all 185 command rows of a
+donor and never absent - and a reference to the command object proper, which is the
+`(command, device)` pair. So the chain is key, wrapper, command.
+
+Touch zones are raw panel coordinates rather than pixels: x runs about 1173 + 14 per pixel
+and y about 3630 - 16 per pixel, measured upwards, with different scales per axis. That is
+calibration rather than layout, so it lives in the scaffold beside the platform table, and
+a page takes the smallest of the donors' templates that covers its buttons - they carry
+geometry for 1, 2, 3, 5 and 6, so a page of 4 uses the 5-button template with the zone for
+the button it does not draw removed.
+
+A label wider than its button is refused rather than drawn over the edge, because nothing
+in the format clips: `Sony BDP-S5000ES` is 100 pixels against 81. Splitting or shortening a
+name that long is a decision for whatever builds the project, not for the writer.
+
+## Where the artwork comes from
+
+The pictures are not in firmware, so a generated configuration has to carry them. They
+live as PNG files in `scaffolds/harmony-one/`, listed by `assets.json`, and anyone can
+replace them: that directory is the whole of what a Harmony One looks like. What ships is
+Logitech's own, extracted from a configuration - 41 pictures and 18 fonts - because the
+format is a drawing VM and the artwork can be read out of it exactly. The loop is
+lossless: 527 of 527 glyphs and 41 of 41 pictures re-encode to the donor's own bytes after
+a trip through PNG.
+
+A font shipped this way is not limited to the repertoire a donor had. Every configuration
+Logitech generated drew only the characters it needed, so across all four donors 78 of the
+95 printable ASCII characters appear and seventeen - `$%&;<=>@`, `[]^_`, a backtick and
+`{|}~` - appear at no size at all. A generated configuration has to label a button with
+whatever its owner typed, so the ten 14-pixel fonts are completed to all 95. Most of the
+additions are built from the font's own strokes, which is the only way a new character
+looks like it belongs: a backslash is its slash mirrored, an equals its hyphen twice, an
+underscore its hyphen at the descender, a semicolon its colon's dot over its comma's tail,
+a dollar its `S` with a bar through it, a bracket a stem with two arms cut from its hyphen.
+The nine with no relative in the font are drawn on the same grid. Their codes continue past
+the largest repertoire any donor uses, so the manifest rather than `glyph_codec` is the
+authority on what a generated font's codes mean.
+
+Heights are not interchangeable: the 14 and 15 pixel faces are different designs, sharing
+only two of 46 letterforms, so a build draws the owner's own words at 14 pixels everywhere
+including menu rows, where the donors used 15.
+
+A font is stored as one sheet of glyphs side by side, with each glyph's position and width
+in the manifest. Colour is never drawn by hand: a font is one colour plus a shadow exactly
+one pixel down and to the right, in every glyph of every font measured, so a new glyph is
+designed as a shape and shaded afterwards. Glyphs are coloured rather than masked - every font in the donors uses
+exactly two colours, a stroke and a shadow - which is why there are eighteen of them: one
+typeface at 11, 14, 15 and 16 pixels in each colour the interface uses. Filling a font's
+gaps from another of the same typeface therefore has to recolour what it borrows, or a
+single word comes out in two colours.
+
+PNG is read by `afterglow.imaging`, which uses only `zlib` and `struct` from the standard
+library, because the format layer takes no third-party dependency and Pillow may only be
+imported from the GUI. It reads what an image editor writes - greyscale, palette or
+truecolour, with or without alpha, at any bit depth, reducing 16-bit channels to 8 - and
+refuses interlaced files by name. Checked against Pillow over 1,351 real files, every one
+decodes pixel for pixel.
+
+Two properties of the display constrain an asset, and the loader counts both rather than
+applying them quietly. Colour is RGB565, so a gradient bands. Transparency is one bit -
+a run-encoded picture writes a pixel or leaves what was underneath alone, and there is no
+blending - so a soft edge hardens, at half opacity. The artwork this project ships is
+drawn from a palette that is already RGB565-exact and reports neither.
 
 ## Emitting drawing programs
 
@@ -639,8 +1340,10 @@ The four composed sections are emitted last and in ascending order - 9, 10, 11, 
 one's computed range covers its own table and nothing else. Section 9 must hold every key register,
 which is why the slots that point at them are emitted first and filled in afterwards; no donor
 shares a register between slots, 213 and 439 slots to as many registers. A slot that binds no key
-still has a register, and 50 and 62 of them are empty, so a zero-entry register is a shape the
-format uses rather than a mistake.
+still has a register, and 50 and 62 of them are empty, so a zero-entry register (`00 00`) is a
+shape the format uses rather than a mistake. Nothing lies between the registers either - a single
+pad zero would read as a wide header - so the section is placed whole and any 64 KiB window
+padding falls before it.
 
 The model also holds the pictures and glyph strings those programs draw, the commands with their
 own waveforms, every font with its glyphs' own bytes, and each screen's button map, so they move
@@ -654,7 +1357,7 @@ buttons that screen answers - four to six rows usually, and the whole 55-button 
 `LWJL` marker counts in a few - so the 39-row limit was a rule for recognising a page while
 scanning section 9, never a rule of the format; the count is a byte, so the limit is 255. Pictures are the
 one structure placed without the 64 KiB window rule: 15 to 19 of them cross a boundary in every
-image and 7 to 9 are larger than the window itself, a 176x220 backdrop stored whole being 77,444
+image and 7 to 9 are larger than the window itself, a 176x220 backdrop stored whole being 77,445
 bytes. Whatever that rule protects, it is not pixel data.
 
 The gate is a no-change re-emission: the model that goes in must be the model that comes back, with

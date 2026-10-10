@@ -93,7 +93,8 @@ src/afterglow/
     constants.py          re-exports paths/vocabulary so windows import from one place
   library/                SHAREABLE data - portable protocols and remote profiles (JSON)
   icons/                  Logitech artwork from app-main.swf - NOT under this repo's GPL
-  scaffolds/              per-remote platform state each build starts from - Logitech's
+  scaffolds/              per-remote platform state each build starts from; bundled
+                          (Logitech's) or synthesised (ours) - see its README
 tests/                    regression-first pytest suite; conftest.py holds fixtures
 tools/                    standalone CLI utilities (compare_configs, learn_ir, rf_pair...)
 linux/                    udev rules + harmony_net.sh to bring the USB link up
@@ -127,8 +128,14 @@ linux/                    udev rules + harmony_net.sh to bring the USB link up
   under `paths.user_library()`, never here.
   Code addresses `library/`, `icons/`, `scaffolds/` **by filename**
   via `paths.py` - never hardcode a relative path to them.
-- `icons/` and `scaffolds/` are Logitech-authored and carry their own `NOTICE.md`. Do
-  not relicense, publish, or synthesise substitutes for them silently.
+- `icons/` is Logitech-authored and carries its own `NOTICE.md`. Do not relicense,
+  publish, or synthesise substitutes for it silently.
+- `scaffolds/` holds both kinds, and each tree says which in its own `NOTICE.md`. Both
+  shipped trees are Logitech-authored and carry the same restriction: `harmony-900` is a
+  sanitised configuration, `harmony-one` is artwork extracted from one - 41 pictures and
+  18 fonts as PNGs, read through `afterglow.imaging`, which is standard-library only so
+  the format layer keeps its zero dependencies. Extract **artwork only**: never a device
+  name, activity, favourite, account field or RF registration.
 
 ---
 
@@ -280,8 +287,15 @@ not a store. Do not introduce a state-management library.
    - **Synthesised**, when it is **assets rendered through a documented interpreter**:
      fonts, bitmaps, screen layouts. The vendor had an asset library and emitted a
      subset of it into every config; that is why no two configs share anything. But the
-     format is a general drawing VM, so the assets do not have to be theirs. Write your
-     own glyphs and bitmaps and the layer is shippable, with no vendor artwork in it.
+     format is a general drawing VM, so the assets do not have to be theirs, and a
+     scaffold of this kind is a directory of editable files rather than an opaque tree.
+
+     Whether to *ship* your own artwork or the vendor's is a separate decision from
+     whether you *can*. The Harmony One ships the vendor's, extracted as PNG, because its
+     fonts are hand-hinted for an RGB565 panel at 11 to 16 pixels and a scaled desktop
+     font does not survive that; `tools/harmony_one_default_assets.py` draws a
+     vendor-free set for anyone who wants one. Extract artwork only - no device names,
+     activities, favourites, account data or RF registration.
 
    Do not conclude "there is nothing shared between configs, so nothing can be shipped".
    That confuses the vendor's assets with the format's requirements. The vendor generated

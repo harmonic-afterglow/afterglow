@@ -11,9 +11,7 @@ Format reference: docs/harmony_one/gspm.md
 
 from __future__ import annotations
 
-import struct
 
-from . import gspm, ui_index
 
 
 _COMMON = {
@@ -75,45 +73,28 @@ assert all(len(set(table.values())) == size for size, table in REPERTOIRES.items
 
 
 def code_shapes(payload: bytes) -> dict[int, set[str]]:
-    """Return every decoded bitmap-shape fingerprint grouped by glyph code."""
-    start, end = gspm.section_ranges(payload)[7]
-    font_count = struct.unpack_from("<H", payload, start)[0]
-    if start + 2 + 3 * font_count > end:
-        raise ValueError("section 7 font index exceeds its section")
+    """Return every decoded bitmap-shape fingerprint grouped by glyph code.
+
+    Font records come in two header layouts and `font_index` is what tells them apart,
+    so it does the reading. Counting the glyphs here as a `u16` refused the factory
+    configuration in firmware 54.2.5, whose fonts count in a byte.
+    """
+    from . import font_index
+
     out: dict[int, set[str]] = {}
-    for attribute in range(font_count):
-        field = start + 2 + 3 * attribute
-        font = int.from_bytes(payload[field:field + 3], "little") - gspm.BASE
-        if not 0 <= font + 3 <= len(payload):
-            raise ValueError(f"font {attribute} pointer falls outside the image")
-        count = struct.unpack_from("<H", payload, font + 1)[0]
-        if font + 3 + 3 * count > len(payload):
-            raise ValueError(f"font {attribute} glyph index is truncated")
-        for index in range(count):
+    for font in font_index.fonts(payload):
+        for index in range(font["slots"]):
             out.setdefault(index + 1, set())
-            absolute = int.from_bytes(
-                payload[font + 3 + 3 * index:font + 6 + 3 * index], "little")
-            if not absolute:
-                continue
-            info = ui_index._glyph_shape(payload, absolute - gspm.BASE)
-            out[index + 1].add(info["shape"])
+        for code, glyph in font["glyphs"].items():
+            out[code].add(glyph["shape"])
     return out
 
 
 def declared_repertoire(payload: bytes) -> int:
     """Return the largest glyph-slot count declared by any section-7 font."""
-    start, end = gspm.section_ranges(payload)[7]
-    font_count = struct.unpack_from("<H", payload, start)[0]
-    if start + 2 + 3 * font_count > end:
-        raise ValueError("section 7 font index exceeds its section")
-    repertoire = 0
-    for attribute in range(font_count):
-        field = start + 2 + 3 * attribute
-        font = int.from_bytes(payload[field:field + 3], "little") - gspm.BASE
-        if not 0 <= font + 3 <= len(payload):
-            raise ValueError(f"font {attribute} pointer falls outside the image")
-        repertoire = max(repertoire, struct.unpack_from("<H", payload, font + 1)[0])
-    return repertoire
+    from . import font_index
+
+    return max((font["slots"] for font in font_index.fonts(payload)), default=0)
 
 
 def resolve_mapping(shapes: dict[int, set[str]], repertoire: int | None = None) -> dict:

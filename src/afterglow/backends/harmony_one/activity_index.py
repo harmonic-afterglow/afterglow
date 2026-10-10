@@ -77,9 +77,15 @@ def engine_records(payload: bytes) -> list[dict]:
     if end - start < 8:
         raise ValueError("section 14 is shorter than its activity-engine header")
     count = struct.unpack_from("<H", payload, start)[0]
-    if end - start != 8 + 3 * count:
+    # The index must fit; the section is not required to end with it. Every other
+    # counted index here is checked that way, and sections routinely carry more than
+    # their index - section 15 keeps a 151-byte table after its count, section 6 its
+    # trailers and slots. Demanding an exact size held for the donors by luck and
+    # refused any image whose last section absorbed the padding byte a body of odd
+    # length gets closed with.
+    if start + 8 + 3 * count > end:
         raise ValueError(
-            f"section 14 size {end - start} does not match 8 + 3 * {count}")
+            f"section 14 index of {count} records exceeds its section")
     out = []
     for property_id in range(count):
         offset = _relative(payload, start + 8 + 3 * property_id,
@@ -321,7 +327,11 @@ def inspect(
             continue
         writes = []
         reached_commands = set()
-        for hook_name in ("enter", "refresh"):
+        # LEAVE is followed too, though it has never reached a command: every activity
+        # but All Off carries one, each writing eight properties, and in all four donors
+        # not one of those writes reaches an indexed command. Following it costs nothing
+        # and stops the hook being read and silently dropped.
+        for hook_name in ("enter", "refresh", "leave"):
             hook = hooks[hook_name]
             if hook is None or hook["category"] != OBJECT:
                 continue
@@ -358,6 +368,13 @@ def inspect(
             "writes": writes, "command_ids": sorted(reached_commands),
             "device_indices": sorted({command >> 8 for command in reached_commands}),
             "determined": bool(reached_commands),
+            # An activity that reaches no command is not necessarily unresolved. The
+            # All Off context writes eight properties in every donor, none of them one
+            # that drives a device, and its set is always a subset of what a real
+            # activity writes - so it is state-only by construction rather than by our
+            # failing to follow it. Its command path is not in section 14 at all.
+            "state_only": not reached_commands and bool(writes) and not any(
+                item["command_ids"] for item in writes),
         })
     mixed_screens: dict[int, set[int]] = defaultdict(set)
     for binding in key_index.inspect(payload, ownership)["bindings"]:
@@ -374,6 +391,7 @@ def inspect(
                 len(record["transitions"]) for record in engine),
             "activities": len(activities),
             "determined_activities": sum(item["determined"] for item in activities),
+            "state_only_activities": sum(item["state_only"] for item in activities),
             "menu_activities": len(menu_ordinals), "mixed_device_screens": len(mixed),
             "engine_commands": len(all_engine_commands),
             "physical_context_rows": physical["counts"]["rows"],
@@ -382,4 +400,160 @@ def inspect(
         "rejected": dict(rejected), "menu": menu, "activities": activities,
         "physical_contexts": physical,
         "mixed_device_screens": mixed,
+    }
+
+
+# Section 14 falls into three parts in every image measured, the factory configuration in
+# firmware 54.2.5 included. Records 0 to 6 are the clock section 3 also holds. Records 7
+# to 17 are platform properties with no transitions, byte-identical across the donors.
+# The final record is a terminator. What lies between is the household part.
+CLOCK_PROPERTIES = 7
+PLATFORM_PROPERTIES = 18
+TERMINATOR_LIMIT = 0xFEFD
+# `from` in a transition, meaning "whatever state the property is in now".
+ANY_STATE = 0xFFFE
+COMMAND_ATOM = 0x7D
+OBJECT_ATOM = 0x7F
+
+
+def _sent_commands(objects: list[dict], index: int, seen=None, depth: int = 0) -> list:
+    """Every (device, command) an object sends, following the objects it references."""
+    seen = set() if seen is None else seen
+    out: list[tuple[int, int]] = []
+    if not 0 <= index < len(objects) or index in seen or depth > 6:
+        return out
+    seen.add(index)
+    for value, kind in objects[index]["atoms"]:
+        if kind == COMMAND_ATOM:
+            # Both fields of a command object carry the device in their high byte.
+            out.append((value >> 8, value & 0xFF))
+        elif kind == OBJECT_ATOM:
+            out += _sent_commands(objects, value, seen, depth + 1)
+    return out
+
+
+def engine_shape(payload: bytes, objects: list[dict] | None = None) -> dict:
+    """Split section 14 into its three parts and say which device each record drives.
+
+    A household property is a device's discrete state: its limit is the highest state it
+    reaches, and each transition names an object holding the commands that get there. The
+    pattern is visible in the objects - one donor reaches state N by sending a setup
+    command, the input command N times, then a confirm - which is how a device whose input
+    is cycled by a single button is driven.
+
+    Every household record that sends anything sends it to exactly one device: 5, 8, 11
+    and 5 records across the four donors, never two devices in one record. Records that
+    send nothing are state the remote tracks but cannot drive.
+    """
+    from . import command_index
+
+    objects = command_index.objects(payload) if objects is None else objects
+    records = engine_records(payload)
+    terminator = (
+        records[-1] if records and records[-1]["limit"] == TERMINATOR_LIMIT else None)
+    body = records[:-1] if terminator is not None else records
+    household = body[PLATFORM_PROPERTIES:]
+    driven = {}
+    for record in household:
+        devices = set()
+        for transition in record["transitions"]:
+            if transition["category"] == OBJECT_ATOM:
+                devices |= {
+                    device for device, _command
+                    in _sent_commands(objects, transition["operand"])
+                }
+        driven[record["property_id"]] = sorted(devices)
+    return {
+        "clock": body[:CLOCK_PROPERTIES],
+        "platform": body[CLOCK_PROPERTIES:PLATFORM_PROPERTIES],
+        "household": household,
+        "terminator": terminator,
+        # Which device each household property drives, by property id.
+        "driven": driven,
+        "counts": {
+            "records": len(records),
+            "household": len(household),
+            "driving": sum(1 for value in driven.values() if value),
+            "silent": sum(1 for value in driven.values() if not value),
+            "ambiguous": sum(1 for value in driven.values() if len(value) > 1),
+        },
+    }
+
+
+def current_activity(payload: bytes, activities: int) -> int | None:
+    """The activity a configuration was saved in, if section 14 names one unambiguously.
+
+    One household property counts the activities: its limit is one less than how many
+    there are, and its initial value is the one that was running. Where a configuration
+    has few activities that limit is shared with the boolean properties, so a non-zero
+    initial is what singles it out - which means an image saved in activity zero cannot
+    be told from one that names no activity at all.
+    """
+    if activities < 1:
+        return None
+    shape = engine_shape(payload)
+    found = [
+        record["initial"] for record in shape["household"]
+        if record["limit"] == activities - 1 and record["initial"]
+    ]
+    if len(found) != 1 or found[0] >= activities:
+        return None
+    return found[0]
+
+
+def all_off(payload: bytes, objects: list[dict] | None = None) -> dict:
+    """The commands turning everything off, and the properties they come from.
+
+    The All Off context stores none of them. It writes eight properties in every donor,
+    none of which drives a device, so following its hooks reaches nothing and it looked
+    for a while as though the path were missing. It is not stored because it does not
+    need to be: every property that drives a device has exactly one transition to state
+    zero and that transition carries a command - 5, 8, 11 and 5 properties across the
+    four donors, without exception - so turning everything off is driving every property
+    to zero, using the transitions the activities themselves installed.
+
+    A property whose limit is 1 and which drives a device is a power toggle: state 1 on,
+    state 0 off. Most devices have one. Where a device has none, its power sits inside a
+    property with more states, which is why counting limit-1 records alone does not give
+    the device count.
+    """
+    from . import command_index
+
+    objects = command_index.objects(payload) if objects is None else objects
+    ownership = command_index.inspect(payload)
+    indexed = {
+        command["command_id"]
+        for device in ownership["devices"] for command in device["commands"]
+    }
+    records = engine_records(payload)
+    shape = engine_shape(payload, objects)
+    out, missing = {}, []
+    for property_id, devices in sorted(shape["driven"].items()):
+        if not devices:
+            continue
+        record = records[property_id]
+        commands: set[int] = set()
+        for transition in record["transitions"]:
+            if transition["to"] == 0 and transition["category"] == OBJECT:
+                commands |= _object_commands(objects, transition["operand"]) & indexed
+        if not commands:
+            missing.append(property_id)
+        out[property_id] = {
+            "device": devices[0] if len(devices) == 1 else None,
+            "limit": record["limit"],
+            "power_toggle": record["limit"] == 1,
+            "command_ids": sorted(commands),
+        }
+    commands = sorted({
+        command for item in out.values() for command in item["command_ids"]})
+    return {
+        "properties": out,
+        "command_ids": commands,
+        "device_indices": sorted({command >> 8 for command in commands}),
+        # A driving property with no way back to zero would leave a device on.
+        "properties_without_an_off": missing,
+        "counts": {
+            "properties": len(out), "commands": len(commands),
+            "power_toggles": sum(item["power_toggle"] for item in out.values()),
+        },
     }
