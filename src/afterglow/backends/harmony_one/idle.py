@@ -1,0 +1,305 @@
+"""The idle machine a generated Harmony One runs: keypad lights, their timers, the events.
+
+The firmware lights nothing by itself - the factory image has no light instruction and its
+keys stay dark - so every Logitech configuration carries a small machine that lights the
+keypad when a key is pressed, darkens it when a timer runs out, lights the zones the shown
+screen uses, and answers the events the firmware posts: USB in and out, charging, the side
+strips. docs/harmony_one/gspm.md, "The idle layer", is its specification, read from
+upstairs by running its handlers under every combination of the platform's variables.
+
+This module builds that machine from the specification rather than carrying upstairs' own.
+It is written as a model in the carried-screens form - objects, timers and variables named
+by their index in the model, the platform's own instructions as ``{"platform": ...}`` - and
+``attach`` appends it to the Options model, so a build numbers both in one namespace and
+the carried screens' ``{"zones": ...}`` references find the zones built here.
+"""
+from __future__ import annotations
+
+import copy
+
+# Opcodes and bands, as the Harmony 800's interpreter reads them (gspm.md).
+OBJECT = 0x7F
+ENTER_MODE = 0x7E
+REGISTER = 0x1F          # band FB loads the byte register, EB/EA start/stop a timer
+SETTING = 0x3F           # band C0 a light channel, F0-F3 the firmware's setting bytes
+MODE_STACK = 0x07        # FFFD push the current mode, FFFC pop it, FFFF a silent write
+TEST = 0x71              # compare a variable with the byte register
+BEEP = 0x75
+PAGE = 0x0F              # FFA0 / FFA1 previous / next page
+
+LOAD = 0xFB00
+START_TIMER, STOP_TIMER = 0xEB, 0xEA
+EQUAL, NOT_EQUAL, AT_MOST = 0x00, 0x01, 0x04
+INVERT = 0x80            # the test drops the next instruction when it holds
+PUSH_MODE, POP_MODE, SILENT = 0xFFFD, 0xFFFC, 0xFFFF
+STATUS = 0xFFFB          # upstairs runs it after entering or leaving the USB screen
+CHARGE = 0xE800          # `1F E8`: the firmware's charge byte
+PREVIOUS_PAGE, NEXT_PAGE = 0xFFA0, 0xFFA1
+
+# Light channels (gspm.md): the screen backlight, the keypad, and eight zones.
+SCREEN = 0x11
+KEYPAD = (0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x10)
+ZONES = 8
+SCREEN_LEVEL, KEY_LEVEL = 6, 1
+LIGHTS_OUT = (0xF101, SETTING)    # what upstairs writes after darkening everything
+
+# The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, and the
+# two whose meaning is not confirmed but whose tests are kept as upstairs has them.
+BATTERY, HOLD, CHARGING, USB, AWAKE = 9, 13, 15, 16, 17
+LOW_BATTERY = 2
+
+# Timers: the keypad goes dark when OFF runs out; POLL re-arms OFF while AWAKE says so.
+OFF_DURATION, POLL_DURATION = 10, 2
+
+# What each kind of screen lights, from the same screen in upstairs (gspm.md).
+SCREEN_ZONES = {
+    "activities": (1, 3, 5, 7),
+    "options": (1, 3, 5),
+    "devices": (0, 2, 4),
+    "commands": (0, 2, 4, 6),
+    "commands-paged": (4, 6),
+}
+# The firmware's own screens that light a zone or mark themselves shown.
+LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
+ENTER, LEAVE = 0x06, 0x07
+
+MOTION = 0x17            # the event the firmware posts when the remote is picked up
+
+BEEP_KEY = 0x4664
+BEEP_SHORT = 0x01FF
+BEEP_PAGE = 0x0FCA
+
+
+def light(channel: int, level: int, flag: int = 0) -> list:
+    return [0xC000 | channel << 4 | level << 1 | flag, SETTING]
+
+
+class _Model:
+    """Objects, timers and variables, numbered as they are made."""
+
+    def __init__(self):
+        self.objects: list[list] = []
+        self.timers: list[dict] = []
+        self.variables: list[dict] = []
+
+    def object(self, atoms: list[list]) -> list:
+        self.objects.append(atoms)
+        return [{"object": len(self.objects) - 1}, OBJECT]
+
+    def reserve(self) -> int:
+        self.objects.append([])
+        return len(self.objects) - 1
+
+    def timer(self, duration: int) -> int:
+        self.timers.append({"flags": 1, "duration": duration, "action": None})
+        return len(self.timers) - 1
+
+    def flag(self) -> dict:
+        """A new 0/1 variable, as the model names one: ``{"variable": index}``."""
+        self.variables.append({"initial": 0, "limit": 1, "transitions": []})
+        return {"variable": len(self.variables) - 1}
+
+
+def _timer(band: int, timer: int) -> list:
+    return [{"timer": timer, "band": band}, REGISTER]
+
+
+def _test(kind: int, variable) -> list:
+    """Compare ``variable`` - a platform variable's number or a model flag - with the
+    byte register; ``kind`` is the test in the high byte's low nibble."""
+    return [{"test": kind, "variable": variable}, TEST]
+
+
+def _write(variable, value: int) -> list:
+    return [value, {"write": variable}]
+
+
+def build(system: dict | None, sounds: dict | None = None) -> dict:
+    """The machine as a model, with its entry points under ``"idle"``.
+
+    ``system`` is the platform model (system-screens.json): the firmware's own screens,
+    whose enter and leave handlers the machine extends. ``sounds`` is the Options model's
+    Screen Sounds switch, whose flag start-up clears as upstairs does.
+    """
+    m = _Model()
+    zone_flags = [m.flag() for _ in range(ZONES)]
+    usb_shown = m.flag()
+    off_timer, poll_timer = m.timer(OFF_DURATION), m.timer(POLL_DURATION)
+
+    def guarded(byte: int, test: list, step: list) -> list:
+        """Run ``step`` when ``test`` holds against ``byte``, in the donors' shape: the
+        byte is loaded, then an object holds the test and the one step it guards."""
+        return m.object([[LOAD | byte, REGISTER], m.object([test, step])])
+
+    # Zones: on lights a zone and records it, off darkens it and clears the record.
+    zone_on = [m.object([light(z, KEY_LEVEL), _write(zone_flags[z], 1)]) for z in range(ZONES)]
+    zone_off = [m.object([light(z, 0), _write(zone_flags[z], 0)]) for z in range(ZONES)]
+    restore = m.object([guarded(1, _test(EQUAL, zone_flags[z]), light(z, KEY_LEVEL))
+                        for z in range(ZONES)])
+
+    # The off timer darkens everything; the zone records stay, so the next wake restores.
+    lights_out = m.object(
+        [_timer(STOP_TIMER, off_timer)] + [light(c, 0) for c in KEYPAD]
+        + [light(z, 0) for z in range(ZONES)] + [light(SCREEN, 0), list(LIGHTS_OUT)])
+    m.timers[off_timer]["action"] = lights_out
+    # Arm: start the off timer when AWAKE is set, and poll again either way.
+    arm_slot = m.reserve()
+    arm = [{"object": arm_slot}, OBJECT]
+    m.objects[arm_slot] = [
+        _timer(STOP_TIMER, off_timer),
+        guarded(0, _test(INVERT | EQUAL, AWAKE),
+                m.object([light(SCREEN, SCREEN_LEVEL, 1), _timer(START_TIMER, off_timer)])),
+        _timer(START_TIMER, poll_timer)]
+    m.timers[poll_timer]["action"] = arm
+    wake = m.object([_timer(STOP_TIMER, off_timer), light(SCREEN, SCREEN_LEVEL)]
+                    + [light(c, KEY_LEVEL) for c in KEYPAD] + [restore, arm])
+
+    # The firmware's charge byte, as upstairs sets it on every charging event.
+    charge = m.object([
+        guarded(1, _test(INVERT | EQUAL, HOLD), [CHARGE | 5, REGISTER]),
+        guarded(1, _test(INVERT | EQUAL, USB), [CHARGE | 5, REGISTER]),
+        guarded(LOW_BATTERY, _test(INVERT | AT_MOST, BATTERY), [CHARGE | 0, REGISTER]),
+        [CHARGE | 6, REGISTER]])
+    # The setting byte upstairs writes while HOLD is set: F201 off USB - unless CHARGING
+    # is clear, which drops just that step - and F200 on it.
+    usb_setting = guarded(1, _test(EQUAL, HOLD), m.object([[LOAD, REGISTER], m.object([
+        _test(INVERT | EQUAL, CHARGING),
+        guarded(0, _test(EQUAL, USB), [0xF201, SETTING]),
+        guarded(1, _test(EQUAL, USB), [0xF200, SETTING])])]))
+    low_battery_wake = guarded(LOW_BATTERY, _test(AT_MOST, BATTERY), wake)
+
+    events = {
+        # USB in: wake and show the USB screen over whatever was shown.
+        0x26: m.object([[BEEP_KEY, BEEP], charge, wake, [PUSH_MODE, MODE_STACK],
+                        [USB_SCREEN, ENTER_MODE], [STATUS, MODE_STACK]]),
+        # USB out: back to what was shown, if the USB screen is still the one shown.
+        0x27: m.object([[BEEP_KEY, BEEP], [BEEP_SHORT, BEEP], [BEEP_SHORT, BEEP],
+                        [BEEP_SHORT, BEEP], [BEEP_KEY, BEEP], charge, wake, usb_setting,
+                        guarded(0, _test(NOT_EQUAL, usb_shown), [POP_MODE, MODE_STACK]),
+                        guarded(1, _test(EQUAL, BATTERY), [0xFFF6, MODE_STACK]),
+                        low_battery_wake]),
+        0x10: m.object([low_battery_wake, usb_setting]),
+        0x19: [0xFFF6, MODE_STACK],
+        0x2D: [0xFFFA, MODE_STACK],
+        0x25: [0, 0],
+        0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
+        0xAF: m.object([[BEEP_PAGE, BEEP], [NEXT_PAGE, PAGE]]),
+    }
+
+    # Two codes below the keys run the key light too, as both donors have them: 0x17,
+    # which wakes the remote when it is picked up (gspm.md), with its own firmware steps
+    # first and lights-out's setting byte after, and 0x30, a plain wake.
+    key_rows = {
+        MOTION: m.object([m.object([[LOAD | 1, REGISTER], [0xFFE1, PAGE],
+                                    [LOAD, REGISTER], [0xFFE1, PAGE],
+                                    [0xFFE3, PAGE], [0xFFE3, PAGE]]),
+                          wake, list(LIGHTS_OUT)]),
+        0x30: wake,
+    }
+
+    zone_objects: dict[tuple, list] = {}
+
+    def zones(chosen, on: bool) -> list:
+        key = (tuple(sorted(chosen)), on)
+        if key not in zone_objects:
+            zone_objects[key] = m.object([(zone_on if on else zone_off)[z] for z in key[0]])
+        return zone_objects[key]
+
+    # The firmware's own screens: the low-battery screen and screen 9 light zone 7, the
+    # USB screen marks itself shown so unplugging knows whether to go back.
+    handlers = {}
+    screens = (system or {}).get("screens", ())
+    extra = {
+        (LOW_BATTERY_SCREEN, ENTER): [zones((7,), True)],
+        (LOW_BATTERY_SCREEN, LEAVE): [zones((7,), False)],
+        (SCREEN_NINE, ENTER): [zones((7,), True)],
+        (SCREEN_NINE, LEAVE): [zones((7,), False)],
+        (USB_SCREEN, ENTER): [[SILENT, MODE_STACK], _write(usb_shown, 1)],
+        (USB_SCREEN, LEAVE): [[SILENT, MODE_STACK], _write(usb_shown, 0)],
+    }
+    for (ordinal, tag), steps in extra.items():
+        if ordinal >= len(screens):
+            continue
+        own = [[{"platform": operand}, category]
+               for key, operand, category in screens[ordinal]["header"] if key == tag]
+        handlers[f"{ordinal}:{tag:#04x}"] = m.object(own + steps)
+
+    # A screen the build owns: the platform's own enter and leave, then its zones.
+    own = {}
+    for screen in screens:
+        rows = {key: (operand, category) for key, operand, category in screen["header"]}
+        if ENTER in rows and LEAVE in rows and rows[ENTER][1] != OBJECT \
+                and rows[LEAVE][1] != OBJECT:
+            own = rows
+            break
+    kinds = {}
+    for kind, chosen in SCREEN_ZONES.items():
+        kinds[kind] = {
+            f"{tag:#04x}": m.object(
+                ([[{"platform": own[tag][0]}, own[tag][1]]] if tag in own else [])
+                + [zones(chosen, tag == ENTER)])
+            for tag in (ENTER, LEAVE)}
+
+    resets = [[SILENT, MODE_STACK], _write(usb_shown, 0)]
+    setup = [charge, m.object([_write(flag, 0) for flag in zone_flags]), wake]
+    if sounds is not None:
+        setup.append(m.object([_write(sounds["variable"], 0), [0xF301, SETTING]]))
+
+    return {
+        "objects": m.objects,
+        "timers": m.timers,
+        "variables": m.variables,
+        "zones": zones,
+        "idle": {
+            "events": {f"{code:#04x}": value for code, value in sorted(events.items())},
+            "key_light": wake,
+            "key_rows": {f"{code:#04x}": value for code, value in sorted(key_rows.items())},
+            "startup": {"resets": resets, "setup": setup},
+            "handlers": handlers,
+            "screens": kinds,
+        },
+    }
+
+
+def _shift(value, objects: int, timers: int, variables: int):
+    """``value`` with its model indices moved past the Options model's own. A platform
+    instruction keeps the platform model's indices; a platform variable is a bare number."""
+    if isinstance(value, list):
+        return [_shift(item, objects, timers, variables) for item in value]
+    if not isinstance(value, dict) or "platform" in value:
+        return value
+    if set(value) == {"object"}:
+        return {"object": value["object"] + objects}
+    if set(value) == {"variable"}:
+        return {"variable": value["variable"] + variables}
+    if set(value) == {"timer", "band"}:
+        return {"timer": value["timer"] + timers, "band": value["band"]}
+    return {key: _shift(item, objects, timers, variables) for key, item in value.items()}
+
+
+def attach(options: dict, system: dict | None) -> dict:
+    """The Options model with the idle machine appended in its namespace, and each of
+    its ``{"zones": ...}`` references made a call of the machine's zone object."""
+    model = copy.deepcopy(options)
+    sounds = model.get("sounds", {}).get("switch")
+    machine = build(system, sounds)
+    shift = (len(model["objects"]), len(model["timers"]), len(model["variables"]))
+
+    def zones(value):
+        if isinstance(value, list):
+            if (len(value) == 2 and isinstance(value[0], dict) and "zones" in value[0]
+                    and value[1] == OBJECT):
+                return _shift(machine["zones"](value[0]["zones"], value[0]["on"]), *shift)
+            return [zones(item) for item in value]
+        if isinstance(value, dict):
+            return {key: zones(item) for key, item in value.items()}
+        return value
+    for key in ("modes", "blocks", "objects", "timers", "variables"):
+        model[key] = zones(model[key])
+
+    # Resolving a reference may have built a zone object, so the machine is added after.
+    model["objects"] += _shift(machine["objects"], *shift)
+    model["timers"] += _shift(machine["timers"], *shift)
+    model["variables"] += _shift(machine["variables"], *shift)
+    model["idle"] = _shift(machine["idle"], *shift)
+    return model

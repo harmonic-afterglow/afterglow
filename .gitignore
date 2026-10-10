@@ -65,3 +65,7 @@ dist/
 .pytest_cache/
 .ruff_cache/
 *_work/
+
+# A TrueType font an owner drops into the Harmony One scaffold is theirs, not the project's.
+src/afterglow/scaffolds/harmony-one/fonts/font.ttf
+src/afterglow/scaffolds/harmony-one/fonts/font-small.ttf

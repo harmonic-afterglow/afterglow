@@ -132,8 +132,8 @@ linux/                    udev rules + harmony_net.sh to bring the USB link up
   publish, or synthesise substitutes for it silently.
 - `scaffolds/` holds both kinds, and each tree says which in its own `NOTICE.md`. Both
   shipped trees are Logitech-authored and carry the same restriction: `harmony-900` is a
-  sanitised configuration, `harmony-one` is artwork extracted from one - 41 pictures and
-  18 fonts as PNGs, read through `afterglow.imaging`, which is standard-library only so
+  sanitised configuration, `harmony-one` is artwork extracted from one - its pictures as
+  PNGs, read through `afterglow.imaging`, which is standard-library only so
   the format layer keeps its zero dependencies. Extract **artwork only**: never a device
   name, activity, favourite, account field or RF registration.
 
@@ -291,10 +291,10 @@ not a store. Do not introduce a state-management library.
      scaffold of this kind is a directory of editable files rather than an opaque tree.
 
      Whether to *ship* your own artwork or the vendor's is a separate decision from
-     whether you *can*. The Harmony One ships the vendor's, extracted as PNG, because its
-     fonts are hand-hinted for an RGB565 panel at 11 to 16 pixels and a scaled desktop
-     font does not survive that; `tools/harmony_one_default_assets.py` draws a
-     vendor-free set for anyone who wants one. Extract artwork only - no device names,
+     whether you *can*. The Harmony One ships the vendor's pictures, extracted as PNG,
+     but draws its text from Galmuri, an openly licensed pixel font, sized and coloured
+     the way the vendor's eighteen fonts are; `tools/harmony_one_default_assets.py` draws a
+     vendor-free set of pictures for anyone who wants one. Extract artwork only - no device names,
      activities, favourites, account data or RF registration.
 
    Do not conclude "there is nothing shared between configs, so nothing can be shipped".

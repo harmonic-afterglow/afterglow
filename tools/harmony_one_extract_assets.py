@@ -69,12 +69,12 @@ def picture_roles(payload: bytes) -> dict[str, int]:
     for index, position in enumerate(order):
         roles[f"button-frame/{index}"] = catalogue["button_frames"][position]
     seen_frames: dict[int, str] = {}
-    for index, icon in enumerate(catalogue["menu"]["row_icons"]):
+    # Only the frames: a build composes each row's icon from the frame and a type icon
+    # (backends/harmony_one/row_icons.py), so the donor's own icons are not taken.
+    for icon in catalogue["menu"]["row_icons"]:
         for x, _y, target in icon:
             if x < 10:
                 seen_frames.setdefault(target, "row-frame")
-            else:
-                roles[f"row-icon/{index:02d}"] = target
     for number, target in enumerate(sorted(seen_frames)):
         roles["row-frame" if number == 0 else f"row-frame/{number}"] = target
     return roles
@@ -405,6 +405,60 @@ def system_screens(payload: bytes, roles: dict[str, int]) -> dict:
     }
 
 
+# Where the status bar's clock is anchored, measured on the donors: the weekday ends at
+# 141, the hour ends at 158 and the minutes start there.
+CLOCK_ANCHORS = {"weekday": ("right", 141), "hour": ("right", 158), "minute": ("left", 158)}
+CLOCK_SELECTORS = {4: "weekday", 2: "hour", 1: "minute"}
+
+
+def words_to_labels(model: dict, payload: bytes) -> dict:
+    """The platform model with every word replaced by a label naming platform_text's
+    table, so no donor's text or language is carried; a build draws them in its own fonts.
+
+    A screen's lines are centred and keyed by its ordinal and line, its title is the
+    numbered system message, OK keeps its place, and the clock's weekday, hour and minutes
+    are anchored as every donor anchors them."""
+    report = glyph_codec.inspect(payload)
+    owner, clock = {}, {}
+    for ordinal, screen in enumerate(model["screens"]):
+        for slot in screen["slots"]:
+            owner[slot["program"]] = ordinal
+            for item in model["blocks"][slot["program"]]:
+                if item["opcode"] == "call":
+                    owner[item["target"]["block"]] = ordinal
+    for root in model["overlays"]:
+        for item in model["blocks"][root]:
+            if item["opcode"] == "switch" and item["selector"] in CLOCK_SELECTORS:
+                for value, target in item["cases"]:
+                    clock[target] = (CLOCK_SELECTORS[item["selector"]], value)
+    blocks = []
+    for index, block in enumerate(model["blocks"]):
+        out, font, lines = [], None, 0
+        for item in block:
+            if item["opcode"] == "attribute":
+                font = item["value"]
+            if item["opcode"] not in ("text", "inline_text"):
+                out.append(item)
+                continue
+            words = glyph_codec.decode(bytes.fromhex(item["glyphs"]), report)
+            label = {"opcode": "label", "font": font, "y": item["y"]}
+            if index in clock:
+                kind, value = clock[index]
+                align, x = CLOCK_ANCHORS[kind]
+                label.update(key=kind, value=value, align=align, x=x)
+            elif (item["x"], item["y"]) == (6, 4):
+                label.update(key="system-message", value=int(words.split(":")[1]),
+                             align="left", x=6)
+            elif words == "OK":
+                label.update(key="ok", align="left", x=item["x"])
+            else:
+                label.update(key=f"screen-{owner[index]}", line=lines, align="centre")
+                lines += 1
+            out.append(label)
+        blocks.append(out)
+    return {**model, "blocks": blocks}
+
+
 def write_picture(payload: bytes, target: int, path: Path) -> dict:
     picture = bitmap.decode(payload, target)
     rows = [
@@ -571,7 +625,7 @@ def main() -> int:
     (platform / "menu-template.json").write_text(
         json.dumps(menu_zones, indent=2, sort_keys=True) + "\n", "utf-8")
     print(f"wrote {len(templates)} page templates and {len(system)} platform templates")
-    model = system_screens(payload, roles)
+    model = words_to_labels(system_screens(payload, roles), payload)
     (platform / "system-screens.json").write_text(json.dumps(model) + "\n", "utf-8")
     print(f"wrote the platform layer: {len(model['screens'])} screens, "
           f"{len(model['blocks'])} blocks, {len(model['objects'])} objects, "

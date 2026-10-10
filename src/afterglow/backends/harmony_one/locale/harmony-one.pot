@@ -1,0 +1,450 @@
+# Translations for harmony-one.
+msgid ""
+msgstr ""
+"Project-Id-Version: harmony-one\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. The Activities screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "hub.activities-title"
+msgid "My Activities"
+msgstr ""
+
+#. The Activities screen when there are none: a message centred on the screen; about 160 pixels a line
+msgctxt "hub.no-activities"
+msgid "No activities"
+msgstr ""
+
+#. The device list: a screen's title, top left; about 96 pixels in the title font
+msgctxt "hub.devices-title"
+msgid "Devices"
+msgstr ""
+
+#. The device list when there are none: a message centred on the screen; about 160 pixels a line
+msgctxt "hub.no-devices"
+msgid "No devices"
+msgstr ""
+
+#. Opens Options: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.options"
+msgid "Options"
+msgstr ""
+
+#. Back to Activities: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.activities"
+msgid "Activities"
+msgstr ""
+
+#. Opens the device list: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.devices"
+msgid "Devices"
+msgstr ""
+
+#. After a screen's page total, e.g. '1/3 pages', in the small counter font; about 40 pixels
+msgctxt "pages"
+msgid "page"
+msgid_plural "pages"
+msgstr[0] ""
+msgstr[1] ""
+
+#. The Options screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.title"
+msgid "Options"
+msgstr ""
+
+#. An Options row: a row label, centred on a 164-pixel row
+msgctxt "options.date-and-time"
+msgid "Date and Time"
+msgstr ""
+
+#. An Options row, and the title of its screen: a row label, centred on a 164-pixel row
+msgctxt "options.screen-sensitivity"
+msgid "Screen Sensitivity"
+msgstr ""
+
+#. An Options row while touch sounds are on: a row label, centred on a 164-pixel row
+msgctxt "options.sounds-off"
+msgid "Turn Screen Sounds Off"
+msgstr ""
+
+#. An Options row while touch sounds are off: a row label, centred on a 164-pixel row
+msgctxt "options.sounds-on"
+msgid "Turn Screen Sounds On"
+msgstr ""
+
+#. Steps back a screen: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "options.back"
+msgid "Back"
+msgstr ""
+
+#. Closes a confirmation, bottom right; about 40 pixels
+msgctxt "options.ok"
+msgid "OK"
+msgstr ""
+
+#. Date and Time, choosing the year: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.year"
+msgid "Year"
+msgstr ""
+
+#. Date and Time, choosing the month: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.month"
+msgid "Month"
+msgstr ""
+
+#. Date and Time, choosing the day: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.day"
+msgid "Day"
+msgstr ""
+
+#. Date and Time, choosing the hour: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.hour"
+msgid "Hour"
+msgstr ""
+
+#. Date and Time, choosing the minute: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.minute"
+msgid "Minute"
+msgstr ""
+
+#. Date and Time, morning or afternoon: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.time-of-day"
+msgid "Time of Day"
+msgstr ""
+
+#. Morning: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.am"
+msgid "AM"
+msgstr ""
+
+#. Afternoon: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.pm"
+msgid "PM"
+msgstr ""
+
+#. Month 1: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.1"
+msgid "January"
+msgstr ""
+
+#. Month 2: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.2"
+msgid "February"
+msgstr ""
+
+#. Month 3: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.3"
+msgid "March"
+msgstr ""
+
+#. Month 4: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.4"
+msgid "April"
+msgstr ""
+
+#. Month 5: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.5"
+msgid "May"
+msgstr ""
+
+#. Month 6: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.6"
+msgid "June"
+msgstr ""
+
+#. Month 7: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.7"
+msgid "July"
+msgstr ""
+
+#. Month 8: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.8"
+msgid "August"
+msgstr ""
+
+#. Month 9: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.9"
+msgid "September"
+msgstr ""
+
+#. Month 10: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.10"
+msgid "October"
+msgstr ""
+
+#. Month 11: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.11"
+msgid "November"
+msgstr ""
+
+#. Month 12: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.12"
+msgid "December"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.very-low"
+msgid "Very Low"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.low"
+msgid "Low"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.medium"
+msgid "Medium"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.high"
+msgid "High"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.very-high"
+msgid "Very High"
+msgstr ""
+
+#. Confirms the level chosen; the level follows on the next line: a message centred on the screen; about 160 pixels a line
+msgctxt "options.sensitivity-set"
+msgid "Screen sensitivity is set to"
+msgstr ""
+
+#. Closes a firmware notice, bottom right; about 40 pixels
+msgctxt "system.ok"
+msgid "OK"
+msgstr ""
+
+#. Title of a firmware diagnostic screen: a screen's title, top left; about 96 pixels in the title font
+#, python-brace-format
+msgctxt "system.message"
+msgid "System Message: {number}"
+msgstr ""
+
+#. Firmware screen 0, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.0"
+msgid "The battery level is low!"
+msgstr ""
+
+#. Firmware screen 1, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.1"
+msgid "USB Connected"
+msgstr ""
+
+#. Firmware screen 4, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.4"
+msgid "Update Successful"
+msgstr ""
+
+#. Firmware screen 5, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.5"
+msgid "Upgrade Success"
+msgstr ""
+
+#. Firmware screen 6, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.6"
+msgid "Update in progress"
+msgstr ""
+
+#. Firmware screen 7, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.7"
+msgid "Learning..."
+msgstr ""
+
+#. Firmware screen 8, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.8"
+msgid "Firmware upgrade in progress"
+msgstr ""
+
+#. Firmware screen 9, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.9"
+msgid "Charging problem.\nContact customer support:\nhttp://supportinfo.\nharmonyremote.com"
+msgstr ""
+
+#. Firmware screen 10, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.10"
+msgid "Go to Website\nto update settings"
+msgstr ""
+
+#. Firmware screen 11, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.11"
+msgid "USB\nInitialization"
+msgstr ""
+
+#. Firmware screen 12, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.12"
+msgid "Bootloader\nLocked"
+msgstr ""
+
+#. Firmware screen 13, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.13"
+msgid "Real Time Clock"
+msgstr ""
+
+#. Firmware screen 14, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.14"
+msgid "IR LEDs\nand\nPhotodiode"
+msgstr ""
+
+#. Firmware screen 15, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.15"
+msgid "FLASH Memory\nID"
+msgstr ""
+
+#. Firmware screen 16, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.16"
+msgid "FLASH Memory\nErase"
+msgstr ""
+
+#. Firmware screen 17, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.17"
+msgid "FLASH Memory\nWrite"
+msgstr ""
+
+#. Firmware screen 18, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.18"
+msgid "FLASH Memory\nClear"
+msgstr ""
+
+#. Firmware screen 19, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.19"
+msgid "LCD Module\nFailed"
+msgstr ""
+
+#. Firmware screen 20, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.20"
+msgid "PLL Failure"
+msgstr ""
+
+#. Firmware screen 21, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.21"
+msgid "BootRAM\nTruncated"
+msgstr ""
+
+#. Firmware screen 22, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.22"
+msgid "Safe Mode"
+msgstr ""
+
+#. Firmware screen 23, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.23"
+msgid "Safe Mode\nRequested"
+msgstr ""
+
+#. Firmware screen 24, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.24"
+msgid "Battery Low"
+msgstr ""
+
+#. Firmware screen 25, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.25"
+msgid "Battery Fast\nCharge"
+msgstr ""
+
+#. Firmware screen 26, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.26"
+msgid "Battery Trickle Charge"
+msgstr ""
+
+#. Firmware screen 27, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.27"
+msgid "Battery Charge\nComplete"
+msgstr ""
+
+#. Firmware screen 28, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.28"
+msgid "IR Sending"
+msgstr ""
+
+#. Firmware screen 29, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.29"
+msgid "Invalid\nConfiguration"
+msgstr ""
+
+#. Firmware screen 30, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.30"
+msgid "Bootloader\nBad Image"
+msgstr ""
+
+#. Firmware screen 31, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.31"
+msgid "Bootloader\nUpgrade Failed"
+msgstr ""
+
+#. Firmware screen 32, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.32"
+msgid "Battery ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 33, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.33"
+msgid "LightSense ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 34, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.34"
+msgid "Revision ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 35, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.35"
+msgid "Application\nTerminated"
+msgstr ""
+
+#. Firmware screen 36, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.36"
+msgid "Configuration\nCorrupted"
+msgstr ""
+
+#. Firmware screen 37, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.37"
+msgid "Missing\nLicense"
+msgstr ""
+
+#. Firmware screen 38, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.38"
+msgid "USB Connected"
+msgstr ""
+
+#. Firmware screen 39, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.39"
+msgid "Needs to be\nsetup.\nBattery\nCharging"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.0"
+msgid "Sun"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.1"
+msgid "Mon"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.2"
+msgid "Tue"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.3"
+msgid "Wed"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.4"
+msgid "Thu"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.5"
+msgid "Fri"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.6"
+msgid "Sat"
+msgstr ""

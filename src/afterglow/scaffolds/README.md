@@ -16,10 +16,10 @@ answers:
   Harmony 1100's. `harmony-900` is this, and `NOTICE.md` explains what that means for
   licensing.
 - **Assets rendered through a documented interpreter** - fonts, bitmaps, screen layouts.
-  Where the format is a drawing VM the artwork *could* be ours, but what ships is the
-  vendor's, extracted as PNG files anyone can open and replace. `harmony-one` is this: 41
-  pictures and 18 fonts, with its own `README.md` and `NOTICE.md`. Only artwork is taken,
-  never anything identifying a remote or its owner.
+  Where the format is a drawing VM the artwork *could* be ours. `harmony-one` is this:
+  its pictures are the vendor's, extracted as PNG files anyone can open and replace, and its
+  text is drawn by each build from an openly licensed typeface, with its own `README.md`
+  and `NOTICE.md`. Only artwork is taken, never anything identifying a remote or its owner.
 
 Which one applies is measured across several real configurations, not assumed.
 

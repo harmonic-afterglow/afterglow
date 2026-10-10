@@ -7,20 +7,28 @@ output has to satisfy the same validator and the same readers a real configurati
 
 from __future__ import annotations
 
+import json
 import struct
 
 import pytest
 
 from afterglow import ir_signal, paths
+from afterglow import po
+from afterglow.backends.harmony_one.catalogue import ENGLISH
 from afterglow.backends.harmony_one import (
     activity_index, assets, authoring, bitmap, command_index, compose, drawing,
-    font_index, generate, gspm, key_index, named_index, scaffold, ui_index)
+    font_index, generate, gspm, idle, key_index, named_index, scaffold, ui_index)
 
 
 SCAFFOLD = paths.scaffolds("harmony-one")
 
-# Activities, then Options and the screens carried behind it, then the device list.
-CARRIED = generate.load_options()
+# Activities, then Options and the screens carried behind it, then the device list; the
+# idle machine is built into the Options model's namespace.
+_LOADED = assets.load(SCAFFOLD)
+FONTS = [generate.font_from_scaffold(_LOADED["fonts"][role]) for role in sorted(_LOADED["fonts"])]
+OPTIONS_MODEL = generate.options_model(FONTS, generate.build_stamp()[-1])
+CARRIED = (idle.attach(OPTIONS_MODEL, generate.load_system())
+           if OPTIONS_MODEL is not None else None)
 HOME, OPTIONS = scaffold.SYSTEM_SCREENS, scaffold.SYSTEM_SCREENS + 1
 MENU = HOME + 1 + ((1 + len(CARRIED["modes"])) if CARRIED else 0)
 
@@ -118,7 +126,7 @@ def test_the_scaffolds_artwork_survives_into_a_generated_configuration():
             + (ui_index.drawing_program(configured, opening["target"])["instructions"]
                if opening["opcode"] == "call" else []),)
         for item in instructions if item["opcode"] == "bitmap"}
-    for role in ("backdrop", "button-frame/0", "row-frame", "row-icon/00"):
+    for role in ("backdrop", "button-frame/0", "row-frame"):
         item = loaded["pictures"][role]
         at = configured.find(item["body"])
         assert at in drawn
@@ -133,8 +141,51 @@ def test_an_image_with_no_devices_boots_into_a_screen_that_draws():
     program = ui_index.drawing_program(image, slot["program_offset"])["instructions"]
     assert program[0]["opcode"] == "call"
     fragment = ui_index.drawing_program(image, program[0]["target"])["instructions"]
-    assert [item["opcode"] for item in fragment[:1]] == ["bitmap"]
+    assert any(item["opcode"] == "bitmap" and (item["x"], item["y"]) == (0, 0)
+               for item in fragment)
     assert any(item["opcode"] == "inline_text" for item in program)
+
+
+def _texts(built, ordinal, page=0):
+    """What a screen's page and its prologue write: ``[(attribute, x, y, text)]``, read
+    with the character tables that build gave each font (generate.build)."""
+    image, chars = built["image"], built["characters"]
+    slot = ui_index.screen_slots(image)[ordinal]["slots"][page]
+    program = ui_index.drawing_program(image, slot["program_offset"])["instructions"]
+    out, attribute = [], None
+    for item in (ui_index.drawing_program(image, program[0]["target"])["instructions"]
+                 + program):
+        if item["opcode"] == "attribute":
+            attribute = item["value"]
+        elif item["opcode"] in ("text", "inline_text"):
+            out.append((attribute, item["x"], item["y"],
+                        "".join(chars[attribute][code]
+                                for code in bytes.fromhex(item["glyphs"]))))
+    return out
+
+
+def test_every_screen_is_titled_and_a_paged_one_says_which_page_it_is():
+    # As the donors do: the title at (6,4), drawn before and after the backdrop, in the
+    # screen kind's colour; a paged screen's total at (23,18) and "pages", and each page's
+    # number right-aligned against the slash at (18,18). A single page draws no counter.
+    project = {"devices": [
+        {"label": "Television", "signals": {f"Key {n}": _nec(4, n) for n in range(8)}},
+        {"label": "Amp", "signals": {"Power": _nec(11, 1)}}]}
+    built = generate.build(project)
+    home = _texts(built, HOME)
+    assert home.count((10, 6, 4, ENGLISH("hub.activities-title"))) == 2
+    assert (2, 6, 4, ENGLISH("options.title")) in _texts(built, OPTIONS)
+    assert (3, 6, 4, ENGLISH("hub.devices-title")) in _texts(built, MENU)
+    assert not any(y == 18 for _a, _x, y, _t in _texts(built, MENU))
+    # the television's eight commands take two pages
+    first, second = _texts(built, MENU + 1), _texts(built, MENU + 2)
+    for index, page in enumerate((first, second)):
+        assert (3, 6, 4, "Television") in page
+        assert (4, 23, 18, "2") in page and (4, 18, 18, "/") in page
+        assert any(text == "pages" and y == 18 for _a, _x, y, text in page)
+        [(_a, x, _y, number)] = [t for t in page if t[2] == 18 and t[1] < 18]
+        assert number == str(index + 1)
+    assert not any(y == 18 for _a, _x, y, _t in _texts(built, MENU + 3))
 
 
 def test_every_timer_a_generated_image_starts_is_in_section_13():
@@ -192,7 +243,7 @@ def _softkeys(image, ordinal):
     for item in ui_index.drawing_program(image, slot["program_offset"])["instructions"]:
         if item["opcode"] == "attribute":
             attribute = item["value"]
-        if item["opcode"] == "inline_text" and item["y"] == generate.SOFTKEYS["devices"][1][1]:
+        if item["opcode"] == "inline_text" and item["y"] == generate.SOFTKEYS["devices"][1]:
             texts[item["x"]] = attribute
     out = {}
     for entry in slot["entries"]:
@@ -209,7 +260,7 @@ def test_the_hub_is_activities_devices_and_back_as_logitech_builds_it():
     # not find their way back from a device when only a side strip led there.
     image = generate.configuration(THREE)
     fonts = generate.SOFTKEY_FONTS
-    x = {name: xy[0] for name, (_text, xy) in generate.SOFTKEYS.items()}
+    x = {name: xy[0] for name, xy in generate.SOFTKEYS.items()}
 
     keys, texts = _softkeys(image, HOME)
     assert keys == {generate.SOFTKEY_RIGHT_KEY: MENU, 0x80 | generate.HOME_OPTIONS_TAG: OPTIONS}
@@ -287,13 +338,44 @@ def test_a_resized_button_frame_is_labelled_on_its_own_width():
     assert w["x"] - n["x"] == (generate.FRAME_WIDTH - 61) // 2
 
 
+def _row_icon(kind, name):
+    """The row icon a build composes for a type, as the remote stores it."""
+    manifest = assets.read_manifest(SCAFFOLD)
+    pictures = {}
+    role = generate.row_icon(SCAFFOLD, manifest, pictures, kind, name)
+    return role, pictures[role]
+
+
+def test_a_device_row_shows_its_type_s_icon_on_the_row_frame():
+    # The display has one-bit transparency, so a row icon carries the patch of the row
+    # frame it covers, with the type's icon scaled and blended onto it. A device whose type
+    # the scaffold has no icon for shows the generic one.
+    project = {"devices": [dict(device, type=kind) for device, kind in zip(
+        THREE["devices"], ("Television", "Amplifier", "NoSuchType"))]}
+    configured = generate.configuration(project)
+    for kind, wanted in (("Television", "row-icon/devices/Television"),
+                         ("Amplifier", "row-icon/devices/Amplifier"),
+                         ("NoSuchType", "row-icon/activities/VirtualGeneric")):
+        role, body = _row_icon("devices", kind)
+        assert role == wanted
+        assert configured.find(body) >= 0
+    # a corner the icon leaves alone is the frame's own pixel, under the icon's place
+    frame = assets.load(SCAFFOLD)["pictures"]["row-frame"]["rows"]
+    _role, body = _row_icon("devices", "Television")
+    icon = bitmap.decode(body + b"\x00" * 8, 0)["rows"]
+    dx = generate.MENU_ICON_XY[0][0] - generate.MENU_FRAME_XY[0][0]
+    dy = generate.MENU_ICON_XY[0][1] - generate.MENU_FRAME_XY[0][1]
+    assert icon[0][0] == frame[dy][dx]
+    assert icon[-1][-1] == frame[dy + len(icon) - 1][dx + len(icon[0]) - 1]
+
+
 def test_a_picture_nothing_draws_is_left_out():
     # Logitech's builder places only what the configuration draws; every donor's pictures
-    # are all reached. Three devices draw three of the fifteen row icons.
-    loaded = assets.load(SCAFFOLD)
+    # are all reached. Untyped devices draw the generic row icon and no other.
     configured = generate.configuration(THREE)
-    assert configured.find(loaded["pictures"]["row-icon/02"]["body"]) >= 0
-    assert configured.find(loaded["pictures"]["row-icon/14"]["body"]) < 0
+    assert configured.find(_row_icon("devices", None)[1]) >= 0
+    assert configured.find(_row_icon("devices", "Television")[1]) < 0
+    loaded = assets.load(SCAFFOLD)
     assert generate.skeleton(pictures={"unused": loaded["pictures"]["backdrop"]["body"]}) \
         == generate.skeleton()
 
@@ -642,13 +724,6 @@ def _configured(project=None):
     return generate.configuration(project or PROJECT)
 
 
-def _charsets():
-    """Each font's characters by code, in attribute order - the order a build emits."""
-    loaded = assets.load(SCAFFOLD)
-    return [{code: glyph["char"] for code, glyph in loaded["fonts"][role]["glyphs"].items()}
-            for role in sorted(loaded["fonts"])]
-
-
 def _drawn_text(image, program_offset, charsets):
     attribute, out = 0, []
     for item in ui_index.drawing_program(image, program_offset)["instructions"]:
@@ -666,8 +741,8 @@ def test_a_generated_configuration_carries_the_firmware_s_own_screens():
     Among them are the screens the remote would use to say it had rejected the
     configuration it was given, so leaving them out is not an option for a first write.
     """
-    image = _configured()
-    charsets = _charsets()
+    built = generate.build(PROJECT)
+    image, charsets = built["image"], built["characters"]
 
     screens = ui_index.screen_slots(image)
     text = [_drawn_text(image, screen["slots"][0]["program_offset"], charsets)
@@ -758,7 +833,7 @@ def test_a_page_draws_its_labels_in_the_font_that_measured_them():
         if item["opcode"] == "attribute":
             attribute = item["value"]
         # the softkeys along the bottom are in fonts of their own
-        elif item["opcode"] == "inline_text" and item["y"] < generate.SOFTKEYS["devices"][1][1]:
+        elif item["opcode"] == "inline_text" and item["y"] < generate.SOFTKEYS["devices"][1]:
             assert attribute == button
 
 
@@ -921,16 +996,230 @@ def test_section_nine_opens_with_the_list_that_starts_the_image():
         assert image[start] == 1 and image[start + 3] == generate.OBJECT_ATOM
         atoms = {item["index"]: item["atoms"] for item in command_index.objects(image)}
         routine = atoms[struct.unpack_from("<H", image, start + 1)[0]]
-        assert routine[:4] == ((generate.PUSH_CONTEXT, 0x1F),
+        if usb is None:
+            assert routine == ((generate.PUSH_CONTEXT, 0x1F),
                                (generate.PUSH_CURRENT_MODE, 0x1F),
                                (home, generate.ENTER_MODE), generate.BACKLIGHT)
-        if usb is None:
-            assert len(routine) == 4
             continue
-        load, call = atoms[routine[4][0]]
+        # with the idle layer, as upstairs starts: the screen timer and flag resets, then
+        # the event context, the current mode and the key light on top, then home
+        assert routine[0] == generate.BACKLIGHT
+        pushes = [value for value, category in routine
+                  if category == 0x1F and value >> 8 == 0xFE]
+        assert pushes == [generate.PUSH_CONTEXT | generate.EVENT_CONTEXT,
+                          generate.PUSH_CURRENT_MODE,
+                          generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT]
+        assert routine.index((home, generate.ENTER_MODE)) > routine.index(
+            (generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT, 0x1F))
+        load, call = atoms[routine[-1][0]]
         assert load == (generate.LOAD_ONE, 0x1F) and call[1] == generate.OBJECT_ATOM
         assert atoms[call[0]] == ((generate.USB_CONNECTED, generate.COMPARE),
                                   (usb, generate.ENTER_MODE))
+
+
+class _Idle:
+    """A generated image's instructions run the way the Harmony 800's interpreter runs
+    them (gspm.md): an object's instructions in place, a failed test dropping the next
+    one, `0x3F` band C0 setting a light channel, entering a mode running the shown
+    screen's leave handler and then the new one's enter handler. What leaves the
+    interpreter is kept: the level of every channel, the timers running, the variables,
+    the screen shown and the ones pushed under it."""
+
+    def __init__(self, image):
+        self.image = image
+        self.objects = command_index.objects(image)
+        self.variables = {index: record["initial"] for index, record
+                          in enumerate(activity_index.engine_records(image))}
+        self.lights, self.timers, self.log = {}, set(), []
+        self.byte = 0
+        self.mode, self.stack = None, []
+
+    def header(self, ordinal):
+        """A screen's own list: ``key -> (operand, opcode)``."""
+        trailer = ui_index.screen_slots(self.image)[ordinal]["trailer_offset"]
+        head = int.from_bytes(self.image[trailer + 1:trailer + 4], "little") - gspm.BASE
+        return {self.image[head + 1 + 4 * row]:
+                struct.unpack_from("<HB", self.image, head + 2 + 4 * row)
+                for row in range(self.image[head])}
+
+    def timer(self, index):
+        start = gspm.section_ranges(self.image)[13][0]
+        at = int.from_bytes(self.image[start + 1 + 3 * index:start + 4 + 3 * index],
+                            "little") - gspm.BASE
+        return struct.unpack_from("<HB", self.image, at + 4)
+
+    def run(self, *instructions):
+        skip = False
+        for operand, opcode in instructions:
+            if skip:
+                skip = False
+                continue
+            high, low = operand >> 8, operand & 0xFF
+            if opcode == 0x7F:
+                self.run(*self.objects[operand]["atoms"])
+            elif opcode in (0x70, 0x71):
+                value = self.variables.get(low, 0)
+                held = [value == self.byte, value != self.byte, value < self.byte,
+                        value > self.byte, value <= self.byte,
+                        value >= self.byte][high & 0x0F]
+                skip = held if high & 0x80 else not held
+            elif opcode == 0x1F and high == 0xFB:
+                self.byte = low
+            elif opcode == 0x1F and high == 0xF0:          # byte register := variable
+                self.byte = self.variables.get(low, 0)
+            elif opcode == 0x1F and high == 0xFA:          # byte register += low
+                self.byte = (self.byte + low) & 0xFF
+            elif opcode == 0x1F and high == 0xEE:          # variable := byte register
+                self.variables[low] = self.byte
+            elif opcode == 0x1F and high in (0xEB, 0xEA):
+                (self.timers.add if high == 0xEB else self.timers.discard)(low)
+            elif opcode == 0x3F and high >> 4 == 0xC:
+                self.lights[(operand >> 4) & 0x1F] = (operand >> 1) & 7
+            elif opcode >= 0x80:
+                self.variables[opcode & 0x7F] = operand
+            elif opcode == 0x7E:
+                self.enter(operand)
+            elif (operand, opcode) == (idle.PUSH_MODE, 0x07):
+                self.stack.append(self.mode)
+            elif (operand, opcode) == (idle.POP_MODE, 0x07):
+                self.enter(self.stack.pop())
+            else:
+                self.log.append((operand, opcode))
+
+    def enter(self, ordinal):
+        if self.mode is not None and 0x07 in self.header(self.mode):
+            self.run(self.header(self.mode)[0x07])
+        self.mode = ordinal
+        if 0x06 in self.header(ordinal):
+            self.run(self.header(ordinal)[0x06])
+
+    def lit(self):
+        return {channel for channel, level in self.lights.items() if level}
+
+
+@pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
+def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
+    # The keypad lights only when the configuration lights it: every key runs the key
+    # light on its way down the stack (a pass-through row, flags bit 0), and the event
+    # context shows the USB screen on plugging in and goes back on unplugging.
+    image = generate.configuration(THREE)
+    contexts = activity_index.contexts(image)
+    assert len(contexts) == 3
+    keys = contexts[generate.KEY_LIGHT_CONTEXT]
+    assert keys["form"] == "long"
+    # every physical key, and the two codes below them both donors wake on: 0x17, the
+    # remote being picked up, and 0x30
+    assert {row["key_code"] for row in keys["rows"]} == {
+        code for code in generate.MODE_ZERO_EVENTS if code >= 0x80} | {idle.MOTION, 0x30}
+    assert {row["flags"] for row in keys["rows"]} == {1}
+    [wake] = {(row["operand"], row["category"]) for row in keys["rows"]
+              if row["key_code"] >= 0x80}
+    rows = {row["key_code"]: (row["operand"], row["category"]) for row in keys["rows"]}
+    assert rows[0x30] == wake
+    machine = _Idle(image)
+    machine.run(rows[idle.MOTION])
+    assert machine.lights[idle.SCREEN] == idle.SCREEN_LEVEL
+    assert all(machine.lights[channel] == idle.KEY_LEVEL for channel in idle.KEYPAD)
+    events = {row["key_code"]: (row["operand"], row["category"])
+              for row in contexts[generate.EVENT_CONTEXT]["rows"]}
+    assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF}
+
+    machine = _Idle(image)
+    machine.run(wake)
+    # the screen backlight at 6, the keypad at 1, and the off and poll timers
+    assert machine.lights[idle.SCREEN] == idle.SCREEN_LEVEL
+    assert all(machine.lights[channel] == idle.KEY_LEVEL for channel in idle.KEYPAD)
+    assert len(machine.timers) == 1          # the poll; the off timer waits for AWAKE
+    machine.variables[idle.AWAKE] = 1
+    machine.run(wake)
+    assert len(machine.timers) == 2
+
+    # plugging in remembers the screen and shows the USB one; unplugging goes back
+    machine = _Idle(image)
+    machine.enter(MENU)
+    machine.run(events[0x26])
+    assert (machine.mode, machine.stack) == (generate.USB_SCREEN, [MENU])
+    machine.run(events[0x27])
+    assert (machine.mode, machine.stack) == (MENU, [])
+    # left by hand, the USB screen is no longer shown, and unplugging stays put
+    machine.run(events[0x26])
+    machine.enter(HOME)
+    machine.run(events[0x27])
+    assert (machine.mode, machine.stack) == (HOME, [MENU])
+
+
+@pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
+def test_each_screen_lights_its_zones_and_a_key_brings_them_back():
+    # A screen lights the keypad zones upstairs' screen of its kind lights, and records
+    # them; when the off timer has darkened everything, the next key brings back exactly
+    # those. Leaving the screen darkens them and forgets them.
+    image = generate.configuration(THREE)
+    machine = _Idle(image)
+    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    wake = (wake["operand"], wake["category"])
+    keypad = {idle.SCREEN, *idle.KEYPAD}
+    off_timer = _off_timer(image)
+    machine.variables[idle.AWAKE] = 1
+    screens = {"activities": HOME, "options": OPTIONS, "devices": MENU,
+               "commands": MENU + 1}
+    for kind, ordinal in screens.items():
+        zones = set(idle.SCREEN_ZONES[kind])
+        machine.enter(ordinal)
+        assert machine.lit() & set(range(idle.ZONES)) == zones, kind
+        machine.run(machine.timer(off_timer))
+        assert not machine.lit(), kind
+        machine.run(wake)
+        assert machine.lit() == keypad | zones, kind
+        machine.run(machine.header(ordinal)[0x07])
+        machine.mode = None
+        assert machine.lit() == keypad, kind
+        machine.run(machine.timer(off_timer), wake)
+        assert machine.lit() == keypad, kind
+
+
+@pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
+def test_the_idle_machine_is_generated_and_options_names_only_its_zones():
+    # The scaffold carries Options and nothing of upstairs' idle layer: no light
+    # instruction, no event or key-light handler. Its screens name the zones they light,
+    # and the build resolves every such name to an object of its own.
+    assert "idle" not in OPTIONS_MODEL
+    text = json.dumps(OPTIONS_MODEL)
+    assert '"zones"' in text
+    for atoms in OPTIONS_MODEL["objects"]:
+        for operand, category in atoms:
+            assert not (category == 0x3F and isinstance(operand, int)
+                        and operand >> 12 == 0xC), atoms
+    assert '"zones"' not in json.dumps(CARRIED)
+
+
+def _off_timer(image):
+    """The timer a key starts only while AWAKE is set: the one that darkens the keypad."""
+    machine = _Idle(image)
+    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    machine.run((wake["operand"], wake["category"]))
+    polling = set(machine.timers)
+    machine.variables[idle.AWAKE] = 1
+    machine.run((wake["operand"], wake["category"]))
+    [timer] = machine.timers - polling
+    return timer
+
+
+@pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
+def test_start_up_clears_the_zones_before_it_enters_activities():
+    # Entering a screen records its zones; start-up clears the records, so it enters
+    # the first screen last, as upstairs does - else the first timeout lost them.
+    image = generate.configuration(THREE)
+    machine = _Idle(image)
+    start = gspm.section_ranges(image)[9][0]
+    [entry] = [struct.unpack_from("<HB", image, start + 1)]
+    machine.run(entry)
+    assert machine.mode == HOME
+    machine.run(machine.timer(_off_timer(image)))
+    assert not machine.lit()
+    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    machine.variables[idle.AWAKE] = 1
+    machine.run((wake["operand"], wake["category"]))
+    assert machine.lit() & set(range(idle.ZONES)) == set(idle.SCREEN_ZONES["activities"])
 
 
 def test_section_fourteen_holds_the_clock_the_platform_and_a_terminator():
@@ -1001,3 +1290,162 @@ def test_every_mode_has_an_enter_and_a_leave_handler_and_mode_0_is_the_lwjl_list
             assert at == head
         tags = [image[at + 1 + 4 * row] for row in range(image[at])]
         assert tags.count(generate.ENTER) == 1 and tags.count(generate.LEAVE) == 1, ordinal
+
+
+def _press(machine, image, ordinal, page, key):
+    """Run what ``key`` does on one page of a screen."""
+    for entry in ui_index.screen_slots(image)[ordinal]["slots"][page]["entries"]:
+        if entry["key_code"] == key:
+            machine.run((entry["operand"], generate.OBJECT_ATOM))
+            return
+    raise AssertionError(f"screen {ordinal} page {page} binds no key {key:#04x}")
+
+
+def test_date_and_time_offers_the_build_year_and_sets_the_clock_through_its_pickers():
+    # Built in 2028, a leap year: Year offers 2027 to 2029; 2028 leads to the leap Month
+    # screen, whose February leads to 29 days; then hour, minute and the afternoon.
+    built = generate.build(THREE, stamp_fields=(0, 0, 0, 0, 0, 2028))
+    image = built["image"]
+    model = generate.options_model(FONTS, 2028)
+    first = OPTIONS + 1
+    year = first + model["entries"]["date-and-time"]
+    texts = [t for _a, _x, _y, t in _texts(built, year)]
+    assert [t for t in texts if t.isdigit()] == ["2027", "2028", "2029"]
+    machine = _Idle(image)
+    machine.enter(year)
+    _press(machine, image, year, 0, 0xB1)                    # 2028
+    assert machine.variables[6] == 28
+    month = machine.mode
+    _press(machine, image, month, 0, 0xB1)                   # February
+    assert machine.variables[5] == 1
+    day = machine.mode
+    assert len(ui_index.screen_slots(image)[day]["slots"]) == 5      # 29 days, six a page
+    _press(machine, image, day, 4, 0xB4)                     # the 29th
+    assert machine.variables[3] == 28
+    hour = machine.mode
+    _press(machine, image, hour, 1, 0xB3)                    # 9:00
+    assert machine.variables[2] == 9
+    minute = machine.mode
+    _press(machine, image, minute, 9, 0xB5)                  # 59
+    assert machine.variables[1] == 59
+    _press(machine, image, machine.mode, 0, 0xB1)            # PM
+    assert machine.variables[2] == 21
+    assert machine.mode == OPTIONS
+    # the year before is not a leap year: its February has 28 days
+    machine.enter(year)
+    _press(machine, image, year, 0, 0xB0)
+    _press(machine, image, machine.mode, 0, 0xB1)
+    last = [t for _a, _x, y, t in _texts(built, machine.mode, 4) if y != 18]
+    assert "28" in last and "29" not in last
+
+
+def test_the_options_screens_draw_their_text_from_the_catalogue():
+    # Nothing of a donor's language: every word on the Options screens is the catalogue's.
+    from afterglow.backends.harmony_one import catalogue
+
+    built = generate.build(THREE)
+    image = built["image"]
+    model = generate.options_model(FONTS, generate.build_stamp()[-1])
+    words = {message.text for message in catalogue.MESSAGES} | {
+        message.plural for message in catalogue.MESSAGES if message.plural}
+    for index in range(len(model["modes"])):
+        ordinal = OPTIONS + 1 + index
+        for page in range(len(ui_index.screen_slots(image)[ordinal]["slots"])):
+            for _a, _x, _y, text in _texts(built, ordinal, page):
+                assert text in words or text == "/" or text.replace(":", "").isdigit(), text
+
+
+def test_the_firmware_s_screens_carry_no_words_of_their_own():
+    # The scaffold keeps their pictures and logic; every word is a label the build draws
+    # from platform_text's table, so no donor's text or language rides along.
+    from afterglow.backends.harmony_one import platform_text
+
+    system = generate.load_system()
+    items = [item for block in system["blocks"] for item in block]
+    assert not [item for item in items if item["opcode"] in ("text", "inline_text")]
+    labels = [item for item in items if item["opcode"] == "label"]
+    assert labels and all(platform_text.text(item, ENGLISH) for item in labels)
+
+
+def test_the_firmware_s_screens_and_clock_draw_the_table_s_words():
+    from afterglow.backends.harmony_one import platform_text
+
+    built = generate.build(THREE)
+    assert [t for _a, _x, _y, t in _texts(built, 1)] == [ENGLISH("system.screen.1")]
+    message = _texts(built, 10)
+    assert (2, 6, 4, ENGLISH("system.message", number=0)) in message
+    # centred, as the donors centred them
+    for attribute, x, _y, words in message:
+        if words == ENGLISH("system.screen.10").split("\n")[0]:
+            widths, codes = generate._measure(FONTS[attribute])
+            width = sum(widths[codes[c]] for c in words)
+            assert x == (platform_text.SCREEN_WIDTH - width) // 2
+
+
+def test_every_font_slot_numbers_its_glyphs_the_build_s_own_way():
+    # With every word drawn by the build, the codes are the build's: printable ASCII from
+    # code 1 in every slot, rather than each donor font's own sparse table.
+    from afterglow.backends.harmony_one import faces
+
+    for role, font in _LOADED["fonts"].items():
+        assert {code: item["char"] for code, item in font["glyphs"].items()} == dict(
+            enumerate(faces.REPERTOIRE, start=1)), role
+
+
+def test_the_translation_template_lists_every_word_a_build_draws():
+    # locale/harmony-one.pot is written from the catalogue (tools/harmony_one_pot.py);
+    # a word changed without rewriting it would leave translators a stale template.
+    from afterglow.backends.harmony_one import catalogue
+
+    shipped = (catalogue.LOCALE_DIR / f"{catalogue.DOMAIN}.pot").read_text("utf-8")
+    assert shipped == catalogue.template()
+
+
+def test_a_project_s_language_picks_its_catalogue_and_english_fills_the_gaps(
+        tmp_path, monkeypatch):
+    # settings.locale is the Logitech code the other remotes read; "fin" finds fi.po. A
+    # word it translates is drawn translated, one it does not stays English, and a notice
+    # translated into more lines is centred on the space the English took.
+    from afterglow.backends.harmony_one import catalogue
+
+    (tmp_path / "fi.po").write_text("\n".join([
+        'msgid ""', 'msgstr ""', '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"', "",
+        'msgctxt "hub.activities-title"', 'msgid "My Activities"', 'msgstr "Toiminnot"', "",
+        'msgctxt "system.screen.1"', 'msgid "USB Connected"',
+        'msgstr "USB"', '"\\n"', '"kytketty"', ""]), "utf-8")
+    monkeypatch.setattr(catalogue, "LOCALE_DIR", tmp_path)
+    project = dict(THREE, settings={"locale": "fin"})
+    built = generate.build(project)
+    home = [t for _a, _x, y, t in _texts(built, HOME) if y == 4]
+    assert home == ["Toiminnot", "Toiminnot"]
+    assert (3, 6, 4, ENGLISH("hub.devices-title")) in _texts(built, MENU)
+    usb = [(y, t) for _a, _x, y, t in _texts(built, 1)]
+    assert [t for _y, t in usb] == ["USB", "kytketty"]
+    english = [y for _a, _x, y, _t in _texts(generate.build(THREE), 1)]
+    assert usb[0][0] < english[0] < usb[1][0]
+
+
+def test_english_is_a_catalogue_in_step_with_the_words_a_build_draws(tmp_path, monkeypatch):
+    # en.po lists every message with its English; rewriting it from the catalogue changes
+    # nothing, and a project with no language reads it - so editing it rewords the remote.
+    from afterglow.backends.harmony_one import catalogue
+
+    shipped = (catalogue.LOCALE_DIR / "en.po").read_text("utf-8")
+    assert catalogue.english_catalogue(shipped) == shipped
+    assert len(po.parse(shipped).messages) == len(catalogue.MESSAGES)
+    (tmp_path / "en.po").write_text(shipped.replace(
+        'msgstr "My Activities"', 'msgstr "Things To Do"'), "utf-8")
+    monkeypatch.setattr(catalogue, "LOCALE_DIR", tmp_path)
+    home = [t for _a, _x, y, t in _texts(generate.build(THREE), HOME) if y == 4]
+    assert home == ["Things To Do", "Things To Do"]
+
+
+def test_each_font_slot_carries_only_the_characters_its_image_draws():
+    # As Logitech's builder did: a slot holds the glyphs its own text uses, numbered from
+    # 1, rather than the whole repertoire - the clock's font draws digits and weekday
+    # letters, not the alphabet.
+    image = generate.configuration(THREE)
+    counts = [len(font["glyphs"]) for font in font_index.fonts(image)]
+    assert max(counts) < len(generate.catalogue.characters(ENGLISH))
+    clock = font_index.fonts(image)[17]["glyphs"]
+    assert 10 <= len(clock) < 40

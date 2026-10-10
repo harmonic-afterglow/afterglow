@@ -1060,8 +1060,8 @@ show the platform's USB screen when variable `0x10` is set.
 `generate.skeleton` builds an image without reading one. It lays out the header, every
 section and the bodies they point at; the artwork comes from the scaffold and the commands
 from a project. Empty it is 517 bytes - one screen, one context, one object, and a count of
-zero everywhere the factory image has one. With the scaffold's ten 14-pixel fonts and 41
-pictures it is 366,350, and with a two-device project of ten NEC commands 368,471.
+zero everywhere the factory image has one. Built from the scaffold with an empty project
+it is 421,331 bytes, nearly all of it pictures and the glyphs its own words use.
 
 The layout follows from how a section's range is derived. `section_ranges` ends a section
 where the next begins and `_sections` refuses duplicate pointers, so the bodies are placed
@@ -1125,11 +1125,47 @@ Sensitivity and Screen Sounds are the builder's boilerplate - they set the remot
 and its touch screen - while Remote Assistant runs a configuration's power checks and help
 flow and Tutorial names its own activities, so those two are left out until activities exist.
 
-`tools/harmony_one_extract_options.py` carries the rest into the scaffold as
-`platform/options.json`, as the firmware's screens are carried: the 16 screens Date and Time
-and Screen Sensitivity reach, their 72 drawing blocks, 510 objects, 4 timers, 3 section-15
-switch tables and 6 state variables, every reference a name, and the 9 green frames they draw
-as `images/options/`. The walk stops where a screen leads back to Options or to the hub.
+The rest is generated (`backends/harmony_one/options.py`). It was first copied from upstairs,
+which copied upstairs' language and the years it offered (2023 to 2025), and did register
+arithmetic on upstairs' own variable 47, a number that means something else in a generated
+image. Read from upstairs' 16 screens, it is a chain of pickers and one list:
+
+| screen | buttons | each writes | then |
+|---|---|---|---|
+| Year | the build year and either side, one a row | clock variable 6 := year - 2000 | Month, the leap one in a leap year |
+| Month (two: leap and not) | twelve, six a page | variable 5 := month - 1 | the Day screen with that month's days |
+| Day (28, 29, 30, 31) | six a page | variable 3 := day - 1, then `07 FFF8` | Hour |
+| Hour | 12:00, 1:00 ... 11:00 | variable 2 := 0 to 11 | Minute |
+| Minute | 00 to 59, ten pages | variable 1 | Time of Day |
+| Time of Day | AM, PM | PM adds 12 to the hour if it is below 12; both set a flag and `07 FFF9` | Options |
+| Screen Sensitivity | Very Low, Low, Medium, High, Very High | `3F F508`, `F50C`, `F500`, `F504`, `F507` | a screen saying so; its OK returns |
+
+Every write is silent (`07 FFFF` before it) and every button clicks (`75 0FCA`). Back steps
+to the previous picker; from Day it goes to the Day screen's own month, chosen by tests on
+variables 5 and 6. Screen Sounds is a row of Options itself: a switch on its flag whose two
+programs write `3F F300` or `F301`, flip the flag and redraw (`07 FFF7`).
+
+A picker opens on the page holding the clock's current value and frames that value's button.
+Its enter handler loads the variable into the accumulator (`1F EF`), takes the first value
+off (`79`, adds), divides by the buttons a page (`77`) and queues `(accumulator, 76)`, show
+that page (`1F F7 76`); the Hour screen first folds an afternoon hour back by 12. Each time a
+page is drawn (event `0x29`) the handler reads the page shown (`1F E7 00`), and on the value's
+own page leaves the value's index in a scratch variable and runs a switch on it whose
+programs draw four 2-pixel bars round that button in `0xEC07`. The 800's interpreter gives
+these: `77`/`78`/`79` divide, multiply and add to the accumulator and `7A` loads it; `0x1F`
+bands `EF` accumulator := variable, `ED` variable := accumulator, `EE` variable := byte
+register, `F0` byte register := variable, `F1`/`F2` decrement/increment, `F7` queue
+`(accumulator, low)`, `F8`/`F9`/`FA` divide, multiply, add to the byte register.
+
+The screens' text is a table of labels and the years come from the build date, which also
+stamps the clock; their pictures are `images/options/`. Their touch zones follow one rule:
+buttons take tags from `0x30` in reading order, Back the next tag (`0x2B` after six), the
+side strips `0x2E`/`0x2F`. Each picker's enter handler lights zones 1 and 3 when it has
+pages and 5 always, which with the testers' photos places the zones: 0/1 and 2/3 the side
+arrows, 4/5 the left softkey bar, 6/7 the right one, orange and white.
+
+Built as of 2024, every one of the 125 buttons writes what upstairs' button of the same label
+writes (`one-tools`' comparison, by label and screen title).
 
 **Section 15 is a set of switch tables.** Opcode `0x72` with operand `group << 8 | variable`
 reads the variable and runs, in the drawing VM, the program the group assigns to its value:
@@ -1139,12 +1175,43 @@ A program queues its action through drawing atoms, so one key does different thi
 Section 15's pointers come first and the 151-byte platform table after them, so section 16's
 pointers move with the count. A generated image had no tables at all before.
 
-A generated image numbers it all afresh: Options at 41, the carried screens from 42, the
+A generated image numbers it all afresh: Options at 41, the Options screens from 42, the
 device list after them; the carried variables after the platform's 18 in section 14, before
 the terminator; the carried timers after the platform's. The Options screen itself is drawn
 by the build on upstairs' three row frames, labels centred in its row font (attribute 5),
 with Screen Sounds' label a drawing switch on its flag ("Off" at 0, "On" at 1) placed last so
 each case can end the program. Activities gains its Options softkey.
+
+### Words are the build's own, and so are the font codes
+
+A text instruction names glyphs by code in the font its attribute selects, and nothing in
+the firmware fixes those codes: a generated image carries no character table, and the
+firmware draws whatever the codes point at. The donors' fonts each carry a sparse table of
+their own (the codes the donor's text happened to need), and a build had to keep them only
+because the firmware's 40 screens, copied from upstairs, drew their words in those codes.
+
+Those words are now the build's too. `platform/system-screens.json` keeps the screens'
+pictures and logic, but each word is a `label` item - `{"key", "font", "y", "align", "x"}`
+with `line` or `value` - naming an entry in `backends/harmony_one/platform_text.py`: a
+screen's lines by ordinal, the 30 system messages' numbered title, OK, and the status
+bar's clock (weekday, hour on a 12-hour face, minutes). A build draws each in its slot's
+font: centred, from a left edge, or against a right edge (the clock's weekday ends at 141,
+its hour at 158, its minutes start there), as the donors placed them.
+`tools/harmony_one_extract_assets.py` writes the model that way from any donor; run on
+upstairs it reproduces the shipped file exactly.
+
+So the codes are each image's own, as they were in every Logitech configuration: a slot
+carries exactly the characters that image draws in it, numbered from 1 in code-point order.
+`generate.build` lays the image out twice. The first pass gives every slot each character
+its words could need (the catalogue in the project's language, the device and command
+names, printable ASCII) and `fit_label` records what each slot was asked to draw - the
+whole label, since a label's characters are checked before it is cut to fit. The second
+pass builds the image with exactly those, and returns `characters`, one `{code: char}`
+table per font attribute, for anything that has to read the text back. A slot holds at
+most 127 characters (`assets.MAX_CODES`); a build that needs more is refused by name.
+That bound is generous for any alphabetic script - the busiest slot of a project mixing
+Japanese, Greek, Russian, German, Chinese and Korean drew 59 - but a CJK project with many
+long names could reach it. A slot that is a sheet keeps the codes its manifest entry gives.
 
 ### A device's power and inputs are state variables
 
@@ -1169,6 +1236,111 @@ A generated image builds them from the project's device fields - `power_on_cmd`,
 `power_off_cmd` or a toggle `power_cmd`, `power_delay`, `inputs`, `input_cycle` - after the
 Options screens' variables. Nothing sets them yet: activities will, by writing a device's
 power and input variables on entry.
+
+### The idle layer: key lights, USB, start-up
+
+**The keypad lights only when the configuration lights it.** The factory image (`Region_3`)
+has no light instruction at all, and generated images had none either, so testers saw the
+screen work and the keys stay dark. Opcode `0x3F` band `0xC0` drives one light channel:
+channel `(operand >> 4) & 0x1F`, level `(operand >> 1) & 7`, bit 0 a flag (set only on the
+screen backlight when the off timer is armed). The 800's handler passes `low >> 4`, but the One's
+donors use both `0xC0xx` and `0xC1xx` in the same sequence, so the high bit is part of the
+channel. Upstairs uses 15 channels:
+
+| channel | what upstairs does with it |
+|---|---|
+| `0x11` | level 6 on every wake, 0 when the off timer fires: the screen backlight |
+| `0x08`-`0x0C`, `0x10` | level 1 on every wake, 0 when the timer fires: the keypad itself |
+| `0x00`-`0x07` | zones a screen lights on entry and clears on leaving, level 1 |
+
+Which keys a zone lights is not known yet; the screens that light them are:
+
+| screen (upstairs) | zones |
+|---|---|
+| Activities (197) | 1 3 5 7 |
+| Options (276) | 1 3 5 |
+| Date and Time (176), Screen Sensitivity (104) | 5 |
+| the device list (72) | 0 2 4 |
+| a device's commands, one page | 0 2 4 6 |
+| a device's commands, several pages | 4 6 |
+
+Zones {0, 2} and {1, 3} never light together: each guards the other's flag.
+
+**Each zone has a flag**, a configuration variable (upstairs packs zones 1 and 3 into one
+three-valued variable, 0 and 2 into another, and 4 to 7 into one each). A screen's enter
+handler (`0x06`) lights its zones and sets their flags; its leave handler (`0x07`) turns them
+off and clears them. Start-up clears every flag.
+
+**Every key wakes the keypad.** A context (upstairs' 4) holds a row for each of the 52
+physical keys, every row flags bit 0 - run it, then keep looking - so the key goes on down
+the stack to the screen it was meant for. Both donors add two codes below the keys: `0x17`,
+which runs `0F FFE1` with the byte register at 1 and then 0, `0F FFE3` twice, the wake and
+`3F F101`, and `0x30`, which runs the wake alone. A first generated machine left both out,
+and a tester's remote woke on its keys but not when picked up, which makes `0x17` the
+firmware's motion event. Each key row runs the wake:
+
+1. stop the off timer (2); screen backlight to 6; keypad channels to 1;
+2. each zone whose flag is set to 1;
+3. arm: stop the off timer; if platform variable 17 is not 0, screen backlight to 6 with bit 0
+   set and start the off timer; start the poll timer (13), whose action is this step again.
+
+The off timer (duration 10) turns every channel to 0 and writes `0x3F F101`. Upstairs wraps
+the wake in tests of platform variables 13, 16 and 9; run under every combination of their
+values (`one-tools/effects.py`), the tests only change how many times the same writes repeat,
+never the end state, so a generated wake does not need them.
+
+**The platform variables are the firmware's.** No configuration writes 0-17; the factory
+image declares their ranges. 0-6 count the clock (seconds and minutes to 59, hours to 23,
+days to 30, weekday to 6, months to 11, then the year); 9 runs 0 to 7 and the donors treat 2
+or less as a low battery; 16 is set while USB is connected (the start-up USB check reads it);
+13 (initially 1) holds back the plug-in's switch to the charging screen; 17 (0 to 3) gates the
+off timer - its meaning is not confirmed.
+
+**Events go through the key stack too.** The firmware queues them as opcode `0x65` with the
+event code as operand; upstairs' context 1 holds them, and the factory image's single context
+holds the same codes:
+
+| event | factory image | upstairs |
+|---|---|---|
+| `0x26` charge state changed (USB in) | enter the USB screen (28) | beep `0x4664`; the charge byte (`1F E8`: 5 unless 13 is set and USB is in, 0 unless the battery is low, then 6); wake; push the mode, enter the USB screen (1), `07 FFFB`; if 13 is set start timer 7 (5 later: the charging screen 174) |
+| `0x27` charging stopped | enter screen 0 | beeps `4664 1FF 1FF 1FF 4664`; the charge byte; wake; if 13 and 15 are set, `3F F200`/`F201` by USB; pop the mode if the USB screen marked itself shown; `07 FFF6` when the battery is at 1 |
+| `0x10` | nothing | when the battery is at 2 or less, wake; `3F F200` if 13 and 16 are set |
+| `0x19` | nothing | `07 FFF6` |
+| `0x2D` | `07 FFFA` | `07 FFFA` |
+| `0x25` | enter screen 17 | nothing |
+| `0x1E`, `0x1F`, `0x23`, `0x0F` | beeps, screen 0 / a beep | cradle, standby and low-battery screens: not generated yet |
+| `0xAE`, `0xAF` | - | beep `0x0FCA`, previous / next page (`0F FFA0`/`FFA1`) |
+
+The USB screen's enter handler sets a flag and its leave handler clears it; `0x27` pops only
+when the flag is set, so unplugging never pops a screen the user opened themselves.
+
+**Start-up** (upstairs' object `0x46C`, run by section 9's start-up list): `0F FFE1` four times,
+`3F F064`, silent resets (`07 FFFF` then a write) of its own flags, push contexts 1, `0xFE`,
+then the wake with `07 FFFB`, push `0xFD` (the current mode), `0xFC` and 4 (the key light); the
+charge byte; clear every zone flag; the wake; button sound flag to 0 and `3F F301`.
+
+**How a generated image gets it.** `dabe16d` carried all of this from upstairs, cutting
+what led into donor screens to the null instruction: about 80 objects of donor logic. It is
+now generated: `backends/harmony_one/idle.py` builds the machine from the tables above - a
+flag per zone, a wake, the off and poll timers, the charge byte, the events, the USB
+screen's shown flag, and enter and leave handlers per kind of screen - as a model in the
+carried-screens form, and `idle.attach` appends it to the Options model so one namespace
+holds both. Nothing about lights is in a project: a screen's zones follow from its kind.
+
+The Options extractor no longer carries any of it. A carried screen's handlers named
+upstairs' zone objects (lights on channels 0-7 and a flag write); the extractor recognises
+those and writes `{"zones": [...], "on": bool}` instead, which the build resolves to its own
+zone objects. The scaffold's Options model shrank from 690 objects, 11 timers and 19
+variables to 504, 4 and 3.
+
+`one-tools/compare_idle.py` runs a generated image and upstairs side by side - the key
+light, the eight events and both timers, under every combination of variables 9, 13, 15, 16
+and 17, five sets of lit zones, and the USB screen shown or not: 5,280 runs, none differ
+(upstairs' timer 7, the charging screen, set aside). The screens' enter and leave handlers
+light and darken the same zones as their upstairs counterparts. One ordering was fixed on
+the way: the carried start-up entered Activities before clearing the zone flags, so the
+first timeout lost Activities' zones; start-up now clears them first and enters last, as
+upstairs does.
 
 ### Labels that do not fit
 
@@ -1258,37 +1430,28 @@ name that long is a decision for whatever builds the project, not for the writer
 
 The pictures are not in firmware, so a generated configuration has to carry them. They
 live as PNG files in `scaffolds/harmony-one/`, listed by `assets.json`, and anyone can
-replace them: that directory is the whole of what a Harmony One looks like. What ships is
-Logitech's own, extracted from a configuration - 41 pictures and 18 fonts - because the
-format is a drawing VM and the artwork can be read out of it exactly. The loop is
-lossless: 527 of 527 glyphs and 41 of 41 pictures re-encode to the donor's own bytes after
-a trip through PNG.
+replace them: that directory is the whole of what a Harmony One looks like. The pictures
+that ship are Logitech's own, extracted from a configuration, because the format is a
+drawing VM and the artwork can be read out of it exactly: 41 of 41 pictures and 527 of 527
+glyphs re-encoded to the donor's own bytes after a trip through PNG.
 
-A font shipped this way is not limited to the repertoire a donor had. Every configuration
-Logitech generated drew only the characters it needed, so across all four donors 78 of the
-95 printable ASCII characters appear and seventeen - `$%&;<=>@`, `[]^_`, a backtick and
-`{|}~` - appear at no size at all. A generated configuration has to label a button with
-whatever its owner typed, so the ten 14-pixel fonts are completed to all 95. Most of the
-additions are built from the font's own strokes, which is the only way a new character
-looks like it belongs: a backslash is its slash mirrored, an equals its hyphen twice, an
-underscore its hyphen at the descender, a semicolon its colon's dot over its comma's tail,
-a dollar its `S` with a bar through it, a bracket a stem with two arms cut from its hyphen.
-The nine with no relative in the font are drawn on the same grid. Their codes continue past
-the largest repertoire any donor uses, so the manifest rather than `glyph_codec` is the
-authority on what a generated font's codes mean.
+The text does not come from a donor. Every Logitech configuration drew only the characters
+it needed - across all four donors 78 of the 95 printable ASCII characters appear, and
+seventeen (`$%&;<=>@`, `[]^_`, a backtick and `{|}~`) at no size at all - and a generated one
+has to draw whatever its owner typed, in any language. So each font slot is drawn by the
+build from a typeface (`scaffolds/harmony-one/fonts/`, Galmuri by default, or the owner's
+own TrueType font), in the slot's two colours, on the baseline Logitech's fonts of that
+height use; see "Words are the build's own, and so are the font codes".
 
-Heights are not interchangeable: the 14 and 15 pixel faces are different designs, sharing
-only two of 46 letterforms, so a build draws the owner's own words at 14 pixels everywhere
-including menu rows, where the donors used 15.
-
-A font is stored as one sheet of glyphs side by side, with each glyph's position and width
-in the manifest. Colour is never drawn by hand: a font is one colour plus a shadow exactly
-one pixel down and to the right, in every glyph of every font measured, so a new glyph is
-designed as a shape and shaded afterwards. Glyphs are coloured rather than masked - every font in the donors uses
-exactly two colours, a stroke and a shadow - which is why there are eighteen of them: one
-typeface at 11, 14, 15 and 16 pixels in each colour the interface uses. Filling a font's
-gaps from another of the same typeface therefore has to recolour what it borrows, or a
-single word comes out in two colours.
+A font is one colour plus a shadow exactly one pixel down and to the right, in every glyph
+of every font measured - which is why there are eighteen slots: one typeface at 11, 14, 15
+and 16 pixels in each colour the interface uses. The manifest gives each slot its height
+and its `look` (colour and shadow), and `faces.py` draws each glyph as a shape and shades
+it. Galmuri 9 fills the 14-, 15- and 16-pixel slots and Galmuri 7 the 11-pixel ones (the
+clock and page counters); both are bitmap fonts, read from gzipped BDF by `afterglow.bdf`
+and placed one font pixel to a screen pixel. An owner's `fonts/font.ttf` replaces them,
+read by `afterglow.ttf`: a pixel TrueType font is drawn on its own grid, any other outline
+font scaled to the slot's cap height and thresholded, since the display cannot blend.
 
 PNG is read by `afterglow.imaging`, which uses only `zlib` and `struct` from the standard
 library, because the format layer takes no third-party dependency and Pillow may only be

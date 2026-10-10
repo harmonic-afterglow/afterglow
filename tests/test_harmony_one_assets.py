@@ -12,7 +12,7 @@ import json
 import pytest
 
 from afterglow import imaging, paths
-from afterglow.backends.harmony_one import assets, bitmap
+from afterglow.backends.harmony_one import assets, bitmap, faces, generate, row_icons
 
 
 SCAFFOLD = paths.scaffolds("harmony-one")
@@ -66,11 +66,15 @@ def test_every_shipped_picture_fits_what_the_reader_will_accept():
 def test_the_manifest_names_a_file_for_every_picture_and_no_others(tmp_path):
     manifest = json.loads((SCAFFOLD / assets.MANIFEST).read_text("utf-8"))
     declared = {entry["file"] for entry in manifest["pictures"].values()}
-    declared |= {entry["file"] for entry in manifest.get("fonts", {}).values()}
+    # a font drawn from a typeface has no sheet
+    declared |= {entry["file"] for entry in manifest.get("fonts", {}).values()
+                 if "file" in entry}
 
+    # The type icons are sources a build composes row icons from, not pictures.
     present = {
         str(path.relative_to(SCAFFOLD)).replace("\\", "/")
         for path in SCAFFOLD.rglob("*.png")
+        if not path.relative_to(SCAFFOLD).as_posix().startswith(row_icons.ICONS_DIR + "/")
     }
 
     assert declared == present
@@ -240,3 +244,83 @@ def test_a_character_no_font_draws_is_still_refused_by_name():
     with pytest.raises(ValueError, match="not established"):
         from afterglow.backends.harmony_one import screen_program
         screen_program._encode("caf\u00e9", assets.mapping(font), assets.widths(font))
+
+
+def test_every_slot_has_a_look_and_the_default_face_draws_printable_ascii():
+    manifest = json.loads((SCAFFOLD / assets.MANIFEST).read_text("utf-8"))
+    face = assets.typeface(SCAFFOLD)
+    small = assets.typeface(SCAFFOLD, small=True)
+    for role, entry in manifest["fonts"].items():
+        assert "colour" in entry["look"], role
+        assert entry["height"] in faces.SLOTS, role
+    for char in faces.REPERTOIRE:
+        assert face.glyph(char) is not None and small.glyph(char) is not None, char
+
+
+def test_a_slot_draws_its_face_on_the_baseline_of_its_height_with_a_shadow():
+    # Galmuri 9's H is 9 pixels tall; in a 14-pixel slot it stands on row 11, the shadow
+    # one pixel down and to the right; the 11-pixel slots take Galmuri 7's 7-pixel H.
+    white, shade = (255, 255, 255), (49, 52, 49)
+    h = faces.face_glyph(assets.typeface(SCAFFOLD), "H", 14, white, shade)
+    inked = [y for y, line in enumerate(h["rows"]) if white in line]
+    assert (inked[0], inked[-1]) == (faces.SLOTS[14]["baseline"] - 9,
+                                     faces.SLOTS[14]["baseline"] - 1)
+    assert h["rows"][inked[0]][0] == white and h["rows"][inked[0] + 1][1] in (shade, white)
+    small = faces.face_glyph(assets.typeface(SCAFFOLD, small=True), "H", 11, white, shade)
+    inked = [y for y, line in enumerate(small["rows"]) if white in line]
+    assert len(inked) == 7 and inked[-1] == faces.SLOTS[11]["baseline"] - 1
+
+
+def test_a_truetype_font_in_the_scaffold_draws_every_slot_and_nothing_it_lacks(
+        tmp_path):
+    # fonts/font.ttf replaces the pixel font: its capitals scaled to the slot's cap height
+    # on the same baseline. What it does not have comes from the pixel font.
+    import shutil
+
+    from test_ttf import _box, _table_font
+
+    # an outline font, not a pixel one: its points are on no coarse grid
+    outline = {"H": (601, [_box(0, 0, 503, 701)]), " ": (301, [])}
+    scaffold = tmp_path / "scaffold"
+    shutil.copytree(SCAFFOLD, scaffold)
+    (scaffold / faces.TYPEFACE).write_bytes(_table_font(outline, cap=701))
+    manifest = json.loads((scaffold / assets.MANIFEST).read_text("utf-8"))
+    loaded = assets.load(scaffold)
+    for role, entry in manifest["fonts"].items():
+        colour = tuple(entry["look"]["colour"])
+        chars = {item["char"]: code for code, item in loaded["fonts"][role]["glyphs"].items()}
+        slot = faces.SLOTS[entry["height"]]
+        h = loaded["fonts"][role]["glyphs"][chars["H"]]["rows"]
+        inked = [y for y, line in enumerate(h) if colour in line]
+        assert (inked[0], inked[-1]) == (slot["baseline"] - slot["cap"], slot["baseline"] - 1)
+        # a solid block, and nothing the font file lacks
+        assert len({line.count(colour) for line in h if colour in line}) == 1, role
+        assert "e" not in chars, role
+    # and with no other font to fall back on, a build that needs a letter it lacks says so
+    with pytest.raises(ValueError, match="cannot draw"):
+        generate.configuration({"devices": []}, directory=scaffold)
+
+
+def test_a_font_file_that_is_not_truetype_is_refused_naming_the_file(tmp_path):
+    import shutil
+
+    scaffold = tmp_path / "scaffold"
+    shutil.copytree(SCAFFOLD, scaffold)
+    (scaffold / faces.TYPEFACE).write_bytes(b"OTTO" + b"\x00" * 64)
+    with pytest.raises(ValueError, match="font.ttf: .*PostScript"):
+        assets.load(scaffold)
+
+
+def test_a_pixel_truetype_font_is_drawn_at_its_own_size_not_scaled():
+    # A font whose letters sit on a coarse grid of square pixels (here 100 units a pixel)
+    # is drawn one grid square a pixel, so a 5x7-pixel H stays 5x7 in every slot.
+    from test_ttf import BLOCKS, _table_font
+    from afterglow.ttf import TrueType
+
+    face = TrueType(_table_font(BLOCKS))
+    assert faces.pixel_grid(face) == 100
+    white = (255, 255, 255)
+    for height in (11, 14, 15):
+        rows = faces.typeface_glyph(face, "H", height, white)["rows"]
+        inked = [y for y, line in enumerate(rows) if white in line]
+        assert len(inked) == 7 and {line.count(white) for line in rows if white in line} == {5}

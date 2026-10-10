@@ -121,17 +121,10 @@ def progress(width=88, height=10):
     return rows
 
 
-def row_icon(width=51, height=48):
-    rows = panel(width, height)
-    rect(rows, 12, 12, width - 12, height - 12, GLOW)
-    return rows
-
-
 ASSETS = {
     "backdrop": (backdrop(), (176, 220), "raw"),
     "button-frame": (panel(81, 50), (81, 50), "shorter"),
     "row-frame": (panel(164, 50), (164, 50), "shorter"),
-    "row-icon": (row_icon(), (51, 48), "shorter"),
     "panel": (panel(62, 42), (62, 42), "shorter"),
     "softkey": (panel(88, 22, fill=(24, 28, 32, 255)), (88, 22), "shorter"),
     "indicator": (indicator(), (22, 18), "runs"),
