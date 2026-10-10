@@ -43,11 +43,11 @@ def test_a_portable_press_and_hold_become_separate_one_waveforms():
     assert words(lowered.press_waveform) == (
         [32767, 17233]
         + ir_lowering.encode_pulses(press["pulses_us"])
-        + [ir_lowering.CLOSE_US]
+        + [ir_lowering.CLOSE_US, 0]
     )
     assert words(lowered.hold_waveform) == (
         ir_lowering.encode_pulses(hold["pulses_us"])
-        + [ir_lowering.CLOSE_US]
+        + [ir_lowering.CLOSE_US, 0]
     )
     assert lowered.release_waveform is None
 
@@ -69,7 +69,7 @@ def test_a_minimum_hold_count_is_materialised_in_the_press_waveform():
     lowered = ir_lowering.lower(signal)
 
     expected = press["pulses_us"] + hold["pulses_us"] * 2
-    assert words(lowered.press_waveform)[2:-1] == ir_lowering.encode_pulses(expected)
+    assert words(lowered.press_waveform)[2:-2] == ir_lowering.encode_pulses(expected)
     assert ir_protocol.hold_minimum(definition, signal["transmission"]) == 2
 
 
@@ -82,9 +82,9 @@ def test_waveform_intro_and_repeat_sections_use_the_two_native_slots():
 
     lowered = ir_lowering.lower(signal)
 
-    assert words(lowered.press_waveform)[2:-1] == ir_lowering.encode_pulses(
+    assert words(lowered.press_waveform)[2:-2] == ir_lowering.encode_pulses(
         signal["pulses_us"][:4])
-    assert words(lowered.hold_waveform)[:-1] == ir_lowering.encode_pulses(
+    assert words(lowered.hold_waveform)[:-2] == ir_lowering.encode_pulses(
         signal["pulses_us"][4:])
 
 

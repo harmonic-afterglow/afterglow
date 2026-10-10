@@ -81,7 +81,7 @@ def _bytes(words: list[int]) -> bytes:
 
 
 def encode_waveform(pulses_us, *, entry_us: int | None) -> bytes:
-    """Encode one complete native waveform, including its short terminator."""
+    """Encode one complete native waveform, including its short close and zero sentinel."""
     pulses = _normalise_pulses(pulses_us)
     if not pulses or pulses[0] < 0:
         raise ValueError("Harmony One command waveforms must begin with a mark")
@@ -97,9 +97,9 @@ def encode_waveform(pulses_us, *, entry_us: int | None) -> bytes:
                 "Harmony One press lead-in must begin with the measured 0x7fff word")
         words.extend(entry)
     words.extend(encode_pulses(pulses))
-    # This deliberately remains a second consecutive space. Firmware readers use the
-    # short space following the final protocol gap as the waveform terminator.
-    words.append(CLOSE_US)
+    # A second consecutive space, then the zero sentinel every donor waveform ends with.
+    # Without the zero a reader walks on into whatever block or record follows.
+    words.extend([CLOSE_US, 0])
     return _bytes(words)
 
 

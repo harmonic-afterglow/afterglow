@@ -38,7 +38,7 @@ from . import (
 # The master-index slots this module lays out. Everything else keeps its own pointer.
 # They are emitted last and in this order, so each one's computed range - which runs to
 # whichever section starts next - covers its own table and nothing else.
-COMPOSED_SECTIONS = (4, 5, 6, 7, 9, 10, 11)
+COMPOSED_SECTIONS = (4, 5, 6, 7, 9, 10, 11, 12, 14)
 
 
 def _read_fonts(payload: bytes) -> list[dict]:
@@ -53,6 +53,22 @@ def _read_fonts(payload: bytes) -> list[dict]:
             "height": font["height"], "slots": font["slots"],
             "layout": font["layout"], "glyphs": glyphs,
         })
+    return out
+
+
+def _overlay_roots(payload: bytes) -> list[int]:
+    """Return the drawing programs section 12 indexes, in table order."""
+    start, end = gspm.section_ranges(payload)[12]
+    count = struct.unpack_from("<H", payload, start)[0]
+    if start + 2 + 3 * count > end:
+        raise ValueError("section 12 overlay index exceeds its section")
+    out = []
+    for index in range(count):
+        at = start + 2 + 3 * index
+        offset = int.from_bytes(payload[at:at + 3], "little") - gspm.BASE
+        if not 0 <= offset < len(payload):
+            raise ValueError(f"section 12 entry {index} falls outside the image")
+        out.append(offset)
     return out
 
 
@@ -90,7 +106,10 @@ def read(payload: bytes) -> dict:
             ],
             "slots": slots,
         })
-    programs = drawing.program_blocks(payload, roots)
+    overlays = _overlay_roots(payload)
+    # Section 12 is a drawing root set of its own: no screen calls it, and its status-bar
+    # and battery programs are the only thing that reaches 14 to 18 pictures per image.
+    programs = drawing.program_blocks(payload, roots + overlays)
     pictures, strings = {}, {}
     for item in (i for block in programs.values() for i in block):
         if item["opcode"] == "bitmap":
@@ -128,6 +147,19 @@ def read(payload: bytes) -> dict:
             for item in activity_index.contexts(payload)
         ],
         "screens": screens,
+        # Section 14's records hold no addresses at all: every field is a state number,
+        # an object index or a byte, so they move without anything being repaired. What
+        # they mean is still unestablished; that they are portable is measured.
+        "engine": [
+            {"initial": item["initial"], "limit": item["limit"],
+             "padding": item["padding"],
+             "transitions": [
+                 {"flags": row["flags"], "from": row["from"], "to": row["to"],
+                  "operand": row["operand"], "category": row["category"]}
+                 for row in item["transitions"]]}
+            for item in activity_index.engine_records(payload)
+        ],
+        "overlays": overlays,
         "programs": programs,
         # The pictures and glyph strings the programs draw. Holding them here is what
         # lets an image be laid out somewhere else entirely rather than kept in place.
@@ -145,6 +177,7 @@ def canonical(payload: bytes) -> dict:
     model = read(payload)
     order = {}
     stack = [slot["program"] for screen in model["screens"] for slot in screen["slots"]]
+    stack += list(model["overlays"])
     while stack:
         block = stack.pop(0)
         if block in order:
@@ -184,6 +217,7 @@ def canonical(payload: bytes) -> dict:
         "fonts": model["fonts"],
         "objects": model["objects"],
         "contexts": model["contexts"],
+        "engine": model["engine"],
         "screens": [
             {"flag": screen["flag"], "header": screen["header"],
              "slots": [
@@ -192,6 +226,7 @@ def canonical(payload: bytes) -> dict:
                  for slot in screen["slots"]]}
             for screen in model["screens"]
         ],
+        "overlays": [order[block] for block in model["overlays"]],
         "programs": [
             tuple(_instruction(item) for item in model["programs"][block])
             for block, _index in sorted(order.items(), key=lambda pair: pair[1])
@@ -211,7 +246,7 @@ def _place_picture(out: bytearray, body: bytes) -> int:
 
     Between 15 and 19 pictures in each of the four images cross a 64 KiB boundary, and
     7 to 9 of them are larger than the window itself - a 176x220 backdrop stored whole
-    is 77,444 bytes. Whatever the window protects, it is not pixel data.
+    is 77,445 bytes. Whatever the window protects, it is not pixel data.
     """
     offset = len(out)
     out += body
@@ -256,8 +291,10 @@ def emit(model: dict, payload: bytes) -> tuple[bytes, dict]:
     for address, picture in sorted(model["pictures"].items()):
         resources[address] = _place_picture(out, bitmap.encode(
             picture["rows"], mode=picture["mode"]))
-    for address, glyphs in sorted(model["strings"].items()):
-        resources[address] = _place(out, bytes(glyphs) + b"\x00")
+    # Glyph strings are deliberately not placed. A `text` target always names the inline
+    # payload of an `inline_text` instruction rather than a string of its own, so the
+    # layout registers those addresses and the sharing is preserved; placing a copy here
+    # would give every pointer a private string the format never has.
 
     programs, mapping = drawing.lay_out(
         model["programs"], authoring._align_window(out, 1), mapping=resources)
@@ -297,13 +334,25 @@ def emit(model: dict, payload: bytes) -> tuple[bytes, dict]:
             if section9 is None:
                 section9 = offset
             register_offsets.append(offset)
+    # Section 5's per-device sub-tables are not copies of section 4's device runs, they
+    # are those runs: every one of the 20 sub-tables across the four donors begins
+    # exactly where its device's run inside section 4 begins. So section 4 is emitted
+    # once and section 5 points into it, instead of each run being written twice.
     section4 = _place(out, authoring.command_flat_index(device_records))
-    subtables = [_place(out, authoring.command_subtable(o)) for o in device_records]
+    subtables = []
+    run = section4 + authoring.COMMAND_INDEX_HEAD_SIZE
+    for offsets in device_records:
+        subtables.append(run)
+        run += len(authoring.command_subtable(offsets))
     section5 = _place(out, authoring.section5(subtables))
     section6 = _place(out, authoring.screen_index(trailers))
     section7 = _place(out, _font_index(font_records))
     section10 = _place(out, authoring.context_table(contexts))
     section11 = _place(out, _object_table(objects))
+    section12 = _place(out, _overlay_index(
+        [mapping[block] for block in model["overlays"]]))
+    engine = [_place(out, _engine_record(item)) for item in model["engine"]]
+    section14 = _place(out, _engine_index(engine))
 
     index = 0
     for screen, offsets in zip(model["screens"], placed_slots):
@@ -314,7 +363,8 @@ def emit(model: dict, payload: bytes) -> tuple[bytes, dict]:
 
     placed = {
         4: section4, 5: section5, 6: section6, 7: section7,
-        9: section9, 10: section10, 11: section11,
+        9: section9, 10: section10, 11: section11, 12: section12,
+        14: section14,
     }
     for section in COMPOSED_SECTIONS:
         struct.pack_into("<I", out, 0x0C + 4 * section, gspm.BASE + placed[section])
@@ -331,6 +381,8 @@ def emit(model: dict, payload: bytes) -> tuple[bytes, dict]:
         "objects": len(model["objects"]),
         "contexts": len(model["contexts"]),
         "screens": len(model["screens"]),
+        "overlays": len(model["overlays"]),
+        "engine": len(model["engine"]),
         "key_registers": len(register_offsets),
         "emitted_bytes": len(out) - start,
         "size": {"before": len(payload), "after": len(result)},
@@ -363,6 +415,33 @@ def _font_index(offsets: list[int]) -> bytes:
 def _object_table(offsets: list[int]) -> bytes:
     if not offsets or len(offsets) > 0xFFFF:
         raise ValueError("section 11 indexes between 1 and 65535 objects")
+    return len(offsets).to_bytes(2, "little") + b"".join(
+        (gspm.BASE + offset).to_bytes(3, "little") for offset in offsets)
+
+
+def _engine_record(record: dict) -> bytes:
+    """One section-14 property: its initial state, its limit, and its transitions."""
+    out = struct.pack("<HHH", record["initial"], record["limit"],
+                      len(record["transitions"]))
+    out += bytes([record["padding"]])
+    for row in record["transitions"]:
+        out += struct.pack("<BHHHB", row["flags"], row["from"], row["to"],
+                           row["operand"], row["category"])
+    return out
+
+
+def _engine_index(offsets: list[int]) -> bytes:
+    """Section 14's header, measured in the factory image and every donor."""
+    if len(offsets) > 0xFFFF:
+        raise ValueError("section 14 indexes at most 65535 engine records")
+    trailing = max(0, len(offsets) - 1)
+    return (struct.pack("<HHHH", len(offsets), trailing, 1, trailing)
+            + b"".join((gspm.BASE + offset).to_bytes(3, "little") for offset in offsets))
+
+
+def _overlay_index(offsets: list[int]) -> bytes:
+    if len(offsets) > 0xFFFF:
+        raise ValueError("section 12 indexes at most 65535 overlay programs")
     return len(offsets).to_bytes(2, "little") + b"".join(
         (gspm.BASE + offset).to_bytes(3, "little") for offset in offsets)
 

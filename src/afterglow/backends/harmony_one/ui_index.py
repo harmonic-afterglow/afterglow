@@ -302,18 +302,17 @@ def walk_drawing(payload: bytes, offset: int, programs12: dict[int, int] | None 
 
 
 def _bitmap_resource(payload: bytes, offset: int) -> dict:
-    if offset + 4 > len(payload):
+    # Mode, then width and height as u16s, for both modes.
+    if offset + 5 > len(payload):
         raise ValueError(f"bitmap at {offset:#x} has a truncated header")
-    mode, width, zero, height = payload[offset:offset + 4]
-    if mode not in (0, 1) or zero or not 1 <= width <= 176 or not 1 <= height <= 220:
+    mode, width, height = struct.unpack_from("<BHH", payload, offset)
+    if mode not in (0, 1) or not 1 <= width <= 176 or not 1 <= height <= 220:
         raise ValueError(f"bitmap at {offset:#x} has an invalid header")
     if mode == 0:
-        size = 4 + 2 * width * height
+        size = 5 + 2 * width * height
         if offset + size > len(payload):
             raise ValueError(f"bitmap at {offset:#x} is truncated")
     else:
-        if offset + 5 > len(payload) or payload[offset + 4] != 0:
-            raise ValueError(f"bitmap at {offset:#x} has an invalid mode-1 header")
         cursor = offset + 5
         rows = 0
         row_width = 0

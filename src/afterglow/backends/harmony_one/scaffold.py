@@ -28,6 +28,30 @@ from . import activity_index, command_index, drawing, ui_index
 # activities begin, whatever else differs between them.
 BASE_CONTEXTS = 7
 
+# A screen's ordinal is not free: the firmware selects its own screens by index, and the
+# first forty belong to it. Both household donors draw the same text with the same
+# instruction shape in all forty - 40 of 40 - and nothing an owner owns appears before
+# ordinal 40 in one or 44 in the other. They are notices and diagnostics: the battery
+# warning and the charging-problem screen with their OK buttons, "Learning...", "Update
+# in progress", and then the thirty messages the factory configuration also carries,
+# among them "Invalid Configuration" and "Configuration Corrupted" - the two the remote
+# would use to say it had rejected a configuration.
+#
+# A generated image that starts its own screens at ordinal 0 is therefore not merely
+# missing them; its first command page stands where the low-battery notice belongs.
+#
+# They are the vendor's own work and delivered rather than dumped: both donor containers
+# carry `TRANSFERTYPE Winsock`, post to members.harmonyremote.com, hold one payload
+# member and match their own checksum. And they are structurally constant without being
+# byte-constant - the same text and instruction shape in all forty, at the same addresses,
+# but only 2 of the 40 programs identical, because each points at pictures and glyph
+# strings that sit elsewhere in each configuration. Carrying them means carrying a model
+# and linking it, which is what `compose` does, not copying a blob.
+#
+# `generate.configuration` does exactly that: it emits them at ordinals 0 to 39 from the
+# scaffold's `platform/system-screens.json`, and a project's own screens start at 40.
+SYSTEM_SCREENS = 40
+
 DEVICE_COMMANDS = "device-commands"
 DEVICE_MENU = "device-menu"
 ACTIVITY_MENU = "activity-menu"
@@ -119,6 +143,10 @@ MODELLED = "modelled"
 UNKNOWN = "unknown"
 
 # Sections whose bytes are identical in all four images measured.
+# Section 16 indexes section 15's tail at these offsets, in every image measured
+# including the factory configuration in firmware 54.2.5.
+SECTION_16_OFFSETS = (0, 3, 16, 19, 22, 35, 68, 101, 104, 109, 134)
+
 CONSTANT_SECTIONS = {
     1: bytes.fromhex("0c0c360d000000"),
     2: bytes.fromhex("100000f0ff3f000040"),
@@ -130,8 +158,9 @@ SECTION_PLAN = {
     0: (MODELLED, "named property records, read by named_index"),
     1: (CONSTANT, "7 bytes, identical in all four"),
     2: (CONSTANT, "9 bytes, identical in all four"),
-    3: (MODELLED, "two markers around a timestamp; every field reads in range in all "
-                  "four, but one byte of the seven is unexplained"),
+    3: (EMITTED, "two markers around a timestamp of second, minute, hour, day, "
+                 "weekday, month and year. The day and month count from zero and the "
+                 "weekday counts Sunday as zero, which all five images agree with"),
     4: (EMITTED, "a constant 126-byte head, then every command record again, counted "
                  "and grouped by device; reproduces all four byte for byte"),
     5: (EMITTED, "device and command index"),
@@ -141,11 +170,23 @@ SECTION_PLAN = {
     10: (MODELLED, "context table and bodies; what an activity context means is not "
                    "established"),
     11: (EMITTED, "object table and bodies"),
-    12: (MODELLED, "drawing subprogram index"),
-    13: (MODELLED, "a counted table of drawing programs no screen reaches"),
-    14: (MODELLED, "activity engine records; their semantics are not established"),
-    15: (MODELLED, "a counted table plus a 151-byte tail identical in all four"),
-    16: (MODELLED, "a counted table of 11 drawing programs in every image measured"),
+    12: (MODELLED, "the overlay table: status-bar, battery and charge programs that "
+                   "switch on firmware state, then per-activity stubs of unknown "
+                   "meaning. No screen calls it, so it is a drawing root of its own"),
+    13: (EMITTED, "a u8-counted table of 7-byte records whose meaning is not "
+                  "established, and does not need to be: the factory configuration in "
+                  "firmware 54.2.5 counts zero of them, so a generated image emits the "
+                  "count alone"),
+    14: (EMITTED, "a state machine per property: an initial value, a limit, and "
+                  "transitions carrying an object index. Every field is a state "
+                  "number or an index, so a record holds no address and moves as "
+                  "it is. What the properties mean is still not established"),
+    15: (EMITTED, "a u8-counted table of pointers, which the factory configuration "
+                  "counts zero of, followed by a 151-byte platform table. Only 3 of "
+                  "those 151 bytes differ between the factory and a household image"),
+    16: (EMITTED, "11 pointers into section 15's own 151-byte tail, at the same 11 "
+                  "offsets in every image measured including the factory one, so the "
+                  "index is derived from the table rather than stored beside it"),
     17: (CONSTANT, "1 byte, identical in all four"),
     18: (CONSTANT, "2 bytes, identical in all four"),
     19: (MODELLED, "touch templates and the bitmaps they draw; bitmaps can be authored"),

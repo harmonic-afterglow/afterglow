@@ -134,7 +134,7 @@ def test_build_service_can_retain_backend_result_evidence(monkeypatch, tmp_path)
         id="fake", model="Fake", payload="blob", backend="fake",
         status=remotes.EXPERIMENTAL)
     implementation = SimpleNamespace(build_project=lambda *_args: expected)
-    monkeypatch.setattr(remotes, "get", lambda _name: profile)
+    monkeypatch.setattr(remotes, "get", lambda _name, *_rest: profile)
     monkeypatch.setattr(backends, "for_profile", lambda _profile: implementation)
     service = ConfigBuildService(tmp_path)
 

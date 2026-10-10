@@ -20,7 +20,11 @@ def inspect(payload: bytes) -> dict:
     if end - start < 7 or payload[start:start + 2] != b"\xed\xfe":
         raise ValueError("section 0 has no FEED named-record header")
     declared = int.from_bytes(payload[start + 2:start + 5], "little")
-    if declared != end - start - 2:
+    # An empty chain declares zero rather than the five bytes it occupies. The factory
+    # configuration in firmware 54.2.5 is `ed fe 00 00 00 ef be` and the remote ships
+    # with it, so refusing that would make this reader stricter than the runtime.
+    empty = end - start == 7 and payload[start + 5:start + 7] == b"\xef\xbe"
+    if declared != end - start - 2 and not (empty and declared == 0):
         raise ValueError(
             f"section 0 declares {declared} bytes, expected {end - start - 2}")
     cursor = start + 5

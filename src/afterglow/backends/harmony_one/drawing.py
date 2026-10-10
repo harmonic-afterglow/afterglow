@@ -183,7 +183,24 @@ def lay_out(blocks: dict[int, list[dict]], at: int, *,
     cursor = at
     for offset in sorted(blocks):
         mapping[offset] = cursor
+        # A `text` instruction never points at a standalone string. Every one of the
+        # 1,028 text targets across the four donors lands exactly on the glyph bytes of
+        # an `inline_text` instruction, content and all, so the strings a configuration
+        # shares are the inline payloads of other instructions. Registering those
+        # addresses here is what lets the sharing survive a layout instead of each
+        # pointer being redirected to a private copy.
+        position = cursor
+        for item in blocks[offset]:
+            # A block built from a model rather than read out of an image has no old
+            # address, so there is nothing a `text` pointer could have named inside it.
+            if item["opcode"] == "inline_text" and "offset" in item:
+                mapping[item["offset"] + 3] = position + 3
+            position += len(encode(item))
         cursor += len(encode_program(blocks[offset]))
+        if position != cursor:
+            raise RuntimeError(
+                f"block {offset:#x} encodes to {cursor - mapping[offset]} bytes but its "
+                f"instructions measure {position - mapping[offset]}")
     body = b"".join(
         encode_program(relocated(blocks[offset], mapping))
         for offset in sorted(blocks)

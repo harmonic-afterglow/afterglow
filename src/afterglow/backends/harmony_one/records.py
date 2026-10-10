@@ -61,7 +61,16 @@ def command_record(record_offset: int, press_offset: int, hold_offset: int | Non
 
 
 def command_object(command_id: int, device_id: int) -> bytes:
-    """Build the seven-byte object joining a command ID to its device ID."""
+    """Build the seven-byte object joining a command ID to its device field.
+
+    Both fields are packed, and both carry the device in their high byte: across the four
+    donors 1,471 command objects agree on that and none disagrees, and no high byte ever
+    reaches the image's device count. The command field's low byte is the command's
+    ordinal within its device. The device field's low byte is a repeat count - it is 1 in
+    1,297 of the 1,502 atoms measured, with 0, 5, 8, 10, 15, 20, 25, 30, 40, 50 and 100
+    making up the rest, which is what a device that needs a command held rather than
+    tapped would carry.
+    """
     for value, label in ((command_id, "command ID"), (device_id, "device ID")):
         if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 0xFFFF:
             raise ValueError(f"{label} must fit in an unsigned 16-bit field")

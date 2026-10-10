@@ -85,6 +85,9 @@ def device_objects(
     return bodies, wrappers
 
 
+EMPTY_KEY_REGISTER = b"\x00\x00"
+
+
 def key_register(entries: list[tuple[int, int, int]]) -> bytes:
     """Build one counted key register of ``(key code, object index, class)`` rows.
 
@@ -99,6 +102,11 @@ def key_register(entries: list[tuple[int, int, int]]) -> bytes:
         raise ValueError("a Harmony One key register holds at most 255 entries")
     if len({key for key, _object, _category in entries}) != len(entries):
         raise ValueError("a Harmony One key register cannot repeat a key code")
+    if not entries:
+        # A leading zero is not "no rows": it selects the wide form, whose count is the
+        # next byte. Every empty register in the donors is that form with a count of
+        # zero, `00 00`; a lone `00` makes the reader take whatever follows as a count.
+        return bytes(EMPTY_KEY_REGISTER)
     out = bytearray([len(entries)])
     for key, object_id, category in entries:
         if not 0 <= key <= 0xFF or not 0 <= object_id <= 0xFFFF:
@@ -1719,13 +1727,25 @@ def command_flat_index(devices: list[list[int]], *,
     return bytes(out)
 
 
-# Section 3 is two markers around seven bytes that read as a timestamp in all four
-# images measured: second, minute, hour and day are in range, the month is 7, 11, 7 and
-# 4, and the year is 23, 24, 15 and 26 - eras matching when those backups were taken.
-# The fifth byte is not explained: it is 3, 6, 0 and 3 where the weekdays are Saturday,
-# Wednesday, Wednesday and Sunday, so two identical weekdays carry different values.
+# Section 3 is two markers around seven bytes holding a timestamp: second, minute, hour,
+# day, weekday, month, year. Section 14's first seven records are the same clock, and
+# their limits settle how the fields count - 59, 59, 23, 30, 6, 11 - so the day and the
+# month count from zero, not from one. Reading them that way makes the fifth byte the
+# weekday with Sunday as zero, which every image agrees with: 2007-10-25 Thursday 4,
+# 2023-08-23 Wednesday 3, 2024-12-28 Saturday 6, 2015-08-02 Sunday 0, 2026-05-06
+# Wednesday 3. Read one-based instead, two of those dates are the same weekday and carry
+# different values, which is what left the byte unexplained.
 STAMP_PREFIX = bytes.fromhex("dfad")
 STAMP_SUFFIX = bytes.fromhex("bfef000000")
+# Zero-based, so a day is 0 to 30 and a month 0 to 11.
+STAMP_LIMITS = (("second", 59), ("minute", 59), ("hour", 23), ("day", 30),
+                ("weekday", 6), ("month", 11), ("year", 255))
+
+
+def stamp_weekday(day: int, month: int, year: int) -> int:
+    """The weekday a zero-based day and month fall on, counting Sunday as zero."""
+    import datetime
+    return (datetime.date(year, month + 1, day + 1).weekday() + 1) % 7
 
 
 def read_stamp(payload: bytes) -> dict:
@@ -1735,28 +1755,41 @@ def read_stamp(payload: bytes) -> dict:
     if (len(body) != len(STAMP_PREFIX) + 7 + len(STAMP_SUFFIX)
             or not body.startswith(STAMP_PREFIX) or not body.endswith(STAMP_SUFFIX)):
         raise ValueError("section 3 is not the measured marker-wrapped stamp")
-    second, minute, hour, day, unexplained, month, year = body[2:9]
+    second, minute, hour, day, weekday, month, year = body[2:9]
+    in_range = (second < 60 and minute < 60 and hour < 24
+                and day <= 30 and month <= 11 and weekday <= 6)
+    agrees = None
+    if in_range:
+        agrees = weekday == stamp_weekday(day, month, 2000 + year)
     return {
         "second": second, "minute": minute, "hour": hour, "day": day,
-        "month": month, "year": 2000 + year, "unexplained": unexplained,
-        "in_range": (second < 60 and minute < 60 and hour < 24
-                     and 1 <= day <= 31 and 1 <= month <= 12),
+        "month": month, "year": 2000 + year, "weekday": weekday,
+        # Whether the stored weekday is the one the date actually falls on.
+        "weekday_agrees": agrees,
+        "in_range": in_range,
     }
 
 
 def stamp(second: int, minute: int, hour: int, day: int, month: int, year: int,
-          unexplained: int) -> bytes:
-    """Build section 3. ``unexplained`` is the byte nothing has accounted for yet."""
-    fields = (
-        (second, 59, "second"), (minute, 59, "minute"), (hour, 23, "hour"),
-        (day, 31, "day"), (month, 12, "month"), (year - 2000, 255, "year"),
-        (unexplained, 255, "unexplained byte"),
-    )
-    for value, limit, label in fields:
+          weekday: int | None = None) -> bytes:
+    """Build section 3. The day and the month count from zero, as section 14's do.
+
+    ``weekday`` is derived from the date when it is not given, and checked against it
+    when it is, because a stored weekday that disagrees with its own date is how this
+    field came to be called unexplained.
+    """
+    values = (second, minute, hour, day,
+              0 if weekday is None else weekday, month, year - 2000)
+    for value, (label, limit) in zip(values, STAMP_LIMITS):
         if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= limit:
-            raise ValueError(f"section 3 {label} is outside its measured range")
-    if not 1 <= day or not 1 <= month:
-        raise ValueError("section 3 day and month count from one")
+            raise ValueError(
+                f"section 3 {label} is outside its measured range of 0 to {limit}")
+    actual = stamp_weekday(day, month, year)
+    if weekday is None:
+        weekday = actual
+    elif weekday != actual:
+        raise ValueError(
+            f"section 3 weekday {weekday} disagrees with the date, which is {actual}")
     return (STAMP_PREFIX
-            + bytes([second, minute, hour, day, unexplained, month, year - 2000])
+            + bytes([second, minute, hour, day, weekday, month, year - 2000])
             + STAMP_SUFFIX)
