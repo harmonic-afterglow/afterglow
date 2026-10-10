@@ -41,7 +41,8 @@ All integers are little-endian. Pointers are 3-byte absolute offsets into the fi
     sequence    u8 n, then n x u24 -> carrier descriptor
                 u8 m, then m variants of 9 bytes each:
                   u24 -> waveform
-                  u24 -> repeat point inside that waveform (0 when none)
+                  u24 -> repeat point (0 when none): inside that waveform, or
+                         inside another waveform of the same device (shared repeat)
                   3 bytes, zero in every sequence seen (preserved verbatim)
     carrier     u8 0, u24 carrier period in ns, u24 on-time in ns (7 bytes)
     waveform    u16 words: bit 15 set for a mark, bits 0-14 the duration in us
@@ -61,12 +62,21 @@ several space words.
 |---|---|---|
 | Press | 1 | none |
 | Hold | 2: start, then the part repeated while held | start of the repeat segment |
+| Hold, shared repeat | 1: start | start of a repeat segment in another waveform |
+
+A shared repeat is how Logitech stores a frame every hold of a device repeats, such as
+NEC's repeat burst (9000 us mark, 2250 us space, 560 us mark): the device's first hold
+carries it as its own second segment, and later holds of that device point their repeat
+at it. A second real configuration (Nokia_guy123's) has 100 such holds across three
+devices; Jdunbar's has none. They are read as `Variant.shared_repeat`, the words from
+the repeat point to the end of the waveform it lies in, and written back pointing at the
+repeat point the device wrote first for exactly those words.
 
 Variants are the alternatives a command plays in turn. A protocol with a toggle bit (RC5,
 RC6) has one per toggle state, in the order the firmware plays them: the Xbox 360's
 PowerOff press is `800ff429` then `800f7429`, identical but for RC6's toggle bit. The
-firmware does no toggling of its own. Other protocols have one variant. In the
-configuration examined, all 518 sequences follow this table exactly.
+firmware does no toggling of its own. Other protocols have one variant. In the two
+configurations examined, all 518 + 428 sequences follow this table exactly.
 
 ## Building
 
@@ -85,7 +95,7 @@ command a press and a hold sequence and numbers them as Logitech does: a device 
 The table is laid out as Logitech's are - each sequence's waveforms, its carrier
 descriptors, its record; then the device tables; the root last - and a waveform
 identical to one already written is pointed at rather than written again. Rebuilt this
-way, the configuration examined reproduces its `SsIr.bin` byte for byte.
+way, both configurations examined reproduce their `SsIr.bin` byte for byte.
 
 The rest of the configuration differs from the 900's only where the 1100 does: each
 device has `<ControllerId>0</ControllerId>` and its Properties before its Presentation;

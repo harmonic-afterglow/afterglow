@@ -86,13 +86,36 @@ def test_every_recorded_sequence_is_read_and_kept_exactly(configs_1100):
 
 
 def test_a_press_is_one_segment_and_a_hold_two_with_a_repeat_point(configs_1100):
-    """Per variant, in every sequence the format document describes."""
+    """Per variant, in every sequence the format document describes: a hold either
+    carries its repeat segment or points at one the device shares."""
     for config in configs_1100:
         for sequences in ssir_sequence.parse(_payload(config).read("userconfig/SsIr.bin")):
             for sequence in sequences:
-                shapes = {(len(v.segments()), v.repeat_at is not None)
-                          for v in sequence.variants}
-                assert shapes in ({(1, False)}, {(2, True)})
+                shapes = {(len(v.segments()), v.repeat_at is not None,
+                           v.shared_repeat is not None) for v in sequence.variants}
+                assert shapes in ({(1, False, False)}, {(2, True, False)},
+                                  {(1, False, True)})
+
+
+def test_a_shared_repeat_is_pointed_at_where_its_device_first_wrote_it():
+    """Logitech stores an NEC repeat frame once per device and points later holds at
+    it. Rebuilt, they must still point at that frame, not at bytes that happen to sit
+    where it used to be."""
+    lead, frame = [0x7FFF, 0x8000 | 9000, 4500], [0x8000 | 560, 560]
+    repeat = (0x8000 | 9000, 2250, 0x8000 | 560, *ssir_sequence.SEGMENT_END)
+    carrier = (ssir_sequence.carrier_descriptor(38000),)
+    start = tuple(lead + frame + list(ssir_sequence.SEGMENT_END))
+    own = ssir_sequence.Variant(start + repeat, len(start))
+    shared = ssir_sequence.Variant(tuple(lead + frame * 2 + list(ssir_sequence.SEGMENT_END)),
+                                   None, shared_repeat=repeat)
+    other = ssir_sequence.Sequence(carrier, (ssir_sequence.Variant(start, None),))
+    devices = [[ssir_sequence.Sequence(carrier, (own,)), ssir_sequence.Sequence(carrier, (shared,))],
+               [other, ssir_sequence.Sequence(carrier, (shared,))]]
+    built = ssir_sequence.build(devices)
+    assert ssir_sequence.parse(built) == devices
+    assert ssir_sequence.build(ssir_sequence.parse(built)) == built
+    native = devices[0][1].to_native()
+    assert ssir_sequence.Sequence.from_native(native) == devices[0][1]
 
 
 def test_the_configuration_identifies_as_an_1100(configs_1100):

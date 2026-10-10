@@ -38,15 +38,20 @@ class Backend:
 
     @staticmethod
     def _as_sold(profile, settings: dict):
-        """The profile under the model number the project's remote carries: the
-        Harmony 1100 is sold as skin 62 and 63, and a header names one of them."""
-        skin = settings.get("skin")
-        if skin is None or skin == profile.skin:
-            return profile
-        if skin not in profile.skins:
-            raise ValueError(f"{profile.model} is not sold as skin {skin}; it is "
-                             f"{', '.join(str(s) for s in profile.skins)}")
-        return dataclasses.replace(profile, skin=skin)
+        """The profile under the model number and board the project's remote carries:
+        the Harmony 1100 is sold as skin 62 and 63 on boards 0.3 and 0.5, and a header
+        names one of each."""
+        skin, board = settings.get("skin"), settings.get("board")
+        if skin is not None and skin != profile.skin:
+            if skin not in profile.skins:
+                raise ValueError(f"{profile.model} is not sold as skin {skin}; it is "
+                                 f"{', '.join(str(s) for s in profile.skins)}")
+            profile = dataclasses.replace(profile, skin=skin)
+        if board is not None and board != profile.board:
+            if not profile.same_board(board, profile.board):
+                raise ValueError(f"{profile.model} is not made on board {board}")
+            profile = dataclasses.replace(profile, board=board)
+        return profile
 
     def build_project(self, project: dict, profile, context) -> BuildResult:
         """Run the old lowering/tree-builder sequence entirely inside the adapter."""
@@ -112,7 +117,8 @@ class Backend:
                     raise FileNotFoundError(f"Project image asset missing: {source}")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
-            context.log("Re-hashing IrProto.bin...")
+            if (Path(work) / "userconfig" / "IrProto.bin").is_file():   # not on the 1100
+                context.log("Re-hashing IrProto.bin...")
             ezhex.rehash(work)
             context.log(f"Packing -> {output}...")
             ezhex.pack_standalone(work, output, profile=self._as_sold(profile, settings))

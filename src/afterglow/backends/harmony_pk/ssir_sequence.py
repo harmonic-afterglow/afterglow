@@ -23,6 +23,9 @@ class Variant:
     words: tuple[int, ...]
     repeat_at: int | None          # word index the held part restarts from
     tail: bytes = bytes(3)         # three bytes after the repeat point, kept verbatim
+    # The held part when it is not in this waveform but shared: Logitech stores an NEC
+    # repeat frame once and points every hold of the device at it.
+    shared_repeat: tuple[int, ...] | None = None
 
     def segments(self) -> list[list[int]]:
         """Signed microsecond pulses per segment (+mark, -space), adjacent pulses of
@@ -63,7 +66,10 @@ class Sequence:
                 "variants": [{"words": struct.pack(f"<{len(v.words)}H", *v.words).hex(),
                               **({"repeat_at": v.repeat_at}
                                  if v.repeat_at is not None else {}),
-                              **({"tail": v.tail.hex()} if any(v.tail) else {})}
+                              **({"tail": v.tail.hex()} if any(v.tail) else {}),
+                              **({"shared_repeat": struct.pack(
+                                  f"<{len(v.shared_repeat)}H", *v.shared_repeat).hex()}
+                                 if v.shared_repeat is not None else {})}
                              for v in self.variants]}
 
     @classmethod
@@ -71,9 +77,12 @@ class Sequence:
         variants = []
         for v in native["variants"]:
             raw = bytes.fromhex(v["words"])
+            shared = bytes.fromhex(v["shared_repeat"]) if "shared_repeat" in v else None
             variants.append(Variant(struct.unpack(f"<{len(raw) // 2}H", raw),
                                     v.get("repeat_at"),
-                                    bytes.fromhex(v.get("tail", "000000"))))
+                                    bytes.fromhex(v.get("tail", "000000")),
+                                    struct.unpack(f"<{len(shared) // 2}H", shared)
+                                    if shared is not None else None))
         return cls(tuple(bytes.fromhex(c) for c in native["carriers"]), tuple(variants))
 
 
@@ -133,6 +142,12 @@ def parse(payload: bytes) -> list[list[Sequence]]:
             for wave, repeat, tail in variants:
                 end = end_of(wave)
                 words = struct.unpack_from(f"<{(end - wave) // 2}H", payload, wave)
+                if repeat and not wave <= repeat < end:
+                    # Held part shared with another waveform: keep the words it plays.
+                    shared = struct.unpack_from(f"<{(end_of(repeat) - repeat) // 2}H",
+                                                payload, repeat)
+                    out.append(Variant(tuple(words), None, bytes(tail), tuple(shared)))
+                    continue
                 out.append(Variant(tuple(words), (repeat - wave) // 2 if repeat else None,
                                    bytes(tail)))
             sequences.append(Sequence(tuple(payload[c:c + 7] for c in carriers),
@@ -157,21 +172,40 @@ def _p24(value: int) -> bytes:
     return bytes((value & 0xFF, value >> 8 & 0xFF, value >> 16))
 
 
+def _shared_at(repeats: dict[tuple[int, ...], int], stored: dict[tuple[int, ...], int],
+               words: tuple[int, ...]) -> int | None:
+    """Where `words` already are: a repeat point this device wrote before with exactly
+    that held part, else the first stored waveform that ends with them."""
+    if words in repeats:
+        return repeats[words]
+    for waveform, start in stored.items():
+        if len(waveform) >= len(words) and waveform[len(waveform) - len(words):] == words:
+            return start + 2 * (len(waveform) - len(words))
+    return None
+
+
 def build(devices: list[list[Sequence]]) -> bytes:
     """Sequences by DeviceIndex then SequenceIndex -> an `SsIr.bin`.
 
     Laid out as Logitech's are: each sequence's waveforms, then its carrier descriptors,
     then its record; after every device's pool, the device tables; the root last. A
-    waveform identical to one already stored is pointed at rather than stored again.
+    waveform identical to one already stored is pointed at rather than stored again, and
+    a shared repeat points where the device first wrote that held part.
     """
     out = bytearray(b"\x00" * 5)
     tables = []
     stored: dict[tuple[int, ...], int] = {}      # an identical waveform is stored once
     for sequences in devices:
+        repeats: dict[tuple[int, ...], int] = {}  # held part -> the device's first repeat
         records = []
         for sequence in sequences:
             waves = []
             for variant in sequence.variants:
+                if variant.shared_repeat is not None and \
+                        _shared_at(repeats, stored, variant.shared_repeat) is None:
+                    stored[variant.shared_repeat] = repeats[variant.shared_repeat] = len(out)
+                    out += struct.pack(f"<{len(variant.shared_repeat)}H",
+                                       *variant.shared_repeat)
                 if variant.words in stored:
                     waves.append(stored[variant.words])
                     continue
@@ -188,7 +222,13 @@ def build(devices: list[list[Sequence]]) -> bytes:
                 out += _p24(position)
             out.append(len(sequence.variants))
             for start, variant in zip(waves, sequence.variants):
-                repeat = start + 2 * variant.repeat_at if variant.repeat_at is not None else 0
+                if variant.shared_repeat is not None:
+                    repeat = _shared_at(repeats, stored, variant.shared_repeat)
+                elif variant.repeat_at is not None:
+                    repeat = start + 2 * variant.repeat_at
+                    repeats.setdefault(variant.words[variant.repeat_at:], repeat)
+                else:
+                    repeat = 0
                 out += _p24(start) + _p24(repeat) + variant.tail
         tables.append(records)
     positions = []

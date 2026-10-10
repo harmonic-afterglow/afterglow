@@ -186,7 +186,7 @@
     "hard_key_layout": []
   },
   "properties": {
-    "_comment": "The Harmony 900's, until measured on 1100 configurations, plus what the one examined uses that the 900 does not: its touchscreen page groups (ControlGroup_*, spelt HardButtons without the 900's space) and HideModePlayGroup, measured from its five activities.",
+    "_comment": "The Harmony 900's, until measured on 1100 configurations, plus what 1100 configurations use that the 900 does not: their touchscreen page groups (ControlGroup_*, spelt HardButtons without the 900's space) and HideModePlayGroup, measured from the activities of two real ones.",
     "device": {
       "AudioSwitch": {
         "applies_to": [
@@ -790,15 +790,17 @@
       "ControlGroup_HardButtons": {
         "applies_to": [
           "VirtualCdJukebox",
+          "VirtualCdMulti",
           "VirtualDvd",
           "VirtualGameConsole",
           "VirtualGeneric",
+          "VirtualPvr",
           "VirtualRadioSimple"
         ],
         "default": "True",
         "default_from": "observed",
         "observed": {
-          "True": 5
+          "True": 11
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
@@ -806,15 +808,17 @@
       "ControlGroup_Misc": {
         "applies_to": [
           "VirtualCdJukebox",
+          "VirtualCdMulti",
           "VirtualDvd",
           "VirtualGameConsole",
           "VirtualGeneric",
+          "VirtualPvr",
           "VirtualRadioSimple"
         ],
         "default": "True",
         "default_from": "observed",
         "observed": {
-          "True": 5
+          "True": 11
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
@@ -822,15 +826,17 @@
       "ControlGroup_Numbers": {
         "applies_to": [
           "VirtualCdJukebox",
+          "VirtualCdMulti",
           "VirtualDvd",
           "VirtualGameConsole",
           "VirtualGeneric",
+          "VirtualPvr",
           "VirtualRadioSimple"
         ],
         "default": "True",
         "default_from": "observed",
         "observed": {
-          "True": 5
+          "True": 11
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
@@ -838,9 +844,25 @@
       "ControlGroup_Transport": {
         "applies_to": [
           "VirtualCdJukebox",
+          "VirtualCdMulti",
           "VirtualDvd",
           "VirtualGameConsole",
-          "VirtualGeneric"
+          "VirtualGeneric",
+          "VirtualPvr"
+        ],
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 9
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Discs": {
+        "applies_to": [
+          "VirtualCdJukebox",
+          "VirtualCdMulti",
+          "VirtualDvd"
         ],
         "default": "True",
         "default_from": "observed",
@@ -850,22 +872,21 @@
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
-      "ControlGroup_Discs": {
+      "ControlGroup_GameController": {
         "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualDvd"
+          "VirtualGameConsole"
         ],
         "default": "True",
         "default_from": "observed",
         "observed": {
-          "True": 2
+          "True": 1
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
-      "ControlGroup_GameController": {
+      "ControlGroup_Favorites": {
         "applies_to": [
-          "VirtualGameConsole"
+          "VirtualPvr"
         ],
         "default": "True",
         "default_from": "observed",
