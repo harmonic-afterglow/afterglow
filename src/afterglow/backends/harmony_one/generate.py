@@ -28,6 +28,8 @@ import struct
 from pathlib import Path
 
 from . import activity_index, authoring, drawing, font_index, gspm, records, scaffold
+from . import idle as idle_machine
+from . import catalogue, platform_text
 
 
 HEADER_SIZE = 0x68
@@ -190,7 +192,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
              tail: bytes | None = None, fonts=(), pictures=(), engine=(),
              devices=(), templates=None, label_font: int | None = None,
              softkey_fonts: dict | None = None, options: dict | None = None,
-             system: dict | None = None) -> bytes:
+             system: dict | None = None, words=None) -> bytes:
     """Emit the smallest configuration this backend can build without reading one.
 
     No devices, no activities and no status overlays, which is what the factory image
@@ -198,6 +200,16 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     which is also what it has.
     """
     tail = platform_tail() if tail is None else tail
+    # Every word this image draws comes from the catalogue, in the project's language.
+    words = catalogue.ENGLISH if words is None else words
+    if system:
+        # The firmware's screens name their words; they are drawn in this image's fonts
+        # (platform_text.py), or left out of an image built without fonts.
+        used = {item["font"] for block in system["blocks"] for item in block
+                if item.get("opcode") == "label"}
+        fonts_ok = bool(fonts) and all(font < len(fonts) for font in used)
+        system = platform_text.render(system, labeller(list(fonts)) if fonts_ok else None,
+                                      words)
     # Section 16 indexes fixed offsets into this table, the last at 134, so a table of
     # the wrong length would point past the end of section 15 rather than into it.
     if len(tail) != PLATFORM_TAIL_SIZE:
@@ -239,6 +251,100 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         navigate = _object(authoring.navigation_object(
             platform_count, authoring.IR_OBJECT_KIND_FALLBACK))
     owned_handlers = _owned_handlers(system, first_platform_object)
+
+    label = label_font if label_font is not None else 0
+    font = fonts[label] if fonts else None
+    # The hub every Logitech configuration has, devices or not: the Activities screen is
+    # the first one the image owns - what it boots into and what every OK opens - with
+    # Options and Devices softkeys, and the device list behind Devices, empty or not.
+    hub = system is not None and font is not None and softkey_fonts is not None
+    home_ordinal = platform_count if hub else None
+    # Options, and the screens carried behind it, come straight after Activities; the
+    # idle machine - key lights, events, start-up - is built into the same namespace.
+    carried = idle_machine.attach(options, system) if hub and options else None
+    options_ordinal = platform_count + 1 if carried else None
+    carried_first = platform_count + 2 if carried else None
+    first_menu = (platform_count + (1 if hub else 0)
+                  + (1 + len(carried["modes"]) if carried else 0))
+
+    carried_fixed, extra_blocks = {}, {}
+    carried_timers, carried_groups = [], []
+    carried_object_base = None
+
+    def _carried_variable(value):
+        return value if isinstance(value, int) else len(engine) - 1 + value["variable"]
+
+    def _carried_operand(value):
+        """A carried model's operand as this image numbers it."""
+        if isinstance(value, int):
+            return value
+        if "object" in value:
+            return carried_object_base + value["object"]
+        if "mode" in value:
+            return carried_first + value["mode"]
+        if "platform" in value:
+            return _platform_object(value["platform"], first_platform_object)
+        if "exit" in value:
+            return {"options": options_ordinal, "home": home_ordinal,
+                    "devices": first_menu}[value["exit"]]
+        if "timer" in value:
+            return (value["band"] << 8) | (len(system.get("timers", ())) + value["timer"])
+        if "group" in value:
+            return (value["group"] << 8) | _carried_variable(value["variable"])
+        if "test" in value:
+            return (value["test"] << 8) | _carried_variable(value["variable"])
+        if "register" in value:
+            return (value["register"] << 8) | _carried_variable(value["variable"])
+        raise ValueError(f"a carried screen names {value!r}")
+
+    def _carried_category(value):
+        return value if isinstance(value, int) else 0x80 | _carried_variable(value["write"])
+
+    def _carried_rows(rows):
+        return [(key, _carried_operand(operand), _carried_category(category))
+                for key, operand, category in rows]
+
+    def _carried_block(block, picture):
+        out = []
+        for item in block:
+            item = dict(item)
+            if item["opcode"] in ("call", "jump"):
+                item["target"] = CARRIED_BLOCK + item["target"]["block"]
+            elif item["opcode"] == "switch":
+                item["selector"] = _carried_variable(item["selector"])
+                item["cases"] = [(value, CARRIED_BLOCK + at) for value, at in item["cases"]]
+                item["ranges"] = [(low, high, CARRIED_BLOCK + at)
+                                  for low, high, at in item["ranges"]]
+            elif item["opcode"] == "bitmap":
+                item["target"] = picture(item["target"]["picture"])
+            elif item["opcode"] == "atom":
+                item["operand"] = _carried_operand(item["operand"])
+                item["category"] = _carried_category(item["category"])
+            out.append(item)
+        return out
+
+    # The carried model's objects are numbered now, so the firmware's own screens - whose
+    # enter, leave and redraw handlers the idle layer's flags depend on - can name them.
+    if carried:
+        carried_object_base = len(object_bodies)
+        object_bodies.extend([None] * len(carried["objects"]))
+        for index, atoms in enumerate(carried["objects"]):
+            object_bodies[carried_object_base + index] = object_body(
+                [(_carried_operand(value), _carried_category(category))
+                 for value, category in atoms])
+    platform_handlers = {}
+    if carried and "idle" in carried:
+        for key, (operand, category) in carried["idle"]["handlers"].items():
+            ordinal, tag = key.split(":")
+            platform_handlers[(int(ordinal), int(tag, 16))] = (
+                _carried_operand(operand), _carried_category(category))
+        # mode 0's list calls its handlers through objects 0 to 54
+        zero = {tag: operand for (ordinal, tag), (operand, category)
+                in platform_handlers.items() if ordinal == 0 and category == OBJECT_ATOM}
+        if zero and buttons == HOUSEHOLD_BUTTONS:
+            for index in range(HOUSEHOLD_BUTTONS):
+                object_bodies[index] = mode_zero_handler(index, {**mode_zero, **zero})
+
     for device in devices:
         # Each command gets the object naming it and the wrapper a key binds to, laid out
         # the way every donor lays them out: command object, then its wrapper, command by
@@ -279,8 +385,6 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         drawn.add(role)
         return 0
     frame_roles = [f"button-frame/{index}" for index in range(len(BUTTON_POSITIONS))]
-    label = label_font if label_font is not None else 0
-    font = fonts[label] if fonts else None
     # Pictures may be redrawn at another size, but not moved: labels are fitted to the
     # frames as drawn, and a frame too big for its place is refused.
     frame_width = FRAME_WIDTH
@@ -385,9 +489,13 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 # Mode 0's list is the one the firmware reads after LWJL.
                 header = gspm.BUTTON_MAP_OFFSET + len(gspm.BUTTON_MAP_MAGIC)
             else:
-                header = authoring.key_register(
-                    [(key, _platform_object(operand, first_platform_object), category)
-                     for key, operand, category in screen["header"]])
+                rows = [(key, _platform_object(operand, first_platform_object), category)
+                        for key, operand, category in screen["header"]
+                        if (ordinal, key) not in platform_handlers]
+                rows += [(tag, *platform_handlers[(ordinal, tag)])
+                         for tag in (ENTER, LEAVE, REDRAW)
+                         if (ordinal, tag) in platform_handlers]
+                header = authoring.key_register(rows)
             mode_pages, owned = [], []
             for slot in screen["slots"]:
                 program = MODEL_BLOCK + slot["program"]
@@ -416,17 +524,6 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         device_pages.setdefault(device["index"], []).append(chunk)
         device_geometry[device["index"]] = geometry
     menu_devices = list(device_pages)
-    # The hub every Logitech configuration has, devices or not: the Activities screen is
-    # the first one the image owns - what it boots into and what every OK opens - with
-    # Options and Devices softkeys, and the device list behind Devices, empty or not.
-    hub = system is not None and font is not None and softkey_fonts is not None
-    home_ordinal = platform_count if hub else None
-    # Options, and the screens carried behind it, come straight after Activities.
-    carried = options if hub else None
-    options_ordinal = platform_count + 1 if carried else None
-    carried_first = platform_count + 2 if carried else None
-    first_menu = (platform_count + (1 if hub else 0)
-                  + (1 + len(carried["modes"]) if carried else 0))
     menu_page_count = (len(menu_devices) + MENU_ROWS_PER_PAGE - 1) // MENU_ROWS_PER_PAGE
     if hub:
         menu_page_count = max(1, menu_page_count)
@@ -444,29 +541,82 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         for position, device_index in enumerate(menu_devices)
     } if menu_page_count else {}
 
-    def _owned_mode(rows, zones, build):
+    def _screen_handlers(kind):
+        """The platform's enter, leave and redraw for a screen of ``kind``, its enter and
+        leave also lighting and darkening the zones such a screen lights."""
+        screens = carried["idle"]["screens"] if carried and "idle" in carried else {}
+        if kind not in screens:
+            return owned_handlers
+        return [(tag, _carried_operand(screens[kind][f"{tag:#04x}"][0]),
+                 _carried_category(screens[kind][f"{tag:#04x}"][1]))
+                if f"{tag:#04x}" in screens[kind] else (tag, operand, category)
+                for tag, operand, category in owned_handlers]
+
+    def _owned_mode(rows, zones, build, kind=None, title=None, page=None):
         """Reserve a mode this image owns: the platform's handlers, then a fragment
         drawing the backdrop, then the page program, which calls it and draws the rest.
-        ``build(picture, prologue)`` returns the page program's instructions."""
+        ``build(picture, prologue)`` returns the page program's instructions, and
+        ``kind`` names which keypad zones the screen lights (idle.SCREEN_ZONES) and the
+        fonts its ``title`` is drawn in. ``page`` is `(index, total)` for one page of a
+        screen that has several, which are numbered as the donors number theirs."""
         backdrop = "backdrop" in roles
+        title_font, counter_font = TITLE_FONTS.get(kind, (None, None))
+        titled = (title is not None and title_font is not None and fonts is not None
+                  and max(title_font, counter_font) < len(fonts))
+        numbered = titled and page is not None and page[1] > 1
+
+        def heading():
+            [glyphs] = fit_label(title, fonts[title_font], TITLE_ROOM, lines=1)
+            return [{"opcode": "attribute", "value": title_font},
+                    {"opcode": "inline_text", "x": TITLE_XY[0], "y": TITLE_XY[1],
+                     "glyphs": glyphs.hex()}]
+
+        def counter_text(text, x, right=False):
+            [glyphs] = fit_label(text, fonts[counter_font], SCREEN_WIDTH, lines=1)
+            widths, _codes = _measure(fonts[counter_font])
+            if right:
+                x -= sum(widths[code] for code in glyphs)
+            return {"opcode": "inline_text", "x": x, "y": PAGE_COUNTER_Y,
+                    "glyphs": glyphs.hex()}
 
         def fragment(picture, _prologue):
-            # After the backdrop, the status bar, as every platform fragment draws it: an
-            # atom queues `(2, 0x73)`, overlay 2, and another the object drawing overlays
-            # 3 and 0. Without them the clock and battery waited for the refresh timer.
+            # The donors' prologue: the title, the backdrop, the status bar - an atom
+            # queues `(2, 0x73)`, overlay 2, and another the object drawing overlays 3
+            # and 0, without which the clock and battery waited for the refresh timer -
+            # then a paged screen's total, and the title again over everything.
             status = [] if status_object is None else [
                 {"opcode": "atom", "operand": 2, "category": DRAW_OVERLAY},
                 {"opcode": "atom", "operand": status_object, "category": OBJECT_ATOM}]
-            return ([{"opcode": "bitmap", "x": 0, "y": 0, "target": picture("backdrop")}]
-                    + status + [{"opcode": "return"}, {"opcode": "end"}])
+            total = []
+            if numbered:
+                widths, _codes = _measure(fonts[counter_font])
+                [digits] = fit_label(str(page[1]), fonts[counter_font], SCREEN_WIDTH, 1)
+                after = PAGE_TOTAL_XY[0] + sum(widths[code] for code in digits) + PAGES_GAP
+                total = [{"opcode": "attribute", "value": counter_font},
+                         counter_text(str(page[1]), PAGE_TOTAL_XY[0]),
+                         counter_text(words.plural("pages", page[1]), after)]
+            return ((heading() if titled else [])
+                    + [{"opcode": "bitmap", "x": 0, "y": 0, "target": picture("backdrop")}]
+                    + status[:1] + total + status[1:] + (heading() if titled else [])
+                    + [{"opcode": "return"}, {"opcode": "end"}])
 
-        builds = ([fragment] if backdrop else []) + [build]
+        page_build = build
+        if numbered:
+            def page_build(picture, prologue):
+                # each page ends with its own number, right-aligned to the slash
+                program = build(picture, prologue)
+                return program[:-1] + [
+                    {"opcode": "attribute", "value": counter_font},
+                    counter_text(str(page[0] + 1), PAGE_SLASH_XY[0], right=True),
+                    counter_text("/", PAGE_SLASH_XY[0])] + program[-1:]
+
+        builds = ([fragment] if backdrop else []) + [page_build]
         template = zones if isinstance(zones, int) else _template(zones)
         # A program's size does not depend on its addresses, so it is measured with every
         # address standing at zero.
         sizes = [len(drawing.encode_program(item(_draws, 0 if backdrop else None)))
                  for item in builds]
-        [placed] = _mode(authoring.key_register(owned_handlers), 0,
+        [placed] = _mode(authoring.key_register(_screen_handlers(kind)), 0,
                          [(template, rows, sizes)])
         prologue = placed[0] if backdrop else None
         for at, item in zip(placed, builds):
@@ -476,7 +626,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         """End a page program with its softkey labels, each in its own font."""
         labels = []
         for name in keys:
-            text, xy = SOFTKEYS[name]
+            xy = SOFTKEYS[name]
+            text = words(f"softkey.{name}")
             attribute = softkey_fonts[name]
             labels += softkey_label(text, fonts[attribute], attribute, xy)
         return program[:-1] + labels + [{"opcode": "end"}]
@@ -492,68 +643,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                         "y": y, "glyphs": glyphs.hex()})
         return out
 
-    carried_fixed, carried_blocks, extra_blocks = {}, {}, {}
-    carried_timers, carried_groups = [], []
-    carried_object_base = None
-
-    def _carried_variable(value):
-        return value if isinstance(value, int) else len(engine) - 1 + value["variable"]
-
-    def _carried_operand(value):
-        """A carried model's operand as this image numbers it."""
-        if isinstance(value, int):
-            return value
-        if "object" in value:
-            return carried_object_base + value["object"]
-        if "mode" in value:
-            return carried_first + value["mode"]
-        if "exit" in value:
-            return {"options": options_ordinal, "home": home_ordinal,
-                    "devices": menu_ordinals[0]}[value["exit"]]
-        if "timer" in value:
-            return (value["band"] << 8) | (len(system.get("timers", ())) + value["timer"])
-        if "group" in value:
-            return (value["group"] << 8) | _carried_variable(value["variable"])
-        if "test" in value:
-            return (value["test"] << 8) | _carried_variable(value["variable"])
-        raise ValueError(f"a carried screen names {value!r}")
-
-    def _carried_category(value):
-        return value if isinstance(value, int) else 0x80 | _carried_variable(value["write"])
-
-    def _carried_rows(rows):
-        return [(key, _carried_operand(operand), _carried_category(category))
-                for key, operand, category in rows]
-
-    def _carried_block(block, picture):
-        out = []
-        for item in block:
-            item = dict(item)
-            if item["opcode"] in ("call", "jump"):
-                item["target"] = CARRIED_BLOCK + item["target"]["block"]
-            elif item["opcode"] == "switch":
-                item["selector"] = _carried_variable(item["selector"])
-                item["cases"] = [(value, CARRIED_BLOCK + at) for value, at in item["cases"]]
-                item["ranges"] = [(low, high, CARRIED_BLOCK + at)
-                                  for low, high, at in item["ranges"]]
-            elif item["opcode"] == "bitmap":
-                item["target"] = picture(item["target"]["picture"])
-            elif item["opcode"] == "atom":
-                item["operand"] = _carried_operand(item["operand"])
-                item["category"] = _carried_category(item["category"])
-            out.append(item)
-        return out
-
     def _carry_options():
         """Options, and the Date and Time and Screen Sensitivity screens behind it."""
-        nonlocal carried_object_base
-        carried_object_base = len(object_bodies)
-        for atoms in carried["objects"]:
-            object_bodies.append(None)
-        for index, atoms in enumerate(carried["objects"]):
-            object_bodies[carried_object_base + index] = object_body(
-                [(_carried_operand(value), _carried_category(category))
-                 for value, category in atoms])
         for item in carried["timers"]:
             carried_timers.append(item)
         carried_groups.extend(carried["groups"])
@@ -567,9 +658,10 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         # labelled in its row font, with Screen Sounds' label read off its own flag.
         sounds = carried["sounds"]["switch"]
         entries = [
-            (OPTIONS_LABELS[0], _navigation(carried_first + carried["entries"]["date-and-time"])),
+            (words("options.date-and-time"),
+             _navigation(carried_first + carried["entries"]["date-and-time"])),
             (None, _object(object_body([(_carried_operand(sounds), 0x72)]))),
-            (OPTIONS_LABELS[2],
+            (words("options.screen-sensitivity"),
              _navigation(carried_first + carried["entries"]["screen-sensitivity"])),
         ]
         rows = [(MENU_ROW_KEYS[index], target, OBJECT_ATOM)
@@ -585,7 +677,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             return {"opcode": "inline_text", "x": x, "y": MENU_LABEL_XY[row][1],
                     "glyphs": glyphs.hex()}
 
-        for value, text in enumerate(SOUNDS_LABELS):
+        sounds_labels = (words("options.sounds-off"), words("options.sounds-on"))
+        for value, text in enumerate(sounds_labels):
             extra_blocks[OPTIONS_BLOCK + value] = [
                 {"opcode": "attribute", "value": OPTIONS_FONT}, centred(text, 1),
                 {"opcode": "end"}]
@@ -596,16 +689,18 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 program.append({"opcode": "bitmap", "x": MENU_FRAME_XY[row][0],
                                 "y": MENU_FRAME_XY[row][1], "target": picture(role)})
             program.append({"opcode": "attribute", "value": OPTIONS_FONT})
-            program += [centred(OPTIONS_LABELS[0], 0), centred(OPTIONS_LABELS[2], 2)]
+            program += [centred(words("options.date-and-time"), 0),
+                        centred(words("options.screen-sensitivity"), 2)]
             program = _softkeys(program + [{"opcode": "end"}], ["activities"])[:-1]
             # Screen Sounds last: its label is a switch on the flag, and each case ends
             # the program, so nothing has to come back from it.
             program.append({"opcode": "switch", "selector": _carried_variable(
                 sounds["variable"]), "cases": [(value, OPTIONS_BLOCK + value)
-                                               for value in range(len(SOUNDS_LABELS))],
+                                               for value in range(len(sounds_labels))],
                 "ranges": []})
             return program + [{"opcode": "end"}]
-        _owned_mode(rows, menu_template(), options_program)
+        _owned_mode(rows, menu_template(), options_program, "options",
+                    words("options.title"))
 
         templates_base = len(template_zones)
         for zones in carried["templates"]:
@@ -641,9 +736,10 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
 
         def home_program(_picture, prologue):
             program = [] if prologue is None else [{"opcode": "call", "target": prologue}]
-            program += _message(NO_ACTIVITIES) + [{"opcode": "end"}]
+            program += _message(words("hub.no-activities")) + [{"opcode": "end"}]
             return _softkeys(program, home_keys)
-        _owned_mode(home_rows, home_zones, home_program)
+        _owned_mode(home_rows, home_zones, home_program, "activities",
+                    words("hub.activities-title"))
 
     if carried:
         _carry_options()
@@ -671,21 +767,26 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 # The menu template's own bottom-left zone is the Activities softkey.
                 rows.append((MENU_ACTIVITIES_KEY, _navigation(home_ordinal), OBJECT_ATOM))
             labels = [devices[index]["label"] for index in on_page]
+            # A configured device carries the icon composed for its type; a bare
+            # skeleton takes the scaffold's row icons in turn.
             icons = [
-                icon_roles[index % len(icon_roles)] if icon_roles else "row-icon/00"
-                for index in range(len(on_page))
+                devices[device_index].get("icon")
+                or (icon_roles[index % len(icon_roles)] if icon_roles else None)
+                for index, device_index in enumerate(on_page)
             ]
 
             def menu_program(picture, prologue, labels=labels, icons=icons):
                 # A page with no rows names no frame, so an empty list places none.
                 frame = picture("row-frame") if labels else 0
                 program = menu_page(
-                    labels, frame, [picture(role) for role in icons], font,
+                    labels, frame, [role and picture(role) for role in icons], font,
                     prologue=prologue, attribute=label, label_room=row_label_room)
                 if not labels:
-                    program[-1:] = _message(NO_DEVICES) + [{"opcode": "end"}]
+                    program[-1:] = _message(words("hub.no-devices")) + [{"opcode": "end"}]
                 return _softkeys(program, ["activities"]) if hub else program
-            _owned_mode(rows, menu_template(), menu_program)
+            _owned_mode(rows, menu_template(), menu_program, "devices",
+                        words("hub.devices-title"),
+                        (page_index, menu_page_count))
 
     # Command pages, device by device. A device with more than six commands spans several
     # pages; the side strips move between them, and the last one leads back to the menu
@@ -737,7 +838,9 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                     labels, [picture(role) for role in frame_roles[:len(labels)]], font,
                     prologue=prologue, attribute=label, frame_width=frame_width)
                 return _softkeys(program, ["activities", "devices"]) if hub else program
-            _owned_mode(rows, zones, command_program)
+            _owned_mode(rows, zones, command_program,
+                        "commands-paged" if len(chunks) > 1 else "commands",
+                        devices[device_index]["label"], (page_index, len(chunks)))
     # Nothing the project owns to show still needs a screen at the first owned ordinal,
     # since section 6 has no zero-screen form and the OK buttons open that ordinal. It is
     # also the screen such an image boots into, and nothing clears the display, so it
@@ -747,7 +850,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         if font is not None:
             def empty_program(_picture, prologue):
                 out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
-                return out + _message(NO_DEVICES) + [{"opcode": "end"}]
+                return out + _message(words("hub.no-devices")) + [{"opcode": "end"}]
             _owned_mode([], 0, empty_program)
         else:
             [[program]] = _mode(authoring.key_register(owned_handlers), 0,
@@ -757,7 +860,13 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
 
     # The image starts on the first screen it owns, the one every OK button opens.
     startup = len(object_bodies)
-    for body in startup_objects(platform_count, USB_SCREEN if system else None, startup):
+    idle = None
+    if carried and "idle" in carried:
+        idle = {part: [(_carried_operand(operand), _carried_category(category))
+                       for operand, category in steps]
+                for part, steps in carried["idle"]["startup"].items()}
+    for body in startup_objects(platform_count, USB_SCREEN if system else None, startup,
+                                idle):
         _object(body)
 
     # Each device's power and input as state variables, as every donor has them: a
@@ -872,6 +981,25 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         "form": "short",
         "rows": [{"flags": None, "key_code": 0x10, "operand": 0, "category": 0x00}],
     }))
+    contexts = [context]
+    if idle is not None:
+        # The events the firmware posts - USB, charging, redraws, the side strips' paging -
+        # and the key light every physical key runs and then passes on (flags bit 0 set,
+        # so the search goes on down the stack), as upstairs' contexts 1 and 4 are.
+        events = carried["idle"]["events"]
+        contexts.append(_place(out, authoring.context_record({"form": "short", "rows": [
+            {"flags": None, "key_code": int(code, 16),
+             "operand": _carried_operand(operand), "category": _carried_category(category)}
+            for code, (operand, category) in events.items()]})))
+        operand, category = carried["idle"]["key_light"]
+        rows = [{"flags": 1, "key_code": key, "operand": _carried_operand(operand),
+                 "category": _carried_category(category)}
+                for key in MODE_ZERO_EVENTS if key >= 0x80]
+        # and the two codes below the keys that wake it too: picking it up, and 0x30
+        rows += [{"flags": 1, "key_code": int(code, 16), "operand": _carried_operand(value),
+                  "category": _carried_category(cat)}
+                 for code, (value, cat) in carried["idle"].get("key_rows", {}).items()]
+        contexts.append(_place(out, authoring.context_record({"form": "long", "rows": rows})))
     if not objects:
         objects.append(_place(out, b"\x00"))
     # Section 13 is the timer table. The platform screens start timer by index while they
@@ -894,7 +1022,11 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     if carried or device_variables:
         engine = list(engine[:-1]) + [
             {"initial": item["initial"], "limit": item["limit"], "padding": 0,
-             "transitions": []} for item in (carried or {}).get("variables", ())] + [
+             "transitions": [
+                 _transition(t["from"], t["to"], _carried_operand(t["action"][0]),
+                             _carried_category(t["action"][1]))
+                 | {"flags": t["flags"]} for t in item.get("transitions", ())]}
+            for item in (carried or {}).get("variables", ())] + [
             record for _name, record in device_variables] + list(engine[-1:])
     for item in engine:
         rows = []
@@ -918,7 +1050,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         (6, authoring.screen_index(trailers)),
         (7, counted_index(font_records, width=2, label="section 7")),
         (9, None),   # section 9 must hold every key register
-        (10, counted_index([context], width=1, label="section 10")),
+        (10, counted_index(contexts, width=1, label="section 10")),
         (11, counted_index(objects, width=2, label="section 11")),
         (12, counted_index(overlay_offsets, width=2, label="section 12")),
         (13, counted_index(timers, width=1, label="section 13")),
@@ -1209,15 +1341,27 @@ ENTER_MODE = 0x7E
 USB_SCREEN = 1
 
 
-def startup_objects(home: int, usb_screen: int | None, first: int) -> list[bytes]:
+def startup_objects(home: int, usb_screen: int | None, first: int,
+                    idle: dict | None = None) -> list[bytes]:
     """The objects the image's start-up list runs, numbered from ``first``.
 
     The factory image's three, in its own shape: push the image's context and then the
     current mode, so a key is looked up in the mode before the context, enter ``home``,
     and then, in a list of its own because a failed comparison ends the list it is in,
     enter ``usb_screen`` if the remote is on USB.
+
+    With the idle layer, as upstairs starts: the screen timer, the flag resets, then the
+    event context, the current mode and the key light on top - so every key lights the
+    keypad on its way down - then the light and sound set-up, and only then ``home``:
+    the set-up clears the zone flags, which entering a screen sets.
+    ``idle`` gives those as `{"resets": [...], "setup": [...]}`, instructions.
     """
     head = [(PUSH_CONTEXT, 0x1F), (PUSH_CURRENT_MODE, 0x1F), (home, ENTER_MODE), BACKLIGHT]
+    if idle is not None:
+        head = ([BACKLIGHT] + list(idle["resets"])
+                + [(PUSH_CONTEXT | EVENT_CONTEXT, 0x1F), (PUSH_CURRENT_MODE, 0x1F),
+                   (PUSH_CONTEXT | KEY_LIGHT_CONTEXT, 0x1F)]
+                + list(idle["setup"]) + [(home, ENTER_MODE)])
     if usb_screen is None:
         return [object_body(head)]
     return [
@@ -1225,6 +1369,10 @@ def startup_objects(home: int, usb_screen: int | None, first: int) -> list[bytes
         object_body([(LOAD_ONE, 0x1F), (first + 2, OBJECT_ATOM)]),
         object_body([(USB_CONNECTED, COMPARE), (usb_screen, ENTER_MODE)]),
     ]
+
+
+# The idle layer's contexts, after the image's own (0): events, then the key light.
+EVENT_CONTEXT, KEY_LIGHT_CONTEXT = 1, 2
 
 
 # Mode 0's three events, by their position in its list.
@@ -1376,6 +1524,9 @@ def fit_label(label: str, font: dict, room: int, lines: int = 2) -> list[bytes]:
         while rest and width(rest.rstrip() + mark) > room:
             rest = rest[:-1]
         out = out[:lines - 1] + [rest.rstrip() + mark]
+    # what the font was asked to draw - the whole label, since its characters are checked
+    # before it is cut, and the cut's mark - so a build can carry exactly those glyphs
+    font.setdefault("drawn", set()).update(label, *out)
     return [bytes(codes[character] for character in text) for text in out]
 
 
@@ -1435,11 +1586,7 @@ FRAME_WIDTH = 81
 # scaffold's fonts keep.
 SOFTKEY_LEFT_ZONE = {"x": 1257, "width": 1395, "y": 271, "height": 1001}
 SOFTKEY_RIGHT_ZONE = {"x": 2406, "width": 1150, "y": 271, "height": 1001}
-SOFTKEYS = {
-    "options": ("Options", (22, 202)),
-    "activities": ("Activities", (16, 202)),
-    "devices": ("Devices", (110, 202)),
-}
+SOFTKEYS = {"options": (22, 202), "activities": (16, 202), "devices": (110, 202)}
 SOFTKEY_FONTS = {"options": 13, "activities": 6, "devices": 9}
 # The keys each screen binds them to, as upstairs does: the Activities screen's softkeys
 # are its 0x30 and 0x31 zones, the device list's Activities is its template's 0x33, and a
@@ -1448,17 +1595,12 @@ HOME_OPTIONS_TAG, HOME_DEVICES_TAG = 0x30, 0x31
 SOFTKEY_RIGHT_KEY = 0x80 | HOME_DEVICES_TAG
 MENU_ACTIVITIES_KEY = 0xB3
 PAGE_ACTIVITIES_KEY, PAGE_DEVICES_KEY = 0xAB, 0xAC
-NO_ACTIVITIES = "No activities"
 # The Options screen, as upstairs draws it: its row frames at the menu rows, labels centred
 # on them in its row font (attribute 5). Screen Sounds' label reads its flag: 0 offers to
 # turn the sounds off, 1 to turn them on.
 OPTIONS_FONT = 5
 OPTIONS_FRAME_WIDTH = 164
 OPTIONS_LABEL_ROOM = OPTIONS_FRAME_WIDTH - 8
-OPTIONS_LABELS = ("Date and Time", None, "Screen Sensitivity")
-SOUNDS_LABELS = ("Turn Screen Sounds Off", "Turn Screen Sounds On")
-OPTIONS_FILE = "platform/options.json"
-NO_DEVICES = "No devices"
 
 
 def picture_size(body: bytes) -> tuple[int, int]:
@@ -1471,6 +1613,20 @@ def softkey_label(text: str, font: dict, attribute: int, xy) -> list[dict]:
     lines = fit_label(text, font, SCREEN_WIDTH - xy[0], lines=1)
     return [{"opcode": "attribute", "value": attribute},
             {"opcode": "inline_text", "x": xy[0], "y": xy[1], "glyphs": lines[0].hex()}]
+
+# A screen's title and page counter, as every donor draws them: the title at (6,4) in a
+# title font, a paged screen's total at (23,18) followed by the word, and each page's
+# number right-aligned against the slash at (18,18), in a smaller font of the same colour.
+# Which fonts follow the screen: cyan for Activities, green for Options, orange for the
+# device screens.
+TITLE_XY = (6, 4)
+TITLE_ROOM = 96          # what the status bar's clock and battery leave of the top line
+PAGE_COUNTER_Y = 18
+PAGE_TOTAL_XY = (23, 18)
+PAGE_SLASH_XY = (18, 18)
+PAGES_GAP = 5
+TITLE_FONTS = {"activities": (10, 12), "options": (2, 7), "devices": (3, 4),
+               "commands": (3, 4), "commands-paged": (3, 4)}
 
 # The device menu: three rows a page, each a full-width frame, a device icon and a label,
 # with the row's touch key opening that device's first command page. Geometry measured on
@@ -1519,8 +1675,9 @@ def menu_page(labels: list[str], frame: int, icons: list[int], font: dict, *,
     for index, (label, icon) in enumerate(zip(labels, icons)):
         out.append({"opcode": "bitmap", "x": MENU_FRAME_XY[index][0],
                     "y": MENU_FRAME_XY[index][1], "target": frame})
-        out.append({"opcode": "bitmap", "x": MENU_ICON_XY[index][0],
-                    "y": MENU_ICON_XY[index][1], "target": icon})
+        if icon is not None:
+            out.append({"opcode": "bitmap", "x": MENU_ICON_XY[index][0],
+                        "y": MENU_ICON_XY[index][1], "target": icon})
         lines = fit_label(label, font, MENU_LABEL_MAX if label_room is None else label_room)
         x, baseline = MENU_LABEL_XY[index]
         for glyphs, y in zip(lines, _line_ys(baseline, len(lines), MENU_LINE_OFFSETS)):
@@ -1596,8 +1753,13 @@ def system_blocks(model: dict, pictures: dict[str, int], first_object: int) -> d
     return blocks
 
 
-def configuration(project: dict, *, directory=None, library=None,
-                  stamp_fields=DEFAULT_STAMP, buttons: int = HOUSEHOLD_BUTTONS) -> bytes:
+def configuration(project: dict, **options) -> bytes:
+    """Build a whole configuration for a project from the scaffold (see ``build``)."""
+    return build(project, **options)["image"]
+
+
+def build(project: dict, *, directory=None, library=None,
+          stamp_fields=None, buttons: int = HOUSEHOLD_BUTTONS) -> dict:
     """Build a whole configuration for a project from the scaffold, and nothing else.
 
     Fonts are emitted in the donor's attribute order, because the firmware's own screens
@@ -1608,35 +1770,105 @@ def configuration(project: dict, *, directory=None, library=None,
     from . import assets
 
     directory = Path(paths.scaffolds("harmony-one") if directory is None else directory)
+    if stamp_fields is None:
+        stamp_fields = build_stamp()
+    words = catalogue.for_project(project)
     manifest = assets.read_manifest(directory)
-    loaded = assets.load(directory)
+    # Each font carries only the characters it draws, as Logitech's builder did: a build
+    # with every character the words could need records what each slot drew, and the
+    # image is then built with exactly those, numbered from 1 in each slot.
+    candidates = catalogue.characters(words) | {
+        character for device in project.get("devices") or []
+        for text in [device.get("label") or ""] + list(device.get("signals") or {})
+        for character in text}
+    first = _configuration(project, directory, manifest, assets.load(directory, candidates),
+                           stamp_fields, buttons, library, words)
+    drawn = {role: font.get("drawn", set()) for role, font in first["fonts"].items()}
+    built = _configuration(project, directory, manifest, assets.load(directory, drawn),
+                           stamp_fields, buttons, library, words)
+    # what each font attribute's codes stand for, since every image numbers its own
+    built["characters"] = [{code: item["char"] for code, item in font["metrics"].items()}
+                           for _role, font in sorted(built["fonts"].items())]
+    return built
+
+
+def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, library,
+                   words) -> dict:
+    """One build of ``project`` with the fonts ``loaded``: the image, and the fonts as
+    laid out, each knowing what it drew."""
     order = sorted(loaded["fonts"])
     button = manifest.get("font_roles", {}).get("button")
     if button not in loaded["fonts"]:
         raise ValueError("the scaffold names no font for labelling a button")
-    return skeleton(
+    pictures = {role: item["body"] for role, item in loaded["pictures"].items()}
+    devices = lowered_devices(project, library=library)
+    for device, spec in zip(devices, project.get("devices") or []):
+        device["icon"] = row_icon(directory, manifest, pictures, "devices", spec.get("type"))
+    # one set of fonts for everything this build draws, so each records all it drew
+    fonts = [font_from_scaffold(loaded["fonts"][role]) for role in order]
+    image = skeleton(
         buttons=buttons, stamp=authoring.stamp(*stamp_fields),
         tail=platform_tail(directory),
-        fonts=[font_from_scaffold(loaded["fonts"][role]) for role in order],
+        fonts=fonts,
         label_font=order.index(button),
         softkey_fonts=dict(SOFTKEY_FONTS) if len(order) > max(SOFTKEY_FONTS.values())
         else None,
-        pictures={role: item["body"] for role, item in loaded["pictures"].items()},
+        pictures=pictures,
         engine=engine_records(*stamp_fields),
-        devices=lowered_devices(project, library=library),
+        devices=devices,
         templates=touch_templates(directory), system=load_system(directory),
-        options=load_options(directory))
+        options=options_model(fonts, stamp_fields[-1], words),
+        words=words)
+    return {"image": image, "fonts": dict(zip(order, fonts))}
 
 
-def load_options(directory=None) -> dict | None:
-    """The Options screens the scaffold carries, if it carries them."""
-    from ... import paths
+# A device row's icon sits over the row frame's left end: this patch of the frame.
+ROW_ICON_SIZE = (51, 48)
 
-    directory = Path(paths.scaffolds("harmony-one") if directory is None else directory)
-    path = directory / OPTIONS_FILE
-    if not path.is_file():
+
+def row_icon(directory, manifest: dict, pictures: dict, kind: str,
+             name: str | None) -> str | None:
+    """Compose the row icon for a ``kind`` of type ``name`` into ``pictures``, once per
+    icon, and return its role (row_icons.py); None when the scaffold has no type icons."""
+    from ... import imaging
+    from . import assets, bitmap, row_icons
+
+    role = row_icons.role(kind, name, directory)
+    if role is not None and role not in pictures:
+        frame = imaging.decode((Path(directory) / manifest["pictures"]["row-frame"]["file"])
+                               .read_bytes())["rows"]
+        icon = imaging.decode(row_icons.source(directory, kind, name).read_bytes())["rows"]
+        at = (MENU_ICON_XY[0][0] - MENU_FRAME_XY[0][0], MENU_ICON_XY[0][1] - MENU_FRAME_XY[0][1])
+        rows = row_icons.compose(frame, at, ROW_ICON_SIZE, icon)
+        image = {"width": ROW_ICON_SIZE[0], "height": ROW_ICON_SIZE[1], "rows": rows}
+        pictures[role] = bitmap.encode(assets.to_rows(image)[0], mode=assets.MODES["shorter"])
+    return role
+
+
+def build_stamp(now=None) -> tuple:
+    """The clock a configuration starts with: when it was built, as section 3 and the
+    clock variables hold it (day and month counted from 0)."""
+    import datetime
+
+    now = datetime.datetime.now() if now is None else now
+    return (now.second, now.minute, now.hour, now.day - 1, now.month - 1, now.year)
+
+
+def labeller(fonts: list[dict]):
+    """``label(text, attribute, room)``: one line of text in the image's font of that
+    attribute, as glyph codes (hex) and its width, cut to ``room`` pixels."""
+    def label(text, attribute, room):
+        [glyphs] = fit_label(text, fonts[attribute], room, lines=1)
+        widths, _codes = _measure(fonts[attribute])
+        return glyphs.hex(), sum(widths[code] for code in glyphs)
+    return label
+
+
+def options_model(fonts: list[dict], year: int, words=None) -> dict | None:
+    """The Options screens (options.py), their text set in the image's own fonts."""
+    from . import options
+
+    if not fonts or len(fonts) <= max(options.TITLE_FONT, options.COUNTER_FONT,
+                                      options.LABEL_FONT, options.BACK_FONT):
         return None
-    model = json.loads(path.read_text("utf-8"))
-    if model.get("schema") != "afterglow-harmony-one-carried-screens/1":
-        raise ValueError(f"{OPTIONS_FILE} declares {model.get('schema')!r}")
-    return model
+    return options.build(labeller(fonts), year, words)

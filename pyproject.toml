@@ -52,6 +52,9 @@ afterglow = [
     # checkout and ship with nothing, while three modules told the user to run
     # `sudo linux/harmony_net.sh` - a path that exists only in a source tree.
     "linux/*",
+    # A backend's translations of the words its remote draws: a gettext template and a
+    # catalogue per language.
+    "backends/*/locale/*",
 ]
 
 [project.scripts]

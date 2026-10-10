@@ -65,14 +65,97 @@ def to_image(rows: list[list]) -> list[list[tuple[int, int, int, int]]]:
     ]
 
 
-def load_font(directory, role: str, entry: dict) -> dict:
-    """Slice one font sheet into glyphs and encode each as the remote stores it.
+# A text instruction stores a glyph code in one byte below 0x80; a slot holds at most this
+# many characters, numbered from 1.
+MAX_CODES = 0x7F
+
+
+def slot_font(role: str, entry: dict, face, characters=None) -> dict:
+    """Draw a font slot from ``face`` (faces.py): the characters it is given - printable
+    ASCII unless the build says which - numbered from 1, in the slot's colour over its
+    shadow (the manifest entry's ``look``). A character the face lacks is left out, and a
+    label using it is refused by name when it is laid out."""
+    from . import faces
+
+    if face is None:
+        raise ValueError(
+            f"font {role!r}: the scaffold names no typeface to draw it from (the manifest's "
+            f"`typeface`, or {faces.TYPEFACE})")
+    look = entry["look"]
+    height = entry["height"]
+    glyphs = {}
+    wanted = sorted(set(faces.REPERTOIRE if characters is None else characters) | {" "})
+    wanted = [char for char in wanted if face.glyph(char) is not None]
+    if len(wanted) > MAX_CODES:
+        raise ValueError(
+            f"font {role!r} would draw {len(wanted)} different characters; a slot holds "
+            f"{MAX_CODES}")
+    for code, char in enumerate(wanted, start=1):
+        made = faces.face_glyph(face, char, height, look["colour"], look.get("shadow"))
+        rows = [[None if pixel is None else bitmap.from_rgb565(bitmap.to_rgb565(pixel))
+                 for pixel in line] for line in made["rows"]]
+        glyphs[code] = {"char": char, "width": made["width"], "rows": rows,
+                        "body": bitmap.encode_glyph(rows)}
+    return {
+        "file": None, "height": height, "slots": entry.get("slots"),
+        "layout": entry.get("layout"), "glyphs": glyphs,
+        "bytes": sum(len(item["body"]) for item in glyphs.values()),
+        "partial_alpha": 0, "colour_reduced": 0,
+    }
+
+
+_TYPEFACES: dict = {}
+
+
+def typeface(directory, small: bool = False):
+    """The face a scaffold's text is drawn from, read once: the owner's own TrueType font
+    (faces.TYPEFACE) if they put one there, else the scaffold's default face (the
+    manifest's ``typeface``), else None. With ``small``, the face for the 11-pixel slots
+    where one is given."""
+    from .faces import SMALL_TYPEFACE, TYPEFACE
+
+    directory = Path(directory)
+    own = directory / (SMALL_TYPEFACE if small else TYPEFACE)
+    if small and not own.is_file():
+        own = directory / TYPEFACE
+    if own.is_file():
+        return typeface_file(own)
+    default = read_manifest(directory).get("typeface") or {}
+    name = default.get("small" if small else "regular") or default.get("regular")
+    return typeface_file(directory / name) if name else None
+
+
+def typeface_file(path: Path):
+    """A TrueType or BDF font file, read once and kept; None when there is none."""
+    from ... import bdf
+    from ...ttf import TrueType
+
+    if not path.is_file():
+        return None
+    data = path.read_bytes()
+    key = (str(path), len(data), hash(data))
+    if key not in _TYPEFACES:
+        try:
+            bitmap = path.name.endswith((".bdf", ".bdf.gz"))
+            _TYPEFACES[key] = bdf.Bitmap.read(path) if bitmap else TrueType(data)
+        except ValueError as exc:
+            raise ValueError(f"{path}: {exc}") from exc
+    return _TYPEFACES[key]
+
+
+def load_font(directory, role: str, entry: dict, characters=None) -> dict:
+    """Slice one font sheet into glyphs and encode each as the remote stores it, or draw
+    the slot from the scaffold's typeface when the manifest gives it a ``look``.
 
     A sheet is the font's glyphs side by side in code order, so it can be opened and
     redrawn in one piece. The manifest says where each one starts and how wide it is,
     which is what makes a proportional font editable without a font editor: change the
     pixels freely, and change the width here when a letter needs more room.
     """
+    if "look" in entry:
+        from .faces import SMALL_SLOT
+        return slot_font(role, entry,
+                         typeface(directory, small=entry["height"] <= SMALL_SLOT), characters)
     path = Path(directory) / entry["file"]
     if not path.is_file():
         raise FileNotFoundError(f"font {role!r} names {path}, which does not exist")
@@ -132,8 +215,11 @@ def read_manifest(directory) -> dict:
     return manifest
 
 
-def load(directory) -> dict:
-    """Load every picture a scaffold declares, encoded as the remote stores them."""
+def load(directory, characters=None) -> dict:
+    """Load every picture and font a scaffold declares, encoded as the remote stores them.
+
+    ``characters`` is what the fonts drawn from a typeface carry:
+    printable ASCII when not given, one set for every slot, or ``{role: set}``."""
     directory = Path(directory)
     manifest = read_manifest(directory)
     pictures, notes = {}, {}
@@ -167,7 +253,8 @@ def load(directory) -> dict:
             notes[role] = report
     fonts = {}
     for role, entry in sorted(manifest.get("fonts", {}).items()):
-        font = load_font(directory, role, entry)
+        wanted = characters.get(role) if isinstance(characters, dict) else characters
+        font = load_font(directory, role, entry, wanted)
         fonts[role] = font
         if font["partial_alpha"] or font["colour_reduced"]:
             notes[role] = {"partial_alpha": font["partial_alpha"],

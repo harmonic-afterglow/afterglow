@@ -56,6 +56,9 @@ datas = [
     # cannot usefully live in a mode-700 extraction directory that vanishes on exit.
     (str(PACKAGE / "linux"), "afterglow/linux"),
 ]
+# Each backend's translations, found rather than named, so removing a backend removes them.
+datas += [(str(locale), f"afterglow/backends/{locale.parent.name}/locale")
+          for locale in sorted((PACKAGE / "backends").glob("*/locale")) if locale.is_dir()]
 
 # ## libconcord
 #
