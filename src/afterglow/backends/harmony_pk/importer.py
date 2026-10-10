@@ -441,23 +441,28 @@ class _HarmonyPkImport:
                 return remotes.identify(handle.read())
         return remotes.default()
 
-    def _skin(self):
+    def _identity(self):
         from ... import remotes
         header = os.path.join(self._extracted_dir, ".ezhex_header")
         if not os.path.isfile(header):
-            return None
+            return {}
         with open(header, "rb") as handle:
-            return remotes.identity_of(handle.read()).get("skin")
+            return remotes.identity_of(handle.read())
 
     def _read_settings(self):
         rf = extract_rf(self._extracted_dir)
         if rf:
             self._project["settings"]["rf"] = rf
-        # One remote sold under several model numbers (the 1100 is skin 62 and 63) is
-        # built for the number this one carries, not the profile's first.
-        skin = self._skin()
-        if skin is not None and skin != self._remote().skin:
+        # One remote sold under several model numbers (the 1100 is skin 62 and 63) or
+        # board revisions (0.3, 0.5) is built for the one this remote carries, not the
+        # profile's first.
+        identity, remote = self._identity(), self._remote()
+        skin, board = identity.get("skin"), identity.get("board")
+        if skin is not None and skin != remote.skin:
             self._project["settings"]["skin"] = skin
+        if isinstance(board, str) and board != remote.board \
+                and remote.same_board(board, remote.board):
+            self._project["settings"]["board"] = board
         self._project["settings"].update(
             read_preferences(self._extracted_dir, self._remote()))
     
