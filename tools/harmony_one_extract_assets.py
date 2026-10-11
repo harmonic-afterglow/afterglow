@@ -181,6 +181,135 @@ def system_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     return roles
 
 
+def activity_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
+    """Name the picture every activity's starting screen draws: the infrared waves above
+    its icon, which the Help screens draw too.
+
+    An activity's enter handler opens by entering its starting screen, so the screens are
+    found from the activities rather than by number; what all of them draw besides the
+    backdrop and their own icon is the one picture they share. Activity icons are not
+    taken - a build draws each from its type (backends/harmony_one/row_icons.py).
+    """
+    from afterglow.backends.harmony_one import activity_index
+
+    p = payload
+    objects_at = gspm.section_ranges(p)[11][0]
+
+    def atoms(index):
+        at = int.from_bytes(p[objects_at + 2 + 3 * index:objects_at + 5 + 3 * index],
+                            "little") - gspm.BASE
+        return [(int.from_bytes(p[at + 1 + 3 * k:at + 3 + 3 * k], "little"),
+                 p[at + 3 + 3 * k]) for k in range(p[at])]
+
+    screens = ui_index.screen_slots(p)
+    shared = None
+    for context in activity_index.contexts(p):
+        enter = [row for row in context["rows"] if row["key_code"] == activity_index.ENTER]
+        if not enter or enter[0]["category"] != 0x7F:
+            continue
+        first = [operand for operand, opcode in atoms(enter[0]["operand"]) if opcode == 0x7E]
+        if not first:
+            continue
+        roots = [slot["program_offset"] for slot in screens[first[0]]["slots"]]
+        drawn = {item["target"] for block in drawing.program_blocks(p, roots).values()
+                 for item in block if item["opcode"] == "bitmap"} - taken
+        shared = drawn if shared is None else shared & drawn
+    roles = {}
+    if shared and len(shared) == 1:
+        roles["activity/sending"] = shared.pop()
+    roles.update(activity_frame_roles(payload))
+    return roles
+
+
+def activity_frame_roles(payload: bytes) -> dict[str, int]:
+    """Name the frames activities are drawn in - blue where a device's are orange and
+    Options' green: the Activities menu's row frame, and the frame at each of the six
+    button places on an activity's own screens.
+
+    An activity's screen is whatever a switch on `CurrentActivityState` enters for its
+    value, so the screens are found from the variable section 0 names; at each button
+    place the frame is the first picture drawn there, and the one most of them draw.
+    """
+    from collections import Counter
+
+    from afterglow.backends.harmony_one import activity_index, named_index
+
+    p = payload
+    roles = {}
+    menu = activity_index.activity_menu(p)
+    screens = ui_index.screen_slots(p)
+    if menu is not None:
+        frames = Counter()
+        for slot in screens[menu["screen"]]["slots"]:
+            for block in drawing.program_blocks(p, [slot["program_offset"]]).values():
+                for item in block:
+                    if item["opcode"] == "bitmap" and item["x"] < 10:
+                        size = bitmap.decode(p, item["target"])
+                        if size["width"] > 100:
+                            frames[item["target"]] += 1
+        if frames:
+            roles["activity/row-frame"] = frames.most_common(1)[0][0]
+    names = named_index.leaf_names(named_index.inspect(p))
+    state = [index for index, name in names.items()
+             if name.startswith("CurrentActivityState")]
+    if not state:
+        return roles
+    groups_at = gspm.section_ranges(p)[15][0]
+    modes = set()
+    # every switch on the variable, wherever it is queued: an object or another switch
+    def group_programs(group):
+        at = int.from_bytes(p[groups_at + 1 + 3 * group:groups_at + 4 + 3 * group],
+                            "little") - gspm.BASE + 1
+        return [int.from_bytes(p[at + 3 + 5 * k:at + 6 + 5 * k], "little") - gspm.BASE
+                for k in range(p[at])]
+    switches = [operand for item in command_index.objects(p)
+                for operand, opcode in item["atoms"] if opcode == 0x72]
+    seen_groups, on_state = set(), set()
+    while switches:
+        operand = switches.pop()
+        group = operand >> 8
+        if operand & 0xFF == state[0]:
+            on_state.add(group)
+        if group in seen_groups:
+            continue
+        seen_groups.add(group)
+        for block in drawing.program_blocks(p, group_programs(group)).values():
+            switches += [item["operand"] for item in block
+                         if item["opcode"] == "atom" and item["category"] == 0x72]
+    for group in on_state:
+        for block in drawing.program_blocks(p, group_programs(group)).values():
+            modes.update(item["operand"] for item in block
+                         if item["opcode"] == "atom" and item["category"] == 0x7E)
+    places = [Counter() for _ in compose_positions()]
+    for mode in modes:
+        if menu is not None and mode == menu["screen"]:
+            continue
+        for slot in screens[mode]["slots"]:
+            seen = set()
+            for item in ui_index.drawing_program(p, slot["program_offset"])["instructions"]:
+                if item["opcode"] != "bitmap" or (item["x"], item["y"]) in seen:
+                    continue
+                if (item["x"], item["y"]) in compose_positions():
+                    seen.add((item["x"], item["y"]))
+                    if bitmap.decode(p, item["target"])["width"] != BUTTON_FRAME_WIDTH:
+                        continue
+                    places[compose_positions().index((item["x"], item["y"]))][
+                        item["target"]] += 1
+    for index, counts in enumerate(places):
+        if counts:
+            roles[f"activity/button-frame/{index}"] = counts.most_common(1)[0][0]
+    return roles
+
+
+BUTTON_FRAME_WIDTH = 81   # a device list's rows start at the first button's place too
+
+
+def compose_positions() -> list[tuple[int, int]]:
+    """Where the six buttons of a page sit, in reading order."""
+    from afterglow.backends.harmony_one import generate
+    return list(generate.BUTTON_POSITIONS)
+
+
 def system_templates(payload: bytes) -> list[list[dict]]:
     """The touch templates the platform screens use, in index order from zero.
 
@@ -249,6 +378,25 @@ def donor_bookkeeping(atoms: list) -> tuple[list, int]:
     return kept, dropped
 
 
+CHARGE_BAND = 0xE8
+# What a charge context is for, by the battery events it answers (gspm.md).
+CHARGE_EVENTS = {frozenset((0x1A, 0x1B, 0x1C, 0x1D)): "normal", frozenset((0x1E,)): "usb",
+                 frozenset((0x18, 0x19)): "low"}
+
+
+def charge_contexts(payload: bytes) -> dict[int, str]:
+    """The donor's charge contexts - the ones `1F E8` puts under 0xFC on the key stack -
+    by number, named for what they are for, so a build can number its own."""
+    from afterglow.backends.harmony_one import activity_index
+
+    out = {}
+    for context in activity_index.contexts(payload):
+        codes = frozenset(row["key_code"] for row in context["rows"])
+        if codes in CHARGE_EVENTS:
+            out[context["ordinal"]] = CHARGE_EVENTS[codes]
+    return out
+
+
 def system_screens(payload: bytes, roles: dict[str, int]) -> dict:
     """The firmware's forty screens as a model a build can link afresh.
 
@@ -283,10 +431,18 @@ def system_screens(payload: bytes, roles: dict[str, int]) -> dict:
     carried_timers = []
     dropped_atoms = [0]
 
+    charges = charge_contexts(payload)
+
     def literal(value: int, category: int):
-        """An operand as the model holds it: a timer by its model index, else itself."""
+        """An operand as the model holds it: a timer by its model index, a charge context
+        by what it is for, else itself."""
         if category == 0x1F and value >> 8 in TIMER_BANDS:
             return {"timer": carry_timer(value & 0xFF), "band": value >> 8}
+        if category == 0x1F and value >> 8 == CHARGE_BAND:
+            if value & 0xFF not in charges:
+                raise SystemExit(f"a platform handler selects context {value & 0xFF} under "
+                                 "0xFC, which answers no battery event")
+            return {"charge": charges[value & 0xFF], "band": CHARGE_BAND}
         return value
 
     def carry_timer(referenced: int) -> int:
@@ -568,6 +724,7 @@ def main() -> int:
     pictures = {}
     roles = {**picture_roles(payload), **overlay_roles(payload)}
     roles.update(system_picture_roles(payload, set(roles.values())))
+    roles.update(activity_picture_roles(payload, set(roles.values())))
     for role, target in sorted(roles.items()):
         name = f"images/{role}.png"
         pictures[role] = {"file": name, **write_picture(payload, target, args.directory / name)}

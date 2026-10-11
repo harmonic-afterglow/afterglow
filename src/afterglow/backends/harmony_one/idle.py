@@ -21,7 +21,7 @@ import copy
 OBJECT = 0x7F
 ENTER_MODE = 0x7E
 REGISTER = 0x1F          # band FB loads the byte register, EB/EA start/stop a timer
-SETTING = 0x3F           # band C0 a light channel, F0-F3 the firmware's setting bytes
+SETTING = 0x3F           # band C0 a light channel, F0-FF the firmware's settings (gspm.md)
 MODE_STACK = 0x07        # FFFD push the current mode, FFFC pop it, FFFF a silent write
 TEST = 0x71              # compare a variable with the byte register
 BEEP = 0x75
@@ -32,8 +32,8 @@ START_TIMER, STOP_TIMER = 0xEB, 0xEA
 EQUAL, NOT_EQUAL, AT_MOST = 0x00, 0x01, 0x04
 INVERT = 0x80            # the test drops the next instruction when it holds
 PUSH_MODE, POP_MODE, SILENT = 0xFFFD, 0xFFFC, 0xFFFF
-STATUS = 0xFFFB          # upstairs runs it after entering or leaving the USB screen
-CHARGE = 0xE800          # `1F E8`: the firmware's charge byte
+STATUS = 0xFFFB          # stop every running timer (the firmware runs at most four)
+CHARGE = 0xE8            # `1F E8xx`: the context under 0xFC on the key stack (gspm.md)
 PREVIOUS_PAGE, NEXT_PAGE = 0xFFA0, 0xFFA1
 
 # Light channels (gspm.md): the screen backlight, the keypad, and eight zones.
@@ -41,29 +41,43 @@ SCREEN = 0x11
 KEYPAD = (0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x10)
 ZONES = 8
 SCREEN_LEVEL, KEY_LEVEL = 6, 1
-LIGHTS_OUT = (0xF101, SETTING)    # what upstairs writes after darkening everything
+# Setting 1: arm the motion sensor, so the next movement posts MOTION (0x17) once - what
+# upstairs writes after darkening everything, so picking the remote up wakes it.
+LIGHTS_OUT = (0xF101, SETTING)
 
-# The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, and the
-# two whose meaning is not confirmed but whose tests are kept as upstairs has them.
+# The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, HOLD and
+# CHARGING as upstairs tests them, and AWAKE - the infrared engine's state, 0 when idle.
 BATTERY, HOLD, CHARGING, USB, AWAKE = 9, 13, 15, 16, 17
 LOW_BATTERY = 2
 
 # Timers: the keypad goes dark when OFF runs out; POLL re-arms OFF while AWAKE says so.
 OFF_DURATION, POLL_DURATION = 10, 2
 
-# What each kind of screen lights, from the same screen in upstairs (gspm.md).
+# What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
+# the arrows light only where there are pages to turn, a softkey's bar only where the
+# screen has that softkey. Screens of no kind - an activity starting - light nothing.
 SCREEN_ZONES = {
     "activities": (1, 3, 5, 7),
     "options": (1, 3, 5),
     "devices": (0, 2, 4),
-    "commands": (0, 2, 4, 6),
-    "commands-paged": (4, 6),
+    "commands": (4, 6),
+    "commands-paged": (0, 2, 4, 6),
+    "activity": (7,),
+    "activity-paged": (1, 3, 7),
+    # an activity's page with a left softkey too: Commands on its favourites, Favorites
+    # on its commands
+    "activity-both": (5, 7),
+    "activity-both-paged": (1, 3, 5, 7),
+    "question": (),
+    "tutorial": (1, 3, 7),
 }
 # The firmware's own screens that light a zone or mark themselves shown.
 LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
 ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
+# The battery events each charge context answers, as all three donors' contexts 0, 5, 6.
+CHARGE_EVENTS = {"normal": (0x1A, 0x1B, 0x1C, 0x1D), "usb": (0x1E,), "low": (0x18, 0x19)}
 
 BEEP_KEY = 0x4664
 BEEP_SHORT = 0x01FF
@@ -154,12 +168,15 @@ def build(system: dict | None, sounds: dict | None = None) -> dict:
     wake = m.object([_timer(STOP_TIMER, off_timer), light(SCREEN, SCREEN_LEVEL)]
                     + [light(c, KEY_LEVEL) for c in KEYPAD] + [restore, arm])
 
-    # The firmware's charge byte, as upstairs sets it on every charging event.
+    # Which charge context sits under 0xFC on the key stack, chosen on every charging
+    # event as every donor chooses it: the USB one, the normal one, or the low battery's.
+    def charge_context(name):
+        return [{"charge": name, "band": CHARGE}, REGISTER]
     charge = m.object([
-        guarded(1, _test(INVERT | EQUAL, HOLD), [CHARGE | 5, REGISTER]),
-        guarded(1, _test(INVERT | EQUAL, USB), [CHARGE | 5, REGISTER]),
-        guarded(LOW_BATTERY, _test(INVERT | AT_MOST, BATTERY), [CHARGE | 0, REGISTER]),
-        [CHARGE | 6, REGISTER]])
+        guarded(1, _test(INVERT | EQUAL, HOLD), charge_context("usb")),
+        guarded(1, _test(INVERT | EQUAL, USB), charge_context("usb")),
+        guarded(LOW_BATTERY, _test(INVERT | AT_MOST, BATTERY), charge_context("normal")),
+        charge_context("low")])
     # The setting byte upstairs writes while HOLD is set: F201 off USB - unless CHARGING
     # is clear, which drops just that step - and F200 on it.
     usb_setting = guarded(1, _test(EQUAL, HOLD), m.object([[LOAD, REGISTER], m.object([
@@ -255,6 +272,14 @@ def build(system: dict | None, sounds: dict | None = None) -> dict:
             "key_light": wake,
             "key_rows": {f"{code:#04x}": value for code, value in sorted(key_rows.items())},
             "startup": {"resets": resets, "setup": setup},
+            # The charge contexts' rows, every one passed on down the stack: the normal
+            # one and the low battery's choose again on the firmware's battery events, the
+            # USB one stops the timers when charging finishes (0x1E).
+            "charge": {
+                "normal": {f"{code:#04x}": charge for code in CHARGE_EVENTS["normal"]},
+                "usb": {f"{code:#04x}": [STATUS, MODE_STACK] for code in CHARGE_EVENTS["usb"]},
+                "low": {f"{code:#04x}": charge for code in CHARGE_EVENTS["low"]},
+            },
             "handlers": handlers,
             "screens": kinds,
         },

@@ -43,6 +43,55 @@ ADDRESS_FIELDS = {
 }
 
 
+# A glyph code is one byte up to 0x7F; past it, two: the first with its high bit set,
+# `((first << 8) | second) & 0x7FFF` - the Harmony 800's text VM reads codes so - which is
+# how a font holds more than 127 characters. The second byte may be zero.
+MAX_GLYPH_CODE = 0x7FFF
+
+
+class GlyphCodes(bytes):
+    """A line of text as its stored bytes; iterating it gives the codes."""
+
+    @classmethod
+    def of(cls, codes) -> "GlyphCodes":
+        out = bytearray()
+        for code in codes:
+            if not 0 < code <= MAX_GLYPH_CODE:
+                raise ValueError(f"glyph code {code} is outside 1..{MAX_GLYPH_CODE}")
+            out += bytes([code]) if code < 0x80 else bytes([0x80 | code >> 8, code & 0xFF])
+        return cls(out)
+
+    def __iter__(self):
+        return iter(glyph_codes(bytes(self)))
+
+
+def glyph_codes(stored: bytes) -> list[int]:
+    """The codes a stored line of glyphs holds."""
+    out, at = [], 0
+    while at < len(stored):
+        first = stored[at]
+        if first & 0x80:
+            if at + 1 >= len(stored):
+                raise ValueError("a two-byte glyph code is cut short")
+            out.append(((first << 8) | stored[at + 1]) & MAX_GLYPH_CODE)
+            at += 2
+        else:
+            out.append(first)
+            at += 1
+    return out
+
+
+def glyphs_end(payload: bytes, offset: int) -> int:
+    """Where a zero-terminated line of glyphs at ``offset`` ends (its terminator), the
+    second byte of a two-byte code - which may be zero - skipped; -1 if it runs out."""
+    at = offset
+    while at < len(payload):
+        if payload[at] == 0:
+            return at
+        at += 2 if payload[at] & 0x80 else 1
+    return -1
+
+
 def _pointer(offset: int) -> bytes:
     if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
         raise ValueError("a drawing pointer must address a non-negative offset")
@@ -76,7 +125,7 @@ def encode(instruction: dict) -> bytes:
                 + _pointer(instruction["target"]))
     if opcode == "inline_text":
         glyphs = bytes.fromhex(instruction["glyphs"])
-        if END in glyphs:
+        if 0 in glyph_codes(glyphs):
             raise ValueError("inline text cannot contain its own terminator")
         return (bytes([INLINE_TEXT])
                 + _byte(instruction["x"], "an x coordinate")

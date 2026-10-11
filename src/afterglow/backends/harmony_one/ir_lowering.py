@@ -113,6 +113,28 @@ def encode_release_waveform(pulses_us) -> bytes:
     return _bytes(encode_pulses(pulses) + [0])
 
 
+MAX_HELD_WORDS = 4000      # what a waveform reader walks before it gives up (4096)
+RELEASE_GAP_US = 40_000
+
+
+def held(press, repeat, release, held_ms: int) -> list[int]:
+    """``press`` followed by ``repeat`` frames until the whole lasts ``held_ms``, then
+    ``release``: a held code as one waveform."""
+    if isinstance(held_ms, bool) or not isinstance(held_ms, int) or held_ms <= 0:
+        raise ValueError("a hold lasts a positive number of milliseconds")
+    frame = list(repeat or press)
+    out = list(press)
+    while sum(abs(pulse) for pulse in out) < held_ms * 1000:
+        out.extend(frame)
+    out.extend(release or [])
+    if out[-1] > 0:            # a release ends on a mark; a command waveform on a gap
+        out.append(-RELEASE_GAP_US)
+    if len(out) > MAX_HELD_WORDS:
+        raise ValueError(f"a hold of {held_ms} ms is {len(out)} pulses; a waveform holds "
+                         f"{MAX_HELD_WORDS}")
+    return out
+
+
 def carrier_fields(carrier_hz: int) -> tuple[int, int]:
     """Convert a carrier to the truncated nanosecond fields used by the One."""
     if isinstance(carrier_hz, bool) or not isinstance(carrier_hz, int) or carrier_hz <= 0:
@@ -140,8 +162,14 @@ def _waveform_phases(
     return (intro or repeat), (repeat or None), (release or None)
 
 
-def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US) -> LoweredSignal:
-    """Lower a portable signal without assigning addresses or mutating a GSPM image."""
+def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US,
+          held_ms: int | None = None) -> LoweredSignal:
+    """Lower a portable signal without assigning addresses or mutating a GSPM image.
+
+    With ``held_ms``, the press is the signal held that long: its press, then its repeat
+    frame (or the press again, for a code without one) until the hold has lasted that
+    long, then its release - one record a sequence can send, for a device that needs a
+    long press, where the remote can only hold a code while a key is down."""
     ir_signal.validate(signal)
     if signal["kind"] == "backend-opaque":
         raise ValueError("an opaque command has no portable IR meaning to lower")
@@ -181,6 +209,9 @@ def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US) -> Lo
         for _ in range(minimum):
             press_pulses.extend(hold_pulses or [])
 
+    if held_ms is not None:
+        press_pulses = held(press_pulses, hold_pulses, release_pulses, held_ms)
+        hold_pulses = release_pulses = None
     period, half = carrier_fields(carrier)
     return LoweredSignal(
         carrier_period_ns=period,

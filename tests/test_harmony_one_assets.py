@@ -271,10 +271,10 @@ def test_a_slot_draws_its_face_on_the_baseline_of_its_height_with_a_shadow():
     assert len(inked) == 7 and inked[-1] == faces.SLOTS[11]["baseline"] - 1
 
 
-def test_a_truetype_font_in_the_scaffold_draws_every_slot_and_nothing_it_lacks(
-        tmp_path):
-    # fonts/font.ttf replaces the pixel font: its capitals scaled to the slot's cap height
-    # on the same baseline. What it does not have comes from the pixel font.
+def test_a_truetype_font_in_the_scaffold_draws_what_it_has_and_galmuri_the_rest(tmp_path):
+    # fonts/font.ttf replaces the default face: its capitals scaled to the slot's cap
+    # height on the same baseline. What it does not have comes from the default face, so a
+    # theme's font need not cover every character the remote draws.
     import shutil
 
     from test_ttf import _box, _table_font
@@ -286,6 +286,7 @@ def test_a_truetype_font_in_the_scaffold_draws_every_slot_and_nothing_it_lacks(
     (scaffold / faces.TYPEFACE).write_bytes(_table_font(outline, cap=701))
     manifest = json.loads((scaffold / assets.MANIFEST).read_text("utf-8"))
     loaded = assets.load(scaffold)
+    default = assets.default_typeface(scaffold)
     for role, entry in manifest["fonts"].items():
         colour = tuple(entry["look"]["colour"])
         chars = {item["char"]: code for code, item in loaded["fonts"][role]["glyphs"].items()}
@@ -293,12 +294,19 @@ def test_a_truetype_font_in_the_scaffold_draws_every_slot_and_nothing_it_lacks(
         h = loaded["fonts"][role]["glyphs"][chars["H"]]["rows"]
         inked = [y for y, line in enumerate(h) if colour in line]
         assert (inked[0], inked[-1]) == (slot["baseline"] - slot["cap"], slot["baseline"] - 1)
-        # a solid block, and nothing the font file lacks
+        # a solid block: the H is the font file's
         assert len({line.count(colour) for line in h if colour in line}) == 1, role
-        assert "e" not in chars, role
-    # and with no other font to fall back on, a build that needs a letter it lacks says so
+        # and the e it lacks is the default face's
+        if entry["height"] > faces.SMALL_SLOT:
+            e = loaded["fonts"][role]["glyphs"][chars["e"]]
+            assert e["rows"] == faces.face_glyph(default, "e", entry["height"], colour,
+                                                 entry["look"].get("shadow"))["rows"], role
+    generate.configuration({"devices": []}, directory=scaffold)
+    # a character neither face has (a rune) is still refused by name
     with pytest.raises(ValueError, match="cannot draw"):
-        generate.configuration({"devices": []}, directory=scaffold)
+        generate.configuration({"devices": [], "activities": [{"id": "1",
+                                                               "label": "\u16a0"}]},
+                               directory=scaffold)
 
 
 def test_a_font_file_that_is_not_truetype_is_refused_naming_the_file(tmp_path):

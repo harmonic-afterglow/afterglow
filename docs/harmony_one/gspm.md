@@ -1224,8 +1224,12 @@ As downstairs and upstairs build them (arch 12):
   (downstairs' amplifier waits `0x264` then `0x214`, 12 s). A device with one power command
   sends it both ways.
 - **`<Label>_Input_<n>`**, values 0 to n-1: inputs chosen directly get one transition each from
-  `0xFFFD` ("from any value") to the input, running its send; inputs reached by stepping get
-  one transition per ordered pair, stepping as many times as it takes.
+  "any value" to the input, running its send; inputs reached by stepping get one transition
+  per ordered pair, stepping as many times as it takes. Every input variable in upstairs and
+  in Kāt's configuration writes "any" as `0xFFFE`, and downstairs' amplifier does too; only
+  downstairs' television uses `0xFFFD`. An activity's tag 5 writes its inputs again to re-send
+  them, which only works if the transition fires on the value already held, so `0xFFFE` is
+  read as "from any value, the same included" and is what a build writes.
 - **Section 0 names them**: `Root` and `State` containers, then one leaf per state variable
   whose id is the variable's index - `TV_Power_2`, `TV_Input_11`, `CurrentLocation_1`,
   `CurrentActivityState_0_3`, `ButtonSoundVolume_2` (the Screen Sounds flag). No donor names
@@ -1253,7 +1257,8 @@ channel. Upstairs uses 15 channels:
 | `0x08`-`0x0C`, `0x10` | level 1 on every wake, 0 when the timer fires: the keypad itself |
 | `0x00`-`0x07` | zones a screen lights on entry and clears on leaving, level 1 |
 
-Which keys a zone lights is not known yet; the screens that light them are:
+Which keys a zone lights is not known yet; the screens that light them are, the same in
+all three household donors (every screen's enter handler, `one-tools`):
 
 | screen (upstairs) | zones |
 |---|---|
@@ -1261,8 +1266,14 @@ Which keys a zone lights is not known yet; the screens that light them are:
 | Options (276) | 1 3 5 |
 | Date and Time (176), Screen Sensitivity (104) | 5 |
 | the device list (72) | 0 2 4 |
-| a device's commands, one page | 0 2 4 6 |
-| a device's commands, several pages | 4 6 |
+| a device's commands, one page (88) | 4 6 |
+| a device's commands, several pages (97) | 0 2 4 6 |
+| an activity's screen, one page (153) | 7 |
+| an activity's screen, several pages (230) | 1 3 7 |
+
+So the arrows light only where there are pages to turn, and a softkey's bar only where the
+screen has that softkey. A first reading of this table swapped the two command rows, and
+generated images lit the arrows on single pages until the three donors were tabulated.
 
 Zones {0, 2} and {1, 3} never light together: each guards the other's flag.
 
@@ -1302,8 +1313,8 @@ holds the same codes:
 
 | event | factory image | upstairs |
 |---|---|---|
-| `0x26` charge state changed (USB in) | enter the USB screen (28) | beep `0x4664`; the charge byte (`1F E8`: 5 unless 13 is set and USB is in, 0 unless the battery is low, then 6); wake; push the mode, enter the USB screen (1), `07 FFFB`; if 13 is set start timer 7 (5 later: the charging screen 174) |
-| `0x27` charging stopped | enter screen 0 | beeps `4664 1FF 1FF 1FF 4664`; the charge byte; wake; if 13 and 15 are set, `3F F200`/`F201` by USB; pop the mode if the USB screen marked itself shown; `07 FFF6` when the battery is at 1 |
+| `0x26` charge state changed (USB in) | enter the USB screen (28) | beep `0x4664`; the charge context (`1F E8`: 5 unless 13 is set and USB is in, 0 unless the battery is low, then 6 - see below); wake; push the mode, enter the USB screen (1), `07 FFFB`; if 13 is set start timer 7 (5 later: the charging screen 174) |
+| `0x27` charging stopped | enter screen 0 | beeps `4664 1FF 1FF 1FF 4664`; the charge context; wake; if 13 and 15 are set, `3F F200`/`F201` by USB; pop the mode if the USB screen marked itself shown; `07 FFF6` when the battery is at 1 |
 | `0x10` | nothing | when the battery is at 2 or less, wake; `3F F200` if 13 and 16 are set |
 | `0x19` | nothing | `07 FFF6` |
 | `0x2D` | `07 FFFA` | `07 FFFA` |
@@ -1317,12 +1328,12 @@ when the flag is set, so unplugging never pops a screen the user opened themselv
 **Start-up** (upstairs' object `0x46C`, run by section 9's start-up list): `0F FFE1` four times,
 `3F F064`, silent resets (`07 FFFF` then a write) of its own flags, push contexts 1, `0xFE`,
 then the wake with `07 FFFB`, push `0xFD` (the current mode), `0xFC` and 4 (the key light); the
-charge byte; clear every zone flag; the wake; button sound flag to 0 and `3F F301`.
+charge context; clear every zone flag; the wake; button sound flag to 0 and `3F F301`.
 
 **How a generated image gets it.** `dabe16d` carried all of this from upstairs, cutting
 what led into donor screens to the null instruction: about 80 objects of donor logic. It is
 now generated: `backends/harmony_one/idle.py` builds the machine from the tables above - a
-flag per zone, a wake, the off and poll timers, the charge byte, the events, the USB
+flag per zone, a wake, the off and poll timers, the charge context, the events, the USB
 screen's shown flag, and enter and leave handlers per kind of screen - as a model in the
 carried-screens form, and `idle.attach` appends it to the Options model so one namespace
 holds both. Nothing about lights is in a project: a screen's zones follow from its kind.
@@ -1341,6 +1352,158 @@ light and darken the same zones as their upstairs counterparts. One ordering was
 the way: the carried start-up entered Activities before clearing the zone flags, so the
 first timeout lost Activities' zones; start-up now clears them first and enters last, as
 upstairs does.
+
+### Activities
+
+An activity is a value of `CurrentActivityState`, a context in section 10, and four kinds of
+screen; everything it does is a state write, as Danny Bloe's "how an activity is built"
+found and the three household donors agree. Read from upstairs, downstairs and Kāt's
+configuration with `one-tools/disasm.py` (contexts, modes and now switch tables), and
+checked where it matters against the Harmony 800's firmware:
+
+- **The counter.** `CurrentActivityState_0_<n+1>`: values 0 to n-1 are the activities and n
+  is nothing running, its initial value. Every "go back to what is running" is a section-15
+  switch on it: an activity's value enters its first page, the idle value the Activities
+  menu.
+- **Selecting.** `1F FFxx` selects context xx. The 800's handler (`FUN_0800b1b4`) runs the
+  old context's tag 2 and the new one's tag 1, or the running one's tag 5 when it is picked
+  again. A menu row is a click (`75 0FCA`) and the select; Off (`0xA5`, in the events
+  context) selects Off's context. `07 FFFE` runs the running context's tag 5 again.
+- **Enter (tag 1)**: enter the activity's starting screen, `07 FFFB` (stop every running
+  timer: the 800's `07` handler with low byte `FB` calls its timer reset), write 1 to the
+  power of each device it uses in order, its inputs, 0 to every other device's power, the
+  counter, then enter its first page. A transition sends each command; an activity names
+  none itself. **Leave (tag 2)**: `07 FFFB` and its leave steps. **Picked again (tag 5)**:
+  `07 FFFB`, its inputs again, its first page.
+- **Keys.** The context binds each key the activity routes - volume and mute to the volume
+  device, the rest to the control device, by each command's hard slot - to that command's
+  own object, as a device page binds it, and Help (`0xA6`) to its Help screen. A device page
+  binds every key of the keypad in its own list (a command, or nothing), so device mode
+  never falls through to the running activity; the stack is the donors': events (1), `0xFE`,
+  the current mode, `0xFC`, the key light, and start-up selects Off's context last.
+- **Off's context** has tags 1 and 5 and no tag 2, as every donor's has: the counter to
+  idle, `07 FFFB`, the Activities menu, every device's power to 0.
+- **Screens.** The starting screen draws the infrared waves (62x33 at 57,33), the
+  activity's icon (62x42 at 57,67), "Starting ..." in attribute 11 and "Keep the remote
+  pointed at your system." in attribute 0, and swallows every key. The activity's pages
+  are its buttons, six to a page on blue frames, a Devices softkey, the side strips turning
+  pages. Help draws its name, "Attempting to fix the problem...", the waves and the same
+  reminder; entering it re-sends what the activity set and goes back. The device list's and
+  device pages' left softkey reads "Current Activity" while one runs.
+
+**Keys by scan code.** A row binds key `0x80 | scan`. Danny's key table gives 32 scans;
+the rest are read here. Scan 34 (`0xA2`) opens the Activities menu from Kāt's events
+context, 37 (`0xA5`) selects Off's context in all three, 38 (`0xA6`) enters Help in every
+activity context, and 13 is the remaining keypad scan, `NumberEnter`. Danny left two pairs
+undecided because every activity binds both members the same way; upstairs' Xbox One page
+does not: scan 36 sends its `Chptr+` and 26 its `Chptr-`, while 27 and 29 send its
+direction keys, so 27/29 are `DirectionUp`/`DirectionDown` and 36/26 `UpArrow`/`DownArrow`.
+
+**Favourite channels.** Kāt's configuration opens a favourites activity on its favourites:
+a page of buttons, "Commands" on the left softkey and Devices on the right. Logitech tunes
+each one by writing a channel variable whose transition loads the number (`7A`) and runs
+the firmware's number sender (`1F F3`) over a digit table in section 17. A build sends the
+digits instead - the control device's digit commands, each followed by its key delay
+(`press_interkey`), then the confirm key (`channel_confirm`) - which sends the same codes
+without the table. A favourite's logo is composed onto the frame of the button place it is
+drawn in; a favourite without one shows its name. An activity with favourites and buttons
+opens on its favourites, the left softkey going between them ("Commands"/"Favorites"),
+lighting zones 5 and 7 as the donors' screens with both softkeys do.
+
+**The Remote Assistant.** Logitech's asks after a start whether everything turned on (Kāt's
+configuration says so in Finnish, tied to a counter), and its Help asks "Is the TV on? Yes /
+No" (upstairs' tutorial shows it). A build asks after every start and every Help while
+`RemoteAssistant_2` is set - Options' second page switches it, on to begin with - by ending
+the start with a switch on it. No asks about each device the activity turned on and then
+each input it set; No to one sends that device's power or input again - a toggle too, since
+the remote has just been told the device is off - and asks again; the last Yes opens the
+activity.
+
+**Options and the Tutorial.** Both household donors' Options have two pages: the Remote
+Assistant, the Tutorial and Date and Time, then Screen Sounds and Screen Sensitivity. A
+build with activities lays them out the same; without activities, Options is one page of
+Date and Time, Screen Sounds and Screen Sensitivity. Upstairs' Tutorial (its screens 206-223)
+is a chain of pages each moved on by the key it teaches - the right arrow, Activities, Help,
+Off, touching an activity - with the left arrow back and Exit out, its pictures Logitech's
+photographs of the remote. A build writes its own: eight pages of the catalogue's words,
+the first activity's own row to touch on the second, the keys it teaches bound in each
+page's own list so that pressing Help or Off there teaches rather than does, and Exit back
+to what is running.
+
+**Held steps.** A sequence step held for a duration becomes a record of its own: the
+command's press, then its repeat frame (or the press again) until the hold has lasted that
+long, then its release - the One holds a code only while a key is down, so this is how a
+sequence can give a television its two-second power-off. The record is in its device's
+section-4 run but on no screen.
+
+**Where a build improves on the donors.** Help re-sends a device's power only where it has
+a separate on and off command, since sending a toggle again turns a device off that Help
+was asked to fix; Logitech's Help resent toggles too. Off's Help likewise sends only
+discrete offs.
+
+**The pictures.** Activities are drawn in blue where devices are orange and Options green:
+the Activities menu's row frame and the six button frames, found from the menu screen and
+from the screens the counter's switches enter, and the waves, the one picture every
+starting screen shares, are extracted by `tools/harmony_one_extract_assets.py` as
+`activity/*`. An activity's icon is composed from its type's icon onto the patch of the
+frame or backdrop it is drawn over (`row_icons.py`).
+
+### What the 800's firmware says about the rest
+
+Instructions a build had carried from the donors without knowing what they do, read in
+the Harmony 800's firmware (`discord_reports/asdfgpio/ghidra`, decompiled with
+`decomp_at.sh`) and each checked against what the donors do with it:
+
+- **The key stack.** A key or event (`0x65` in the queue, `FUN_0800b154`) is looked up from
+  the top of the stack down, and the first context that answers it ends the search. An
+  entry is a context number, or one of three that stand for something else: `0xFE` the
+  running context (the one `1F FFxx` selected), `0xFD` the shown screen's lists, `0xFC` the
+  context in the byte `1F E8xx` sets. Every donor pushes events (1), `0xFE`, `0xFD`, `0xFC`
+  and the key light, so a running activity answers below the screen and above the events.
+- **`1F E8xx` is not a charge byte.** It puts context xx under `0xFC`. The donors choose
+  among three on every charging event: 0 normally, 5 on USB, 6 on a low battery. All three
+  donors' contexts 0, 5 and 6 are the same: 0 and 6 choose again on battery events
+  `0x1A`-`0x1D` and `0x18`/`0x19`, 5 stops the timers on `0x1E`, every row passed on. A
+  build writes `E8` with its own numbers for the same three (`CHARGE_CONTEXTS`), and the
+  platform model names them (`{"charge": "usb"}`) rather than carrying upstairs' numbers;
+  `one-tools/refcheck.py` checks every `E8` names a context. Before this, generated images
+  selected 5 and 6 with nothing there, which mattered only once `0xFC` was on the stack.
+- **`07` with low byte:** `FF` the next write is silent; `FE` runs the running context's
+  tag 5; `FD`/`FC` push and pop the mode; `FB` stops every running timer - the firmware runs
+  at most four, in the same slots `1F EB` starts them in; `FA` marks the USB link (the
+  donors' answer to event `0x2D`, a USB change); `F7` redraws the page; `F6` drops the top
+  of the mode stack without entering it.
+- **`3F F0`-`FF` are the firmware's settings**, `index = high & 0xF`: 0 is 10 at reset and
+  every donor sets 100 first thing (the handbook reads it as the timers' unit); 1 arms the
+  motion sensor, so the next movement posts event `0x17` once and disarms - upstairs writes
+  `F101` as the keypad goes dark, which is how picking the remote up wakes it; 3 is the
+  button sound (`F300`/`F301`, what Screen Sounds writes); 4, 6 and 7 are bytes the 800
+  starts at 75, 50 and 21. Setting 2 (`F200`/`F201`, written with USB) has no handler on
+  the 800, so it is the One's own.
+- **`3F D0`** queues the next instruction's bytes for the host link; the donors' activities
+  run `3F D000`, a build does not.
+- **`0F FFE1`/`FFE3`**, which both donors run on the motion event, do nothing on the 800;
+  they are the One's own and stay as upstairs has them.
+- **Platform variable 17 is the infrared engine's state**: the 800's sender sets it to 1
+  while a wait holds, 2 while a code goes out, 3 while one finishes, and back to 0 idle
+  (`FUN_0800c77c` and its callers). The idle layer's arm step tests it, so the keypad's off
+  timer follows whether infrared is going out. Setting 1 (`3F F1`) is variable 7.
+- **The instruction queue holds 40 and drops what does not fit** (`FUN_0800ae3e`, a ring of
+  120 bytes). A send or a wait the infrared side cannot take yet puts itself back at the
+  head and is tried again, which is why a starting screen stays up until its codes are out.
+  Running an object puts all of its atoms at the head at once (`FUN_08018e2c`, then
+  `FUN_0800b18e` moving them in front), so a long object queues deep: `one-tools/queue_depth.py`
+  runs every handler that way, and no handler in the three household donors goes past 16.
+  A build cuts every object longer than eight atoms into a chain of short ones
+  (`generate.bounded_objects`, never after a test or a silent mark) and shares identical
+  touch templates (section 19 indexes 255); a test checks a fifteen-device project stays
+  within 16. Before this, a generated Options picker queued 28.
+- **Text codes past 0x7F take two bytes**: the 800's text VM reads a byte with its high bit
+  set and the next as `((first << 8) | second) & 0x7FFF`, one less than that indexing the
+  font's glyph table, whose count every donor stores as a `u16`. So a slot can hold more
+  than 127 characters; a build numbers each slot's characters from 1 and writes codes past
+  0x7F that way (`drawing.GlyphCodes`). The second byte may be zero, so a reader skips it
+  rather than taking it for the terminator. Not yet seen on a One.
 
 ### Labels that do not fit
 
@@ -1449,8 +1612,8 @@ and 16 pixels in each colour the interface uses. The manifest gives each slot it
 and its `look` (colour and shadow), and `faces.py` draws each glyph as a shape and shades
 it. Galmuri 9 fills the 14-, 15- and 16-pixel slots and Galmuri 7 the 11-pixel ones (the
 clock and page counters); both are bitmap fonts, read from gzipped BDF by `afterglow.bdf`
-and placed one font pixel to a screen pixel. An owner's `fonts/font.ttf` replaces them,
-read by `afterglow.ttf`: a pixel TrueType font is drawn on its own grid, any other outline
+and placed one font pixel to a screen pixel. An owner's `fonts/font.ttf` replaces them -
+any character it lacks still drawn from Galmuri - read by `afterglow.ttf`: a pixel TrueType font is drawn on its own grid, any other outline
 font scaled to the slot's cap height and thresholded, since the display cannot blend.
 
 PNG is read by `afterglow.imaging`, which uses only `zlib` and `struct` from the standard

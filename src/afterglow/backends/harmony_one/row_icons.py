@@ -57,15 +57,16 @@ def fitted(width: int, height: int, box=FIT) -> tuple[int, int]:
 
 
 def compose(frame: list[list[tuple]], at: tuple[int, int], size: tuple[int, int],
-            icon: list[list[tuple]]) -> list[list[tuple]]:
-    """The ``size`` patch of ``frame`` at ``at``, with ``icon`` scaled into it and blended
-    over it. Where the frame itself is transparent the patch stays transparent, unless the
-    icon covers it."""
+            icon: list[list[tuple]], box=FIT) -> list[list[tuple]]:
+    """The ``size`` patch of ``frame`` at ``at``, with ``icon`` scaled into ``box`` and
+    blended over it. Where the frame itself is transparent the patch stays transparent,
+    unless the icon covers it. The same blend puts an activity's icon on the backdrop of
+    the screen it starts on."""
     x0, y0 = at
     width, height = size
     patch = [[frame[y0 + y][x0 + x] if y0 + y < len(frame) and x0 + x < len(frame[0])
               else (0, 0, 0, 0) for x in range(width)] for y in range(height)]
-    icon = scale(icon, *fitted(len(icon[0]), len(icon)))
+    icon = scale(icon, *fitted(len(icon[0]), len(icon), box))
     left, top = (width - len(icon[0])) // 2, (height - len(icon)) // 2
     for y, line in enumerate(icon):
         for x, (r, g, b, a) in enumerate(line):

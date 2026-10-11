@@ -102,9 +102,11 @@ class _Model:
         return len(self.modes) - 1
 
     def text(self, text, attribute, x, y, room=SCREEN_WIDTH, centre=None) -> list[dict]:
+        if centre is None:
+            room = min(room, SCREEN_WIDTH - x)    # text placed from x stops at the edge
         glyphs, width = self.label(text, attribute, room)
         if centre is not None:
-            x = centre[0] + (centre[1] - width) // 2
+            x = max(0, centre[0] + (centre[1] - width) // 2)
         return [{"opcode": "attribute", "value": attribute},
                 {"opcode": "inline_text", "x": x, "y": y, "glyphs": glyphs}]
 
@@ -202,7 +204,8 @@ def build(label, year: int, words=None) -> dict:
         if total > 1:
             glyphs, width = m.label(str(number + 1), COUNTER_FONT, SCREEN_WIDTH)
             items += [{"opcode": "attribute", "value": COUNTER_FONT},
-                      {"opcode": "inline_text", "x": PAGE_SLASH_X - width, "y": COUNTER_Y,
+                      {"opcode": "inline_text", "x": max(0, PAGE_SLASH_X - width),
+                       "y": COUNTER_Y,
                        "glyphs": glyphs}]
             items += m.text("/", COUNTER_FONT, PAGE_SLASH_X, COUNTER_Y)[1:]
         return m.block(items + [{"opcode": "end"}])

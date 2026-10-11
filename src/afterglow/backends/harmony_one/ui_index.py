@@ -40,7 +40,8 @@ def _relative(payload: bytes, offset: int, label: str, *, allow_zero: bool = Fal
 def _terminated_glyphs(payload: bytes, offset: int) -> bytes:
     if not 0 <= offset < len(payload):
         raise ValueError(f"glyph string starts outside the GSPM image: {offset:#x}")
-    end = payload.find(b"\x00", offset)
+    from .drawing import glyphs_end
+    end = glyphs_end(payload, offset)
     if end < 0:
         raise ValueError(f"glyph string at {offset:#x} has no terminator")
     return payload[offset:end]
@@ -106,7 +107,8 @@ def drawing_program(payload: bytes, offset: int, *, limit: int = 400) -> dict:
             if cursor + 2 > len(payload):
                 stopped = "truncated"
                 break
-            end = payload.find(b"\x00", cursor + 2)
+            from .drawing import glyphs_end
+            end = glyphs_end(payload, cursor + 2)
             if end < 0:
                 stopped = "truncated"
                 break

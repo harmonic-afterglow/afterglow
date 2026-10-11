@@ -29,7 +29,8 @@ from pathlib import Path
 
 from . import activity_index, authoring, drawing, font_index, gspm, records, scaffold
 from . import idle as idle_machine
-from . import catalogue, platform_text
+from . import activities as activity_plan
+from . import catalogue, keys, platform_text
 
 
 HEADER_SIZE = 0x68
@@ -192,7 +193,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
              tail: bytes | None = None, fonts=(), pictures=(), engine=(),
              devices=(), templates=None, label_font: int | None = None,
              softkey_fonts: dict | None = None, options: dict | None = None,
-             system: dict | None = None, words=None) -> bytes:
+             system: dict | None = None, words=None, activities: dict | None = None) -> bytes:
     """Emit the smallest configuration this backend can build without reading one.
 
     No devices, no activities and no status overlays, which is what the factory image
@@ -295,6 +296,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             return (value["test"] << 8) | _carried_variable(value["variable"])
         if "register" in value:
             return (value["register"] << 8) | _carried_variable(value["variable"])
+        if "charge" in value:
+            return (value["band"] << 8) | CHARGE_CONTEXTS[value["charge"]]
         raise ValueError(f"a carried screen names {value!r}")
 
     def _carried_category(value):
@@ -361,6 +364,42 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             # the command object a wrapper calls, which is what a state change sends
             command["object_index"] = wrapper - 1
 
+    # Each device's power and input as state variables, as every donor has them: a
+    # transition sends what changing the state takes. They follow the platform's and
+    # the Options screens' variables in section 14, before the terminator, and the
+    # activity counter follows them.
+    engine_records_base = list(engine)
+    device_variables = []
+    device_slots = []          # per device: the variable index of its power and input
+    first_device_variable = (len(engine) - 1 + (len(carried["variables"]) if carried else 0)
+                             if engine else None)
+    if engine:
+        for device in devices:
+            records_ = device_state_records(device, _object)
+            kinds = ["power"] * bool(device.get("power"))
+            kinds += ["input"] * (len(records_) - len(kinds))
+            slots = {}
+            for kind, (name, record) in zip(kinds, records_):
+                slots[kind] = first_device_variable + len(device_variables)
+                device_variables.append((name, record))
+            device_slots.append(slots)
+    # Activities need the idle layer's contexts and somewhere to count them.
+    acts = list((activities or {}).get("activities") or []) if (
+        hub and carried and "idle" in carried and engine) else []
+    state_variable = None
+    if hub and carried and "idle" in carried and engine and activities is not None:
+        # `CurrentActivityState`: each activity is a value, and the one past them is
+        # nothing running, the value it starts at - section 0 names it, as the donors do.
+        state_variable = first_device_variable + len(device_variables)
+        device_variables.append((f"CurrentActivityState_0_{len(acts) + 1}", {
+            "initial": len(acts), "limit": len(acts), "padding": 0, "transitions": []}))
+    assistant_variable = None
+    if acts:
+        # Whether the Remote Assistant asks after each start: on until Options turns it off.
+        assistant_variable = first_device_variable + len(device_variables)
+        device_variables.append(("RemoteAssistant_2", {
+            "initial": 1, "limit": 1, "padding": 0, "transitions": []}))
+
     # The object every owned page's fragment queues to draw status overlays 3 and 0.
     status_object = (_object(object_body([(3, DRAW_OVERLAY), (0, DRAW_OVERLAY)]))
                      if system and len(system["overlays"]) >= 4 else None)
@@ -410,7 +449,9 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     if all(role in roles for role in frame_roles) and frame_roles and font is not None:
         geometry = touch_templates() if templates is None else templates
         for device in devices:
-            commands = device["commands"]
+            # a held code an activity sends has a record but no button
+            commands = [command for command in device["commands"]
+                        if not command.get("hidden")]
             for first in range(0, len(commands), len(BUTTON_POSITIONS)):
                 pages.append((device, commands[first:first + len(BUTTON_POSITIONS)],
                               geometry))
@@ -459,7 +500,12 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         return addresses
 
     def _template(zones):
-        template_zones.append(list(zones))
+        # pages with the same zones share a template, as the donors' do: section 19
+        # indexes at most 255
+        zones = list(zones)
+        if zones in template_zones[fixed_templates:]:
+            return fixed_templates + template_zones[fixed_templates:].index(zones)
+        template_zones.append(zones)
         return len(template_zones) - 1
 
     # The firmware's own screens come first, at the ordinals and template indices it looks
@@ -467,9 +513,12 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     # their physical keys lead into the donor's help flow and are not carried. Each one's
     # page program opens by calling a fragment no other program calls, which is the
     # fragment its mode carries after its list.
+    fixed_templates = 0
     if system:
+        # the firmware's screens name their templates by index, so these are all kept
         for zones in system["templates"]:
-            _template(zones)
+            template_zones.append(list(zones))
+        fixed_templates = len(template_zones)
         measured = system_blocks(system, {role: 0 for role in roles}, first_platform_object)
         drawn.update(item["target"]["picture"] for block in system["blocks"] for item in block
                      if isinstance(item.get("target"), dict) and "picture" in item["target"])
@@ -540,6 +589,42 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         device_index: menu_ordinals[position // MENU_ROWS_PER_PAGE]
         for position, device_index in enumerate(menu_devices)
     } if menu_page_count else {}
+    # Then the activities' screens, in the order they are emitted: the Activities menu's
+    # pages after its first (which is the home screen), then each activity's starting
+    # screen, its pages of buttons and its Help screen, then Help with nothing running.
+    activity_menu_pages = max(1, -(-len(acts) // MENU_ROWS_PER_PAGE))
+    activity_menu_ordinals = ([home_ordinal]
+                              + list(range(cursor, cursor + activity_menu_pages - 1)))
+    cursor += activity_menu_pages - 1
+    # Each activity: starting, its favourites' pages, its buttons' pages, Help, the
+    # Remote Assistant's question and then one per device and input it asks about.
+    act_screens = []
+
+    def _take(count):
+        nonlocal cursor
+        cursor += count
+        return list(range(cursor - count, cursor))
+    for act in acts:
+        favourite_pages = -(-len(act["favourites"]) // len(BUTTON_POSITIONS))
+        command_pages = -(-len(act["buttons"]) // len(BUTTON_POSITIONS))
+        if not favourite_pages:
+            command_pages = max(1, command_pages)
+        asked = ([("power", index) for index in act["on"] if "power" in device_slots[index]]
+                 + [("input", index, value) for index, value in act["inputs"]
+                    if "input" in device_slots[index]])
+        screens = {"start": _take(1)[0], "favourites": _take(favourite_pages),
+                   "pages": _take(command_pages), "help": _take(1)[0],
+                   "prompt": _take(1)[0], "questions": _take(len(asked)), "asked": asked}
+        screens["home"] = (screens["favourites"] or screens["pages"])[0]
+        act_screens.append(screens)
+    off_help_ordinal = _take(1)[0] if acts else None
+    # Options' second page, with the Remote Assistant's switch.
+    options_more_ordinal = _take(1)[0] if acts else None
+    tutorial_ordinals = _take(len(TUTORIAL)) if acts else []
+    # The idle layer's contexts are 1 and 2, then its charge contexts; each activity's
+    # follows, then Off's.
+    activity_context = CHARGE_CONTEXTS["low"] + 1
+    off_context = activity_context + len(acts)
 
     def _screen_handlers(kind):
         """The platform's enter, leave and redraw for a screen of ``kind``, its enter and
@@ -552,13 +637,17 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 if f"{tag:#04x}" in screens[kind] else (tag, operand, category)
                 for tag, operand, category in owned_handlers]
 
-    def _owned_mode(rows, zones, build, kind=None, title=None, page=None):
+    def _owned_mode(rows, zones, build, kind=None, title=None, page=None, keys=(),
+                    on_enter=None):
         """Reserve a mode this image owns: the platform's handlers, then a fragment
         drawing the backdrop, then the page program, which calls it and draws the rest.
         ``build(picture, prologue)`` returns the page program's instructions, and
         ``kind`` names which keypad zones the screen lights (idle.SCREEN_ZONES) and the
         fonts its ``title`` is drawn in. ``page`` is `(index, total)` for one page of a
-        screen that has several, which are numbered as the donors number theirs."""
+        screen that has several, which are numbered as the donors number theirs.
+        ``keys`` are rows for the physical keys, bound in the mode's own list, and
+        ``on_enter`` is `(before, after)`, instructions run either side of the
+        platform's own enter handler when the screen is entered."""
         backdrop = "backdrop" in roles
         title_font, counter_font = TITLE_FONTS.get(kind, (None, None))
         titled = (title is not None and title_font is not None and fonts is not None
@@ -575,7 +664,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             [glyphs] = fit_label(text, fonts[counter_font], SCREEN_WIDTH, lines=1)
             widths, _codes = _measure(fonts[counter_font])
             if right:
-                x -= sum(widths[code] for code in glyphs)
+                x = max(0, x - sum(widths[code] for code in glyphs))
             return {"opcode": "inline_text", "x": x, "y": PAGE_COUNTER_Y,
                     "glyphs": glyphs.hex()}
 
@@ -616,7 +705,14 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         # address standing at zero.
         sizes = [len(drawing.encode_program(item(_draws, 0 if backdrop else None)))
                  for item in builds]
-        [placed] = _mode(authoring.key_register(_screen_handlers(kind)), 0,
+        handlers = _screen_handlers(kind)
+        if on_enter is not None:
+            before, after = on_enter
+            handlers = [(tag, _atoms_object(list(before) + [(operand, category)]
+                                            + list(after)), OBJECT_ATOM)
+                        if tag == ENTER else (tag, operand, category)
+                        for tag, operand, category in handlers]
+        [placed] = _mode(authoring.key_register(handlers + list(keys)), 0,
                          [(template, rows, sizes)])
         prologue = placed[0] if backdrop else None
         for at, item in zip(placed, builds):
@@ -655,56 +751,41 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         drawn.update(carried["row_frames"])
 
         # The Options screen: the working entries on the rows upstairs draws them on,
-        # labelled in its row font, with Screen Sounds' label read off its own flag.
+        # labelled in its row font, a switch's label read off its own flag. With
+        # activities it has Logitech's two pages: the Remote Assistant, the Tutorial and
+        # Date and Time, then Screen Sounds and Screen Sensitivity.
         sounds = carried["sounds"]["switch"]
-        entries = [
-            (words("options.date-and-time"),
-             _navigation(carried_first + carried["entries"]["date-and-time"])),
-            (None, _object(object_body([(_carried_operand(sounds), 0x72)]))),
-            (words("options.screen-sensitivity"),
-             _navigation(carried_first + carried["entries"]["screen-sensitivity"])),
-        ]
-        rows = [(MENU_ROW_KEYS[index], target, OBJECT_ATOM)
-                for index, (_label, target) in enumerate(entries)]
-        rows.append((MENU_ACTIVITIES_KEY, _navigation(home_ordinal), OBJECT_ATOM))
-        row_font = fonts[OPTIONS_FONT]
-        widths, _codes = _measure(row_font)
-
-        def centred(text, row, xy=None):
-            [glyphs] = fit_label(text, row_font, OPTIONS_LABEL_ROOM, lines=1)
-            width = sum(widths[code] for code in glyphs)
-            x = MENU_FRAME_XY[row][0] + (OPTIONS_FRAME_WIDTH - width) // 2
-            return {"opcode": "inline_text", "x": x, "y": MENU_LABEL_XY[row][1],
-                    "glyphs": glyphs.hex()}
-
-        sounds_labels = (words("options.sounds-off"), words("options.sounds-on"))
-        for value, text in enumerate(sounds_labels):
-            extra_blocks[OPTIONS_BLOCK + value] = [
-                {"opcode": "attribute", "value": OPTIONS_FONT}, centred(text, 1),
-                {"opcode": "end"}]
-
-        def options_program(picture, prologue):
-            program = [] if prologue is None else [{"opcode": "call", "target": prologue}]
-            for row, role in enumerate(carried["row_frames"]):
-                program.append({"opcode": "bitmap", "x": MENU_FRAME_XY[row][0],
-                                "y": MENU_FRAME_XY[row][1], "target": picture(role)})
-            program.append({"opcode": "attribute", "value": OPTIONS_FONT})
-            program += [centred(words("options.date-and-time"), 0),
-                        centred(words("options.screen-sensitivity"), 2)]
-            program = _softkeys(program + [{"opcode": "end"}], ["activities"])[:-1]
-            # Screen Sounds last: its label is a switch on the flag, and each case ends
-            # the program, so nothing has to come back from it.
-            program.append({"opcode": "switch", "selector": _carried_variable(
-                sounds["variable"]), "cases": [(value, OPTIONS_BLOCK + value)
-                                               for value in range(len(sounds_labels))],
-                "ranges": []})
-            return program + [{"opcode": "end"}]
-        _owned_mode(rows, menu_template(), options_program, "options",
-                    words("options.title"))
+        sounds_row = ("switch", _carried_variable(sounds["variable"]),
+                      {0: words("options.sounds-off"), 1: words("options.sounds-on")},
+                      _object(object_body([(_carried_operand(sounds), 0x72)])))
+        date_row = ("open", words("options.date-and-time"),
+                    _navigation(carried_first + carried["entries"]["date-and-time"]))
+        sensitivity_row = ("open", words("options.screen-sensitivity"),
+                           _navigation(carried_first
+                                       + carried["entries"]["screen-sensitivity"]))
+        if options_more_ordinal is None:
+            options_pages.append([date_row, sounds_row, sensitivity_row])
+        else:
+            redraw = {"opcode": "atom", "operand": options_ordinal, "category": ENTER_MODE}
+            toggle = _act_group([
+                (value, _act_block([{"opcode": "atom", "operand": 1 - value,
+                                     "category": 0x80 | assistant_variable}, redraw,
+                                    {"opcode": "end"}])) for value in (0, 1)])
+            assistant_row = ("switch", assistant_variable,
+                             {0: words("options.assistant-on"),
+                              1: words("options.assistant-off")},
+                             _object(object_body([(authoring.IR_OBJECT_KIND_FALLBACK, 0x75),
+                                                  ((toggle << 8) | assistant_variable,
+                                                   0x72)])))
+            tutorial_row = ("open", words("options.tutorial"),
+                            _navigation(tutorial_ordinals[0]))
+            options_pages.extend([[assistant_row, tutorial_row, date_row],
+                                  [sounds_row, sensitivity_row]])
+        _options_page(0)
 
         templates_base = len(template_zones)
-        for zones in carried["templates"]:
-            _template(zones)
+        for zones in carried["templates"]:      # named by position: kept as they are
+            template_zones.append(list(zones))
         for index, mode in enumerate(carried["modes"]):
             pages, blocks = [], []
             for page in mode["pages"]:
@@ -721,8 +802,258 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                     extra_copies.append((CARRIED_BLOCK + block, at))
 
     extra_copies = []
+    activity_groups, activity_blocks = [], []
 
-    if hub:
+    def _act_block(block):
+        """A drawing block a switch runs, placed with the carried screens' blocks."""
+        at = ACTIVITY_BLOCK + len(activity_blocks)
+        activity_blocks.append(at)
+        extra_blocks[at] = block
+        return at
+
+    def _act_group(cases, ranges=()):
+        """A section-15 switch table, numbered after the carried screens' tables."""
+        activity_groups.append({"lead": 2, "cases": list(cases), "ranges": list(ranges)})
+        return len(carried["groups"]) + len(activity_groups) - 1
+
+    def _atoms_object(atoms):
+        """An object running ``atoms``; one holds 255, so a longer list is split into
+        objects run one after another."""
+        atoms = list(atoms)
+        if len(atoms) <= 0xFF:
+            return _object(object_body(atoms))
+        parts = [_atoms_object(atoms[at:at + 0xFF]) for at in range(0, len(atoms), 0xFF)]
+        return _atoms_object([(part, OBJECT_ATOM) for part in parts])
+
+    command_objects = {(device["index"], command["command_id"]): command
+                       for device in devices for command in device["commands"]}
+
+    def _step_atoms(steps):
+        """A plan's steps (activities.py) as instructions: a send runs the command's
+        object, a wait holds that device's next send, an input writes its variable."""
+        out = []
+        for step in steps:
+            if step[0] == "send":
+                out.append((command_objects[(step[1], step[2])]["object_index"],
+                            OBJECT_ATOM))
+            elif step[0] == "wait":
+                out += _waits(step[1], step[2])
+            elif step[0] == "input" and "input" in device_slots[step[1]]:
+                out.append((step[2], 0x80 | device_slots[step[1]]["input"]))
+        return out
+
+    def _key_target(steps):
+        """What a key bound to ``steps`` runs: one send is the command's own object,
+        as a device page binds it; anything else an object of its own."""
+        if len(steps) == 1 and steps[0][0] == "send":
+            return command_objects[(steps[0][1], steps[0][2])]["object_index"]
+        return _atoms_object(_step_atoms(steps))
+
+    def _power_writes(indices, value):
+        return [(value, 0x80 | device_slots[index]["power"]) for index in indices
+                if "power" in device_slots[index]]
+
+    def _input_writes(inputs):
+        return [(value, 0x80 | device_slots[index]["input"]) for index, value in inputs
+                if "input" in device_slots[index]]
+
+    def _direct_power(indices, on, toggles=False):
+        """Help's sends: each device's own power command, straight, for the devices
+        that have one for each way - a toggle sent again would undo what it fixes. With
+        ``toggles``, a toggle too: the Remote Assistant has been told the device is off."""
+        out = []
+        for index in indices:
+            power = devices[index].get("power")
+            if not power or (power["on"] == power["off"] and not toggles):
+                continue
+            command = power["on"] if on else power["off"]
+            out.append((command_objects[(index, command)]["object_index"], OBJECT_ATOM))
+            if on:
+                out += _waits(index, power["delay_ms"])
+        return out
+
+    # Back to what is running: an activity's first page, or the Activities menu.
+    current_group = resume_group = None
+    if state_variable is not None:
+        current_group = _act_group(
+            [(value, _act_block([{"opcode": "atom", "operand": screens["home"],
+                                  "category": ENTER_MODE}, {"opcode": "end"}]))
+             for value, screens in enumerate(act_screens)]
+            + [(len(acts), _act_block([{"opcode": "atom", "operand": home_ordinal,
+                                        "category": ENTER_MODE}, {"opcode": "end"}]))])
+        # From the Activities menu, its key goes back to a running activity only.
+        resume_group = _act_group(
+            [(value, _act_block([{"opcode": "atom", "operand": screens["home"],
+                                  "category": ENTER_MODE}, {"opcode": "end"}]))
+             for value, screens in enumerate(act_screens)]) if acts else None
+
+    def _back_to_current():
+        return _object(object_body([(authoring.IR_OBJECT_KIND_FALLBACK, 0x75),
+                                    ((current_group << 8) | state_variable, 0x72)]))
+
+    current_labels = {}
+
+    def _softkeys_with_current(program, others):
+        """Softkeys whose left one reads "Current Activity" while an activity runs and
+        "Activities" when none does: a switch on the counter, drawn last so each case
+        can end the program."""
+        program = _softkeys(program, others)[:-1]
+        attribute = softkey_fonts["activities"]
+        # Made once: a page program is built again after the blocks are laid out, and a
+        # block made then would never be given an address.
+        blocks = current_labels
+        for name in ("activities", "current-activity"):
+            if name not in blocks:
+                blocks[name] = _act_block(
+                    softkey_label(words(f"softkey.{name}"), fonts[attribute], attribute,
+                                  SOFTKEYS["activities"]) + [{"opcode": "end"}])
+        return program + [{"opcode": "switch", "selector": state_variable,
+                           "cases": [(len(acts), blocks["activities"])],
+                           "ranges": ([(0, len(acts) - 1, blocks["current-activity"])]
+                                      if acts else [])},
+                          {"opcode": "end"}]
+
+    options_pages = []
+
+    def _options_page(page_index):
+        """One page of Options: up to three rows on its row frames, each opening a
+        screen or flipping a switch whose label is read off its variable - drawn last,
+        since each case ends the program. The side strips turn the pages."""
+        entries = options_pages[page_index]
+        total = len(options_pages)
+        ordinals = [options_ordinal, options_more_ordinal][:total]
+        rows = [(MENU_ROW_KEYS[row], entry[-1], OBJECT_ATOM)
+                for row, entry in enumerate(entries)]
+        rows.append((MENU_ACTIVITIES_KEY, _navigation(home_ordinal), OBJECT_ATOM))
+        if total > 1:
+            other = _navigation(ordinals[(page_index + 1) % total])
+            rows += [(SIDE_PREV_KEY, other, OBJECT_ATOM), (SIDE_NEXT_KEY, other, OBJECT_ATOM)]
+        row_font = fonts[OPTIONS_FONT]
+        widths, _codes = _measure(row_font)
+
+        def centred(text, row):
+            [glyphs] = fit_label(text, row_font, OPTIONS_LABEL_ROOM, lines=1)
+            width = sum(widths[code] for code in glyphs)
+            return {"opcode": "inline_text",
+                    "x": MENU_FRAME_XY[row][0] + (OPTIONS_FRAME_WIDTH - width) // 2,
+                    "y": MENU_LABEL_XY[row][1], "glyphs": glyphs.hex()}
+        switch = None
+        for row, entry in enumerate(entries):
+            if entry[0] == "switch":
+                switch = {"opcode": "switch", "selector": entry[1], "ranges": [],
+                          "cases": [(value, _act_block([
+                              {"opcode": "attribute", "value": OPTIONS_FONT},
+                              centred(text, row), {"opcode": "end"}]))
+                              for value, text in sorted(entry[2].items())]}
+
+        def program(picture, prologue):
+            out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
+            for row, _entry in enumerate(entries):
+                out.append({"opcode": "bitmap", "x": MENU_FRAME_XY[row][0],
+                            "y": MENU_FRAME_XY[row][1],
+                            "target": picture(carried["row_frames"][row])})
+            out.append({"opcode": "attribute", "value": OPTIONS_FONT})
+            out += [centred(entry[1], row) for row, entry in enumerate(entries)
+                    if entry[0] == "open"]
+            out = _softkeys(out + [{"opcode": "end"}], ["activities"])[:-1]
+            return out + ([switch] if switch else []) + [{"opcode": "end"}]
+        _owned_mode(rows, menu_template(), program, "options", words("options.title"),
+                    (page_index, total) if total > 1 else None)
+
+    def _tutorial():
+        """The Tutorial, in its own words: a page per thing to learn, each moved on by
+        the key it teaches - bound in the page's own list, so pressing Help or Off here
+        teaches rather than does - the left arrow back, Exit back to what is running."""
+        exit_row = (PAGE_DEVICES_KEY, _back_to_current(), OBJECT_ATOM)
+        zones = [zone for zone in menu_template() if zone["tag"] in (0x2E, 0x2F, 0x32)]
+        zones.append(dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F))
+        first = acts[0]
+        row_frame = "activity/row-frame" if "activity/row-frame" in roles else "row-frame"
+        widths, _codes = _measure(fonts[HELP_FONT])
+
+        def paragraphs(text):
+            out, y = [{"opcode": "attribute", "value": HELP_FONT}], TUTORIAL_TOP
+            for paragraph in text.split("\n"):
+                for glyphs in fit_label(paragraph, fonts[HELP_FONT], EMPTY_MESSAGE_WIDTH,
+                                        TUTORIAL_LINES):
+                    width = sum(widths[code] for code in glyphs)
+                    out.append({"opcode": "inline_text", "x": (SCREEN_WIDTH - width) // 2,
+                                "y": y, "glyphs": glyphs.hex()})
+                    y += LINE_SPACING
+                y += LINE_SPACING // 2
+            return out
+
+        for number, ((key, advance), ordinal) in enumerate(zip(TUTORIAL, tutorial_ordinals)):
+            following = tutorial_ordinals[number + 1] if number + 1 < len(TUTORIAL) else None
+            onward = _navigation(following) if following is not None else None
+            text = (words(key, activity=first["label"]) if key == "tutorial.activities"
+                    else words(key))
+            rows, mode_keys = [exit_row], []
+            if number:
+                rows.append((SIDE_PREV_KEY, _navigation(tutorial_ordinals[number - 1]),
+                             OBJECT_ATOM))
+            if advance == "next":
+                rows.append((SIDE_NEXT_KEY, onward, OBJECT_ATOM))
+            elif advance == "touch":
+                rows.append((MENU_ROW_KEYS[2], onward, OBJECT_ATOM))
+            elif advance in ("activities", "help", "off"):
+                scan = {"activities": keys.ACTIVITIES, "help": keys.HELP, "off": keys.OFF}
+                mode_keys.append((keys.code(scan[advance]), onward, OBJECT_ATOM))
+            # the keys the flow owns do nothing else while the Tutorial is shown
+            mode_keys += [(keys.code(scan), 0, 0) for scan in (keys.ACTIVITIES, keys.HELP,
+                                                                keys.OFF)
+                          if keys.code(scan) not in {row[0] for row in mode_keys}]
+
+            def program(picture, prologue, text=text, advance=advance):
+                out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
+                if advance == "touch":
+                    # the first activity's own row, to touch
+                    out += menu_page([first["label"]], picture(row_frame),
+                                     [first.get("icon") and picture(first["icon"])], font,
+                                     attribute=label, label_room=row_label_room,
+                                     rows=(2,))[:-1]
+                out += paragraphs(text)
+                return _softkeys(out + [{"opcode": "end"}], ["exit"])
+            _owned_mode(rows, zones, program, "tutorial", words("tutorial.title"),
+                        (number, len(TUTORIAL)), keys=mode_keys)
+
+    def _activity_menu_page(page_index):
+        """One page of the Activities menu: up to three activities, each row starting
+        its activity by selecting its context, on the activities' own row frame."""
+        total = len(activity_menu_ordinals)
+        on_page = list(range(page_index * MENU_ROWS_PER_PAGE,
+                             min(len(acts), (page_index + 1) * MENU_ROWS_PER_PAGE)))
+        rows = [(MENU_ROW_KEYS[slot], _object(object_body([
+                    (authoring.IR_OBJECT_KIND_FALLBACK, 0x75),
+                    (0xFF00 | (activity_context + index), 0x1F)])), OBJECT_ATOM)
+                for slot, index in enumerate(on_page)]
+        rows.append((MENU_OPTIONS_KEY, _navigation(options_ordinal), OBJECT_ATOM))
+        rows.append((MENU_DEVICES_KEY, _navigation(menu_ordinals[0]), OBJECT_ATOM))
+        if total > 1:
+            rows.append((SIDE_PREV_KEY, _navigation(
+                activity_menu_ordinals[(page_index - 1) % total]), OBJECT_ATOM))
+            rows.append((SIDE_NEXT_KEY, _navigation(
+                activity_menu_ordinals[(page_index + 1) % total]), OBJECT_ATOM))
+        zones = menu_template() + [dict(SOFTKEY_RIGHT_ZONE, tag=MENU_DEVICES_KEY & 0x7F)]
+        frame_role = "activity/row-frame" if "activity/row-frame" in roles else "row-frame"
+        labels = [acts[index]["label"] for index in on_page]
+        icons = [acts[index].get("icon") for index in on_page]
+
+        def program(picture, prologue, labels=labels, icons=icons):
+            built = menu_page(labels, picture(frame_role),
+                              [role and picture(role) for role in icons], font,
+                              prologue=prologue, attribute=label,
+                              label_room=row_label_room)
+            return _softkeys(built, ["options", "devices"])
+        # On the menu the Activities key goes back to what is running.
+        menu_keys = [(keys.code(keys.ACTIVITIES), (resume_group << 8) | state_variable,
+                      0x72)]
+        _owned_mode(rows, zones, program, "activities", words("hub.activities-title"),
+                    (page_index, total), keys=menu_keys)
+
+    if hub and acts:
+        _activity_menu_page(0)
+    elif hub:
         # Activities: none yet, so the list says so, and Devices opens the device list.
         home_rows = [(SOFTKEY_RIGHT_KEY, _navigation(menu_ordinals[0]), OBJECT_ATOM)]
 
@@ -764,8 +1095,10 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 rows.append((SIDE_NEXT_KEY, _navigation(
                     menu_ordinals[(page_index + 1) % menu_page_count]), OBJECT_ATOM))
             if hub:
-                # The menu template's own bottom-left zone is the Activities softkey.
-                rows.append((MENU_ACTIVITIES_KEY, _navigation(home_ordinal), OBJECT_ATOM))
+                # The menu template's own bottom-left zone is the Activities softkey,
+                # which goes back to a running activity when there is one.
+                rows.append((MENU_ACTIVITIES_KEY, _back_to_current() if acts
+                             else _navigation(home_ordinal), OBJECT_ATOM))
             labels = [devices[index]["label"] for index in on_page]
             # A configured device carries the icon composed for its type; a bare
             # skeleton takes the scaffold's row icons in turn.
@@ -783,6 +1116,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                     prologue=prologue, attribute=label, label_room=row_label_room)
                 if not labels:
                     program[-1:] = _message(words("hub.no-devices")) + [{"opcode": "end"}]
+                if hub and acts:
+                    return _softkeys_with_current(program, [])
                 return _softkeys(program, ["activities"]) if hub else program
             _owned_mode(rows, menu_template(), menu_program, "devices",
                         words("hub.devices-title"),
@@ -829,18 +1164,249 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                 zones = [zone for zone in zones if zone["y"] != SOFTKEY_LEFT_ZONE["y"]]
                 zones += [dict(SOFTKEY_LEFT_ZONE, tag=PAGE_ACTIVITIES_KEY & 0x7F),
                           dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F)]
-                rows.append((PAGE_ACTIVITIES_KEY, _navigation(home_ordinal), OBJECT_ATOM))
+                rows.append((PAGE_ACTIVITIES_KEY, _back_to_current() if acts
+                             else _navigation(home_ordinal), OBJECT_ATOM))
                 rows.append((PAGE_DEVICES_KEY, _navigation(home), OBJECT_ATOM))
             labels = [command["name"] for command in chunk]
+            device_keys = device_key_rows(devices[device_index]["commands"])
 
             def command_program(picture, prologue, labels=labels):
                 program = button_page(
                     labels, [picture(role) for role in frame_roles[:len(labels)]], font,
                     prologue=prologue, attribute=label, frame_width=frame_width)
+                if hub and acts:
+                    return _softkeys_with_current(program, ["devices"])
                 return _softkeys(program, ["activities", "devices"]) if hub else program
             _owned_mode(rows, zones, command_program,
                         "commands-paged" if len(chunks) > 1 else "commands",
-                        devices[device_index]["label"], (page_index, len(chunks)))
+                        devices[device_index]["label"], (page_index, len(chunks)),
+                        keys=device_keys)
+    # The activities' screens, in the ordinals given them above.
+    activity_rows = {}
+    if hub and acts:
+        for page_index in range(1, len(activity_menu_ordinals)):
+            _activity_menu_page(page_index)
+        frames = [f"activity/button-frame/{index}" for index in range(len(BUTTON_POSITIONS))]
+        if not all(role in roles for role in frames):
+            frames = frame_roles
+        swallow = [(keys.code(scan), 0, 0) for scan in keys.SCANS.values()]
+        geometry = touch_templates() if templates is None else templates
+
+        def _lines(text, attribute, top, room=EMPTY_MESSAGE_WIDTH, lines=2):
+            """``text`` centred on the screen in ``attribute``, its lines 12 apart from
+            ``top`` down."""
+            widths, _codes = _measure(fonts[attribute])
+            out = [{"opcode": "attribute", "value": attribute}]
+            for number, glyphs in enumerate(fit_label(text, fonts[attribute], room, lines)):
+                width = sum(widths[code] for code in glyphs)
+                out.append({"opcode": "inline_text", "x": (SCREEN_WIDTH - width) // 2,
+                            "y": top + LINE_SPACING * number, "glyphs": glyphs.hex()})
+            return out
+
+        def _sending(picture):
+            return ([{"opcode": "bitmap", "x": SENDING_XY[0], "y": SENDING_XY[1],
+                      "target": picture("activity/sending")}]
+                    if "activity/sending" in roles else [])
+
+        def _help_screen(title, before):
+            """Help: the activity's name, what it is doing, and the remote's waves, while
+            ``before`` re-sends what the activity needs."""
+            def program(picture, prologue):
+                out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
+                out += _lines(words("activity.fixing"), HELP_FONT, HELP_TOP)
+                out += [{"opcode": "bitmap", "x": HELP_SENDING_XY[0],
+                         "y": HELP_SENDING_XY[1], "target": picture("activity/sending")}
+                        ] if "activity/sending" in roles else []
+                out += _lines(words("activity.keep-pointed"), HELP_FONT, HELP_KEEP_TOP)
+                return out + [{"opcode": "end"}]
+            _owned_mode([], [], program, "help", title, keys=swallow, on_enter=before)
+
+        answer_zones = [zone for zone in geometry[len(BUTTON_POSITIONS)]
+                        if (zone["tag"] | 0x80) in (FIRST_BUTTON_KEY + 4, FIRST_BUTTON_KEY + 5)]
+
+        def _yes_no(title, question, yes, no, fix_object=False):
+            """A question with Yes and No on the bottom row: Yes opens ``yes``, No runs
+            ``no`` - a screen to open, or with ``fix_object`` an object to run."""
+            rows = [(FIRST_BUTTON_KEY + 4, _navigation(yes), OBJECT_ATOM),
+                    (FIRST_BUTTON_KEY + 5, no if fix_object else _navigation(no),
+                     OBJECT_ATOM)]
+
+            def program(picture, prologue):
+                out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
+                out += _lines(question, HELP_FONT, QUESTION_TOP, lines=3)
+                widths, _codes = _measure(font)
+                out.append({"opcode": "attribute", "value": label})
+                for slot, text in ((4, words("assistant.yes")), (5, words("assistant.no"))):
+                    left, top = BUTTON_POSITIONS[slot]
+                    out.append({"opcode": "bitmap", "x": left, "y": top,
+                                "target": picture(frames[slot])})
+                    [glyphs] = fit_label(text, font, frame_width, lines=1)
+                    width = sum(widths[code] for code in glyphs)
+                    out.append({"opcode": "inline_text",
+                                "x": (2 * left + frame_width - width) // 2,
+                                "y": top + LABEL_BASELINE, "glyphs": glyphs.hex()})
+                return out + [{"opcode": "end"}]
+            _owned_mode(rows, answer_zones, program, "question", title)
+
+        def _input_fix(index, value):
+            """What answering No about an input sends: its own command again, or for
+            inputs reached by stepping, one step."""
+            inputs = devices[index]["inputs"]
+            if "direct" in inputs:
+                command = inputs["direct"][value]
+                return [] if command is None else [
+                    (command_objects[(index, command)]["object_index"], OBJECT_ATOM)]
+            return [(command_objects[(index, inputs["next"])]["object_index"], OBJECT_ATOM)]
+
+        for index, (act, screens) in enumerate(zip(acts, act_screens)):
+            # Starting: its icon under the waves, "Starting ...", and every key held off
+            # until the activity is running.
+            def start_program(picture, prologue, act=act):
+                out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
+                out += _sending(picture)
+                if act.get("start_icon"):
+                    out.append({"opcode": "bitmap", "x": START_ICON_XY[0],
+                                "y": START_ICON_XY[1], "target": picture(act["start_icon"])})
+                out += _lines(words("activity.starting", activity=act["label"]),
+                              START_FONT, START_TEXT_Y, room=SCREEN_WIDTH - 12, lines=1)
+                out += _lines(words("activity.keep-pointed"), HELP_FONT, START_KEEP_TOP)
+                return out + [{"opcode": "end"}]
+            _owned_mode([], [], start_program, keys=swallow)
+
+            # Its favourites, then its buttons, six a page; the side strips turn each set
+            # of pages, the left softkey goes between the two, and Devices opens the
+            # device list.
+            def _pages(entries, ordinals, other, other_key, kind_name, frames_for):
+                chunks = [entries[at:at + len(BUTTON_POSITIONS)]
+                          for at in range(0, len(entries), len(BUTTON_POSITIONS))] or [[]]
+                for page_index, chunk in enumerate(chunks):
+                    rows = []
+                    for slot, (_label, steps, _picture) in enumerate(chunk):
+                        if len(steps) == 1 and steps[0][0] == "send":
+                            target = command_objects[(steps[0][1], steps[0][2])][
+                                "wrapper_index"]
+                        else:
+                            target = _atoms_object(
+                                [(authoring.IR_OBJECT_KIND_FALLBACK, 0x75)]
+                                + _step_atoms(steps))
+                        rows.append((FIRST_BUTTON_KEY + slot, target, OBJECT_ATOM))
+                    if len(chunks) > 1:
+                        rows.append((SIDE_PREV_KEY, _navigation(ordinals[page_index - 1]),
+                                     OBJECT_ATOM))
+                        rows.append((SIDE_NEXT_KEY, _navigation(
+                            ordinals[(page_index + 1) % len(ordinals)]), OBJECT_ATOM))
+                    rows.append((PAGE_DEVICES_KEY, _navigation(menu_ordinals[0]),
+                                 OBJECT_ATOM))
+                    size = sorted(size for size in geometry if size >= max(1, len(chunk)))
+                    if not size:
+                        raise ValueError(f"no touch template covers a page of {len(chunk)} "
+                                         f"buttons; the scaffold has {sorted(geometry)}")
+                    zones = [zone for zone in geometry[size[0]]
+                             if (zone["tag"] | 0x80) < FIRST_BUTTON_KEY + len(chunk)
+                             or (zone["tag"] | 0x80) >= FIRST_BUTTON_KEY
+                             + len(BUTTON_POSITIONS)]
+                    zones = [zone for zone in zones if zone["y"] != SOFTKEY_LEFT_ZONE["y"]]
+                    zones.append(dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F))
+                    softkeys = ["devices"]
+                    if other is not None:
+                        zones.append(dict(SOFTKEY_LEFT_ZONE, tag=PAGE_ACTIVITIES_KEY & 0x7F))
+                        rows.append((PAGE_ACTIVITIES_KEY, _navigation(other), OBJECT_ATOM))
+                        softkeys.insert(0, other_key)
+                    labels = [text if picture is None else None
+                              for text, _steps, picture in chunk]
+                    pictured = [picture for _text, _steps, picture in chunk]
+
+                    def program(picture, prologue, labels=labels, pictured=pictured):
+                        built = button_page(
+                            labels, [picture(role or frames_for[slot])
+                                     for slot, role in enumerate(pictured)], font,
+                            prologue=prologue, attribute=label, frame_width=frame_width)
+                        return _softkeys(built, softkeys)
+                    kind = kind_name + ("-paged" if len(chunks) > 1 else "")
+                    _owned_mode(rows, zones, program, kind, act["label"],
+                                (page_index, len(chunks)))
+
+            both = bool(screens["favourites"]) and bool(screens["pages"])
+            kind_name = "activity-both" if both else "activity"
+            if screens["favourites"]:
+                _pages([(item["label"], item["steps"], item.get("picture"))
+                        for item in act["favourites"]], screens["favourites"],
+                       screens["pages"][0] if both else None, "commands", kind_name, frames)
+            if screens["pages"]:
+                _pages([(text, steps, None) for text, steps in act["buttons"]],
+                       screens["pages"], screens["favourites"][0] if both else None,
+                       "favourites", kind_name, frames)
+
+            # Where a start ends: the Remote Assistant's question while it is on, else
+            # the activity's own first page.
+            after = _act_group([
+                (0, _act_block([{"opcode": "atom", "operand": screens["home"],
+                                 "category": ENTER_MODE}, {"opcode": "end"}])),
+                (1, _act_block([{"opcode": "atom", "operand": screens["prompt"],
+                                 "category": ENTER_MODE}, {"opcode": "end"}]))])
+            finish = ((after << 8) | assistant_variable, 0x72)
+
+            # Help: re-send the power and inputs the activity set, then the question.
+            _help_screen(act["label"], (
+                [(0xFFFB, idle_machine.MODE_STACK)] + _direct_power(act["on"], True)
+                + _input_writes(act["inputs"]), [finish]))
+
+            # The Remote Assistant: did everything turn on? No asks about each device
+            # and input in turn, and fixes the one that is not.
+            questions = screens["questions"]
+            _yes_no(act["label"], words("assistant.question"), screens["home"],
+                    questions[0] if questions else screens["help"])
+            for number, (asked, ordinal) in enumerate(zip(screens["asked"], questions)):
+                following = questions[number + 1] if number + 1 < len(questions) \
+                    else screens["home"]
+                device = devices[asked[1]]
+                if asked[0] == "power":
+                    text = words("assistant.is-on", device=device["label"])
+                    fix = _direct_power([asked[1]], True, toggles=True)
+                else:
+                    value = asked[2]
+                    text = words("assistant.input", device=device["label"],
+                                 input=device["inputs"]["values"][value])
+                    fix = _input_fix(asked[1], value)
+                _yes_no(act["label"], text, following,
+                        _atoms_object(fix + [(ordinal, ENTER_MODE)]), fix_object=True)
+
+            context_rows = [
+                (activity_index.ENTER, _atoms_object(
+                    [(screens["start"], ENTER_MODE), (0xFFFB, idle_machine.MODE_STACK)]
+                    + _power_writes(act["on"], 1) + _input_writes(act["inputs"])
+                    + _power_writes(act["off"], 0) + [(index, 0x80 | state_variable)]
+                    + _step_atoms(act["enter"]) + [finish])),
+                (activity_index.LEAVE, _atoms_object(
+                    [(0xFFFB, idle_machine.MODE_STACK)] + _step_atoms(act["leave"]))),
+                # picked again while running: its inputs again, and back to its screen
+                (activity_index.REFRESH, _atoms_object(
+                    [(0xFFFB, idle_machine.MODE_STACK)] + _input_writes(act["inputs"])
+                    + [(screens["home"], ENTER_MODE)])),
+                (keys.code(keys.HELP), _navigation(screens["help"])),
+            ] + [(code, _key_target(steps)) for code, steps in sorted(act["keys"].items())]
+            activity_rows[activity_context + index] = context_rows
+    if hub and state_variable is not None:
+        # Off: nothing running, the Activities menu, and every device off behind it; its
+        # Help turns them off again. It has no leave, as no donor's has.
+        off = (activities or {}).get("all_off") or {"off": []}
+        activity_rows[off_context] = [
+            (activity_index.ENTER, _atoms_object(
+                [(len(acts), 0x80 | state_variable), (0xFFFB, idle_machine.MODE_STACK),
+                 (home_ordinal, ENTER_MODE)] + _power_writes(off["off"], 0))),
+            (activity_index.REFRESH, _object(object_body([(home_ordinal, ENTER_MODE)]))),
+        ]
+        if acts:
+            activity_rows[off_context].append(
+                (keys.code(keys.HELP), _navigation(off_help_ordinal)))
+            _help_screen(off.get("label") or words("activity.power-off"), (
+                [(0xFFFB, idle_machine.MODE_STACK)] + _direct_power(off["off"], False),
+                [(home_ordinal, ENTER_MODE)]))
+
+    if options_more_ordinal is not None:
+        _options_page(1)
+        _tutorial()
+
     # Nothing the project owns to show still needs a screen at the first owned ordinal,
     # since section 6 has no zero-screen form and the OK buttons open that ordinal. It is
     # also the screen such an image boots into, and nothing clears the display, so it
@@ -866,22 +1432,17 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                        for operand, category in steps]
                 for part, steps in carried["idle"]["startup"].items()}
     for body in startup_objects(platform_count, USB_SCREEN if system else None, startup,
-                                idle):
+                                idle, off_context if state_variable is not None else None):
         _object(body)
+    global_keys = []
+    if hub and state_variable is not None:
+        global_keys = [
+            (keys.code(keys.ACTIVITIES), _object(object_body([(home_ordinal, ENTER_MODE)]))),
+            (keys.code(keys.OFF), _object(object_body([(0xFF00 | off_context, 0x1F)]))),
+        ]
 
-    # Each device's power and input as state variables, as every donor has them: a
-    # transition sends what changing the state takes. They follow the platform's and
-    # the Options screens' variables in section 14, before the terminator.
-    engine_records_base = list(engine)
-    device_variables = []
-    first_device_variable = (len(engine) - 1 + (len(carried["variables"]) if carried else 0)
-                             if engine else None)
-    if engine:
-        for device in devices:
-            for name, record in device_state_records(device, _object):
-                device_variables.append((name, record))
-
-    # Then the objects, in the order they were numbered.
+    # Then the objects, in the order they were numbered, none longer than the donors'.
+    object_bodies = bounded_objects(object_bodies)
     objects = [_place(out, body) for body in object_bodies]
 
     # A command record points at its own waveforms, so those are placed before it.
@@ -974,23 +1535,46 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             record += struct.pack("<HH", low, high) + (
                 gspm.BASE + mapping[CARRIED_BLOCK + at]).to_bytes(3, "little")
         groups.append(_place(out, bytes(record)))
+    for group in activity_groups:
+        record = bytearray([group["lead"], len(group["cases"])])
+        for value, at in group["cases"]:
+            record += struct.pack("<H", value) + (gspm.BASE + mapping[at]).to_bytes(3, "little")
+        record.append(len(group["ranges"]))
+        for low, high, at in group["ranges"]:
+            record += struct.pack("<HH", low, high) + (gspm.BASE + mapping[at]).to_bytes(
+                3, "little")
+        groups.append(_place(out, bytes(record)))
     # A context needs a row, and no context in any image binds key 0. The factory image
     # leaves keys it does not use as category 0 with operand 0, so the one row this
     # context holds is the factory's own unbound row rather than a binding to object 0.
-    context = _place(out, authoring.context_record({
-        "form": "short",
-        "rows": [{"flags": None, "key_code": 0x10, "operand": 0, "category": 0x00}],
-    }))
+    def _charge_rows(name):
+        return [{"flags": 1, "key_code": int(code, 16), "operand": _carried_operand(operand),
+                 "category": _carried_category(category)}
+                for code, (operand, category) in carried["idle"]["charge"][name].items()]
+    if idle is not None:
+        context = _place(out, authoring.context_record({"form": "long",
+                                                        "rows": _charge_rows("normal")}))
+    else:
+        context = _place(out, authoring.context_record({
+            "form": "short",
+            "rows": [{"flags": None, "key_code": 0x10, "operand": 0, "category": 0x00}],
+        }))
     contexts = [context]
     if idle is not None:
         # The events the firmware posts - USB, charging, redraws, the side strips' paging -
         # and the key light every physical key runs and then passes on (flags bit 0 set,
         # so the search goes on down the stack), as upstairs' contexts 1 and 4 are.
         events = carried["idle"]["events"]
-        contexts.append(_place(out, authoring.context_record({"form": "short", "rows": [
+        event_rows = [
             {"flags": None, "key_code": int(code, 16),
              "operand": _carried_operand(operand), "category": _carried_category(category)}
-            for code, (operand, category) in events.items()]})))
+            for code, (operand, category) in events.items()]
+        # The keys the flow owns, under everything else on the stack: Activities opens
+        # the Activities menu, Off selects Off's context.
+        event_rows += [{"flags": None, "key_code": code, "operand": operand,
+                        "category": OBJECT_ATOM} for code, operand in global_keys]
+        contexts.append(_place(out, authoring.context_record({"form": "short",
+                                                              "rows": event_rows})))
         operand, category = carried["idle"]["key_light"]
         rows = [{"flags": 1, "key_code": key, "operand": _carried_operand(operand),
                  "category": _carried_category(category)}
@@ -1000,6 +1584,19 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                   "category": _carried_category(cat)}
                  for code, (value, cat) in carried["idle"].get("key_rows", {}).items()]
         contexts.append(_place(out, authoring.context_record({"form": "long", "rows": rows})))
+        for name in ("usb", "low"):
+            if len(contexts) != CHARGE_CONTEXTS[name]:
+                raise ValueError(f"the {name} charge context is not where 0xFC finds it")
+            contexts.append(_place(out, authoring.context_record({
+                "form": "long", "rows": _charge_rows(name)})))
+        # Each activity's context, then Off's: enter, leave and picked again, Help, and
+        # the keys it routes.
+        for index in sorted(activity_rows):
+            if index != len(contexts):
+                raise ValueError("an activity's context is not where its rows select it")
+            contexts.append(_place(out, authoring.context_record({"form": "short", "rows": [
+                {"flags": None, "key_code": code, "operand": operand,
+                 "category": OBJECT_ATOM} for code, operand in activity_rows[index]]})))
     if not objects:
         objects.append(_place(out, b"\x00"))
     # Section 13 is the timer table. The platform screens start timer by index while they
@@ -1146,7 +1743,10 @@ def font_from_scaffold(font: dict) -> dict:
     }
 
 
-TRANSITION_FROM_ANY = 0xFFFD   # "from any value", as a donor's direct inputs have it
+# "From any value", as upstairs' and Kāt's direct inputs all have it: it runs on every
+# write, the same value included, which is how picking the running activity again
+# re-sends its inputs. (Downstairs has one television with `0xFFFD` instead.)
+TRANSITION_FROM_ANY = 0xFFFE
 WAIT = 0x7C                    # (device << 8 | tenths): wait before that device's next send
 
 
@@ -1219,6 +1819,22 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
     return out
 
 
+def device_key_rows(commands: list[dict]) -> list[tuple[int, int, int]]:
+    """A device page's physical keys: each key one of its commands is bound to sends
+    that command, without the click a touch makes, and every other command key does
+    nothing - so device mode never falls through to the running activity's keys. The
+    Activities, Off and Help keys are left to the flow above it."""
+    bound = {}
+    for command in commands:
+        for name in command.get("keys") or ():
+            code = keys.by_name(name)
+            if code is not None:
+                bound.setdefault(code, command["object_index"])
+    return [(keys.by_name(name), bound.get(keys.by_name(name), 0),
+             OBJECT_ATOM if keys.by_name(name) in bound else 0)
+            for name in keys.COMMAND_KEYS]
+
+
 def name_record(identifier: int, name: str, *, leaf: bool = True) -> bytes:
     """One section-0 named record: `a7`, a length, a type, an id, then the name."""
     encoded = name.encode("utf-8")
@@ -1232,6 +1848,75 @@ def name_record(identifier: int, name: str, *, leaf: bool = True) -> bytes:
             + identifier.to_bytes(2, "little") + encoded)
 
 
+def protocol_library(project: dict, library=None):
+    """The protocols a project's devices are lowered with: whatever is installed, and
+    each catalogue device's own definitions (`portable_protocol_definitions`), as the
+    other remotes' builds read them."""
+    from ... import ir_protocol
+
+    inline = {}
+    for device in project.get("devices") or []:
+        for protocol_id, definition in (device.get("portable_protocol_definitions")
+                                        or {}).items():
+            if inline.get(protocol_id, definition) != definition:
+                raise ValueError(f"two devices define protocol {protocol_id!r} differently")
+            inline[protocol_id] = definition
+    if inline:
+        installed = (dict(library) if isinstance(library, dict)
+                     else ir_protocol.catalog(library))
+        for protocol_id, definition in inline.items():
+            if installed.get(protocol_id, definition) != definition:
+                raise ValueError(f"a device's protocol {protocol_id!r} conflicts with the "
+                                 "installed definition")
+        library = {**installed, **inline}
+    return library
+
+
+def held_commands(project: dict, devices: list[dict], planned: dict, *, library=None):
+    """Give each held send in a plan a record of its own - the code held that long -
+    and point the step at it. The records join their device's commands but no screen,
+    and a step that names the same command held as long shares one."""
+    from . import ir_lowering
+
+    library = protocol_library(project, library)
+    made = {}
+
+    def resolve(steps):
+        out = []
+        for step in steps:
+            if step[0] != "send" or len(step) < 4:
+                out.append(step)
+                continue
+            _send, index, command_id, held_ms = step
+            if (index, command_id, held_ms) not in made:
+                device = devices[index]
+                source = next(command for command in device["commands"]
+                              if command["command_id"] == command_id)
+                ordinal = len(device["commands"])
+                if ordinal > 0xFF:
+                    raise ValueError(f"device {device['label']!r} has no room for "
+                                     f"{source['name']!r} held {held_ms} ms")
+                signal = project["devices"][index]["signals"][source["name"]]
+                lowered = ir_lowering.lower(signal, library=library, held_ms=held_ms)
+                device["commands"].append({
+                    "name": f"{source['name']} ({held_ms} ms)", "keys": [], "hidden": True,
+                    "command_id": (index << 8) | ordinal,
+                    "carrier_period_ns": lowered.carrier_period_ns,
+                    "carrier_half_period_ns": lowered.carrier_half_period_ns,
+                    "phases": {"press": lowered.press_waveform}})
+                made[(index, command_id, held_ms)] = (index << 8) | ordinal
+            out.append(("send", index, made[(index, command_id, held_ms)]))
+        return out
+
+    for activity in planned["activities"]:
+        for key in ("enter", "leave"):
+            activity[key] = resolve(activity[key])
+        activity["keys"] = {code: resolve(steps) for code, steps in activity["keys"].items()}
+        activity["buttons"] = [(label, resolve(steps)) for label, steps in activity["buttons"]]
+        activity["favourites"] = [dict(item, steps=resolve(item["steps"]))
+                                  for item in activity.get("favourites") or []]
+
+
 def lowered_devices(project: dict, *, library=None) -> list[dict]:
     """Lower a project's devices into the pieces a command record is written from.
 
@@ -1241,6 +1926,7 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
     """
     from . import ir_lowering
 
+    library = protocol_library(project, library)
     out = []
     for index, device in enumerate(project.get("devices") or []):
         label = device.get("label") or f"Device {index}"
@@ -1248,11 +1934,17 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
         if len(signals) > 0xFF:
             raise ValueError(
                 f"device {label!r} has {len(signals)} commands; an ordinal is one byte")
+        # The keys each command is bound to, from the project's own hard slots.
+        slots = {}
+        for entry in device.get("commands") or []:
+            if len(entry) > 4 and entry[4]:
+                slots[entry[0]] = entry[4] if isinstance(entry[4], list) else [entry[4]]
         commands = []
         for ordinal, (name, signal) in enumerate(sorted(signals.items())):
             lowered = ir_lowering.lower(signal, library=library)
             commands.append({
                 "name": name,
+                "keys": slots.get(name, []),
                 "command_id": (index << 8) | ordinal,
                 "carrier_period_ns": lowered.carrier_period_ns,
                 "carrier_half_period_ns": lowered.carrier_half_period_ns,
@@ -1331,7 +2023,9 @@ def mode_zero_list() -> bytes:
 # Without it the firmware read the first page register as this list.
 PUSH_CONTEXT = 0xFE00    # `0x1F` band FE: push a section-10 context; FD names the mode
 PUSH_CURRENT_MODE = 0xFEFD
-BACKLIGHT = (0xF064, 0x3F)   # carried as the factory image has it, not yet read
+# `3F F0xx` writes the firmware's setting 0 (10 at reset), which the 800's handbook reads
+# as the timers' unit; the factory image and every donor set it to 100 first thing.
+TIMER_UNIT = (0xF064, 0x3F)
 LOAD_ONE = 0xFB01        # `0x1F` band FB: load the byte register
 USB_CONNECTED = 0x10     # the state variable the USB check compares
 COMPARE = 0x71
@@ -1342,7 +2036,7 @@ USB_SCREEN = 1
 
 
 def startup_objects(home: int, usb_screen: int | None, first: int,
-                    idle: dict | None = None) -> list[bytes]:
+                    idle: dict | None = None, select: int | None = None) -> list[bytes]:
     """The objects the image's start-up list runs, numbered from ``first``.
 
     The factory image's three, in its own shape: push the image's context and then the
@@ -1354,14 +2048,20 @@ def startup_objects(home: int, usb_screen: int | None, first: int,
     event context, the current mode and the key light on top - so every key lights the
     keypad on its way down - then the light and sound set-up, and only then ``home``:
     the set-up clears the zone flags, which entering a screen sets.
-    ``idle`` gives those as `{"resets": [...], "setup": [...]}`, instructions.
+    ``idle`` gives those as `{"resets": [...], "setup": [...]}`, instructions. The
+    stack is every donor's: the events, `0xFE`, the current mode, `0xFC`, the key light.
+    ``select`` is a context to select last - Off's, so the remote starts with nothing
+    running, as every donor starts.
     """
-    head = [(PUSH_CONTEXT, 0x1F), (PUSH_CURRENT_MODE, 0x1F), (home, ENTER_MODE), BACKLIGHT]
+    head = [(PUSH_CONTEXT, 0x1F), (PUSH_CURRENT_MODE, 0x1F), (home, ENTER_MODE), TIMER_UNIT]
     if idle is not None:
-        head = ([BACKLIGHT] + list(idle["resets"])
-                + [(PUSH_CONTEXT | EVENT_CONTEXT, 0x1F), (PUSH_CURRENT_MODE, 0x1F),
+        head = ([TIMER_UNIT] + list(idle["resets"])
+                + [(PUSH_CONTEXT | EVENT_CONTEXT, 0x1F), (PUSH_CONTEXT | 0xFE, 0x1F),
+                   (PUSH_CURRENT_MODE, 0x1F), (PUSH_CONTEXT | 0xFC, 0x1F),
                    (PUSH_CONTEXT | KEY_LIGHT_CONTEXT, 0x1F)]
                 + list(idle["setup"]) + [(home, ENTER_MODE)])
+        if select is not None:
+            head.append((0xFF00 | select, 0x1F))
     if usb_screen is None:
         return [object_body(head)]
     return [
@@ -1371,8 +2071,11 @@ def startup_objects(home: int, usb_screen: int | None, first: int,
     ]
 
 
-# The idle layer's contexts, after the image's own (0): events, then the key light.
+# The idle layer's contexts, after the image's own (0): events, then the key light. The
+# charge contexts the firmware looks up under 0xFC are 0 - the image's own, as in every
+# donor - and the two after the key light.
 EVENT_CONTEXT, KEY_LIGHT_CONTEXT = 1, 2
+CHARGE_CONTEXTS = {"normal": 0, "usb": 3, "low": 4}
 
 
 # Mode 0's three events, by their position in its list.
@@ -1388,6 +2091,8 @@ def _platform_object(value, first: int):
     """
     if isinstance(value, dict) and "timer" in value:
         return (value["band"] << 8) | value["timer"]
+    if isinstance(value, dict) and "charge" in value:
+        return (value["band"] << 8) | CHARGE_CONTEXTS[value["charge"]]
     return first + value["object"] if isinstance(value, dict) else value
 
 
@@ -1434,6 +2139,48 @@ def mode_zero_handler(index: int, platform: dict[int, int] | None = None) -> byt
     if index == MODE_ZERO_REDRAW:
         return object_body([(1, 0x73), (3, 0x73), (2, 0x73)])
     return object_body([(0, 0), (0, 0), (0, 0)])
+
+
+# The firmware's instruction queue holds 40 and drops what does not fit, and running an
+# object puts all of its atoms at the head of the queue at once (the Harmony 800's
+# section-11 runner, gspm.md). No handler in any donor queues more than 16 deep; a build
+# keeps every object to this many atoms, so its handlers stay as shallow.
+OBJECT_ATOMS = 8
+# Atoms that must stay next to the one after them: a test drops the next instruction, and
+# `07 FFFF` silences the next write.
+_TIES = {0x70, 0x71}
+
+
+def _tied(atom) -> bool:
+    return atom[1] in _TIES or atom == (0xFFFF, 0x07)
+
+
+def bounded_objects(bodies: list[bytes]) -> list[bytes]:
+    """``bodies`` with every object longer than OBJECT_ATOMS made a chain: its atoms in
+    objects of their own, run one after another from the original, which keeps its index.
+    A cut never falls after a test or a silent mark."""
+    bodies = list(bodies)
+    index = 0
+    while index < len(bodies):
+        body = bodies[index]
+        atoms = [struct.unpack_from("<HB", body, 1 + 3 * k) for k in range(body[0])]
+        if len(atoms) > OBJECT_ATOMS:
+            parts, part = [], []
+            for atom in atoms:
+                part.append(atom)
+                if len(part) >= OBJECT_ATOMS and not _tied(atom):
+                    parts.append(part)
+                    part = []
+            if part:
+                parts.append(part)
+            calls = []
+            for part in parts:
+                bodies.append(object_body(part))
+                calls.append((len(bodies) - 1, OBJECT_ATOM))
+            bodies[index] = object_body(calls)
+            continue                      # the chain itself may be too long: look again
+        index += 1
+    return bodies
 
 
 def object_body(atoms) -> bytes:
@@ -1527,7 +2274,7 @@ def fit_label(label: str, font: dict, room: int, lines: int = 2) -> list[bytes]:
     # what the font was asked to draw - the whole label, since its characters are checked
     # before it is cut, and the cut's mark - so a build can carry exactly those glyphs
     font.setdefault("drawn", set()).update(label, *out)
-    return [bytes(codes[character] for character in text) for text in out]
+    return [drawing.GlyphCodes.of(codes[character] for character in text) for text in out]
 
 
 def _line_ys(baseline: int, count: int, offsets: tuple[int, int]) -> list[int]:
@@ -1564,6 +2311,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
         left, top = BUTTON_POSITIONS[index]
         out.append({"opcode": "bitmap", "x": left, "y": top, "target": frame})
         frame_width = FRAME_WIDTH if frame_width is None else frame_width
+        if label is None:          # a picture that says it all: a favourite's logo
+            continue
         lines = fit_label(label, font, frame_width)
         for glyphs, y in zip(lines, _line_ys(top + LABEL_BASELINE, len(lines),
                                              BUTTON_LINE_OFFSETS)):
@@ -1586,14 +2335,25 @@ FRAME_WIDTH = 81
 # scaffold's fonts keep.
 SOFTKEY_LEFT_ZONE = {"x": 1257, "width": 1395, "y": 271, "height": 1001}
 SOFTKEY_RIGHT_ZONE = {"x": 2406, "width": 1150, "y": 271, "height": 1001}
-SOFTKEYS = {"options": (22, 202), "activities": (16, 202), "devices": (110, 202)}
-SOFTKEY_FONTS = {"options": 13, "activities": 6, "devices": 9}
+SOFTKEYS = {"options": (22, 202), "activities": (16, 202), "devices": (110, 202),
+            "commands": (16, 202), "favourites": (16, 202), "exit": (110, 202)}
+SOFTKEY_FONTS = {"options": 13, "activities": 6, "devices": 9, "commands": 6,
+                 "favourites": 6, "exit": 9}
+
+# The Tutorial: each page's words, and what moves on from it - the key it teaches.
+TUTORIAL = (("tutorial.welcome", "next"), ("tutorial.activities", "touch"),
+            ("tutorial.switching", "activities"), ("tutorial.pages", "next"),
+            ("tutorial.help", "help"), ("tutorial.assistant", "next"),
+            ("tutorial.off", "off"), ("tutorial.done", "exit"))
+TUTORIAL_TOP, TUTORIAL_LINES = 40, 9
 # The keys each screen binds them to, as upstairs does: the Activities screen's softkeys
 # are its 0x30 and 0x31 zones, the device list's Activities is its template's 0x33, and a
 # command page's are 0x2B and 0x2C.
 HOME_OPTIONS_TAG, HOME_DEVICES_TAG = 0x30, 0x31
 SOFTKEY_RIGHT_KEY = 0x80 | HOME_DEVICES_TAG
 MENU_ACTIVITIES_KEY = 0xB3
+# The Activities menu, which has both softkeys besides its rows, as upstairs' has.
+MENU_OPTIONS_KEY, MENU_DEVICES_KEY = 0xB3, 0xB4
 PAGE_ACTIVITIES_KEY, PAGE_DEVICES_KEY = 0xAB, 0xAC
 # The Options screen, as upstairs draws it: its row frames at the menu rows, labels centred
 # on them in its row font (attribute 5). Screen Sounds' label reads its flag: 0 offers to
@@ -1626,7 +2386,10 @@ PAGE_TOTAL_XY = (23, 18)
 PAGE_SLASH_XY = (18, 18)
 PAGES_GAP = 5
 TITLE_FONTS = {"activities": (10, 12), "options": (2, 7), "devices": (3, 4),
-               "commands": (3, 4), "commands-paged": (3, 4)}
+               "commands": (3, 4), "commands-paged": (3, 4),
+               "activity": (10, 12), "activity-paged": (10, 12), "help": (2, 7),
+               "activity-both": (10, 12), "activity-both-paged": (10, 12),
+               "question": (2, 7), "tutorial": (2, 7)}
 
 # The device menu: three rows a page, each a full-width frame, a device icon and a label,
 # with the row's touch key opening that device's first command page. Geometry measured on
@@ -1657,11 +2420,13 @@ def menu_template(directory=None) -> list[dict]:
 
 def menu_page(labels: list[str], frame: int, icons: list[int], font: dict, *,
               prologue: int | None = None, backdrop: int | None = None,
-              attribute: int = 0, label_room: int | None = None) -> list[dict]:
+              attribute: int = 0, label_room: int | None = None,
+              rows=None) -> list[dict]:
     """The drawing program for a page of device-menu rows.
 
     Each row is the full-width frame, the device's icon, and its name on the frame's
-    baseline. A name too wide for the row wraps onto a second line.
+    baseline. A name too wide for the row wraps onto a second line. ``rows`` are the
+    row places to draw in, the first ones when not given.
     """
     if len(labels) > MENU_ROWS_PER_PAGE:
         raise ValueError(
@@ -1672,7 +2437,8 @@ def menu_page(labels: list[str], frame: int, icons: list[int], font: dict, *,
     if backdrop is not None:
         out.append({"opcode": "bitmap", "x": 0, "y": 0, "target": backdrop})
     out.append({"opcode": "attribute", "value": attribute})
-    for index, (label, icon) in enumerate(zip(labels, icons)):
+    places = range(len(labels)) if rows is None else rows
+    for index, label, icon in zip(places, labels, icons):
         out.append({"opcode": "bitmap", "x": MENU_FRAME_XY[index][0],
                     "y": MENU_FRAME_XY[index][1], "target": frame})
         if icon is not None:
@@ -1705,7 +2471,15 @@ SYSTEM_SCHEMA = "afterglow-harmony-one-system-screens/1"
 MODEL_BLOCK = 0xF00000
 # Carried screens' blocks and the Options screen's own label blocks, in the same space.
 CARRIED_BLOCK = 0xF80000
-OPTIONS_BLOCK = 0xFB0000
+ACTIVITY_BLOCK = 0xFA0000
+
+# What the starting and Help screens draw, and where, as every donor's draw them: the
+# starting screen's name in attribute 11, the rest in attribute 0, lines 12 apart.
+START_FONT, HELP_FONT = 11, 0
+START_TEXT_Y, START_KEEP_TOP = 124, 179
+HELP_TOP, HELP_KEEP_TOP, HELP_SENDING_XY = 43, 162, (57, 95)
+QUESTION_TOP = 70
+LINE_SPACING = 12
 
 
 def load_system(directory=None) -> dict:
@@ -1780,7 +2554,14 @@ def build(project: dict, *, directory=None, library=None,
     candidates = catalogue.characters(words) | {
         character for device in project.get("devices") or []
         for text in [device.get("label") or ""] + list(device.get("signals") or {})
-        for character in text}
+        for character in text} | {
+        character for activity in project.get("activities") or []
+        for text in [activity.get("label") or ""] + [
+            button.get("label") or "" if isinstance(button, dict) else button[0]
+            for button in (activity.get("soft_buttons") or []) + [
+                entry for _name, entries in activity.get("screen_groups") or []
+                for entry in entries]]
+        for character in text} | set(project.get("power_off_label") or "")
     first = _configuration(project, directory, manifest, assets.load(directory, candidates),
                            stamp_fields, buttons, library, words)
     drawn = {role: font.get("drawn", set()) for role, font in first["fonts"].items()}
@@ -1804,6 +2585,18 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     devices = lowered_devices(project, library=library)
     for device, spec in zip(devices, project.get("devices") or []):
         device["icon"] = row_icon(directory, manifest, pictures, "devices", spec.get("type"))
+    planned = activity_plan.plan(project, devices)
+    held_commands(project, devices, planned, library=library)
+    frame = "activity/row-frame" if "activity/row-frame" in pictures else "row-frame"
+    for activity in planned["activities"]:
+        activity["icon"] = row_icon(directory, manifest, pictures, "activities",
+                                    activity["type"], frame)
+        activity["start_icon"] = start_icon(directory, manifest, pictures, activity["type"])
+        for number, favourite in enumerate(activity["favourites"]):
+            favourite["picture"] = favourite_picture(
+                directory, manifest, pictures, favourite["image"],
+                number % len(BUTTON_POSITIONS), planned["skipped"],
+                f"activity {activity['label']!r} favourite {favourite['label']!r}")
     # one set of fonts for everything this build draws, so each records all it drew
     fonts = [font_from_scaffold(loaded["fonts"][role]) for role in order]
     image = skeleton(
@@ -1818,8 +2611,8 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
         devices=devices,
         templates=touch_templates(directory), system=load_system(directory),
         options=options_model(fonts, stamp_fields[-1], words),
-        words=words)
-    return {"image": image, "fonts": dict(zip(order, fonts))}
+        words=words, activities=planned)
+    return {"image": image, "fonts": dict(zip(order, fonts)), "skipped": planned["skipped"]}
 
 
 # A device row's icon sits over the row frame's left end: this patch of the frame.
@@ -1827,22 +2620,100 @@ ROW_ICON_SIZE = (51, 48)
 
 
 def row_icon(directory, manifest: dict, pictures: dict, kind: str,
-             name: str | None) -> str | None:
+             name: str | None, frame: str = "row-frame") -> str | None:
     """Compose the row icon for a ``kind`` of type ``name`` into ``pictures``, once per
-    icon, and return its role (row_icons.py); None when the scaffold has no type icons."""
+    icon and frame, and return its role (row_icons.py); None when the scaffold has no
+    type icons. Activities' rows are drawn on their own frame (``activity/row-frame``),
+    so their icons carry that frame's patch rather than a device row's."""
+    role = row_icons_role(kind, name, directory, frame)
+    if role is not None and role not in pictures:
+        at = (MENU_ICON_XY[0][0] - MENU_FRAME_XY[0][0], MENU_ICON_XY[0][1] - MENU_FRAME_XY[0][1])
+        pictures[role] = _composed(directory, manifest, frame, at, ROW_ICON_SIZE, kind, name)
+    return role
+
+
+def row_icons_role(kind, name, directory, frame="row-frame"):
+    from . import row_icons
+
+    role = row_icons.role(kind, name, directory)
+    if role is None or frame == "row-frame":
+        return role
+    return f"{frame.rsplit('/', 1)[0]}/{role}"
+
+
+# Where an activity's icon sits on the screen it starts on, and the box it is fitted to.
+START_ICON_XY, START_ICON_SIZE = (57, 67), (62, 42)
+SENDING_XY = (57, 33)
+
+
+def start_icon(directory, manifest: dict, pictures: dict, name: str | None) -> str | None:
+    """Compose the icon an activity of type ``name`` shows while it starts: its type
+    icon on the patch of the backdrop it is drawn over, so it needs no transparency."""
+    from . import row_icons
+
+    path = row_icons.source(directory, "activities", name)
+    if path is None or "backdrop" not in manifest["pictures"]:
+        return None
+    role = f"activity/start-icon/{path.stem}"
+    if role not in pictures:
+        pictures[role] = _composed(directory, manifest, "backdrop", START_ICON_XY,
+                                   START_ICON_SIZE, "activities", name, box=START_ICON_SIZE)
+    return role
+
+
+# A favourite's logo sits inside its button's frame, clear of the bevel.
+LOGO_BOX = (73, 42)
+
+
+def logo_file(name) -> Path | None:
+    """A favourite's logo: a path, or a name in the owner's logos folder (paths.py)."""
+    from ... import paths
+
+    if not name:
+        return None
+    for path in (Path(name), paths.logos_dir() / str(name)):
+        if path.is_file():
+            return path
+    return None
+
+
+def favourite_picture(directory, manifest, pictures, image, position, skipped,
+                      where) -> str | None:
+    """Compose a favourite's logo onto the frame of the button place it is drawn in, so
+    it needs no transparency; None, and a note, when the logo cannot be found."""
     from ... import imaging
     from . import assets, bitmap, row_icons
 
-    role = row_icons.role(kind, name, directory)
-    if role is not None and role not in pictures:
-        frame = imaging.decode((Path(directory) / manifest["pictures"]["row-frame"]["file"])
+    path = logo_file(image)
+    if path is None:
+        if image:
+            skipped.append(f"{where}: no logo {image!r}; its name is drawn instead")
+        return None
+    frame = f"activity/button-frame/{position}"
+    if frame not in manifest["pictures"]:
+        frame = f"button-frame/{position}"
+    role = f"favourite/{path.stem}/{position}"
+    if role not in pictures:
+        under = imaging.decode((Path(directory) / manifest["pictures"][frame]["file"])
                                .read_bytes())["rows"]
-        icon = imaging.decode(row_icons.source(directory, kind, name).read_bytes())["rows"]
-        at = (MENU_ICON_XY[0][0] - MENU_FRAME_XY[0][0], MENU_ICON_XY[0][1] - MENU_FRAME_XY[0][1])
-        rows = row_icons.compose(frame, at, ROW_ICON_SIZE, icon)
-        image = {"width": ROW_ICON_SIZE[0], "height": ROW_ICON_SIZE[1], "rows": rows}
-        pictures[role] = bitmap.encode(assets.to_rows(image)[0], mode=assets.MODES["shorter"])
+        logo = imaging.decode(path.read_bytes())["rows"]
+        size = (len(under[0]), len(under))
+        rows = row_icons.compose(under, (0, 0), size, logo, LOGO_BOX)
+        image_ = {"width": size[0], "height": size[1], "rows": rows}
+        pictures[role] = bitmap.encode(assets.to_rows(image_)[0], mode=assets.MODES["shorter"])
     return role
+
+
+def _composed(directory, manifest, frame, at, size, kind, name, box=None) -> bytes:
+    from ... import imaging
+    from . import assets, bitmap, row_icons
+
+    under = imaging.decode((Path(directory) / manifest["pictures"][frame]["file"])
+                           .read_bytes())["rows"]
+    icon = imaging.decode(row_icons.source(directory, kind, name).read_bytes())["rows"]
+    rows = row_icons.compose(under, at, size, icon, box or row_icons.FIT)
+    image = {"width": size[0], "height": size[1], "rows": rows}
+    return bitmap.encode(assets.to_rows(image)[0], mode=assets.MODES["shorter"])
 
 
 def build_stamp(now=None) -> tuple:
