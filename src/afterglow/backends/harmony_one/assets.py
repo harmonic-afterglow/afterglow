@@ -289,36 +289,6 @@ def load(directory, characters=None) -> dict:
     }
 
 
-def mapping(font: dict) -> dict:
-    """The character-to-code table a scaffold font declares, shaped like a donor's.
-
-    `glyph_codec` derives its repertoires from donor images, so it knows nothing about the
-    characters added here - a font completed to printable ASCII indexes past the largest
-    repertoire any donor uses. A generated configuration is not reading somebody's image
-    though: it is writing its own, and the manifest is the authority on what each code
-    means. This returns that authority in the shape the encoder already consumes, so a
-    label goes through the same refusal path when a font genuinely cannot draw it.
-    """
-    code_to_character = {
-        code: item["char"] for code, item in font["glyphs"].items() if item["char"]
-    }
-    return {
-        "repertoire": max(font["glyphs"], default=0),
-        "code_to_character": code_to_character,
-        "character_to_code": {
-            character: code for code, character in code_to_character.items()
-        },
-        "missing_codes": [],
-        "unresolved_codes": sorted(
-            code for code, item in font["glyphs"].items() if not item["char"]),
-    }
-
-
-def widths(font: dict) -> dict[int, int]:
-    """Each code's advance width, which is what a label's layout is measured in."""
-    return {code: item["width"] for code, item in font["glyphs"].items()}
-
-
 def audit(directory, required=()) -> dict:
     """Report what a scaffold supplies and what a build would still be missing."""
     try:

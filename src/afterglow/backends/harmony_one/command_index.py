@@ -404,3 +404,36 @@ def portable_devices(
             "native": {"harmony-one": native_evidence},
         })
     return devices
+
+
+def section5_layout(payload: bytes) -> list[dict]:
+    """Return section-5 device and command pointer fields with exact bounds."""
+    start, end = gspm.section_ranges(payload)[5]
+    device_count = payload[start]
+    if start + 1 + 3 * device_count > end:
+        raise ValueError("section 5 device index exceeds its section")
+    out = []
+    for device_index in range(device_count):
+        field = start + 1 + 3 * device_index
+        subtable = int.from_bytes(payload[field:field + 3], "little") - gspm.BASE
+        if not 0 <= subtable + 3 <= len(payload) or payload[subtable] != 0:
+            raise ValueError(f"section 5 device {device_index} has an invalid sub-table")
+        count = struct.unpack_from("<H", payload, subtable + 1)[0]
+        if count > 0x100 or subtable + 3 + 3 * count > len(payload):
+            raise ValueError(f"section 5 device {device_index} has an invalid command table")
+        commands = []
+        for ordinal in range(count):
+            command_field = subtable + 3 + 3 * ordinal
+            target = int.from_bytes(
+                payload[command_field:command_field + 3], "little") - gspm.BASE
+            if not 11 <= target < len(payload):
+                raise ValueError(f"section 5 command {(device_index << 8) | ordinal:#x} is invalid")
+            commands.append({
+                "ordinal": ordinal, "field": command_field,
+                "record_offset": target - 11,
+            })
+        out.append({
+            "device_index": device_index, "field": field, "subtable": subtable,
+            "commands": commands,
+        })
+    return out

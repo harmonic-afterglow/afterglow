@@ -72,7 +72,7 @@ TABS = ("devices", "activities", "settings", "flash")
 DEVICE_PAGES = ("search", "identity", "commands", "inputs", "timing", "advanced")
 ACTIVITY_PAGES = ("identity", "roles", "favourites", "screen_buttons", "hard_buttons",
                   "startup", "power", "advanced")
-SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "preferences")
+SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme", "preferences")
 # What each list may contain, and what it must: a device is its commands, and so on.
 INTERFACE = {
     "tabs": (TABS, ("devices", "flash")),

@@ -81,8 +81,8 @@ here are little-endian.
 | end − 4 | `PTYY` | final marker addressed by the end vector |
 
 The 19 present master-index pointers are unique and point before the checksum. They are ascending
-in every donor, but this is an observed layout rather than a validity rule: safely relocated
-sections 9–11 sit at the tail and therefore make those three master slots non-monotonic. The end
+in every donor, but this is an observed layout rather than a validity rule: the readers accept
+them in any order. The end
 vector points at the final marker and no donor carries bytes after it.
 
 The native checksum starts with lanes `0x21` and `0x43`, then XORs complete byte pairs from the
@@ -96,111 +96,38 @@ walk also ceases to be safely bounded above `0x3b0000`.
 
 ## Current ownership
 
-Afterglow owns structural validation plus read-only section-5 command indexing, exact command
-objects, press/hold/release waveform records, screen/key ownership, drawing-program inventory,
-section-7 font resources, section-19 touch geometry, device-menu row ownership, activity contexts,
-and state transitions. Every unmodeled native byte remains opaque and is preserved unchanged.
-Mutation remains outside the enabled backend boundary. A separately tested relocation primitive
-exists for the three sections that must grow during authoring, and the screen index can be extended
-by one ordinal, but no normal build or write gate uses either yet.
+Afterglow validates an image, indexes what it can prove of it - section-5 command ownership,
+command objects, press/hold/release waveform records, screen and key ownership, drawing programs,
+section-7 fonts, section-19 touch geometry, device-menu rows, activity contexts and state
+transitions - and imports the portable part. Every unmodelled native byte is preserved unchanged
+alongside the project. A build never starts from that image: it generates the whole configuration
+from the project ("Generating a configuration from a project"). Earlier versions edited the
+imported image in place instead - relocating sections, cloning screens, patching pointers; that
+path was removed once generation covered everything it did, and the findings it produced are kept
+below as format facts.
 
-## Relocation safety
+## Absolute pointers and objects
 
-Sections 9 (pages), 10 (objects), and 11 (the object table) can be copied to the end of the image
-without compacting or overwriting their old bytes. The master index is then repointed. Section 11
-must be rebuilt because its entries are absolute pointers into section 10, while section-6 slot
-records hold absolute key-register pointers into section 9.
+Sections 9 (key registers), 10 (contexts and objects) and 11 (the object table) are reached
+through absolute pointers: section 11's entries point into section 10, and section-6 slot records
+point into section 9. Every such pointer is found through owned structures - the 20-slot master
+index, the counted section-11 object table and the complete counted section-6
+screen/trailer/slot chain - never by scanning for aligned three-byte values, because
+address-sized coincidences are common in waveform and bitmap data. The two broader donors hold
+843 and 1,626 of them: 214/440 into section 9, 628/1,185 into section 10, and one into section 11.
 
-Afterglow enumerates those affected pointers only through owned structures: the 20-slot master
-index, the counted section-11 object table, and the complete counted section-6
-screen/trailer/slot chain. It does not scan arbitrary aligned three-byte values, because valid
-address-sized coincidences are common in waveform and bitmap data. The two broader donors contain
-843 and 1,626 affected fields respectively: 214/440 into section 9, 628/1,185 into section 10,
-and one into section 11.
+An image is closed by the end vector at offset 4, the two checksum lanes over every whole pair
+before them, and `PTYY` (`gspm.seal`).
 
-A relocation map is expressed in section-local coordinates as contiguous
-`(old start, old end, delta)` runs covering every old byte. Appending accepts an identity map;
-inserting in the middle requires a piecewise map so targets after the insertion receive the extra
-delta. Undeclared content differences, gaps, overlaps, deleted pointer targets, and destinations
-outside the new body abort. After rebuilding, every affected field is read back and must target
-the mapped address. Up to 24 bytes behind every non-table target must still match its old pointed
-content, except for explicitly declared edit ranges. No live owned pointer may remain aimed at a
-vacated section range.
+The measured object and index primitives carry no fixed donor counts. A command button uses a
+seven-byte command/device object followed by a seven-byte indirection object, allocated in that
+B/A order. Device IDs are `(device index << 8) | 1`, and command IDs are the device index and the
+command ordinal. Command pages use the observed physical layout order `b2 b3 b0 b1 b4 b5`.
+Section 5 is a one-byte device count and absolute sub-table pointers; each sub-table has a zero
+byte, a `u16` command count, and absolute pointers to command-record byte `+11`. The opcode-`75`
+IR object kind a build writes is `0x0fca`.
 
-The closer pads the pre-checksum body to even length, writes the complete 32-bit end vector,
-recomputes the two checksum lanes, and restores `PTYY`. A no-content-change relocation of both
-broader donors passes the native validator and reproduces the same command, screen-key, and
-activity inventory after repairing all affected references. This is a software invariant, not a
-claim that a relocated image has been accepted by hardware.
-
-The authoring layer also serializes the measured object and index primitives without fixed donor
-counts. A command button uses a seven-byte command/device object followed by a seven-byte
-indirection object; new object IDs are allocated in that B/A order. Device IDs use
-`(device index << 8) | 1`, while command IDs use the device index and command ordinal. Command
-pages use the observed physical layout order `b2 b3 b0 b1 b4 b5`. Section 5 is emitted as a
-one-byte device count and absolute sub-table pointers; each sub-table has a zero byte, a `u16`
-command count, and absolute pointers to command-record byte `+11`. The opcode-`75` IR object kind
-is derived from the current image's dominant value, retaining `0x0fca` only as the fallback used
-when an image contains no such evidence.
-
-These serializers are not an enabled device-creation path. Screen drawings, touch geometry,
-section-6 allocation, and a complete post-mutation audit must join them before the backend can
-expose authoring.
-
-The command allocator can now lower a complete portable signal list, place each command's press,
-hold, and optional release waveforms with its 25-byte record inside one 64 KiB address window,
-append a per-device command sub-table, and repoint a rebuilt section-5 top index. It then appends
-the measured command/device and wrapper object pair for every command and extends section 11.
-The new device index and every command ordinal are derived from the current image rather than a
-donor count. Final verification requires section 5 to resolve every newly allocated record and
-the command inventory to own all of them. Adding one copied portable waveform succeeds on both
-broader donors, producing device indexes 3 and 6 respectively and preserving native validation.
-The resulting device has command ownership but deliberately has no claimed menu row or reachable
-command screen yet; that UI linkage is the next authoring layer.
-
-Existing section-9 page keys can be reassigned in one relocation pass. Pages are recognized by
-their counted four-byte entries and known tags while unrelated section bytes remain opaque. The
-requested command must resolve through section 5. A new exact command/device object is appended,
-then the key's existing indirection object is cloned with only its single opcode-`7f` target
-changed. Cloning is required because the wrapper can also carry navigation or other native atoms;
-replacing it with a minimal template would silently discard them. The page entry's two-byte object
-ID is the only declared in-place edit.
-
-The postcondition requires the complete recognized page/key set to remain identical, every
-unrequested command resolution to remain identical, and every requested key to resolve to the
-specified command and runtime device. A same-command dry reassignment passes on both broader
-donors, including relocation and checksum validation. This mechanism covers section-9 page keys;
-hard keys routed through section-10 activity contexts use a separate operation.
-
-Context-key reassignment accepts only rows already classified as complete direct or one-hop
-command/device actions. The context records themselves normally live outside section 10 even
-though its index points to them, so their object-ID fields are patched at their own absolute
-locations after section 10 has been relocated. A direct action is cloned with its command and
-runtime-device atoms replaced. For a one-hop action, both the nested command object and its outer
-wrapper are cloned, retaining sibling atoms such as page transitions. The full set of editable
-context rows must remain identical; all unrequested command/device pairs must remain unchanged and
-each requested row must resolve exactly to its replacement. Same-command dry edits preserve all
-62 and 138 editable rows in the two broader donors and pass native validation.
-
-Activity property assignments use another clone-and-repoint operation. The editor follows the
-context's ENTER and optional REFRESH hook, and recognizes a property SET either on that object or
-one object hop below it. Changing or removing a SET clones the exact containing object; adding a
-SET appends it to a clone of the top-level hook. An edit is rejected if the property is outside
-section 14, its value exceeds the declared limit, no transition can reach the requested value, a
-SET is ambiguous, or removal would create a zero-atom object. The existing section-11 object ID is
-repointed to the clone rather than allocating a new identity. Same-value dry edits on both broader
-donors pass relocation and native validation.
-
-Every imported Harmony One project records a same-device baseline contract. It names the
-preserved unpacked payload directory, the selected remote profile and full intended identity,
-payload size, and SHA-256 digest. A future build must reload through the profile's payload carrier,
-match all of those values, and pass structural validation before it can mutate anything. Missing,
-moved, or modified baseline bytes are fatal. The project stores a reference rather than embedding
-the copyrighted native image in JSON; keeping or redistributing the user's own backup remains a
-separate choice.
-
-The read-only inventory additionally bounds two native structures without assigning portable
-meaning to them:
+The inventory also bounds two native structures without assigning portable meaning to them:
 
 - section 11 begins with a `u16` count followed by that many absolute `u24` object pointers;
 - an object starts with an atom count; each atom is an operand `u16` and opcode `u8`;
@@ -211,8 +138,8 @@ meaning to them:
   carrier-gated mark.
 
 Object-table order is object identity, not an address sort requirement. Donor tables happen to be
-ascending, but clone-and-repoint edits place an existing object ID at the tail. Readers therefore
-require unique, bounded, non-overlapping object bodies while accepting non-monotonic pointers.
+ascending, but nothing requires it, so readers require unique, bounded, non-overlapping object
+bodies while accepting non-monotonic pointers.
 
 ## IR waveform representation
 
@@ -245,7 +172,7 @@ waveforms with intro/repeat sections map to the two waveform pointers in the sam
 This mapping does not yet cover sender-owned state such as RC5/RC6 toggle bits or unmodulated
 signals. Those cases remain rejected until the corresponding native lifecycle mechanism is
 evidenced. Lowering also does not assign record addresses, command IDs, or object references;
-those belong to the still read-only indexing and relocation work.
+the generator places the records and numbers them.
 
 ## Section 5 command ownership
 
@@ -295,39 +222,25 @@ device ID. The command ID must exist in section 5, and any device ID must have t
 The importer retains screen ordinal, slot, template, raw key code, object index, key-register
 offset, drawing-program offset, and any page transition as native evidence on that command.
 
-### Extending the screen index
+### The screen index
 
-Section 6 is the only index a new screen has to enter, and it is the easiest to move: the census
-finds exactly one parser-owned pointer targeting it in either broader donor, the master slot at
-`0x24`. Its own entries are absolute, so the index can be rebuilt one entry longer at the end of
-the image and the master slot repointed, without touching the trailers, slots, key registers or
-drawing programs it addresses. Those live below the first master-indexed section in both donors,
-not inside section 6's computed range. Appending an ordinal cannot renumber an existing one, so
-`0x7e` navigation objects keep their meaning.
+Section 6's own entries are absolute, and the trailers, slots, key registers and drawing programs
+it addresses live below the first master-indexed section in both donors, not inside section 6's
+computed range. A screen's ordinal is its position in the index, which `0x7e` navigation objects
+name, so an ordinal is never renumbered while anything can still name it.
 
-Afterglow emits the index, trailer and slot records from the same fields it parses. Re-emitting
-every donor screen reproduces the original bytes exactly: 157 and 339 trailers, 213 and 439 slots,
-and both screen indexes. The trailer flag is `00` on most screens and `01` on nine in each donor,
-so it is copied from the screen being cloned rather than fixed.
+Afterglow emits the index, trailer and slot records from the same fields it parses: re-emitting
+every donor screen reproduces the original bytes exactly - 157 and 339 trailers, 213 and 439
+slots, and both screen indexes. The trailer flag is `00` on most screens and `01` on nine in each
+donor.
 
-A new screen can therefore be built by cloning one owned slot: its template, drawing program and
-trailer flag are reused, and its key register is copied with only the command entries repointed at
-other objects. Entries that bind no command survive byte for byte, and a slot that opens another
-screen with `0x7e` is refused as a source, because a clone would inherit navigation belonging to
-the screen it was copied from. Every command key the source declares must be rebound; a partial
-rebinding would leave keys firing the source device. The donors offer 28 and 52 such slots.
-
-A clone alone reuses the source screen's artwork, so the labels drawn on it are still the source
-device's. Naming the new commands means re-emitting the slot's drawing program.
-
-### Labelling a command screen
+### How a command screen is drawn
 
 A command-screen slot's program is a prologue `call`, then one button frame bitmap per command,
 one font attribute, the label instructions that name each frame, and finally a selector and the
-chrome that draws the bottom softkey and page indicator. Only the labels are rewritten; every other
-instruction is copied byte for byte, absolute pointers included.
+chrome that draws the bottom softkey and page indicator.
 
-The layout comes from the image, not from constants. Each button's own frame bitmap gives its
+The layout was measured rather than assumed. Each button's own frame bitmap gives its
 position and width, and the label is centred on that frame: `x = floor((2*frame x + frame width -
 label width) / 2)`, where the label width is the sum of the drawn widths of its glyphs in the font
 the slot's attribute selects. That rule reproduces the position of every button label on both
@@ -341,23 +254,15 @@ one for one with the frames in drawing order. Across all 80 clonable donor slots
 single consistent mapping, and the two donors agree on it: `b0`-`b5` map to `(6,38)`, `(89,38)`,
 `(6,92)`, `(89,92)`, `(6,146)`, `(89,146)`.
 
-Re-emitting each donor slot with the labels it already draws reproduces its meaning exactly - the
-same instructions, positions and text - in all 80 cases, and reproduces its bytes exactly in the 29
-slots whose labels are all inline text. The rest differ only because the native producer drew some
-labels through a shared string pointer where the emitter writes inline text.
+Drawing each donor slot again with the labels it already draws reproduces its meaning exactly -
+the same instructions, positions and text - in all 80 cases, and its bytes exactly in the 29 slots
+whose labels are all inline text. The rest differ only because the native producer drew some
+labels through a shared string pointer where inline text is written here.
 
-A screen of several pages is built the same way, one slot per page, each cloned from a source slot
-whose button count matches that page. Both donors offer slots of several widths - 6, 4 and 2
-downstairs, 6, 5, 3 and 2 upstairs - so how a device's commands divide into pages is a choice
-between the shapes that image actually contains. All the pages share one prologue, cloned from the
-first source's, carrying the new total and, when asked, a new title.
-
-A prologue draws its screen's title at (6,4), twice in every prologue that has one and always
-agreeing - 122 of 122 and 298 of 298 - so both copies are rewritten together. Pages are numbered
-only if the source slots are: a screen either numbers every page or none, and a multi-page screen
-built from unnumbered slots is refused rather than left unable to say which page it is on. Both
-donors contain unnumbered six-button slots, so a single-page screen can be cloned without
-inheriting a counter.
+A screen of several pages has one slot per page, all calling one prologue that states the total.
+Both donors use slots of several widths - 6, 4 and 2 downstairs, 6, 5, 3 and 2 upstairs. A
+prologue draws its screen's title at (6,4), twice in every prologue that has one and always
+agreeing - 122 of 122 and 298 of 298. A screen either numbers every page or none.
 
 A font indexes the repertoire sparsely: every font in both donors declares the full repertoire slot
 count and leaves a null pointer for each glyph its own labels never needed. The downstairs menu font
@@ -365,26 +270,15 @@ draws 36 characters and the upstairs one 48, while their button fonts draw 66 an
 character's repertoire code is therefore not enough to draw it, and a label is refused when the font
 it would be drawn in has no glyph for one of its characters.
 
-### Completing a font
+### Fonts of one typeface
 
-The missing glyphs are usually in the image already, in another font that needed them. Two fonts
-are the same typeface when they declare the same height and every code they both carry decodes to
-an identical shape; where two compatible fonts disagree about a code, that code stays unresolved
-rather than being taken from one of them. Both donors hold 18 fonts in four height families, and
-the height-14 family is one face of eight to ten fonts whose union is the whole repertoire.
+Two fonts are the same typeface when they declare the same height and every code they both carry
+decodes to an identical shape. Both donors hold 18 fonts in four height families, and the
+height-14 family is one face of eight to ten fonts whose union is the whole repertoire; the
+height-15 menu-row family holds only two fonts of its face. A generated image does not depend on
+this: each of its fonts carries every character its own text draws.
 
-Filling a null slot with a pointer to a glyph the image already holds is the smallest useful
-change: no glyph data is written, the record keeps its address, height and slot count, and nothing
-drawn today can be affected, because a label using that code could not have been drawn before.
-Completing every font in the donors fills 472 and 464 slots, changing 1,423 and 1,390 bytes; every
-label already drawn stays byte-identical and the declared repertoire is unchanged. The title and
-button fonts reach the full repertoire, so a screen can be titled and its buttons named freely.
-
-The menu-row font is the exception. Its height-15 family holds only two fonts of that face, so it
-gains 2 characters downstairs and 14 upstairs and stays restricted. Drawing an arbitrary menu row
-name would need a glyph the image does not contain at that size and weight.
-
-### Changing a device-menu row
+### How a device-menu row is drawn
 
 Menu rows are laid out differently from command-screen buttons. A row label is left-aligned at
 x=63 rather than centred, and its lines sit 12 pixels apart centred on the row band's centre;
@@ -392,22 +286,14 @@ both donors draw one- and two-line rows only, so a third line is refused rather 
 Every one of the 102 replica rows re-renders to the same meaning, and the 11 rows drawn entirely
 with inline text re-render byte for byte.
 
-All 102 row objects have the same shape: three atoms, exactly one `0x7e` and no `0x7f` jump, so
-repointing a row is a clone with the `0x7e` operand replaced. Each menu slot's key register lives
-in section 9, which makes that repoint an in-place edit inside a relocated section; a register
-found elsewhere is refused rather than patched blind.
+All 102 row objects have the same shape: three atoms, exactly one `0x7e` and no `0x7f` jump. Each
+menu slot's key register lives in section 9.
 
-The menu is replicated and the replicas are only recognized as one menu because they agree, so a
-row is changed in every replica at once - four occurrences downstairs, ten upstairs. Changing one
-and not the others would break that agreement and leave the remote showing different device lists
-depending on how the menu was reached. The change is verified by re-reading the menu: the replicas
-must still agree, the row set must be unchanged, every occurrence of the row must carry the request,
-and no other row may move.
-
-Both donors fill every menu page, so adding a row means adding a page. A page's rows are the
-equally sized content zones of its touch template; the bottom softkey shares the template but is a
-different size, and one replica in each donor binds it in the navigation class like a row, so
-binding class alone cannot tell them apart.
+The donors replicate their device menu - four occurrences downstairs, ten upstairs - and the
+replicas are only recognised as one menu because they agree. A page's rows are the equally sized
+content zones of its touch template; the bottom softkey shares the template but is a different
+size, and one replica in each donor binds it in the navigation class like a row, so binding class
+alone cannot tell them apart.
 
 ### Paging
 
@@ -420,36 +306,10 @@ by screen, so it is read from the screen rather than fixed. No prologue is share
 in either donor: 157 of 157 and 339 of 339 serve exactly one, so a screen's total can be advanced
 without touching another screen.
 
-Growing a menu therefore clones the replica's own last page - same template, same prologue, same
-chrome - drops every row but the new one, advances the page counter, and re-emits the prologue with
-the new total and every slot of that screen calling it. Only a menu that already numbers its pages
-can grow: building a counter for a screen that has none would mean constructing the prologue's
-number block and the attribute restore that follows it, which no single-page screen evidences.
-The upstairs menu grows from three pages to four and carries a seventh device; the downstairs menu
-is a single unnumbered page and is refused.
+### Row bands
 
-A row is added to every replica at once, and afterwards the replicas must still agree, the menu's
-own reader must reject no more than it did before, and exactly one row per replica must reach the
-new screen. A screen that already has a menu row is refused a second one, because a device with
-two rows has two names and the reader cannot own either.
-
-### Removing a row, and reusing the band it leaves
-
-Removing a row re-emits its page without it and drops its key-register entry, in every replica. The
-device's commands and its screen stay in the image, unreachable: removing the screen instead would
-renumber every ordinal above it and break the `0x7e` objects that name them, which is the same
-reason relocation leaves the bytes it moves past in place. A removal that would leave a page with
-no rows at all is refused rather than producing an empty page.
-
-That leaves a band free, and a later row fills it instead of growing a page: the new row is drawn
-with the frames of a row the page already has, moved by the distance between the two band centres,
-and the free band's touch key is bound to a new navigation object. Both donors draw every one of
-their 102 rows with its frames at the same offsets from its band centre, and every page in band
-order, so a rebuilt page is the shape the producer would have drawn. The new row carries the icon
-of the row its frames came from.
-
-This is what lets the downstairs donor take a new device at all: its single unnumbered menu page
-cannot grow, but a row removed from it can be replaced.
+Both donors draw every one of their 102 rows with its frames at the same offsets from its band
+centre, and every page in band order.
 
 The two broader donors contain 339/157 screens, 439/213 slots, and 1,281/673 key-register entries.
 The indexed walk resolves 443/199 unambiguous command bindings and 624/363 page bindings. It finds
@@ -548,29 +408,6 @@ what they point at.
 What is left is not a format gap but a semantic one: the activity engine in sections 10 and 14 has
 no portable model, so a generated configuration could carry devices before it could carry
 activities.
-
-## Building from a project
-
-An authored Harmony One is the user's own image with a bounded set of edits, so a build starts from
-the authenticated same-device baseline the project was imported from and never from a scaffold.
-
-Planning compares the project's devices with the ones the baseline's Devices menu already names.
-A device the baseline has is left alone. A new one is added only if the image can express it: its
-commands must divide into page sizes the image has slot shapes for, its menu must have room or be
-able to grow a page, and its name and every command name must be drawable in the fonts those texts
-would use. Drawability is judged against the fonts the build will have rather than the ones the
-image starts with, because completing fonts is the build's own first step. Anything refused is
-named with its reason instead of being dropped.
-
-Applying a plan completes the fonts, then for each new device allocates its commands, builds its
-titled screen of pages, and adds the menu row that opens it - in that order, because a screen
-cannot bind objects that do not exist and a menu row cannot open a screen that has not been added.
-
-The result carries a confinement report: the steps taken and each one's own report, the baseline
-and artifact digests, the number of changed ranges and bytes, how many bytes were appended, and the
-device, menu-row and menu-replica counts and reader reject counts before and after. Whether that
-artifact may be written at all remains the profile's decision; `require_buildable` is checked
-before any of this runs, so a read-only Harmony One describes a plan and writes nothing.
 
 ## The pictures a configuration draws
 
@@ -949,7 +786,7 @@ category. Null bindings are identical in all four donors, 74 of 74, and carried.
 `1f` bindings carry that donor's constants - only `eb03`/`eb07` on key 6 and `ea03`/`ea07`
 on key 7 ever appear - which is coherent because the fonts, pictures and overlay order all
 come from the same donor. Object bindings are dropped. The OK buttons open the first screen
-the project owns instead, through `authoring.navigation_object`.
+the project owns instead, through a navigation object (`structures.navigation_object`).
 
 A build then emits the platform's objects first, the overlays into section 12, the fonts in
 attribute order so the programs' attribute numbers mean what they meant, templates 0 to 2
@@ -1631,11 +1468,8 @@ drawn from a palette that is already RGB565-exact and reports neither.
 
 ## Emitting drawing programs
 
-Every other structure this backend authors is a counted table it can serialize. Drawing programs
-were the exception: bytecode carrying absolute pointers to other programs, to bitmaps and to glyph
-strings, which could be copied but not laid out afresh. That is what kept authoring to patching.
-
-The encoder is the reader's exact inverse. Re-encoding every instruction of every program reachable
+Drawing programs are bytecode carrying absolute pointers to other programs, to bitmaps and to
+glyph strings. The encoder is the reader's exact inverse. Re-encoding every instruction of every program reachable
 from a screen slot reproduces its own bytes: 479 and 1,040 blocks, 12,309 instructions in total,
 covering all eleven opcodes the reader recognizes. Only four instruction shapes hold an address -
 `call`, `jump`, `bitmap` and `text` - plus a switch's case and range targets; everything else an
@@ -1646,58 +1480,30 @@ graph can be laid out in any order. Emitting the whole graph at a fresh address 
 internal reference re-disassembles to the same programs in both donors, 479 of 479 and 1,040 of
 1,040. The graph is 21,493 and 43,188 bytes, one and two per cent of the image.
 
-An address the layout does not name is left alone, which is what lets a program keep pointing at
-bitmaps and glyph strings it does not own while the blocks around it move.
+## Laying out a whole image
 
-## Composing a configuration
+Laying out every structure afresh, rather than reading one, settled a few things about the format.
 
-Every operation before this one edits an image in place: relocate a section, append a record,
-repoint a pointer. That cannot delete, cannot compact, and grows the file on every change, because
-nothing is ever laid out afresh.
+Section 9 must hold every key register, and no donor shares a register between slots - 213 and
+439 slots to as many registers. A slot that binds no key still has a register, and 50 and 62 of
+them are empty, so a zero-entry register (`00 00`) is a shape the format uses rather than a
+mistake. Nothing lies between the registers either - a single pad zero would read as a wide
+header - so the section is placed whole and any 64 KiB window padding falls before it.
 
-Composition reads the structures this backend owns into a model with no addresses in it - the
-object bodies, the section-10 contexts, the screen chain with each slot's key bindings, and the
-drawing-program graph - then emits them all together at chosen addresses and fixes every reference
-in one pass. What is not modelled stays exactly where it is and is referenced from the new layout:
-command records and their waveforms, fonts, bitmaps, glyph strings, touch templates, and the
-sections with no model at all. An authored image is still the owner's own image.
-
-The four composed sections are emitted last and in ascending order - 9, 10, 11, then 6 - so each
-one's computed range covers its own table and nothing else. Section 9 must hold every key register,
-which is why the slots that point at them are emitted first and filled in afterwards; no donor
-shares a register between slots, 213 and 439 slots to as many registers. A slot that binds no key
-still has a register, and 50 and 62 of them are empty, so a zero-entry register (`00 00`) is a
-shape the format uses rather than a mistake. Nothing lies between the registers either - a single
-pad zero would read as a wide header - so the section is placed whole and any 64 KiB window
-padding falls before it.
-
-The model also holds the pictures and glyph strings those programs draw, the commands with their
-own waveforms, every font with its glyphs' own bytes, and each screen's button map, so they move
-with everything else and the references to them are repaired in the same pass. Sections 4, 5, 6, 7,
-9, 10 and 11 are emitted from it.
-
-Three things about the format came out of rebuilding rather than reading. A command record's five
-opening bytes are carried, not rebuilt from a flag: the donors open records with 0, 1, 4, 5, 6 and
-7, and one opens `2f 81`. A screen trailer's header is another key register, holding the physical
-buttons that screen answers - four to six rows usually, and the whole 55-button vocabulary the
-`LWJL` marker counts in a few - so the 39-row limit was a rule for recognising a page while
-scanning section 9, never a rule of the format; the count is a byte, so the limit is 255. Pictures are the
-one structure placed without the 64 KiB window rule: 15 to 19 of them cross a boundary in every
-image and 7 to 9 are larger than the window itself, a 176x220 backdrop stored whole being 77,445
-bytes. Whatever that rule protects, it is not pixel data.
-
-The gate is a no-change re-emission: the model that goes in must be the model that comes back, with
-only addresses different. A picture is compared by what it draws and a string by its glyphs, not by
-where either is kept. Both donors pass, laying out 479 and 1,040 programs, 3,015 and 5,647
-objects, 10 and 16 contexts, 157 and 339 screens and 213 and 439 key registers - 65,086 and 124,682
-emitted bytes - with command, key, activity, device-menu and activity-menu inventories unchanged.
+A command record's five opening bytes are not derived from a flag: the donors open records with
+0, 1, 4, 5, 6 and 7, and one opens `2f 81`. A screen trailer's header is another key register,
+holding the physical buttons that screen answers - four to six rows usually, and the whole
+55-button vocabulary the `LWJL` marker counts in a few - so the 39-row limit was a rule for
+recognising a page while scanning section 9, never a rule of the format; the count is a byte, so
+the limit is 255. Pictures are the one structure placed without the 64 KiB window rule: 15 to 19
+of them cross a boundary in every image and 7 to 9 are larger than the window itself, a 176x220
+backdrop stored whole being 77,445 bytes. Whatever that rule protects, it is not pixel data.
 
 ## The interface parts an image contains
 
-Screens have been built here by cloning one the image already has. That cannot build a screen for
-a configuration that has none, which is what generating from a project rather than from a previous
-image requires. The parts a screen is made of turn out to be constant within an image, so they can
-be named instead of copied.
+The parts a screen is made of turn out to be constant within an image, so they can be named -
+which is how the scaffold's artwork was extracted (`resources.py`,
+`tools/harmony_one_extract_assets.py`) - rather than copied screen by screen.
 
 Both donors agree on all of these across every command page they have, 28 and 52:
 
@@ -1716,11 +1522,10 @@ identical shared strings.
 
 The page counter is right-aligned: its right edge is 18 on every page, which is why a one-digit
 `1` sits at x=13, a wider `4` at 12 and a two-digit `10` at 8. The prologue's total is left-aligned
-at x=23 instead. A resource the image does not agree on is reported as absent rather than guessed,
-and a caller is told exactly what a page still needs before it can be generated.
+at x=23 instead. A resource the image does not agree on is reported as absent rather than guessed.
 
 Menu row icons are the exception: they belong to the devices that used them, five and fifteen
-distinct sets, so a generated row borrows one rather than drawing an icon the image does not have.
+distinct sets.
 
 ## The Activities menu
 
@@ -1732,12 +1537,10 @@ row containing it is refused.
 
 Neither donor replicates its Activities menu: one screen holds all of it, two rows downstairs and
 eight across three pages upstairs, each activity on exactly one row and every ordinal matching one
-the activity index already owns. Renaming a row therefore changes only the drawn text on the page
-it is found on - three changed byte ranges in either donor - and the row keeps the object that
-starts the activity, so what a row does cannot move while its name does. Its labels come from the
-same restricted menu font as the device rows.
+the activity index already owns. Its labels come from the same restricted menu font as the device
+rows.
 
-### What an activity ordinal is, and why one is not reclaimed
+### What an activity ordinal is
 
 An activity ordinal is a position in the section-10 context table, so removing a context would
 renumber every one above it. Section 10 opens with 7 contexts that hold no activity in all four
@@ -1767,10 +1570,9 @@ and a mean of 2,219 and 2,423 over all 256 possible following bytes. Finally, ev
 model totals 1,520 and 2,419 bytes, where a bare `u16` index over the objects would need 6,030 and
 11,294.
 
-That makes renumbering defensible, but it is evidence and not proof - firmware computing an index
-rather than reading one would overturn it - so an activity is still deleted by taking it off the
-menu and dropping its key entry, leaving its context and objects in place and named in the report,
-the same treatment a removed device's commands get.
+That is evidence and not proof - firmware computing an index rather than reading one would
+overturn it - which is one more reason a build generates every ordinal afresh rather than
+renumbering somebody else's.
 
 ## Activities and state contexts
 
@@ -1809,7 +1611,7 @@ The broader upstairs donor contains a valid name with parentheses that RE-HARMON
 name regular expression omitted.
 
 Section-10 rows also provide the physical-key mapping for active activity contexts. A binding is
-editable evidence only when its class-`7f` object is either a direct `{command,7d}/{device,7c}`
+complete evidence only when its class-`7f` object is either a direct `{command,7d}/{device,7c}`
 shape or has exactly one `7f` jump to that shape, the command is owned by section 5, and command
 and runtime-device high bytes agree. All other rows remain visible with their rejection reason.
 The downstairs and upstairs donors contain 62 and 138 such complete rows respectively.
@@ -1827,19 +1629,13 @@ flat RGB565 pixels or a five-byte mode-1 header and the row-run encoding used by
 referenced resource must decode to its declared width and height. The downstairs donor reaches 64
 distinct valid bitmaps; the upstairs donor reaches 75, with no invalid referenced resource.
 
-## Differential reconstruction
-
-An imported portable command is checked by lowering it again with its measured lead-in and
-comparing both carrier fields and waveform slots. The audit distinguishes byte identity from
-on-air waveform identity. Native data may contain adjacent words with the same carrier level;
-portable decoding coalesces them and canonical lowering emits their summed duration as one word.
-That storage difference is waveform-equivalent, while any difference in the normalized signed
-durations or carrier period is a mismatch.
+## What validation proves
 
 Opcode operands are reported as possible references only when every operand for that opcode is
 within the current object-table range. This is an inventory heuristic, not enough evidence to
 rewrite those atoms.
 
-Passing this validator proves that an image matches the measured arch-12 container and integrity
+Passing the validator proves that an image matches the measured arch-12 container and integrity
 rules. Inventory counts prove only that these bounded native shapes can be walked. Neither proves
-that Afterglow can safely modify the image or that a particular remote has accepted it.
+that a particular remote has accepted an image; that is what the hardware probes are for.
+

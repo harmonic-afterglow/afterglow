@@ -12,7 +12,7 @@ import json
 import pytest
 
 from afterglow import imaging, paths
-from afterglow.backends.harmony_one import assets, bitmap, faces, generate, row_icons
+from afterglow.backends.harmony_one import assets, bitmap, faces, generate, pages, row_icons
 
 
 SCAFFOLD = paths.scaffolds("harmony-one")
@@ -224,26 +224,23 @@ def test_a_glyph_that_would_sit_outside_its_sheet_is_refused(tmp_path):
 
 def test_a_label_of_any_printable_ascii_encodes_through_a_scaffold_font():
     """The manifest, not the donor-derived repertoire, says what a generated font draws."""
-    from afterglow.backends.harmony_one import screen_program
-
-    loaded = assets.load(SCAFFOLD)
-    font = next(f for f in loaded["fonts"].values() if f["height"] == TEXT_HEIGHT)
-    report, widths = assets.mapping(font), assets.widths(font)
+    loaded = assets.load(SCAFFOLD, PRINTABLE)
+    role = next(r for r, f in loaded["fonts"].items() if f["height"] == TEXT_HEIGHT)
+    font = generate.font_from_scaffold(loaded["fonts"][role])
 
     label = "".join(sorted(PRINTABLE - {" "}))
-    codes = screen_program._encode(label, report, widths)
+    [codes] = pages.fit_label(label, font, 10_000, lines=1)
 
     assert len(codes) == len(label)
-    assert all(code in widths for code in codes)
 
 
 def test_a_character_no_font_draws_is_still_refused_by_name():
-    loaded = assets.load(SCAFFOLD)
-    font = next(f for f in loaded["fonts"].values() if f["height"] == TEXT_HEIGHT)
+    loaded = assets.load(SCAFFOLD, PRINTABLE)
+    role = next(r for r, f in loaded["fonts"].items() if f["height"] == TEXT_HEIGHT)
+    font = generate.font_from_scaffold(loaded["fonts"][role])
 
-    with pytest.raises(ValueError, match="not established"):
-        from afterglow.backends.harmony_one import screen_program
-        screen_program._encode("caf\u00e9", assets.mapping(font), assets.widths(font))
+    with pytest.raises(ValueError, match="cannot draw"):
+        pages.fit_label("caf\u00e9", font, 10_000, lines=1)
 
 
 def test_every_slot_has_a_look_and_the_default_face_draws_printable_ascii():

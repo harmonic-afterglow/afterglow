@@ -13,7 +13,8 @@ import pytest
 
 from afterglow import ir_signal
 from afterglow.backends.harmony_one import (
-    activities, activity_index, command_index, generate, gspm, keys, ui_index)
+    activities, activity_index, command_index, devices, generate, gspm, keys,
+    options_screens, pages, scaffold, ui_index)
 
 ENTER, LEAVE, REFRESH = activity_index.ENTER, activity_index.LEAVE, activity_index.REFRESH
 
@@ -177,7 +178,7 @@ class _Remote:
         if key in header:
             self.run(header[key])
             return
-        for context in (self.context, generate.EVENT_CONTEXT):
+        for context in (self.context, scaffold.EVENT_CONTEXT):
             found = context is not None and self.row(context, key)
             if found:
                 self.run(found)
@@ -200,13 +201,13 @@ def remote():
     return built
 
 
-YES, NO = generate.FIRST_BUTTON_KEY + 4, generate.FIRST_BUTTON_KEY + 5
+YES, NO = pages.FIRST_BUTTON_KEY + 4, pages.FIRST_BUTTON_KEY + 5
 
 
 def _start(machine, row):
     """Start the activity on menu row ``row`` and tell the Remote Assistant it worked."""
-    machine.enter(generate.scaffold.SYSTEM_SCREENS)
-    machine.touch(generate.MENU_ROW_KEYS[row])
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[row])
     machine.touch(YES)
 
 
@@ -226,11 +227,11 @@ def test_an_activity_switches_its_devices_on_sets_their_inputs_and_shows_its_scr
     # the TV's power-on delay holds its next send back, a hundred tenths at a time
     assert ("wait", 0, 30) in machine.log
     texts = [machine.mode]
-    assert machine.mode != generate.scaffold.SYSTEM_SCREENS
+    assert machine.mode != scaffold.SYSTEM_SCREENS
     # picking it again re-sends its inputs and nothing else, and asks nothing
     machine.sent.clear()
-    machine.enter(generate.scaffold.SYSTEM_SCREENS)
-    machine.touch(generate.MENU_ROW_KEYS[0])
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
     assert machine.sent == [_command("InputHdmi1"), _command("InputTv", 1)]
     assert machine.mode == texts[0]
 
@@ -239,8 +240,8 @@ def test_switching_activities_turns_off_what_the_next_one_does_not_use(remote):
     machine = _fresh(remote)
     _start(machine, 0)
     machine.sent.clear()
-    machine.enter(generate.scaffold.SYSTEM_SCREENS)
-    machine.touch(generate.MENU_ROW_KEYS[1])                  # Listen to Music
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[1])                  # Listen to Music
     machine.touch(YES)
     assert machine.sent == [_command("InputCd", 1), _command("PowerOff")]
 
@@ -251,7 +252,7 @@ def test_off_turns_everything_off_and_goes_back_to_the_activities_menu(remote):
     machine.sent.clear()
     machine.press(keys.code(keys.OFF))
     assert sorted(machine.sent) == sorted([_command("PowerOff"), _command("Power", 1)])
-    assert machine.mode == generate.scaffold.SYSTEM_SCREENS
+    assert machine.mode == scaffold.SYSTEM_SCREENS
 
 
 def test_the_keypad_follows_the_activity_roles_and_its_own_keys(remote):
@@ -270,10 +271,10 @@ def test_a_screen_button_sends_its_command_or_runs_its_macro(remote):
     machine = _fresh(remote)
     _start(machine, 0)
     machine.sent.clear()
-    machine.touch(generate.FIRST_BUTTON_KEY)
+    machine.touch(pages.FIRST_BUTTON_KEY)
     assert machine.sent == [_command("Guide")]
     machine.sent.clear()
-    machine.touch(generate.FIRST_BUTTON_KEY + 1)
+    machine.touch(pages.FIRST_BUTTON_KEY + 1)
     assert machine.sent == [_command("Menu"), _command("Select")]
     assert ("wait", 0, 5) in machine.log
 
@@ -296,15 +297,15 @@ def test_device_screens_bind_the_device_keys_and_return_to_the_running_activity(
     machine = _fresh(remote)
     _start(machine, 0)
     activity_screen = machine.mode
-    machine.touch(generate.PAGE_DEVICES_KEY)                  # the device list
-    machine.touch(generate.MENU_ROW_KEYS[1])                  # the receiver
+    machine.touch(pages.PAGE_DEVICES_KEY)                  # the device list
+    machine.touch(pages.MENU_ROW_KEYS[1])                  # the receiver
     machine.sent.clear()
     machine.press(keys.by_name("VolumeUp"))
     assert machine.sent == [_command("VolumeUp", 1)]
     machine.sent.clear()
     machine.press(keys.by_name("ChannelUp"))                  # the receiver has none
     assert machine.sent == []
-    machine.touch(generate.PAGE_ACTIVITIES_KEY)
+    machine.touch(pages.PAGE_ACTIVITIES_KEY)
     assert machine.mode == activity_screen
 
 
@@ -313,7 +314,7 @@ def test_the_activities_key_opens_the_menu_and_goes_back_from_it(remote):
     _start(machine, 0)
     activity_screen = machine.mode
     machine.press(keys.code(keys.ACTIVITIES))
-    assert machine.mode == generate.scaffold.SYSTEM_SCREENS
+    assert machine.mode == scaffold.SYSTEM_SCREENS
     machine.press(keys.code(keys.ACTIVITIES))
     assert machine.mode == activity_screen
 
@@ -321,12 +322,12 @@ def test_the_activities_key_opens_the_menu_and_goes_back_from_it(remote):
 def test_a_step_the_one_cannot_take_is_reported_and_a_missing_command_refused():
     project = {**PROJECT, "activities": [dict(PROJECT["activities"][0], enter=[
         ["input", "tv", "HDMI1"], ["state", "tv", "InputType", "Digital"]])]}
-    planned = activities.plan(project, generate.lowered_devices(project))
+    planned = activities.plan(project, devices.lowered_devices(project))
     assert len(planned["skipped"]) == 1
     broken = {**PROJECT, "activities": [dict(PROJECT["activities"][0], soft_buttons=[
         ["Nothing", "tv", "NoSuchCommand"]])]}
     with pytest.raises(ValueError, match="NoSuchCommand"):
-        activities.plan(broken, generate.lowered_devices(broken))
+        activities.plan(broken, devices.lowered_devices(broken))
 
 
 def test_every_charge_context_the_key_stack_can_select_is_there(remote):
@@ -338,7 +339,7 @@ def test_every_charge_context_the_key_stack_can_select_is_there(remote):
     contexts = activity_index.contexts(image)
     chosen = {operand & 0xFF for item in command_index.objects(image)
               for operand, opcode in item["atoms"] if opcode == 0x1F and operand >> 8 == 0xE8}
-    assert chosen == set(generate.CHARGE_CONTEXTS.values())
+    assert chosen == set(scaffold.CHARGE_CONTEXTS.values())
     for index in chosen:
         rows = contexts[index]["rows"]
         assert {row["key_code"] for row in rows} <= set(range(0x18, 0x1F))
@@ -367,7 +368,7 @@ def test_a_held_step_sends_one_record_held_that_long_and_shows_no_button():
     machine = _fresh(built)
     _start(machine, 0)
     machine.sent.clear()
-    machine.touch(generate.FIRST_BUTTON_KEY)
+    machine.touch(pages.FIRST_BUTTON_KEY)
     [(device, ordinal)] = machine.sent
     assert device == 0 and ordinal == len(TV["signals"])          # a record of its own
     record = command_index.inspect(built["image"])["devices"][0]["commands"][ordinal]
@@ -385,8 +386,8 @@ def test_the_remote_assistant_asks_after_a_start_and_fixes_what_is_not_on(remote
     # each device and input in turn; No to one sends its power - a toggle too, since the
     # remote has just been told the device is off - and asks again.
     machine = _fresh(remote)
-    machine.enter(generate.scaffold.SYSTEM_SCREENS)
-    machine.touch(generate.MENU_ROW_KEYS[0])
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
     prompt = machine.mode
     machine.touch(NO)                       # not everything: is the TV on?
     first = machine.mode
@@ -405,19 +406,19 @@ def test_the_remote_assistant_asks_after_a_start_and_fixes_what_is_not_on(remote
     machine.touch(YES)
     machine.touch(YES)                      # the receiver's input: done
     # back on the activity's own first page, where its buttons are
-    assert generate.FIRST_BUTTON_KEY in {
+    assert pages.FIRST_BUTTON_KEY in {
         e["key_code"] for e in machine.screens[machine.mode]["slots"][0]["entries"]}
 
 
 def test_options_turns_the_remote_assistant_off(remote):
     machine = _fresh(remote)
-    options = generate.scaffold.SYSTEM_SCREENS + 1
+    options = scaffold.SYSTEM_SCREENS + 1
     machine.enter(options)
-    machine.touch(generate.MENU_ROW_KEYS[0])  # its first row, as in Logitech's Options
-    machine.enter(generate.scaffold.SYSTEM_SCREENS)
-    machine.touch(generate.MENU_ROW_KEYS[0])
+    machine.touch(pages.MENU_ROW_KEYS[0])  # its first row, as in Logitech's Options
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
     # straight to the activity: its buttons, no question
-    assert generate.FIRST_BUTTON_KEY in {
+    assert pages.FIRST_BUTTON_KEY in {
         e["key_code"] for e in machine.screens[machine.mode]["slots"][0]["entries"]}
 
 
@@ -433,16 +434,16 @@ def test_favourites_dial_their_channel_and_come_before_the_commands():
     _start(machine, 0)
     favourites = machine.mode
     machine.sent.clear()
-    machine.touch(generate.FIRST_BUTTON_KEY)             # BBC One: 1, 2, then Select
+    machine.touch(pages.FIRST_BUTTON_KEY)             # BBC One: 1, 2, then Select
     assert machine.sent == [_command("1"), _command("2"), _command("Select")]
     assert ("wait", 0, 3) in machine.log                  # the TV's key delay between
-    machine.touch(generate.PAGE_ACTIVITIES_KEY)           # Commands
+    machine.touch(pages.PAGE_ACTIVITIES_KEY)           # Commands
     commands = machine.mode
     assert commands != favourites
     machine.sent.clear()
-    machine.touch(generate.FIRST_BUTTON_KEY)
+    machine.touch(pages.FIRST_BUTTON_KEY)
     assert machine.sent == [_command("Guide")]
-    machine.touch(generate.PAGE_ACTIVITIES_KEY)           # Favorites
+    machine.touch(pages.PAGE_ACTIVITIES_KEY)           # Favorites
     assert machine.mode == favourites
 
 
@@ -450,37 +451,37 @@ def test_options_has_logitechs_two_pages_and_the_tutorial_teaches_without_doing(
     # Logitech's Options: the Remote Assistant, the Tutorial and Date and Time, then
     # Screen Sounds and Screen Sensitivity, the side strips between them.
     machine = _fresh(remote)
-    options = generate.scaffold.SYSTEM_SCREENS + 1
+    options = scaffold.SYSTEM_SCREENS + 1
     machine.enter(options)
-    machine.touch(generate.SIDE_NEXT_KEY)
+    machine.touch(pages.SIDE_NEXT_KEY)
     second = machine.mode
     assert second != options
-    machine.touch(generate.SIDE_NEXT_KEY)
+    machine.touch(pages.SIDE_NEXT_KEY)
     assert machine.mode == options
     # the Tutorial, each page moved on by the key it teaches; Help and Off send nothing
-    machine.touch(generate.MENU_ROW_KEYS[1])
+    machine.touch(pages.MENU_ROW_KEYS[1])
     seen = [machine.mode]
-    machine.touch(generate.SIDE_NEXT_KEY)                    # right arrow
+    machine.touch(pages.SIDE_NEXT_KEY)                    # right arrow
     seen.append(machine.mode)
-    machine.touch(generate.MENU_ROW_KEYS[2])                 # touch the first activity
+    machine.touch(pages.MENU_ROW_KEYS[2])                 # touch the first activity
     seen.append(machine.mode)
     machine.press(keys.code(keys.ACTIVITIES))
     seen.append(machine.mode)
-    machine.touch(generate.SIDE_NEXT_KEY)
+    machine.touch(pages.SIDE_NEXT_KEY)
     seen.append(machine.mode)
     machine.sent.clear()
     machine.press(keys.code(keys.HELP))
     seen.append(machine.mode)
-    machine.touch(generate.SIDE_NEXT_KEY)
+    machine.touch(pages.SIDE_NEXT_KEY)
     seen.append(machine.mode)
     machine.press(keys.code(keys.OFF))
     seen.append(machine.mode)
-    assert machine.sent == [] and len(set(seen)) == len(generate.TUTORIAL)
-    machine.touch(generate.SIDE_PREV_KEY)                    # back a page
+    assert machine.sent == [] and len(set(seen)) == len(options_screens.TUTORIAL)
+    machine.touch(pages.SIDE_PREV_KEY)                    # back a page
     assert machine.mode == seen[-2]
     machine.press(keys.code(keys.OFF))
-    machine.touch(generate.PAGE_DEVICES_KEY)                 # Exit
-    assert machine.mode == generate.scaffold.SYSTEM_SCREENS  # nothing running: the menu
+    machine.touch(pages.PAGE_DEVICES_KEY)                 # Exit
+    assert machine.mode == scaffold.SYSTEM_SCREENS  # nothing running: the menu
 
 
 def _queue_peak(image) -> tuple[int, str]:

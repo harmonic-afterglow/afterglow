@@ -336,6 +336,20 @@ class SettingsTab(QWidget):
         form.addRow("Last Name:", self.last_name)
         form.addRow("Language:", self.locale)
 
+        # A theme is a scaffold folder of the remote's own: its pictures, fonts and
+        # colours. Empty is the look the application ships.
+        theme_row = QHBoxLayout()
+        self.theme = QLineEdit(s.get("theme_folder", ""))
+        self.theme.setPlaceholderText("default look")
+        self.theme.setToolTip("A folder laid out like the remote's scaffold, with its own "
+                              "pictures, fonts and colours (see the scaffold's README)")
+        theme_row.addWidget(self.theme, 1)
+        browse = QPushButton("Choose…")
+        browse.clicked.connect(self._choose_theme)
+        theme_row.addWidget(browse)
+        self.theme_row = theme_row
+        form.addRow("Theme:", theme_row)
+
         # Blasters are paired with the remote, not with a device, so this lives here
         # rather than on a device's Edit page: pairing must not require a device first.
         blaster_row = QHBoxLayout()
@@ -363,7 +377,7 @@ class SettingsTab(QWidget):
         layout.addLayout(form)
         layout.addStretch()
 
-        for field in (self.out_file, self.first_name, self.last_name):
+        for field in (self.out_file, self.first_name, self.last_name, self.theme):
             field.textEdited.connect(self.changed)
         self.locale.activated.connect(self.changed)
         self.refresh()
@@ -379,7 +393,7 @@ class SettingsTab(QWidget):
         shown = profile.settings_fields if profile else ()
         for widget, field in ((self.first_name, "owner"), (self.last_name, "owner"),
                               (self.locale, "language"), (self.blaster_row, "rf_blasters"),
-                              (self.prefs_box, "preferences")):
+                              (self.theme_row, "theme"), (self.prefs_box, "preferences")):
             self.form.setRowVisible(widget, field in shown)
         if profile is None or profile.id == self._profile_id:
             return
@@ -422,6 +436,13 @@ class SettingsTab(QWidget):
             self.prefs[key] = widget
             self.prefs_form.addRow(QLabel(definition["label"] + ":"), widget)
 
+    def _choose_theme(self):
+        folder = QFileDialog.getExistingDirectory(self, "Choose a theme folder",
+                                                  self.theme.text() or "")
+        if folder:
+            self.theme.setText(folder)
+            self.changed.emit()
+
     def _refresh_blasters(self):
         from .rf_routing import rf_receivers
         receivers = rf_receivers(self.project)
@@ -452,6 +473,12 @@ class SettingsTab(QWidget):
             settings["last_name"] = self.last_name.text().strip()
         if "language" in shown and self.locale.currentData():
             settings["locale"] = self.locale.currentData()
+        if "theme" in shown:
+            theme = self.theme.text().strip()
+            if theme:
+                settings["theme_folder"] = theme
+            else:
+                settings.pop("theme_folder", None)
         for key, widget in self.prefs.items():
             settings[key] = (widget.currentData() if isinstance(widget, QComboBox)
                              else str(widget.value()))
@@ -486,6 +513,7 @@ class SettingsTab(QWidget):
         self.out_file.setText(s.get("out_file", ""))
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
+        self.theme.setText(s.get("theme_folder", ""))
         idx = self.locale.findData(s.get("locale", "enu"))
         self.locale.setCurrentIndex(idx if idx >= 0 else 0)
         self._refresh_blasters()
