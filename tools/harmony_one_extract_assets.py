@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from afterglow import ezhex, imaging  # noqa: E402
 from afterglow.backends.harmony_one import command_index  # noqa: E402
 from afterglow.backends.harmony_one import (  # noqa: E402
-    bitmap, compose, drawing, font_index, glyph_codec, gspm, resources,
+    bitmap, drawing, font_index, glyph_codec, gspm, resources,
     scaffold, ui_index)
 
 
@@ -117,7 +117,7 @@ def overlay_roles(payload: bytes) -> dict[str, int]:
     which selects between power modes and says nothing about the level.
     """
     claims: dict[int, tuple] = {}
-    for index, root in enumerate(compose._overlay_roots(payload)):
+    for index, root in enumerate(ui_index.overlay_roots(payload)):
         blocks = drawing.program_blocks(payload, [root])
         for block in blocks.values():
             for item in block:
@@ -306,8 +306,8 @@ BUTTON_FRAME_WIDTH = 81   # a device list's rows start at the first button's pla
 
 def compose_positions() -> list[tuple[int, int]]:
     """Where the six buttons of a page sit, in reading order."""
-    from afterglow.backends.harmony_one import generate
-    return list(generate.BUTTON_POSITIONS)
+    from afterglow.backends.harmony_one import pages
+    return list(pages.BUTTON_POSITIONS)
 
 
 def system_templates(payload: bytes) -> list[list[dict]]:
@@ -408,7 +408,7 @@ def system_screens(payload: bytes, roles: dict[str, int]) -> dict:
     """
     role_of = {target: role for role, target in roles.items()}
     screens = ui_index.screen_slots(payload)[:scaffold.SYSTEM_SCREENS]
-    overlays = compose._overlay_roots(payload)[:OVERLAYS_CARRIED]
+    overlays = ui_index.overlay_roots(payload)[:OVERLAYS_CARRIED]
     roots = [slot["program_offset"] for screen in screens for slot in screen["slots"]]
     blocks = drawing.program_blocks(payload, roots + overlays)
     order, queue = {}, list(roots) + list(overlays)

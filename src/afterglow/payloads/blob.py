@@ -1,16 +1,10 @@
 """Opaque non-PK payloads, including Harmony One's ``GSPM`` configuration.
 
 The Harmony 900 payload starts with ``PK\x03\x04`` and is a ZIP filesystem archive.
-Harmony One starts with ``GSPM`` and contains a different indexed configuration tree.
-Afterglow can read that payload, verify it and re-wrap it unchanged, which is enough to
-inspect a remote and keep a working backup - but not to author one: its master index and
-sections of screens, objects and key bindings are a separate format that this project has
-not reverse-engineered.
-
-The historical RE-HARMONY project contains partial Harmony One reverse engineering, but its
-mutation path is abandoned and has unresolved relocation failures. This backend implements only
-independently evidenced structures and refuses authoring rather than writing something plausible
-and wrong.
+Harmony One starts with ``GSPM`` and is a different indexed configuration tree. To the
+container it is one opaque file: this carrier stores and returns it unchanged, and what
+the bytes mean is the remote's backend's business - the Harmony One backend generates
+them from a project and reads them back (backends/harmony_one).
 """
 import os
 

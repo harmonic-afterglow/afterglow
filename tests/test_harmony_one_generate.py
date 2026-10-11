@@ -16,8 +16,9 @@ from afterglow import ir_signal, paths
 from afterglow import po
 from afterglow.backends.harmony_one.catalogue import ENGLISH
 from afterglow.backends.harmony_one import (
-    activity_index, assets, authoring, bitmap, command_index, compose, drawing,
-    font_index, generate, gspm, idle, key_index, named_index, scaffold, ui_index)
+    activity_index, assets, bitmap, command_index, devices, drawing, firmware_screens,
+    font_index, generate, gspm, idle, key_index, named_index, pages, pictures, scaffold,
+    structures, ui_index)
 
 
 SCAFFOLD = paths.scaffolds("harmony-one")
@@ -27,7 +28,7 @@ SCAFFOLD = paths.scaffolds("harmony-one")
 _LOADED = assets.load(SCAFFOLD)
 FONTS = [generate.font_from_scaffold(_LOADED["fonts"][role]) for role in sorted(_LOADED["fonts"])]
 OPTIONS_MODEL = generate.options_model(FONTS, generate.build_stamp()[-1])
-CARRIED = (idle.attach(OPTIONS_MODEL, generate.load_system())
+CARRIED = (idle.attach(OPTIONS_MODEL, firmware_screens.load_system())
            if OPTIONS_MODEL is not None else None)
 HOME, OPTIONS = scaffold.SYSTEM_SCREENS, scaffold.SYSTEM_SCREENS + 1
 MENU = HOME + 1 + ((1 + len(CARRIED["modes"])) if CARRIED else 0)
@@ -53,8 +54,7 @@ def test_every_reader_parses_a_generated_configuration():
     assert activity_index.engine_records(image) == []
     assert len(ui_index.screen_slots(image)) == 1
     assert ui_index.touch_templates(image) == {}
-    assert compose._overlay_roots(image) == []
-    assert compose.read(image)["screens"]
+    assert ui_index.overlay_roots(image) == []
 
 
 def test_a_generated_configuration_has_the_shape_the_factory_image_has():
@@ -237,13 +237,13 @@ def _softkeys(image, ordinal):
     [slot] = ui_index.screen_slots(image)[ordinal]["slots"]
     templates = ui_index.touch_templates(image)
     strip = {zone["key_code"] for zone in templates[slot["template"]]
-             if zone["y"] == generate.SOFTKEY_LEFT_ZONE["y"]}
+             if zone["y"] == pages.SOFTKEY_LEFT_ZONE["y"]}
     texts = {}
     attribute = None
     for item in ui_index.drawing_program(image, slot["program_offset"])["instructions"]:
         if item["opcode"] == "attribute":
             attribute = item["value"]
-        if item["opcode"] == "inline_text" and item["y"] == generate.SOFTKEYS["devices"][1]:
+        if item["opcode"] == "inline_text" and item["y"] == pages.SOFTKEYS["devices"][1]:
             texts[item["x"]] = attribute
     out = {}
     for entry in slot["entries"]:
@@ -259,26 +259,26 @@ def test_the_hub_is_activities_devices_and_back_as_logitech_builds_it():
     # device list has Activities bottom left; a device's pages have both. Testers could
     # not find their way back from a device when only a side strip led there.
     image = generate.configuration(THREE)
-    fonts = generate.SOFTKEY_FONTS
-    x = {name: xy[0] for name, xy in generate.SOFTKEYS.items()}
+    fonts = pages.SOFTKEY_FONTS
+    x = {name: xy[0] for name, xy in pages.SOFTKEYS.items()}
 
     keys, texts = _softkeys(image, HOME)
-    assert keys == {generate.SOFTKEY_RIGHT_KEY: MENU, 0x80 | generate.HOME_OPTIONS_TAG: OPTIONS}
+    assert keys == {pages.SOFTKEY_RIGHT_KEY: MENU, 0x80 | pages.HOME_OPTIONS_TAG: OPTIONS}
     assert texts == {x["devices"]: fonts["devices"], x["options"]: fonts["options"]}
     keys, texts = _softkeys(image, OPTIONS)
-    assert keys == {generate.MENU_ACTIVITIES_KEY: HOME}
+    assert keys == {pages.MENU_ACTIVITIES_KEY: HOME}
     keys, texts = _softkeys(image, MENU)
-    assert keys == {generate.MENU_ACTIVITIES_KEY: HOME}
+    assert keys == {pages.MENU_ACTIVITIES_KEY: HOME}
     assert texts == {x["activities"]: fonts["activities"]}
     screens = ui_index.screen_slots(image)
     for ordinal in range(MENU + 1, len(screens)):
         keys, texts = _softkeys(image, ordinal)
-        assert keys == {generate.PAGE_ACTIVITIES_KEY: HOME, generate.PAGE_DEVICES_KEY: MENU}
+        assert keys == {pages.PAGE_ACTIVITIES_KEY: HOME, pages.PAGE_DEVICES_KEY: MENU}
         assert texts == {x["activities"]: fonts["activities"], x["devices"]: fonts["devices"]}
     # the image boots into Activities, and that is what OK on a firmware notice opens
     start = gspm.section_ranges(image)[9][0]
     routine = _run(image, struct.unpack_from("<H", image, start + 1)[0])
-    assert (HOME, generate.ENTER_MODE) in routine
+    assert (HOME, structures.ENTER_MODE) in routine
 
 
 @pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
@@ -291,7 +291,7 @@ def test_options_opens_date_and_time_sounds_and_sensitivity_as_upstairs_does():
     [slot] = screens[OPTIONS]["slots"]
     rows = {entry["key_code"]: objects[entry["operand"]]["atoms"] for entry in slot["entries"]}
     first = OPTIONS + 1
-    assert rows[0xB0] == ((authoring.IR_OBJECT_KIND_FALLBACK, 0x75),
+    assert rows[0xB0] == ((structures.IR_OBJECT_KIND_FALLBACK, 0x75),
                           (first + CARRIED["entries"]["date-and-time"], 0x7E))
     assert rows[0xB2][-1] == (first + CARRIED["entries"]["screen-sensitivity"], 0x7E)
     # Screen Sounds runs a section-15 switch on one of the Options screens' own flags
@@ -322,28 +322,28 @@ def test_with_no_devices_the_device_list_is_still_there_and_says_so():
     screens = ui_index.screen_slots(image)
     assert len(screens) == MENU + 1
     keys, _texts = _softkeys(image, HOME)
-    assert keys[generate.SOFTKEY_RIGHT_KEY] == MENU
+    assert keys[pages.SOFTKEY_RIGHT_KEY] == MENU
     keys, _texts = _softkeys(image, MENU)
-    assert keys == {generate.MENU_ACTIVITIES_KEY: HOME}
+    assert keys == {pages.MENU_ACTIVITIES_KEY: HOME}
 
 
 def test_a_resized_button_frame_is_labelled_on_its_own_width():
     loaded = assets.load(SCAFFOLD)
     font = generate.font_from_scaffold(
         next(f for f in loaded["fonts"].values() if f["height"] == 14))
-    narrow = generate.button_page(["Power"], [0x100], font, frame_width=61)
-    wide = generate.button_page(["Power"], [0x100], font)
+    narrow = pages.button_page(["Power"], [0x100], font, frame_width=61)
+    wide = pages.button_page(["Power"], [0x100], font)
     [n] = [item for item in narrow if item["opcode"] == "inline_text"]
     [w] = [item for item in wide if item["opcode"] == "inline_text"]
-    assert w["x"] - n["x"] == (generate.FRAME_WIDTH - 61) // 2
+    assert w["x"] - n["x"] == (pages.FRAME_WIDTH - 61) // 2
 
 
 def _row_icon(kind, name):
     """The row icon a build composes for a type, as the remote stores it."""
     manifest = assets.read_manifest(SCAFFOLD)
-    pictures = {}
-    role = generate.row_icon(SCAFFOLD, manifest, pictures, kind, name)
-    return role, pictures[role]
+    bodies = {}
+    role = pictures.row_icon(SCAFFOLD, manifest, bodies, kind, name)
+    return role, bodies[role]
 
 
 def test_a_device_row_shows_its_type_s_icon_on_the_row_frame():
@@ -363,8 +363,8 @@ def test_a_device_row_shows_its_type_s_icon_on_the_row_frame():
     frame = assets.load(SCAFFOLD)["pictures"]["row-frame"]["rows"]
     _role, body = _row_icon("devices", "Television")
     icon = bitmap.decode(body + b"\x00" * 8, 0)["rows"]
-    dx = generate.MENU_ICON_XY[0][0] - generate.MENU_FRAME_XY[0][0]
-    dy = generate.MENU_ICON_XY[0][1] - generate.MENU_FRAME_XY[0][1]
+    dx = pages.MENU_ICON_XY[0][0] - pages.MENU_FRAME_XY[0][0]
+    dy = pages.MENU_ICON_XY[0][1] - pages.MENU_FRAME_XY[0][1]
     assert icon[0][0] == frame[dy][dx]
     assert icon[-1][-1] == frame[dy + len(icon) - 1][dx + len(icon[0]) - 1]
 
@@ -427,15 +427,15 @@ def test_the_clock_in_section_three_and_section_fourteen_agree():
     fields = (26, 35, 22, 22, 7, 2023)
 
     image = generate.skeleton(
-        stamp=authoring.stamp(*fields), engine=generate.clock_records(*fields))
+        stamp=structures.stamp(*fields), engine=scaffold.clock_records(*fields))
 
-    read = authoring.read_stamp(image)
+    read = structures.read_stamp(image)
     assert (read["second"], read["minute"], read["hour"], read["day"],
             read["month"], read["year"]) == fields
     assert read["weekday_agrees"] is True
 
     records = activity_index.engine_records(image)
-    assert [r["limit"] for r in records[:6]] == list(generate.CLOCK_LIMITS)
+    assert [r["limit"] for r in records[:6]] == list(scaffold.CLOCK_LIMITS)
     assert [r["initial"] for r in records[:7]] == [
         read["second"], read["minute"], read["hour"], read["day"],
         read["weekday"], read["month"], read["year"] - 2000]
@@ -444,17 +444,17 @@ def test_the_clock_in_section_three_and_section_fourteen_agree():
 def test_a_weekday_that_disagrees_with_its_date_is_refused():
     """A stored weekday contradicting its own date is what left this byte unexplained."""
     with pytest.raises(ValueError, match="disagrees with the date"):
-        authoring.stamp(26, 35, 22, 22, 7, 2023, 5)
+        structures.stamp(26, 35, 22, 22, 7, 2023, 5)
 
 
 def test_the_day_and_month_of_a_stamp_count_from_zero():
     """Section 14's limits are 30 and 11, so twelve is not a month and 31 is not a day."""
     with pytest.raises(ValueError, match="month is outside its measured range of 0 to 11"):
-        authoring.stamp(0, 0, 0, 0, 12, 2024)
+        structures.stamp(0, 0, 0, 0, 12, 2024)
     with pytest.raises(ValueError, match="day is outside its measured range of 0 to 30"):
-        authoring.stamp(0, 0, 0, 31, 0, 2024)
+        structures.stamp(0, 0, 0, 31, 0, 2024)
     # and zero is a valid day and month, which the one-based reading refused
-    assert authoring.stamp(0, 0, 0, 0, 0, 2024)
+    assert structures.stamp(0, 0, 0, 0, 0, 2024)
 
 
 def _nec(address: int, command: int):
@@ -476,9 +476,9 @@ PROJECT = {"devices": [
 
 
 def test_a_project_becomes_a_configuration_with_its_own_commands():
-    devices = generate.lowered_devices(PROJECT)
+    lowered = devices.lowered_devices(PROJECT)
 
-    image = generate.skeleton(devices=devices)
+    image = generate.skeleton(devices=lowered)
 
     assert gspm.validate(image)["ok"] is True
     counts = command_index.inspect(image)["counts"]
@@ -491,9 +491,9 @@ def test_a_project_becomes_a_configuration_with_its_own_commands():
 
 def test_the_infrared_a_generated_configuration_holds_is_the_project_s_own():
     """Every pulse has to survive, because this is the part a device actually sees."""
-    devices = generate.lowered_devices(PROJECT)
+    lowered = devices.lowered_devices(PROJECT)
 
-    image = generate.skeleton(devices=devices)
+    image = generate.skeleton(devices=lowered)
 
     portable = command_index.portable_devices(command_index.inspect(image))
     assert len(portable) == len(PROJECT["devices"])
@@ -548,7 +548,7 @@ def _command_ids(image, object_index):
 def _waits(image, object_index):
     objects = command_index.objects(image)
     return [value for value, category in objects[object_index]["atoms"]
-            if category == generate.WAIT]
+            if category == devices.WAIT]
 
 
 def test_a_device_s_power_and_inputs_are_state_variables_as_in_every_donor():
@@ -556,7 +556,7 @@ def test_a_device_s_power_and_inputs_are_state_variables_as_in_every_donor():
     names = {r["name"]: r["id"] for r in named_index.inspect(image)["records"]}
     variables = activity_index.engine_records(image)
     commands = {(device["label"], command["name"]): command["command_id"]
-                for device in generate.lowered_devices(STATEFUL)
+                for device in devices.lowered_devices(STATEFUL)
                 for command in device["commands"]}
 
     def transitions(name):
@@ -577,10 +577,10 @@ def test_a_device_s_power_and_inputs_are_state_variables_as_in_every_donor():
     # direct inputs: from any value to each, sending its command; none for "TV"
     inputs = transitions("Living_Room_TV_Input_3")
     assert variables[names["Living_Room_TV_Input_3"]]["limit"] == 2
-    assert _command_ids(image, inputs[(generate.TRANSITION_FROM_ANY, 1)]["operand"]) == [
+    assert _command_ids(image, inputs[(devices.TRANSITION_FROM_ANY, 1)]["operand"]) == [
         commands[("Living Room TV", "InputHdmi2")]]
-    assert (inputs[(generate.TRANSITION_FROM_ANY, 2)]["operand"],
-            inputs[(generate.TRANSITION_FROM_ANY, 2)]["category"]) == (0, 0)
+    assert (inputs[(devices.TRANSITION_FROM_ANY, 2)]["operand"],
+            inputs[(devices.TRANSITION_FROM_ANY, 2)]["category"]) == (0, 0)
     # stepping inputs: every ordered pair, "next" as many times as it takes
     stepping = transitions("Receiver_Input_4")
     assert len(stepping) == 4 * 3
@@ -590,15 +590,15 @@ def test_a_device_s_power_and_inputs_are_state_variables_as_in_every_donor():
 
 
 def test_section_five_points_into_section_four_in_a_generated_image_too():
-    devices = generate.lowered_devices(PROJECT)
+    lowered = devices.lowered_devices(PROJECT)
 
-    image = generate.skeleton(devices=devices)
+    image = generate.skeleton(devices=lowered)
 
     start = gspm.section_ranges(image)[4][0]
-    run = start + authoring.COMMAND_INDEX_HEAD_SIZE
-    for device in authoring.section5_layout(image):
+    run = start + structures.COMMAND_INDEX_HEAD_SIZE
+    for device in command_index.section5_layout(image):
         assert device["subtable"] == run
-        run += len(authoring.command_subtable(
+        run += len(structures.command_subtable(
             [command["record_offset"] for command in device["commands"]]))
 
 
@@ -607,7 +607,7 @@ def test_a_device_cannot_hold_more_commands_than_an_ordinal_can_name():
         f"Command {index}": _nec(1, index % 256) for index in range(256)}}]}
 
     with pytest.raises(ValueError, match="an ordinal is one byte"):
-        generate.lowered_devices(crowded)
+        devices.lowered_devices(crowded)
 
 
 def _pressable(project=None):
@@ -616,7 +616,7 @@ def _pressable(project=None):
              for font in loaded["fonts"].values() if font["height"] == 14]
     pictures = {role: item["body"] for role, item in loaded["pictures"].items()}
     return generate.skeleton(
-        devices=generate.lowered_devices(project or PROJECT),
+        devices=devices.lowered_devices(project or PROJECT),
         fonts=fonts, pictures=pictures)
 
 
@@ -660,8 +660,8 @@ def test_a_page_has_a_touch_zone_for_each_button_and_no_more():
             keys = {entry["key_code"] for entry in slot["entries"]}
             zones = {zone["key_code"] for zone in templates[slot["template"]]}
             buttons = {code for code in zones
-                       if generate.FIRST_BUTTON_KEY <= code
-                       < generate.FIRST_BUTTON_KEY + len(generate.BUTTON_POSITIONS)}
+                       if pages.FIRST_BUTTON_KEY <= code
+                       < pages.FIRST_BUTTON_KEY + len(pages.BUTTON_POSITIONS)}
             assert buttons == keys
 
 
@@ -671,23 +671,23 @@ def test_a_label_wider_than_its_place_wraps_as_the_donors_wrap_one():
     loaded = assets.load(SCAFFOLD)
     font = generate.font_from_scaffold(
         next(f for f in loaded["fonts"].values() if f["height"] == 14))
-    widths, _codes = generate._measure(font)
+    widths, _codes = pages.measure(font)
 
-    page = generate.button_page(["Sony BDP-S5000ES"], [0x100], font)
+    page = pages.button_page(["Sony BDP-S5000ES"], [0x100], font)
     texts = [item for item in page if item["opcode"] == "inline_text"]
-    left, top = generate.BUTTON_POSITIONS[0]
+    left, top = pages.BUTTON_POSITIONS[0]
     assert [item["y"] for item in texts] == [top + 15, top + 26]
     for item in texts:
         width = sum(widths[code] for code in bytes.fromhex(item["glyphs"]))
-        assert left <= item["x"] and item["x"] + width <= left + generate.FRAME_WIDTH
+        assert left <= item["x"] and item["x"] + width <= left + pages.FRAME_WIDTH
 
-    menu = generate.menu_page(["Samsung Home Theater System"], 0x100, [0x200], font)
+    menu = pages.menu_page(["Samsung Home Theater System"], 0x100, [0x200], font)
     assert [item["y"] for item in menu if item["opcode"] == "inline_text"] == [51, 63]
 
-    lines = generate.fit_label("Supercalifragilisticexpialidocious", font, 81)
+    lines = pages.fit_label("Supercalifragilisticexpialidocious", font, 81)
     assert len(lines) == 2
     assert all(sum(widths[code] for code in line) <= 81 for line in lines)
-    assert generate.fit_label("Power", font, 81) == [
+    assert pages.fit_label("Power", font, 81) == [
         bytes(_codes[character] for character in "Power")]
 
 
@@ -697,14 +697,14 @@ def test_a_label_the_font_cannot_draw_is_refused_by_name():
         next(f for f in loaded["fonts"].values() if f["height"] == 14))
 
     with pytest.raises(ValueError, match="cannot draw"):
-        generate.button_page(["café"], [0x100], font)
+        pages.button_page(["café"], [0x100], font)
 
 
 def test_each_command_object_is_followed_by_the_wrapper_a_key_binds_to():
     """The donors lay a command's object and its wrapper out as a pair, command by command.
 
     A key register row points at the wrapper, and the wrapper points at the command
-    object just before it - the order `authoring.device_objects` measured - rather than all
+    object just before it - the order `structures.device_objects` measured - rather than all
     the command objects first and every wrapper after them.
     """
     image = _pressable()
@@ -716,17 +716,17 @@ def test_each_command_object_is_followed_by_the_wrapper_a_key_binds_to():
             for entry in slot["entries"] if entry["key_code"] == binding["key_code"]
             and entry["operand"] < len(objects))
         wrapper = objects[row["operand"]]["atoms"]
-        assert wrapper[0] == (authoring.IR_OBJECT_KIND_FALLBACK, 0x75)
+        assert wrapper[0] == (structures.IR_OBJECT_KIND_FALLBACK, 0x75)
         assert wrapper[1] == (row["operand"] - 1, 0x7F)
 
 
 def _run(image, index) -> list[tuple[int, int]]:
     """An object's instructions in the order the remote runs them, every call expanded -
-    a build keeps objects short by chaining them (generate.bounded_objects)."""
+    a build keeps objects short by chaining them (layout.bounded_objects)."""
     atoms = {item["index"]: item["atoms"] for item in command_index.objects(image)}
     out = []
     for operand, category in atoms[index]:
-        if category == generate.OBJECT_ATOM:
+        if category == structures.OBJECT_ATOM:
             out += _run(image, operand)
         else:
             out.append((operand, category))
@@ -800,7 +800,7 @@ def test_ok_on_a_firmware_notice_opens_the_first_owned_screen():
 
 def test_the_status_bar_the_firmware_s_screens_queue_is_there():
     image = _configured()
-    overlays = compose._overlay_roots(image)
+    overlays = ui_index.overlay_roots(image)
     objects = command_index.objects(image)
 
     screens = ui_index.screen_slots(image)[:scaffold.SYSTEM_SCREENS]
@@ -818,7 +818,7 @@ def test_the_status_bar_the_firmware_s_screens_queue_is_there():
 
 def test_firmware_screens_keep_their_templates_and_pages_come_after():
     image = _configured()
-    system = generate.load_system(SCAFFOLD)
+    system = firmware_screens.load_system(SCAFFOLD)
 
     screens = ui_index.screen_slots(image)
     platform = {slot["template"] for screen in screens[:scaffold.SYSTEM_SCREENS]
@@ -846,7 +846,7 @@ def test_a_page_draws_its_labels_in_the_font_that_measured_them():
         if item["opcode"] == "attribute":
             attribute = item["value"]
         # the softkeys along the bottom are in fonts of their own
-        elif item["opcode"] == "inline_text" and item["y"] < generate.SOFTKEYS["devices"][1]:
+        elif item["opcode"] == "inline_text" and item["y"] < pages.SOFTKEYS["devices"][1]:
             assert attribute == button
 
 
@@ -872,7 +872,7 @@ def test_the_device_menu_is_behind_the_activities_screen():
 
     targets = []
     for entry in menu["slots"][0]["entries"]:
-        if entry["key_code"] not in generate.MENU_ROW_KEYS:
+        if entry["key_code"] not in pages.MENU_ROW_KEYS:
             continue
         atoms = objects[entry["operand"]]["atoms"]
         assert _is_menu_row(atoms)
@@ -899,7 +899,7 @@ def test_a_menu_row_opens_that_device_s_own_command_page():
     menu = screens[MENU]
     opened = []
     for entry in sorted(menu["slots"][0]["entries"], key=lambda e: e["key_code"]):
-        if entry["key_code"] not in generate.MENU_ROW_KEYS:
+        if entry["key_code"] not in pages.MENU_ROW_KEYS:
             continue
         target = next(value for value, category in objects[entry["operand"]]["atoms"]
                       if category == 0x7E)
@@ -924,7 +924,7 @@ def _screen_navigations(image, ordinal):
     objects = command_index.objects(image)
     out = {}
     for entry in ui_index.screen_slots(image)[ordinal]["slots"][0]["entries"]:
-        if entry["key_code"] not in (generate.SIDE_PREV_KEY, generate.SIDE_NEXT_KEY):
+        if entry["key_code"] not in (pages.SIDE_PREV_KEY, pages.SIDE_NEXT_KEY):
             continue
         targets = [value for value, category in objects[entry["operand"]]["atoms"]
                    if category == 0x7E]
@@ -948,13 +948,13 @@ def test_more_than_three_devices_spread_across_paged_menus():
         ordinal for ordinal in range(MENU, len(screens))
         if any(_is_menu_row(objects[entry["operand"]]["atoms"])
                for entry in screens[ordinal]["slots"][0]["entries"]
-               if entry["key_code"] in generate.MENU_ROW_KEYS
+               if entry["key_code"] in pages.MENU_ROW_KEYS
                if entry["operand"] < len(objects))
     ]
     assert len(menu_ordinals) == 3
     for ordinal in menu_ordinals:
         navigation = _screen_navigations(image, ordinal)
-        assert set(navigation) == {generate.SIDE_PREV_KEY, generate.SIDE_NEXT_KEY}
+        assert set(navigation) == {pages.SIDE_PREV_KEY, pages.SIDE_NEXT_KEY}
         assert all(target in menu_ordinals for target in navigation.values())
 
 
@@ -970,7 +970,7 @@ def test_a_device_with_more_than_six_commands_pages_and_the_pages_link_back():
     # every command page reaches the next by its side strip, the last back to the menu
     menu = MENU
     for index, ordinal in enumerate(device_pages):
-        following = _screen_navigations(image, ordinal)[generate.SIDE_NEXT_KEY]
+        following = _screen_navigations(image, ordinal)[pages.SIDE_NEXT_KEY]
         expected = device_pages[index + 1] if index + 1 < len(device_pages) else menu
         assert following == expected
     # and no command is lost: 14 across the three pages
@@ -1004,34 +1004,34 @@ def test_section_nine_opens_with_the_list_that_starts_the_image():
     # register as this list. The factory's routine pushes its context, enters its home
     # screen, and shows USB CONNECTED when variable 0x10 is set.
     for image, home, usb in ((generate.skeleton(), 0, None),
-                             (_configured(), scaffold.SYSTEM_SCREENS, generate.USB_SCREEN)):
+                             (_configured(), scaffold.SYSTEM_SCREENS, scaffold.USB_SCREEN)):
         start = gspm.section_ranges(image)[9][0]
-        assert image[start] == 1 and image[start + 3] == generate.OBJECT_ATOM
+        assert image[start] == 1 and image[start + 3] == structures.OBJECT_ATOM
         routine = tuple(_run(image, struct.unpack_from("<H", image, start + 1)[0]))
         if usb is None:
-            assert routine == ((generate.PUSH_CONTEXT, 0x1F),
-                               (generate.PUSH_CURRENT_MODE, 0x1F),
-                               (home, generate.ENTER_MODE), generate.TIMER_UNIT)
+            assert routine == ((scaffold.PUSH_CONTEXT, 0x1F),
+                               (scaffold.PUSH_CURRENT_MODE, 0x1F),
+                               (home, structures.ENTER_MODE), scaffold.TIMER_UNIT)
             continue
         # with the idle layer, as every donor starts: the screen timer and flag resets,
         # then the events, 0xFE, the current mode, 0xFC and the key light on top, then
         # home, and Off's context selected last so nothing is running
-        assert routine[0] == generate.TIMER_UNIT
+        assert routine[0] == scaffold.TIMER_UNIT
         pushes = [value for value, category in routine
                   if category == 0x1F and value >> 8 == 0xFE]
-        assert pushes == [generate.PUSH_CONTEXT | generate.EVENT_CONTEXT,
-                          generate.PUSH_CONTEXT | 0xFE, generate.PUSH_CURRENT_MODE,
-                          generate.PUSH_CONTEXT | 0xFC,
-                          generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT]
+        assert pushes == [scaffold.PUSH_CONTEXT | scaffold.EVENT_CONTEXT,
+                          scaffold.PUSH_CONTEXT | 0xFE, scaffold.PUSH_CURRENT_MODE,
+                          scaffold.PUSH_CONTEXT | 0xFC,
+                          scaffold.PUSH_CONTEXT | scaffold.KEY_LIGHT_CONTEXT]
         selects = [value for value, category in routine
                    if category == 0x1F and value >> 8 == 0xFF]
         assert selects == [0xFF00 | (len(activity_index.contexts(image)) - 1)]
-        assert routine.index((home, generate.ENTER_MODE)) > routine.index(
-            (generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT, 0x1F))
+        assert routine.index((home, structures.ENTER_MODE)) > routine.index(
+            (scaffold.PUSH_CONTEXT | scaffold.KEY_LIGHT_CONTEXT, 0x1F))
         # and last, the USB check: load 1, compare the USB flag, enter the USB screen
-        assert routine[-3:] == ((generate.LOAD_ONE, 0x1F),
-                                (generate.USB_CONNECTED, generate.COMPARE),
-                                (usb, generate.ENTER_MODE))
+        assert routine[-3:] == ((scaffold.LOAD_ONE, 0x1F),
+                                (scaffold.USB_CONNECTED, structures.COMPARE),
+                                (usb, structures.ENTER_MODE))
 
 
 class _Idle:
@@ -1124,12 +1124,12 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     # the image's own (the normal charge context), the events, the key light, the USB and
     # low battery charge contexts, and Off's (no activities here)
     assert len(contexts) == 6
-    keys = contexts[generate.KEY_LIGHT_CONTEXT]
+    keys = contexts[scaffold.KEY_LIGHT_CONTEXT]
     assert keys["form"] == "long"
     # every physical key, and the two codes below them both donors wake on: 0x17, the
     # remote being picked up, and 0x30
     assert {row["key_code"] for row in keys["rows"]} == {
-        code for code in generate.MODE_ZERO_EVENTS if code >= 0x80} | {idle.MOTION, 0x30}
+        code for code in scaffold.MODE_ZERO_EVENTS if code >= 0x80} | {idle.MOTION, 0x30}
     assert {row["flags"] for row in keys["rows"]} == {1}
     [wake] = {(row["operand"], row["category"]) for row in keys["rows"]
               if row["key_code"] >= 0x80}
@@ -1140,7 +1140,7 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     assert machine.lights[idle.SCREEN] == idle.SCREEN_LEVEL
     assert all(machine.lights[channel] == idle.KEY_LEVEL for channel in idle.KEYPAD)
     events = {row["key_code"]: (row["operand"], row["category"])
-              for row in contexts[generate.EVENT_CONTEXT]["rows"]}
+              for row in contexts[scaffold.EVENT_CONTEXT]["rows"]}
     # the firmware's events, and the two keys the flow owns: Activities and Off
     assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF,
                            0x80 | 34, 0x80 | 37}
@@ -1159,7 +1159,7 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     machine = _Idle(image)
     machine.enter(MENU)
     machine.run(events[0x26])
-    assert (machine.mode, machine.stack) == (generate.USB_SCREEN, [MENU])
+    assert (machine.mode, machine.stack) == (scaffold.USB_SCREEN, [MENU])
     machine.run(events[0x27])
     assert (machine.mode, machine.stack) == (MENU, [])
     # left by hand, the USB screen is no longer shown, and unplugging stays put
@@ -1176,7 +1176,7 @@ def test_each_screen_lights_its_zones_and_a_key_brings_them_back():
     # those. Leaving the screen darkens them and forgets them.
     image = generate.configuration(THREE)
     machine = _Idle(image)
-    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    wake = activity_index.contexts(image)[scaffold.KEY_LIGHT_CONTEXT]["rows"][0]
     wake = (wake["operand"], wake["category"])
     keypad = {idle.SCREEN, *idle.KEYPAD}
     off_timer = _off_timer(image)
@@ -1216,7 +1216,7 @@ def test_the_idle_machine_is_generated_and_options_names_only_its_zones():
 def _off_timer(image):
     """The timer a key starts only while AWAKE is set: the one that darkens the keypad."""
     machine = _Idle(image)
-    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    wake = activity_index.contexts(image)[scaffold.KEY_LIGHT_CONTEXT]["rows"][0]
     machine.run((wake["operand"], wake["category"]))
     polling = set(machine.timers)
     machine.variables[idle.AWAKE] = 1
@@ -1237,7 +1237,7 @@ def test_start_up_clears_the_zones_before_it_enters_activities():
     assert machine.mode == HOME
     machine.run(machine.timer(_off_timer(image)))
     assert not machine.lit()
-    wake = activity_index.contexts(image)[generate.KEY_LIGHT_CONTEXT]["rows"][0]
+    wake = activity_index.contexts(image)[scaffold.KEY_LIGHT_CONTEXT]["rows"][0]
     machine.variables[idle.AWAKE] = 1
     machine.run((wake["operand"], wake["category"]))
     assert machine.lit() & set(range(idle.ZONES)) == set(idle.SCREEN_ZONES["activities"])
@@ -1257,7 +1257,7 @@ def test_section_fourteen_holds_the_clock_the_platform_and_a_terminator():
     assert len(records) == activity_index.PLATFORM_PROPERTIES + carried + bool(CARRIED) + 1
     assert shape["terminator"] is not None
     assert [(r["initial"], r["limit"]) for r in shape["platform"]] == list(
-        generate.PLATFORM_RECORDS)
+        scaffold.PLATFORM_RECORDS)
     carries = {index: [(row["operand"], row["category"]) for row in record["transitions"]]
                for index, record in enumerate(records[:7]) if record["transitions"]}
     assert carries[1] == [(0xF202, 0x1F)]
@@ -1268,7 +1268,7 @@ def test_section_fourteen_holds_the_clock_the_platform_and_a_terminator():
     start = gspm.section_ranges(image)[11][0]
     at = int.from_bytes(image[start + 2 + 3 * hour_object:start + 5 + 3 * hour_object],
                         "little") - gspm.BASE
-    assert image[at:at + 7] == generate.object_body([(0xF203, 0x1F), (0xF204, 0x1F)])
+    assert image[at:at + 7] == structures.object_body([(0xF203, 0x1F), (0xF204, 0x1F)])
 
 
 def test_mode_zero_list_follows_the_button_count_as_in_every_user_configuration():
@@ -1276,27 +1276,27 @@ def test_mode_zero_list_follows_the_button_count_as_in_every_user_configuration(
     # entries had it read the first objects as key bindings, and no probe booted.
     image = generate.configuration(PROJECT)
     at = gspm.BUTTON_MAP_OFFSET + len(gspm.BUTTON_MAP_MAGIC)
-    assert image[at] == generate.HOUSEHOLD_BUTTONS
-    entries = image[at + 1:at + 1 + 4 * generate.HOUSEHOLD_BUTTONS]
-    assert entries == generate.mode_zero_list()
-    for position in range(generate.HOUSEHOLD_BUTTONS):
+    assert image[at] == scaffold.HOUSEHOLD_BUTTONS
+    entries = image[at + 1:at + 1 + 4 * scaffold.HOUSEHOLD_BUTTONS]
+    assert entries == scaffold.mode_zero_list()
+    for position in range(scaffold.HOUSEHOLD_BUTTONS):
         code, target, opcode = struct.unpack_from("<BHB", entries, 4 * position)
-        assert (target, opcode) == (position, generate.OBJECT_ATOM)
-        assert code == generate.MODE_ZERO_EVENTS[position]
+        assert (target, opcode) == (position, structures.OBJECT_ATOM)
+        assert code == scaffold.MODE_ZERO_EVENTS[position]
 
 
 def test_objects_0_to_54_are_mode_zeros_handlers():
     image = generate.configuration(PROJECT)
     start, _ = gspm.section_ranges(image)[11]
     pointers = [int.from_bytes(image[start + 2 + 3 * i:start + 5 + 3 * i], "little")
-                - gspm.BASE for i in range(generate.HOUSEHOLD_BUTTONS)]
-    events = set(generate.MODE_ZERO_EVENT_AT.values())
+                - gspm.BASE for i in range(scaffold.HOUSEHOLD_BUTTONS)]
+    events = set(scaffold.MODE_ZERO_EVENT_AT.values())
     for index, at in enumerate(pointers):
         body = image[at:at + 1 + 3 * image[at]]
         if index in events:
             # Enter, leave and redraw call the platform's own mode 0 handlers.
-            assert body[0] == 1 and body[3] == generate.OBJECT_ATOM
-            assert struct.unpack_from("<H", body, 1)[0] >= generate.HOUSEHOLD_BUTTONS
+            assert body[0] == 1 and body[3] == structures.OBJECT_ATOM
+            assert struct.unpack_from("<H", body, 1)[0] >= scaffold.HOUSEHOLD_BUTTONS
         else:
             assert body == bytes([3]) + bytes(9)
 
@@ -1311,14 +1311,14 @@ def test_every_mode_has_an_enter_and_a_leave_handler_and_mode_0_is_the_lwjl_list
         if ordinal == 0:
             assert at == head
         tags = [image[at + 1 + 4 * row] for row in range(image[at])]
-        assert tags.count(generate.ENTER) == 1 and tags.count(generate.LEAVE) == 1, ordinal
+        assert tags.count(scaffold.ENTER) == 1 and tags.count(scaffold.LEAVE) == 1, ordinal
 
 
 def _press(machine, image, ordinal, page, key):
     """Run what ``key`` does on one page of a screen."""
     for entry in ui_index.screen_slots(image)[ordinal]["slots"][page]["entries"]:
         if entry["key_code"] == key:
-            machine.run((entry["operand"], generate.OBJECT_ATOM))
+            machine.run((entry["operand"], structures.OBJECT_ATOM))
             return
     raise AssertionError(f"screen {ordinal} page {page} binds no key {key:#04x}")
 
@@ -1382,7 +1382,7 @@ def test_the_firmware_s_screens_carry_no_words_of_their_own():
     # from platform_text's table, so no donor's text or language rides along.
     from afterglow.backends.harmony_one import platform_text
 
-    system = generate.load_system()
+    system = firmware_screens.load_system()
     items = [item for block in system["blocks"] for item in block]
     assert not [item for item in items if item["opcode"] in ("text", "inline_text")]
     labels = [item for item in items if item["opcode"] == "label"]
@@ -1399,7 +1399,7 @@ def test_the_firmware_s_screens_and_clock_draw_the_table_s_words():
     # centred, as the donors centred them
     for attribute, x, _y, words in message:
         if words == ENGLISH("system.screen.10").split("\n")[0]:
-            widths, codes = generate._measure(FONTS[attribute])
+            widths, codes = pages.measure(FONTS[attribute])
             width = sum(widths[codes[c]] for c in words)
             assert x == (platform_text.SCREEN_WIDTH - width) // 2
 

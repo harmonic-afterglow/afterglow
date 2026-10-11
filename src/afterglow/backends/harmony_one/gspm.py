@@ -31,6 +31,18 @@ def checksum(data: bytes, end: int) -> tuple[int, int]:
     return low, high
 
 
+def seal(body: bytes) -> bytes:
+    """Close a GSPM body with the checksum and the end marker ``PTYY``, the header's end
+    pointer set to the marker. An odd-sized body needs no padding: the checksum covers
+    whole pairs only; no generated image has ever been padded."""
+    out = bytearray(body)
+    marker = len(out) + 2
+    out += b"\x00\x00PTYY"
+    struct.pack_into("<I", out, 4, BASE + marker)
+    out[marker - 2:marker] = bytes(checksum(out, marker - 2))
+    return bytes(out)
+
+
 def _sections(payload: bytes, checksum_offset: int) -> tuple[int | None, ...]:
     sections = []
     for index in range(SECTION_COUNT):

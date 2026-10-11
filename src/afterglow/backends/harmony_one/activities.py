@@ -6,7 +6,7 @@ the devices that play its roles, from which the keypad is routed; any key or on-
 button that runs something else; and steps to run as it starts and stops. This turns that
 into the One's terms - which power and input variables to write, which command each key
 and button sends - with every device and command named by the lowered devices' indices,
-so the layout (generate.py) only has to place it.
+so the layout (activity_screens.py) only has to place it.
 
 Nothing is dropped quietly: a step this remote cannot carry out is recorded in the plan's
 ``skipped`` list with the reason, and a step naming a device or command the project does

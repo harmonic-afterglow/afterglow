@@ -10,7 +10,7 @@
   },
   "payload": "blob",
   "backend": "harmony-one",
-  "status": "read-only",
+  "status": "experimental",
   "capabilities": {
     "touchscreen": true,
     "ir_learning": true,
@@ -18,14 +18,192 @@
   },
   "infrared": {
     "native_protocols": [],
-    "waveform": "unsupported"
+    "waveform": "carrier-period",
+    "notes": "Every command is lowered to the One's own press, hold and release waveform records (ir_lowering.py); a held sequence step gets a record of its own."
   },
-  "notes": "Four independent donor configurations establish this hardware identity and the arch-12 GSPM integrity rules. Firmware is deliberately unbounded; native structure is validated instead. Import and backup are read-only until safe authoring is implemented.",
+  "notes": "Configurations are generated from the project alone (backends/harmony_one/generate.py): the hub, device and activity screens, Options, key lights and handlers, onto the scaffold or a theme folder. Generated images have booted and run activities on testers' remotes; normal writes stay blocked until a write through the first-write process is verified.",
   "schema": "afterglow-remote/1",
-  "vocabulary": {},
+  "vocabulary": {
+    "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; the scaffold carries an icon for each activity type. The keys are the One's 37 command keys - Activities, Off and Help belong to the remote's own flow.",
+    "device_types": {
+      "Amplifier": "Amplifier",
+      "AudioVideoSwitch": "A/V switch",
+      "CableBox": "Cable box",
+      "Cassette": "Cassette deck",
+      "Cd": "CD player",
+      "CdJukebox": "CD jukebox",
+      "CdRadioCassette": "Radio / CD / cassette",
+      "ClimateControl": "Climate control",
+      "Computer": "Computer",
+      "Dat": "DAT deck",
+      "DvdCd": "DVD / CD player",
+      "DvdCdGame": "DVD / games console",
+      "DvdCdRadio": "DVD / CD / radio",
+      "DvdRecorder": "DVD recorder",
+      "DvdVcr": "DVD / VCR combo",
+      "DvdVcrReceiver": "DVD / VCR receiver",
+      "DvdrVcr": "DVD recorder / VCR",
+      "GameConsole": "Games console",
+      "HomeAppliance": "Home appliance",
+      "Laptop": "Laptop",
+      "Laserdisc": "LaserDisc player",
+      "Light": "Lighting",
+      "MediaCenterPC": "Media centre PC",
+      "Minidisc": "MiniDisc deck",
+      "Monitor": "Monitor",
+      "MusicServer": "Music server",
+      "Projector": "Projector",
+      "Pvr": "Recorder (PVR)",
+      "RadioTuner": "Radio tuner",
+      "Receiver": "AV receiver",
+      "Satellite": "Satellite receiver",
+      "SetTopBox": "Set-top box",
+      "Television": "Television",
+      "TvDvd": "TV / DVD combo",
+      "TvDvdVcr": "TV / DVD / VCR combo",
+      "TvHdd": "TV / hard-disc recorder",
+      "TvVcr": "TV / VCR combo",
+      "Vcr": "VCR"
+    },
+    "activity_types": [
+      [
+        "Listen to the CD Jukebox",
+        "VirtualCdJukebox"
+      ],
+      [
+        "Listen to a CD",
+        "VirtualCdMulti"
+      ],
+      [
+        "Watch a DVD",
+        "VirtualDvd"
+      ],
+      [
+        "Play a Game",
+        "VirtualGameConsole"
+      ],
+      [
+        "Custom / Other",
+        "VirtualGeneric"
+      ],
+      [
+        "Watch a Laserdisc",
+        "VirtualLaserdisc"
+      ],
+      [
+        "Listen to Music (Media Center)",
+        "VirtualMediaCenterMusic"
+      ],
+      [
+        "View Pictures",
+        "VirtualMediaCenterPictures"
+      ],
+      [
+        "Watch TV (Media Center)",
+        "VirtualMediaCenterTv"
+      ],
+      [
+        "Watch Video (Media Center)",
+        "VirtualMediaCenterVideos"
+      ],
+      [
+        "Listen to a MiniDisc",
+        "VirtualMinidisc"
+      ],
+      [
+        "Listen to the Music Server",
+        "VirtualMusicServer"
+      ],
+      [
+        "Give a Presentation",
+        "VirtualPresentation"
+      ],
+      [
+        "Watch the PVR",
+        "VirtualPvr"
+      ],
+      [
+        "Listen to the Radio",
+        "VirtualRadioSimple"
+      ],
+      [
+        "Watch ReplayTV",
+        "VirtualReplayTV"
+      ],
+      [
+        "Listen to Satellite Radio",
+        "VirtualSatelliteMusic"
+      ],
+      [
+        "Listen to a Tape",
+        "VirtualTape"
+      ],
+      [
+        "Teletext",
+        "VirtualTeletext"
+      ],
+      [
+        "Watch TV",
+        "VirtualTelevisionN"
+      ],
+      [
+        "Watch TiVo",
+        "VirtualTiVo"
+      ],
+      [
+        "Watch a Video",
+        "VirtualVcr"
+      ],
+      [
+        "Record to Video",
+        "VirtualVcrRecorder"
+      ]
+    ],
+    "hard_keys": [
+      "Number4",
+      "Exit",
+      "VolumeUp",
+      "VolumeDown",
+      "Rewind",
+      "SkipBack",
+      "Record",
+      "Number1",
+      "VolumeMute",
+      "Info",
+      "DirectionLeft",
+      "NumberPlus",
+      "NumberEnter",
+      "Number0",
+      "Number9",
+      "Number8",
+      "Number6",
+      "Guide",
+      "ChannelUp",
+      "ChannelDown",
+      "FastForward",
+      "SkipForward",
+      "Stop",
+      "Number3",
+      "Number5",
+      "DownArrow",
+      "DirectionUp",
+      "Select",
+      "DirectionDown",
+      "Play",
+      "Pause",
+      "Number2",
+      "DirectionRight",
+      "PrevChannel",
+      "UpArrow",
+      "Number7",
+      "Menu"
+    ],
+    "hard_key_aliases": {},
+    "hard_key_layout": []
+  },
   "properties": {},
   "interface": {
-    "_comment": "No RF blasters and no preferences yet. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
+    "_comment": "No RF blasters, no owner name (nothing on the One shows it) and no preferences file; a theme folder instead. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
     "tabs": [
       "devices",
       "activities",
@@ -52,8 +230,8 @@
     ],
     "settings": [
       "output_file",
-      "owner",
-      "language"
+      "language",
+      "theme"
     ],
     "languages": [
       [

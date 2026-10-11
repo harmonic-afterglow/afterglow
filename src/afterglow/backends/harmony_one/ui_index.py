@@ -822,3 +822,19 @@ def activity_rows(payload: bytes, ownership: dict | None = None) -> dict:
         "screens": sorted(screens),
         "rows": rows,
     }
+
+
+def overlay_roots(payload: bytes) -> list[int]:
+    """Return the drawing programs section 12 indexes, in table order."""
+    start, end = gspm.section_ranges(payload)[12]
+    count = struct.unpack_from("<H", payload, start)[0]
+    if start + 2 + 3 * count > end:
+        raise ValueError("section 12 overlay index exceeds its section")
+    out = []
+    for index in range(count):
+        at = start + 2 + 3 * index
+        offset = int.from_bytes(payload[at:at + 3], "little") - gspm.BASE
+        if not 0 <= offset < len(payload):
+            raise ValueError(f"section 12 entry {index} falls outside the image")
+        out.append(offset)
+    return out

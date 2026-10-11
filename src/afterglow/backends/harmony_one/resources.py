@@ -1,16 +1,10 @@
-"""Name the reusable interface parts a Harmony One image contains.
-
-Screens have been built here by cloning one the image already has. That works while
-authoring means editing somebody's configuration, but it cannot build a screen for a
-configuration that has none, which is what generating from a project rather than from a
-previous image requires.
+"""Name the interface parts a Harmony One image is drawn from.
 
 The parts a screen is made of turn out to be constant within an image: one frame bitmap
 per button position, one font per role, one shared softkey string, one background, one
-selector. This module derives them and refuses any that the image does not agree on,
-so a generator asks for "the button frame at this position" instead of copying whichever
-screen happened to be at hand. It names resources; it does not invent them, and an image
-that lacks one simply cannot have that part generated.
+selector. This module derives them from a configuration and refuses any that the image
+does not agree on, which is how the scaffold's artwork is extracted
+(tools/harmony_one_extract_assets.py). It names resources; it does not invent them.
 
 Format reference: docs/harmony_one/gspm.md
 """
@@ -19,7 +13,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
-from . import authoring, command_index, screen_program, ui_index
+from . import command_index, gspm, key_index, ui_index
 
 
 TITLE_FONT_ROLE = "title"
@@ -56,11 +50,11 @@ def catalogue(payload: bytes, ownership: dict | None = None) -> dict:
     pages_word: Counter = Counter()
     prologue_shape: Counter = Counter()
 
-    sources = authoring.command_screen_sources(payload, ownership)
+    sources = command_screen_sources(payload, ownership)
     for source in sources:
         program = ui_index.drawing_program(payload, source["program_offset"])
         try:
-            drawn = screen_program.buttons(payload, source["program_offset"])
+            drawn = buttons(payload, source["program_offset"])
         except ValueError:
             rejected["unreadable_command_page"] += 1
             continue
@@ -80,7 +74,7 @@ def catalogue(payload: bytes, ownership: dict | None = None) -> dict:
                 if where == SOFTKEY_XY and "target" in item:
                     softkey[item["target"]] += 1
                     fonts[SOFTKEY_FONT_ROLE][attribute] += 1
-                elif where == screen_program.PAGE_NUMBER_XY:
+                elif where == PAGE_NUMBER_XY:
                     fonts[INDICATOR_FONT_ROLE][attribute] += 1
 
         if not program["instructions"] or program["instructions"][0]["opcode"] != "call":
@@ -148,8 +142,8 @@ def _shape(instructions: list[dict]) -> tuple:
         if item["opcode"] in ("jump", "call"):
             skip.add("target")
         if (item["opcode"] in ("text", "inline_text")
-                and item.get("y") == screen_program.PAGE_NUMBER_XY[1]
-                and item.get("x", 0xFF) < screen_program.PAGE_NUMBER_RIGHT):
+                and item.get("y") == PAGE_NUMBER_XY[1]
+                and item.get("x", 0xFF) < PAGE_NUMBER_RIGHT):
             # The counter's own text and its right-aligned x are what change per page.
             skip |= {"target", "glyphs", "x"}
         out.append(tuple((key, item[key]) for key in sorted(item) if key not in skip))
@@ -200,7 +194,7 @@ def _page_chrome(payload: bytes, sources: list[dict], rejected: Counter) -> dict
     number = [
         index for index, item in enumerate(chrome["tail"])
         if item["opcode"] in ("text", "inline_text")
-        and (item["x"], item["y"]) == screen_program.PAGE_NUMBER_XY
+        and (item["x"], item["y"]) == PAGE_NUMBER_XY
     ]
     if len(number) != 1:
         rejected["page_tail_without_one_counter"] += 1
@@ -226,11 +220,11 @@ def _menu_parts(payload: bytes, ownership: dict, fonts: dict, rejected: Counter)
         for slot in screens[menu["screen"]]["slots"]:
             templates[slot["template"]] += 1
             program = ui_index.drawing_program(payload, slot["program_offset"])
-            drawn = screen_program.menu_rows(payload, slot["program_offset"])
+            drawn = menu_rows(payload, slot["program_offset"])
             rows[len(drawn)] += 1
             for row in drawn:
                 fonts[MENU_ROW_FONT_ROLE][
-                    screen_program._row_attribute(payload, slot["program_offset"], row)] += 1
+                    row_attribute(payload, slot["program_offset"], row)] += 1
                 icons[tuple(
                     (program["instructions"][index]["x"],
                      program["instructions"][index]["y"]
@@ -246,22 +240,150 @@ def _menu_parts(payload: bytes, ownership: dict, fonts: dict, rejected: Counter)
     }
 
 
-def complete_for(catalogue_report: dict, buttons: int) -> list[str]:
-    """Return what a catalogue is missing before a page of ``buttons`` can be generated."""
-    missing = []
-    for role in (TITLE_FONT_ROLE, BUTTON_FONT_ROLE, SOFTKEY_FONT_ROLE,
-                 INDICATOR_FONT_ROLE):
-        if catalogue_report["fonts"].get(role) is None:
-            missing.append(f"no {role} font")
-    for key in ("softkey_text", "background", "prologue_atom", "switch_selector",
-                "pages_word", "page_chrome"):
-        if catalogue_report[key] is None:
-            missing.append(f"no {key}")
-    if catalogue_report["page_templates"].get(buttons) is None:
-        missing.append(f"no touch template for a {buttons} button page")
-    positions = sorted(catalogue_report["button_frames"],
-                       key=lambda item: (item[1], item[0]))
-    if len(positions) < buttons:
-        missing.append(
-            f"only {len(positions)} button frames for a {buttons} button page")
-    return missing
+def command_screen_sources(payload: bytes, ownership: dict | None = None) -> list[dict]:
+    """Return single-device screen slots whose shape can carry another device.
+
+    A usable source binds at least one section-5 command, reaches exactly one device,
+    and navigates nowhere. A slot that opens another screen is refused because a clone
+    would inherit navigation belonging to the screen it was copied from.
+    """
+    ownership = command_index.inspect(payload) if ownership is None else ownership
+    objects = command_index.objects(payload)
+    commands = {
+        command["command_id"]
+        for device in ownership["devices"] for command in device["commands"]
+    }
+    out = []
+    for screen in ui_index.screen_slots(payload):
+        for slot in screen["slots"]:
+            devices = set()
+            command_keys = []
+            usable = True
+            for entry in slot["entries"]:
+                if entry["category"] != 0x7F:
+                    continue
+                targets = key_index.object_targets(objects, entry["operand"])
+                if targets is None or any(opcode == 0x7E for _value, opcode in targets):
+                    usable = False
+                    break
+                bound = {value for value, opcode in targets if opcode == 0x7D}
+                if not bound:
+                    continue
+                if len(bound) != 1 or not bound <= commands:
+                    usable = False
+                    break
+                devices.add(next(iter(bound)) >> 8)
+                command_keys.append(entry["key_code"])
+            if not usable or len(devices) != 1 or not command_keys:
+                continue
+            trailer = screen["trailer_offset"]
+            out.append({
+                "screen": screen["ordinal"],
+                "slot": slot["index"],
+                "device_index": next(iter(devices)),
+                "template": slot["template"],
+                "flag": payload[trailer],
+                "header_offset": int.from_bytes(
+                    payload[trailer + 1:trailer + 4], "little") - gspm.BASE,
+                "program_offset": slot["program_offset"],
+                "key_register_offset": slot["key_register_offset"],
+                "command_key_codes": command_keys,
+                "entries": len(slot["entries"]),
+            })
+    return out
+
+
+def buttons(payload: bytes, program_offset: int) -> list[dict]:
+    """Return the labelled buttons a command-screen slot draws, in drawing order.
+
+    A button is a frame bitmap followed by the label instructions that name it. The
+    frame's own position and width give the centre the native producer centred on.
+    """
+    program = ui_index.drawing_program(payload, program_offset)
+    out: list[dict] = []
+    attributes = []
+    for index, item in enumerate(program["instructions"]):
+        opcode = item["opcode"]
+        if opcode == "switch":
+            break
+        if opcode == "attribute":
+            attributes.append(item["value"])
+        elif opcode == "bitmap":
+            frame = ui_index._bitmap_resource(payload, item["target"])
+            out.append({
+                "index": len(out), "x": item["x"], "y": item["y"],
+                "width": frame["width"], "height": frame["height"],
+                "instruction": index, "labels": [],
+            })
+        elif opcode in ("text", "inline_text"):
+            if not out:
+                raise ValueError("this drawing program labels before its first button")
+            out[-1]["labels"].append(index)
+    if not out:
+        raise ValueError("this drawing program draws no button frames")
+    if len(attributes) != 1:
+        raise ValueError(
+            f"this drawing program sets {len(attributes)} font attributes before its "
+            "selector; one is required to give every label the same font")
+    for button in out:
+        button["attribute"] = attributes[0]
+    return out
+
+
+# Device-menu rows are left-aligned at one fixed column rather than centred on a frame,
+# and their lines sit 12 pixels apart, centred on the row band. Both donors draw one- and
+# two-line rows only; a third line is refused rather than extrapolated.
+MENU_LABEL_X = ui_index.DEVICE_LABEL_X
+
+
+# A paged screen numbers each slot at one fixed spot and states the total in the
+# prologue every slot calls. Single-slot screens draw neither. Both donors put these at
+# the same coordinates on every screen that has them; the font attribute varies by
+# screen and is read from the screen itself.
+# The page number is right-aligned so it never runs into the "/" beside it: its right
+# edge is 18 on all 28 and 52 command pages of the two broader donors, which is why a
+# one-digit "1" sits at 13, a wider "4" at 12 and a two-digit "10" at 8. The prologue's
+# total is left-aligned at 23 instead.
+PAGE_NUMBER_XY = (13, 18)
+
+
+PAGE_NUMBER_RIGHT = 18
+
+
+def menu_rows(payload: bytes, program_offset: int) -> list[dict]:
+    """Return the row bands a device-menu slot draws, in drawing order.
+
+    A row is the frame bitmaps that open it plus the label instructions in its band.
+    Which band a group belongs to comes from its label, so frames drawn for a row that
+    is never labelled are not mistaken for a row.
+    """
+    program = ui_index.drawing_program(payload, program_offset)
+    out: list[dict] = []
+    current = None
+    for index, item in enumerate(program["instructions"]):
+        if item["opcode"] == "switch":
+            break
+        if item["opcode"] == "bitmap":
+            if current is None or current["labels"]:
+                current = {"frames": [], "labels": [], "row": None}
+                out.append(current)
+            current["frames"].append(index)
+        elif item["opcode"] in ("text", "inline_text") and item["x"] == MENU_LABEL_X:
+            row = ui_index.row_index(item["y"])
+            if row is not None and current is not None:
+                current["labels"].append(index)
+                current["row"] = row
+    return [item for item in out if item["labels"] and item["row"] is not None]
+
+
+def row_attribute(payload: bytes, program_offset: int, row: dict) -> int:
+    program = ui_index.drawing_program(payload, program_offset)
+    attribute = None
+    for index, item in enumerate(program["instructions"]):
+        if item["opcode"] == "attribute":
+            attribute = item["value"]
+        if index == row["labels"][0]:
+            break
+    if attribute is None:
+        raise ValueError("this menu slot sets no font attribute before its row labels")
+    return attribute

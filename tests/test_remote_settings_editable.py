@@ -66,3 +66,18 @@ def test_choosing_a_setting_saves_it_into_the_project(qapp_or_skip):
     widget.setValue(35)
     tab.save()
     assert project["settings"]["backlight_level"] == "35"
+
+
+def test_a_harmony_one_offers_a_theme_folder_and_a_900_does_not(qapp_or_skip, tmp_path):
+    # The One's look is a scaffold folder the owner may swap; it is kept as `theme_folder`,
+    # apart from the 900's own `theme` preference.
+    from afterglow.gui.tabs import SettingsTab
+
+    one = {"settings": {"remote": "harmony-one"}, "devices": [], "activities": []}
+    tab = SettingsTab(one)
+    assert tab.form.isRowVisible(tab.theme_row)
+    tab.theme.setText(str(tmp_path))
+    tab.save()
+    assert one["settings"]["theme_folder"] == str(tmp_path)
+    nine = {"settings": {"remote": "harmony-900"}, "devices": [], "activities": []}
+    assert not SettingsTab(nine).form.isRowVisible(SettingsTab(nine).theme_row)

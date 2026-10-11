@@ -135,155 +135,191 @@ def build(system: dict | None, sounds: dict | None = None) -> dict:
     whose enter and leave handlers the machine extends. ``sounds`` is the Options model's
     Screen Sounds switch, whose flag start-up clears as upstairs does.
     """
-    m = _Model()
-    zone_flags = [m.flag() for _ in range(ZONES)]
-    usb_shown = m.flag()
-    off_timer, poll_timer = m.timer(OFF_DURATION), m.timer(POLL_DURATION)
-
-    def guarded(byte: int, test: list, step: list) -> list:
-        """Run ``step`` when ``test`` holds against ``byte``, in the donors' shape: the
-        byte is loaded, then an object holds the test and the one step it guards."""
-        return m.object([[LOAD | byte, REGISTER], m.object([test, step])])
-
-    # Zones: on lights a zone and records it, off darkens it and clears the record.
-    zone_on = [m.object([light(z, KEY_LEVEL), _write(zone_flags[z], 1)]) for z in range(ZONES)]
-    zone_off = [m.object([light(z, 0), _write(zone_flags[z], 0)]) for z in range(ZONES)]
-    restore = m.object([guarded(1, _test(EQUAL, zone_flags[z]), light(z, KEY_LEVEL))
-                        for z in range(ZONES)])
-
-    # The off timer darkens everything; the zone records stay, so the next wake restores.
-    lights_out = m.object(
-        [_timer(STOP_TIMER, off_timer)] + [light(c, 0) for c in KEYPAD]
-        + [light(z, 0) for z in range(ZONES)] + [light(SCREEN, 0), list(LIGHTS_OUT)])
-    m.timers[off_timer]["action"] = lights_out
-    # Arm: start the off timer when AWAKE is set, and poll again either way.
-    arm_slot = m.reserve()
-    arm = [{"object": arm_slot}, OBJECT]
-    m.objects[arm_slot] = [
-        _timer(STOP_TIMER, off_timer),
-        guarded(0, _test(INVERT | EQUAL, AWAKE),
-                m.object([light(SCREEN, SCREEN_LEVEL, 1), _timer(START_TIMER, off_timer)])),
-        _timer(START_TIMER, poll_timer)]
-    m.timers[poll_timer]["action"] = arm
-    wake = m.object([_timer(STOP_TIMER, off_timer), light(SCREEN, SCREEN_LEVEL)]
-                    + [light(c, KEY_LEVEL) for c in KEYPAD] + [restore, arm])
-
-    # Which charge context sits under 0xFC on the key stack, chosen on every charging
-    # event as every donor chooses it: the USB one, the normal one, or the low battery's.
-    def charge_context(name):
-        return [{"charge": name, "band": CHARGE}, REGISTER]
-    charge = m.object([
-        guarded(1, _test(INVERT | EQUAL, HOLD), charge_context("usb")),
-        guarded(1, _test(INVERT | EQUAL, USB), charge_context("usb")),
-        guarded(LOW_BATTERY, _test(INVERT | AT_MOST, BATTERY), charge_context("normal")),
-        charge_context("low")])
-    # The setting byte upstairs writes while HOLD is set: F201 off USB - unless CHARGING
-    # is clear, which drops just that step - and F200 on it.
-    usb_setting = guarded(1, _test(EQUAL, HOLD), m.object([[LOAD, REGISTER], m.object([
-        _test(INVERT | EQUAL, CHARGING),
-        guarded(0, _test(EQUAL, USB), [0xF201, SETTING]),
-        guarded(1, _test(EQUAL, USB), [0xF200, SETTING])])]))
-    low_battery_wake = guarded(LOW_BATTERY, _test(AT_MOST, BATTERY), wake)
-
-    events = {
-        # USB in: wake and show the USB screen over whatever was shown.
-        0x26: m.object([[BEEP_KEY, BEEP], charge, wake, [PUSH_MODE, MODE_STACK],
-                        [USB_SCREEN, ENTER_MODE], [STATUS, MODE_STACK]]),
-        # USB out: back to what was shown, if the USB screen is still the one shown.
-        0x27: m.object([[BEEP_KEY, BEEP], [BEEP_SHORT, BEEP], [BEEP_SHORT, BEEP],
-                        [BEEP_SHORT, BEEP], [BEEP_KEY, BEEP], charge, wake, usb_setting,
-                        guarded(0, _test(NOT_EQUAL, usb_shown), [POP_MODE, MODE_STACK]),
-                        guarded(1, _test(EQUAL, BATTERY), [0xFFF6, MODE_STACK]),
-                        low_battery_wake]),
-        0x10: m.object([low_battery_wake, usb_setting]),
-        0x19: [0xFFF6, MODE_STACK],
-        0x2D: [0xFFFA, MODE_STACK],
-        0x25: [0, 0],
-        0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
-        0xAF: m.object([[BEEP_PAGE, BEEP], [NEXT_PAGE, PAGE]]),
-    }
-
-    # Two codes below the keys run the key light too, as both donors have them: 0x17,
-    # which wakes the remote when it is picked up (gspm.md), with its own firmware steps
-    # first and lights-out's setting byte after, and 0x30, a plain wake.
-    key_rows = {
-        MOTION: m.object([m.object([[LOAD | 1, REGISTER], [0xFFE1, PAGE],
-                                    [LOAD, REGISTER], [0xFFE1, PAGE],
-                                    [0xFFE3, PAGE], [0xFFE3, PAGE]]),
-                          wake, list(LIGHTS_OUT)]),
-        0x30: wake,
-    }
-
-    zone_objects: dict[tuple, list] = {}
-
-    def zones(chosen, on: bool) -> list:
-        key = (tuple(sorted(chosen)), on)
-        if key not in zone_objects:
-            zone_objects[key] = m.object([(zone_on if on else zone_off)[z] for z in key[0]])
-        return zone_objects[key]
-
-    # The firmware's own screens: the low-battery screen and screen 9 light zone 7, the
-    # USB screen marks itself shown so unplugging knows whether to go back.
-    handlers = {}
+    machine = _Machine()
+    events, key_rows = machine.events(), machine.key_rows()
     screens = (system or {}).get("screens", ())
-    extra = {
-        (LOW_BATTERY_SCREEN, ENTER): [zones((7,), True)],
-        (LOW_BATTERY_SCREEN, LEAVE): [zones((7,), False)],
-        (SCREEN_NINE, ENTER): [zones((7,), True)],
-        (SCREEN_NINE, LEAVE): [zones((7,), False)],
-        (USB_SCREEN, ENTER): [[SILENT, MODE_STACK], _write(usb_shown, 1)],
-        (USB_SCREEN, LEAVE): [[SILENT, MODE_STACK], _write(usb_shown, 0)],
-    }
-    for (ordinal, tag), steps in extra.items():
-        if ordinal >= len(screens):
-            continue
-        own = [[{"platform": operand}, category]
-               for key, operand, category in screens[ordinal]["header"] if key == tag]
-        handlers[f"{ordinal}:{tag:#04x}"] = m.object(own + steps)
-
-    # A screen the build owns: the platform's own enter and leave, then its zones.
-    own = {}
-    for screen in screens:
-        rows = {key: (operand, category) for key, operand, category in screen["header"]}
-        if ENTER in rows and LEAVE in rows and rows[ENTER][1] != OBJECT \
-                and rows[LEAVE][1] != OBJECT:
-            own = rows
-            break
-    kinds = {}
-    for kind, chosen in SCREEN_ZONES.items():
-        kinds[kind] = {
-            f"{tag:#04x}": m.object(
-                ([[{"platform": own[tag][0]}, own[tag][1]]] if tag in own else [])
-                + [zones(chosen, tag == ENTER)])
-            for tag in (ENTER, LEAVE)}
-
-    resets = [[SILENT, MODE_STACK], _write(usb_shown, 0)]
-    setup = [charge, m.object([_write(flag, 0) for flag in zone_flags]), wake]
-    if sounds is not None:
-        setup.append(m.object([_write(sounds["variable"], 0), [0xF301, SETTING]]))
-
+    handlers = machine.platform_handlers(screens)
+    kinds = machine.screen_kinds(screens)
+    m = machine.m
     return {
         "objects": m.objects,
         "timers": m.timers,
         "variables": m.variables,
-        "zones": zones,
+        "zones": machine.zones,
         "idle": {
             "events": {f"{code:#04x}": value for code, value in sorted(events.items())},
-            "key_light": wake,
+            "key_light": machine.wake,
             "key_rows": {f"{code:#04x}": value for code, value in sorted(key_rows.items())},
-            "startup": {"resets": resets, "setup": setup},
+            "startup": machine.startup(sounds),
             # The charge contexts' rows, every one passed on down the stack: the normal
             # one and the low battery's choose again on the firmware's battery events, the
             # USB one stops the timers when charging finishes (0x1E).
             "charge": {
-                "normal": {f"{code:#04x}": charge for code in CHARGE_EVENTS["normal"]},
+                "normal": {f"{code:#04x}": machine.charge for code in CHARGE_EVENTS["normal"]},
                 "usb": {f"{code:#04x}": [STATUS, MODE_STACK] for code in CHARGE_EVENTS["usb"]},
-                "low": {f"{code:#04x}": charge for code in CHARGE_EVENTS["low"]},
+                "low": {f"{code:#04x}": machine.charge for code in CHARGE_EVENTS["low"]},
             },
             "handlers": handlers,
             "screens": kinds,
         },
     }
+
+
+class _Machine:
+    """The idle machine's parts, built into one model in the order they are made: the
+    keypad lights and their timers, then what the charging events choose, then the
+    events, the key rows, and the screens' handlers."""
+
+    def __init__(self):
+        m = self.m = _Model()
+        self.zone_flags = [m.flag() for _ in range(ZONES)]
+        self.usb_shown = m.flag()
+        self.off_timer, self.poll_timer = m.timer(OFF_DURATION), m.timer(POLL_DURATION)
+        self._zone_objects: dict[tuple, list] = {}
+        self._lights()
+        self._charge()
+
+    def guarded(self, byte: int, test: list, step: list) -> list:
+        """Run ``step`` when ``test`` holds against ``byte``, in the donors' shape: the
+        byte is loaded, then an object holds the test and the one step it guards."""
+        return self.m.object([[LOAD | byte, REGISTER], self.m.object([test, step])])
+
+    def _lights(self):
+        m, guarded, off_timer = self.m, self.guarded, self.off_timer
+        # Zones: on lights a zone and records it, off darkens it and clears the record.
+        self.zone_on = [m.object([light(z, KEY_LEVEL), _write(self.zone_flags[z], 1)])
+                        for z in range(ZONES)]
+        self.zone_off = [m.object([light(z, 0), _write(self.zone_flags[z], 0)])
+                         for z in range(ZONES)]
+        restore = m.object([guarded(1, _test(EQUAL, self.zone_flags[z]), light(z, KEY_LEVEL))
+                            for z in range(ZONES)])
+        # The off timer darkens everything; the zone records stay, so the next wake
+        # restores them.
+        lights_out = m.object(
+            [_timer(STOP_TIMER, off_timer)] + [light(c, 0) for c in KEYPAD]
+            + [light(z, 0) for z in range(ZONES)] + [light(SCREEN, 0), list(LIGHTS_OUT)])
+        m.timers[off_timer]["action"] = lights_out
+        # Arm: start the off timer when AWAKE is set, and poll again either way.
+        arm_slot = m.reserve()
+        arm = [{"object": arm_slot}, OBJECT]
+        m.objects[arm_slot] = [
+            _timer(STOP_TIMER, off_timer),
+            guarded(0, _test(INVERT | EQUAL, AWAKE),
+                    m.object([light(SCREEN, SCREEN_LEVEL, 1), _timer(START_TIMER, off_timer)])),
+            _timer(START_TIMER, self.poll_timer)]
+        m.timers[self.poll_timer]["action"] = arm
+        self.wake = m.object([_timer(STOP_TIMER, off_timer), light(SCREEN, SCREEN_LEVEL)]
+                             + [light(c, KEY_LEVEL) for c in KEYPAD] + [restore, arm])
+
+    def _charge(self):
+        m, guarded = self.m, self.guarded
+
+        # Which charge context sits under 0xFC on the key stack, chosen on every charging
+        # event as every donor chooses it: the USB one, the normal one, or the low
+        # battery's.
+        def charge_context(name):
+            return [{"charge": name, "band": CHARGE}, REGISTER]
+        self.charge = m.object([
+            guarded(1, _test(INVERT | EQUAL, HOLD), charge_context("usb")),
+            guarded(1, _test(INVERT | EQUAL, USB), charge_context("usb")),
+            guarded(LOW_BATTERY, _test(INVERT | AT_MOST, BATTERY), charge_context("normal")),
+            charge_context("low")])
+        # The setting byte upstairs writes while HOLD is set: F201 off USB - unless
+        # CHARGING is clear, which drops just that step - and F200 on it.
+        self.usb_setting = guarded(1, _test(EQUAL, HOLD), m.object([[LOAD, REGISTER], m.object([
+            _test(INVERT | EQUAL, CHARGING),
+            guarded(0, _test(EQUAL, USB), [0xF201, SETTING]),
+            guarded(1, _test(EQUAL, USB), [0xF200, SETTING])])]))
+        self.low_battery_wake = guarded(LOW_BATTERY, _test(AT_MOST, BATTERY), self.wake)
+
+    def events(self) -> dict[int, list]:
+        m, guarded, charge, wake = self.m, self.guarded, self.charge, self.wake
+        return {
+            # USB in: wake and show the USB screen over whatever was shown.
+            0x26: m.object([[BEEP_KEY, BEEP], charge, wake, [PUSH_MODE, MODE_STACK],
+                            [USB_SCREEN, ENTER_MODE], [STATUS, MODE_STACK]]),
+            # USB out: back to what was shown, if the USB screen is still the one shown.
+            0x27: m.object([[BEEP_KEY, BEEP], [BEEP_SHORT, BEEP], [BEEP_SHORT, BEEP],
+                            [BEEP_SHORT, BEEP], [BEEP_KEY, BEEP], charge, wake,
+                            self.usb_setting,
+                            guarded(0, _test(NOT_EQUAL, self.usb_shown), [POP_MODE, MODE_STACK]),
+                            guarded(1, _test(EQUAL, BATTERY), [0xFFF6, MODE_STACK]),
+                            self.low_battery_wake]),
+            0x10: m.object([self.low_battery_wake, self.usb_setting]),
+            0x19: [0xFFF6, MODE_STACK],
+            0x2D: [0xFFFA, MODE_STACK],
+            0x25: [0, 0],
+            0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
+            0xAF: m.object([[BEEP_PAGE, BEEP], [NEXT_PAGE, PAGE]]),
+        }
+
+    def key_rows(self) -> dict[int, list]:
+        """Two codes below the keys run the key light too, as both donors have them:
+        0x17, which wakes the remote when it is picked up (gspm.md), with its own firmware
+        steps first and lights-out's setting byte after, and 0x30, a plain wake."""
+        m = self.m
+        return {
+            MOTION: m.object([m.object([[LOAD | 1, REGISTER], [0xFFE1, PAGE],
+                                        [LOAD, REGISTER], [0xFFE1, PAGE],
+                                        [0xFFE3, PAGE], [0xFFE3, PAGE]]),
+                              self.wake, list(LIGHTS_OUT)]),
+            0x30: self.wake,
+        }
+
+    def zones(self, chosen, on: bool) -> list:
+        """An object lighting or darkening the zones ``chosen``, made once for each."""
+        key = (tuple(sorted(chosen)), on)
+        if key not in self._zone_objects:
+            self._zone_objects[key] = self.m.object(
+                [(self.zone_on if on else self.zone_off)[z] for z in key[0]])
+        return self._zone_objects[key]
+
+    def platform_handlers(self, screens) -> dict[str, list]:
+        """The firmware's own screens: the low-battery screen and screen 9 light zone 7,
+        the USB screen marks itself shown so unplugging knows whether to go back."""
+        zones = self.zones
+        extra = {
+            (LOW_BATTERY_SCREEN, ENTER): [zones((7,), True)],
+            (LOW_BATTERY_SCREEN, LEAVE): [zones((7,), False)],
+            (SCREEN_NINE, ENTER): [zones((7,), True)],
+            (SCREEN_NINE, LEAVE): [zones((7,), False)],
+            (USB_SCREEN, ENTER): [[SILENT, MODE_STACK], _write(self.usb_shown, 1)],
+            (USB_SCREEN, LEAVE): [[SILENT, MODE_STACK], _write(self.usb_shown, 0)],
+        }
+        handlers = {}
+        for (ordinal, tag), steps in extra.items():
+            if ordinal >= len(screens):
+                continue
+            own = [[{"platform": operand}, category]
+                   for key, operand, category in screens[ordinal]["header"] if key == tag]
+            handlers[f"{ordinal}:{tag:#04x}"] = self.m.object(own + steps)
+        return handlers
+
+    def screen_kinds(self, screens) -> dict[str, dict]:
+        """A screen the build owns: the platform's own enter and leave, then its zones."""
+        own = {}
+        for screen in screens:
+            rows = {key: (operand, category) for key, operand, category in screen["header"]}
+            if ENTER in rows and LEAVE in rows and rows[ENTER][1] != OBJECT \
+                    and rows[LEAVE][1] != OBJECT:
+                own = rows
+                break
+        return {kind: {f"{tag:#04x}": self.m.object(
+                    ([[{"platform": own[tag][0]}, own[tag][1]]] if tag in own else [])
+                    + [self.zones(chosen, tag == ENTER)])
+                       for tag in (ENTER, LEAVE)}
+                for kind, chosen in SCREEN_ZONES.items()}
+
+    def startup(self, sounds) -> dict:
+        """What start-up resets, then sets up: the charge context, the zone records, the
+        lights, and the Screen Sounds flag with its setting."""
+        m = self.m
+        resets = [[SILENT, MODE_STACK], _write(self.usb_shown, 0)]
+        setup = [self.charge, m.object([_write(flag, 0) for flag in self.zone_flags]),
+                 self.wake]
+        if sounds is not None:
+            setup.append(m.object([_write(sounds["variable"], 0), [0xF301, SETTING]]))
+        return {"resets": resets, "setup": setup}
 
 
 def _shift(value, objects: int, timers: int, variables: int):

@@ -96,10 +96,15 @@ def test_an_unshipped_remote_is_still_named_on_import():
         remotes.identify(header)
 
 
-def test_harmony_one_support_is_read_only_and_not_firmware_allowlisted():
+def test_harmony_one_is_experimental_and_not_firmware_allowlisted():
+    # It builds from a project, but the normal write stays shut until a write through the
+    # first-write process has been verified.
     profile = remotes.get("harmony-one")
 
-    assert profile.status == remotes.READ_ONLY
+    assert profile.status == remotes.EXPERIMENTAL
+    profile.require_buildable()
+    with pytest.raises(remotes.NotWritable):
+        profile.require_writable()
     assert profile.payload == "blob"
     assert profile.backend == "harmony-one"
     assert profile.firmware_min is None
