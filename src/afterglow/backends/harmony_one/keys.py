@@ -36,3 +36,14 @@ def by_name(name: str) -> int | None:
     """The key code of a named key, or None for a key the One does not have."""
     scan = SCANS.get(name)
     return None if scan is None else code(scan)
+
+
+def name_of(key_code: int) -> str | None:
+    """The name of the key a row binds by ``key_code``, or None for a code that is no
+    key - a touch zone, an event."""
+    if not key_code & 0x80:
+        return None
+    return _NAMES.get(key_code & 0x7F)
+
+
+_NAMES = {scan: name for name, scan in SCANS.items()}

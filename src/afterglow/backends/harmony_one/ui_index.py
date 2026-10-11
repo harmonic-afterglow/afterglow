@@ -539,8 +539,39 @@ def screen_slots(payload: bytes) -> list[dict]:
                 "key_register_offset": key_register, "program_offset": program,
                 "entries": entries,
             })
-        screens.append({"ordinal": ordinal, "trailer_offset": trailer, "slots": slots})
+        header = int.from_bytes(payload[trailer + 1:trailer + 4], "little") - gspm.BASE
+        try:
+            header_entries = register_rows(payload, header)
+        except ValueError:
+            header_entries = []
+        screens.append({"ordinal": ordinal, "trailer_offset": trailer, "slots": slots,
+                        "header_offset": header, "header_entries": header_entries})
     return screens
+
+
+def register_rows(payload: bytes, offset: int) -> list[dict]:
+    """A key register's rows: a count and ``{key, u16 operand, opcode}``, or - after a
+    leading zero - the wide form, a count and ``{flags, key, u16 operand, opcode}``. A
+    screen's own register (its trailer's header) holds the physical keys it answers."""
+    if not 0 <= offset < len(payload):
+        raise ValueError(f"key register at {offset:#x} is outside the image")
+    count, wide, at = payload[offset], False, offset + 1
+    if count == 0:
+        if at >= len(payload):
+            raise ValueError(f"key register at {offset:#x} is truncated")
+        count, wide, at = payload[at], True, at + 1
+    size = 5 if wide else 4
+    if at + size * count > len(payload):
+        raise ValueError(f"key register at {offset:#x} is truncated")
+    out = []
+    for row in range(count):
+        cursor = at + size * row
+        flags = payload[cursor] if wide else None
+        code = payload[cursor + wide]
+        operand, category = struct.unpack_from("<HB", payload, cursor + wide + 1)
+        out.append({"key_code": code, "operand": operand, "category": category,
+                    "flags": flags, "offset": cursor})
+    return out
 
 
 def row_index(y: int) -> int | None:

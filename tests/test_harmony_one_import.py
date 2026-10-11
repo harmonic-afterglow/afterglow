@@ -64,3 +64,148 @@ def test_a_logitech_configuration_s_text_reads_back_whatever_its_glyph_layout(pa
     drawn, text = _all_text((tmp_path / "payload.bin").read_bytes())
     assert text.unknown == 0
     assert drawn
+
+
+def _imported(image: bytes, tmp_path) -> dict:
+    """Import an image as the app does: through its container and the backend."""
+    from afterglow import ezhex, importer, payloads, remotes
+
+    profile = remotes.get("harmony-one")
+    source = tmp_path / "source"
+    payloads.get(profile.payload).unpack(image, str(source))
+    (source / ".ezhex_header").write_bytes(ezhex.header_for_profile(profile))
+    return importer.import_result(source).project
+
+
+def test_a_device_comes_back_with_its_names_power_inputs_and_keys(built, tmp_path):
+    project = _imported(built["image"], tmp_path)
+    tv, amp = project["devices"]
+    assert (tv["label"], amp["label"]) == ("Living Room TV", "Receiver")
+    # every command a page shows is named by its button; held codes have no button
+    source = {name for name in PROJECT["devices"][0]["signals"]}
+    assert source <= set(tv["signals"])
+    assert (tv["power_on_cmd"], tv["power_off_cmd"], tv["power_delay"]) == (
+        "PowerOn", "PowerOff", 3000)
+    assert (amp["power_cmd"], amp["power_delay"]) == ("Power", 2000)
+    assert [command for _name, command in tv["inputs"]] == ["InputHdmi1", "InputHdmi2"]
+    assert [command for _name, command in amp["inputs"]] == ["InputCd", "InputTv"]
+    # a device page's physical keys, as the project's hard slots
+    slots = {entry[0]: entry[4] for entry in tv["commands"]}
+    assert slots["VolumeUp"] == ["VolumeUp"]
+    assert slots["Mute"] == ["VolumeMute"]
+    assert slots["1"] == ["Number1"]
+    assert slots["PowerOn"] is None
+
+
+def test_an_activity_comes_back_with_what_it_turns_on_sets_binds_and_shows(built, tmp_path):
+    project = _imported(built["image"], tmp_path)
+    tv, amp = (device["id"] for device in project["devices"])
+    watch, music = project["activities"]
+    assert (watch["label"], music["label"]) == ("Watch TV", "Listen to Music")
+    assert watch["power_on_devices"] == [tv, amp]
+    assert watch["enter"] == [["input", tv, "InputHdmi1"], ["input", amp, "InputTv"]]
+    assert (watch["control"], watch["volume"]) == (tv, amp)
+    # the keys the roles route, and the one bound on purpose
+    assert {"VolumeUp", "Guide", "Info"} <= set(watch["bound_keys"])
+    assert watch["hard_macros"] == {"Info": [["command", tv, "1"], ["command", tv, "2"]]}
+    assert watch["soft_buttons"] == [
+        ["Guide", tv, "Guide"],
+        {"label": "Movie", "macro": [["command", tv, "Menu"], ["delay", tv, 500],
+                                     ["command", tv, "Select"]]}]
+    assert music["power_on_devices"] == [amp]
+    assert music["enter"] == [["input", amp, "InputCd"]]
+
+
+def test_a_favourite_channel_comes_back_dialled_and_confirmed(tmp_path):
+    from test_harmony_one_activities import AMP, FAVOURITES, TV
+
+    project = {**FAVOURITES, "devices": [dict(TV, press_interkey=300), AMP]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    watch = imported["activities"][0]
+    assert watch["image_buttons"] == [["BBC One", "channel", "12", None],
+                                      ["News", "channel", "2", None]]
+    assert watch["channel_confirm"] == "Select"
+    assert imported["devices"][0]["press_interkey"] == 300
+
+
+def _comparable(project: dict) -> dict:
+    return {
+        "devices": [{key: device.get(key) for key in (
+            "label", "commands", "power_cmd", "power_on_cmd", "power_off_cmd", "power_delay",
+            "inputs", "input_cycle", "press_interkey")} for device in project["devices"]],
+        "activities": [{key: value for key, value in activity.items() if key != "id"}
+                       for activity in project["activities"]],
+    }
+
+
+def test_a_project_read_back_builds_the_project_it_was_read_from(built, tmp_path):
+    # What an import reads is what a build of it writes: reading that build back gives
+    # the same project again.
+    first = _imported(built["image"], tmp_path / "first")
+    second = _imported(generate.build(first)["image"], tmp_path / "second")
+    assert _comparable(second) == _comparable(first)
+
+
+def test_a_favourite_s_logo_is_saved_and_composes_back_the_same(tmp_path):
+    # A favourite with a logo and no name: its logo is saved to the owner's logos folder
+    # and the project names it there, so building the import draws the same button.
+    from afterglow import imaging, paths
+    from afterglow.backends.harmony_one import importing
+    from test_harmony_one_activities import FAVOURITES
+
+    logo = tmp_path / "star.png"
+    logo.write_bytes(imaging.encode(
+        [[(255, 200, 0, 255) if (x - 15) ** 2 + (y - 15) ** 2 < 150 else (0, 0, 0, 0)
+          for x in range(30)] for y in range(30)]))
+    project = {**FAVOURITES, "activities": [dict(
+        FAVOURITES["activities"][0], image_buttons=[["Star", "channel", "12", str(logo)]],
+        channel_confirm="Select")] + FAVOURITES["activities"][1:]}
+    first = generate.build(project)["image"]
+    imported = _imported(first, tmp_path / "first")
+    [[name, kind, number, image]] = imported["activities"][0]["image_buttons"]
+    assert (kind, number) == ("channel", "12")
+    assert (paths.logos_dir() / image).is_file()
+    second = generate.build(imported)["image"]
+
+    def drawn(image):
+        reader = importing.Image(image)
+        return [picture for screen in reader.screens for slot in screen["slots"]
+                for picture in [importing.Activities(reader, [], {}, [])._logo(slot, 0)]
+                if picture and any(item["text"] == "Watch TV"
+                                   for item in reader.page_text(slot["program_offset"]))]
+    assert drawn(second) and drawn(second)[0] == drawn(first)[0]
+
+
+def test_a_held_step_comes_back_held_as_long(tmp_path):
+    # A held step is a record of its own - the code repeated for the hold - which reads
+    # back as its command held that long, not as a command of its own.
+    project = {**PROJECT, "activities": [dict(PROJECT["activities"][0], soft_buttons=[
+        {"label": "Quieter", "macro": [["command", "amp", "VolumeUp", "Press", 1500]]}])]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    amp = imported["devices"][1]["id"]
+    [button] = imported["activities"][0]["soft_buttons"]
+    assert button == {"label": "Quieter", "macro": [["command", amp, "VolumeUp", "Press", 1500]]}
+    assert not any(name.startswith("Command ") for name in imported["devices"][1]["signals"])
+
+
+def test_an_input_chosen_in_several_steps_is_sent_and_read_back_whole(tmp_path):
+    # Some devices choose an input in steps - wake, step there, confirm - which a project
+    # gives as the input's sequence, as the other remotes' builders take it.
+    from test_harmony_one_activities import AMP, TV
+
+    amp = dict(AMP, inputs=[["CD", ["Power", {"delay_ms": 500}, "InputCd"]],
+                            ["TV", "InputTv"]])
+    project = {**PROJECT, "devices": [TV, amp]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    assert imported["devices"][1]["inputs"] == [
+        ["Input 1", ["Power", {"delay_ms": 500}, "InputCd"]], ["InputTv", "InputTv"]]
+    # and building the import sends the same sequence again
+    again = _imported(generate.build(imported)["image"], tmp_path / "again")
+    assert again["devices"][1]["inputs"] == imported["devices"][1]["inputs"]
+
+
+def test_a_type_is_read_from_the_icon_its_menu_row_draws(built, tmp_path):
+    project = _imported(built["image"], tmp_path)
+    assert [device["type"] for device in project["devices"]] == ["Television", "Amplifier"]
+    assert [activity["type"] for activity in project["activities"]] == [
+        "VirtualTelevisionN", "VirtualCdMulti"]
