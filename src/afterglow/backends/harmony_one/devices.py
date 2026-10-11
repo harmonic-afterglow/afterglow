@@ -63,12 +63,21 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
         count = len(inputs["values"])
         transitions = []
         if "direct" in inputs:
-            for value, command_id in enumerate(inputs["direct"]):
-                if command_id is None:
+            for value, chosen in enumerate(inputs["direct"]):
+                if chosen is None:
                     transitions.append(transition(TRANSITION_FROM_ANY, value, 0, 0))
+                elif isinstance(chosen, list):
+                    # a sequence: its sends, and its waits before this device's next send
+                    atoms = []
+                    for kind, item in chosen:
+                        atoms += ([(objects[item], OBJECT_ATOM)] if kind == "send"
+                                  else waits(index, item))
+                    transitions.append(transition(TRANSITION_FROM_ANY, value,
+                                                   place_object(object_body(atoms)),
+                                                   OBJECT_ATOM))
                 else:
                     transitions.append(transition(TRANSITION_FROM_ANY, value,
-                                                   objects[command_id], OBJECT_ATOM))
+                                                   objects[chosen], OBJECT_ATOM))
         elif count > 1:
             step = [(objects[inputs["next"]], OBJECT_ATOM)] + waits(index,
                                                                      inputs["delay_ms"])
@@ -223,7 +232,8 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
 
     The project's own fields, as the other remotes' builders read them: `power_on_cmd`
     and `power_off_cmd` or a toggle `power_cmd`, `power_delay` in milliseconds, `inputs`
-    as `[name, command]` pairs, and `input_cycle` for inputs reached by stepping.
+    as `[name, command]` pairs - the command a sequence of steps for an input chosen in
+    several - and `input_cycle` for inputs reached by stepping.
     """
     def command(name):
         if name is None:
@@ -239,7 +249,30 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
     if (on or toggle) and (off or toggle):
         out["power"] = {"on": command(on or toggle), "off": command(off or toggle),
                         "delay_ms": device.get("power_delay") or 0}
-    inputs = [(entry[0], command(entry[1]) if len(entry) > 1 else None)
+    def selection(chosen):
+        """What choosing an input sends: one command's id, or - when the project gives
+        a sequence (`[name, [steps]]`, as the other remotes' builders take it) - its
+        sends and waits, `("send", id)` and `("wait", ms)`."""
+        if chosen is None or isinstance(chosen, str):
+            return command(chosen)
+        steps = []
+        for step in chosen:
+            if isinstance(step, str):
+                steps.append(("send", command(step)))
+            elif "delay_ms" in step:
+                steps.append(("wait", int(step["delay_ms"])))
+            elif "command" in step:
+                if step.get("hold_ms"):
+                    raise ValueError(f"device {device.get('label')!r} holds "
+                                     f"{step['command']!r} to choose an input, which the "
+                                     "One cannot do in an input's sequence")
+                steps.append(("send", command(step["command"])))
+            # a step setting another state has nothing the One sends
+        if len(steps) == 1 and steps[0][0] == "send":
+            return steps[0][1]
+        return steps or None
+
+    inputs = [(entry[0], selection(entry[1]) if len(entry) > 1 else None)
               for entry in device.get("inputs") or []]
     cycle = device.get("input_cycle") or {}
     if inputs:

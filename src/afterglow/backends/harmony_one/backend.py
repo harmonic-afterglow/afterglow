@@ -17,7 +17,7 @@ import tempfile
 
 from ... import ezhex, payloads
 from ..contracts import BuildResult, ImportResult
-from . import command_index, gspm, inventory
+from . import command_index, gspm, importing, inventory
 
 
 def validate_payload(payload: bytes, _profile=None) -> dict:
@@ -25,19 +25,45 @@ def validate_payload(payload: bytes, _profile=None) -> dict:
 
 
 def import_project(source, profile, context) -> ImportResult:
-    """Validate a preserved image while portable record decoding remains unavailable."""
+    """Read an image back as a project (importing.py): its devices with their commands,
+    names, power, inputs and keys, and its activities. The image itself is kept as
+    evidence, unchanged."""
     carrier = payloads.get(profile.payload)
     payload = carrier.build(source)
     validation = validate_payload(payload, profile)
     native = inventory.inspect(payload)
     ownership = native["ownership"]
-    devices = command_index.portable_devices(
-        ownership, native["keys"], native["ui"]["device_menus"])
+    notes: list[str] = []
+    naming: dict = {}
+    image = importing.Image(payload)
+    devices = importing.project_devices(image, command_index.portable_devices(
+        ownership, native["keys"], native["ui"]["device_menus"]), notes, naming)
+    # favourites' logos go to the owner's logos folder, by the configuration's name
+    from ... import paths
+    name = Path(str(source)).name.removesuffix("_extracted") or "imported"
+    logos = paths.logos_dir() / "Imported" / name
+    activities, off = importing.Activities(image, devices, naming, notes, logos).read()
+    # each type from the icon its menu row draws; a row whose icon is not known keeps none
+    types = importing.read_types(image)
+    unknown = []
+    for index, device in enumerate(devices):
+        device["type"] = types.get(("device", index)) or device.get("type")
+        if ("device", index) not in types:
+            unknown.append(device["label"])
+    for activity in activities:
+        activity["type"] = types.get(("activity", int(activity["id"])))
+        if activity["type"] is None:
+            unknown.append(activity["label"])
+    if unknown:
+        notes.append("no type was recognised for " + ", ".join(repr(name) for name in unknown)
+                     + "; their icons are the default ones")
+    notes += [f"could not read the image's {item}" for item in image.unreadable]
     settings = {"remote": profile.id}
     if context.get("out_file"):
         settings["out_file"] = str(context["out_file"])
     return ImportResult(
-        project={"devices": devices, "activities": [], "assets": [], "settings": settings},
+        project={"devices": devices, "activities": activities, "assets": [],
+                 "settings": settings, **off},
         preservation={
             "mode": "opaque-native-payload",
             "sha256": hashlib.sha256(payload).hexdigest(),
@@ -45,14 +71,7 @@ def import_project(source, profile, context) -> ImportResult:
             "validation": validation,
             "inventory": native,
         },
-        warnings=(
-            "Harmony One command ownership and proven press/hold/release waveforms were imported "
-            "with native device-menu names when the image uses a proved glyph repertoire. Screen "
-            "key bindings and raw glyph lines were retained as evidence. Activity contexts and "
-            "state transitions were also indexed, but portable key names and unresolved native "
-            "behavior remain opaque; "
-            "the native payload was preserved unchanged.",
-        ),
+        warnings=tuple(notes),
         rejected={
             "native_objects": max(
                 0, native["objects"]["objects"] - ownership["counts"]["command_objects"]),

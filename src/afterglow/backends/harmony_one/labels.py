@@ -54,6 +54,21 @@ def shape(body: bytes) -> str:
 
 
 @lru_cache(maxsize=4)
+def logitech_shapes(directory: str | None = None) -> dict[str, str]:
+    """The shapes Logitech's configurations are known to draw (platform/glyph-shapes.json)."""
+    from ... import paths
+
+    directory = Path(paths.scaffolds("harmony-one") if directory is None else directory)
+    path = directory / SHAPES_FILE
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text("utf-8"))
+    if data.get("schema") != SHAPES_SCHEMA:
+        raise ValueError(f"{path} declares {data.get('schema')!r}, not {SHAPES_SCHEMA!r}")
+    return dict(data["shapes"])
+
+
+@lru_cache(maxsize=4)
 def known_shapes(directory: str | None = None) -> dict[str, str]:
     """Every shape whose character is known - the characters, when a face draws more
     than one alike: Logitech's, then this scaffold's fonts'."""
@@ -61,13 +76,7 @@ def known_shapes(directory: str | None = None) -> dict[str, str]:
     from . import assets
 
     directory = Path(paths.scaffolds("harmony-one") if directory is None else directory)
-    out = {}
-    path = directory / SHAPES_FILE
-    if path.is_file():
-        data = json.loads(path.read_text("utf-8"))
-        if data.get("schema") != SHAPES_SCHEMA:
-            raise ValueError(f"{path} declares {data.get('schema')!r}, not {SHAPES_SCHEMA!r}")
-        out.update(data["shapes"])
+    out = dict(logitech_shapes(str(directory)))
     try:
         loaded = assets.load(directory, set(OWN_CHARACTERS))
     except (FileNotFoundError, ValueError):
@@ -89,6 +98,11 @@ class Text:
     def __init__(self, payload: bytes, shapes: dict[str, str] | None = None):
         shapes = known_shapes() if shapes is None else shapes
         fonts = font_index.fonts(payload)
+        # Whose image it is: Logitech's builder or this one, by whose shapes it draws.
+        # They wrap a long label differently, so reading one back depends on it.
+        logitech = logitech_shapes()
+        drawn = [glyph["shape"] for font in fonts for glyph in font["glyphs"].values()]
+        self.logitech = bool(drawn) and sum(item in logitech for item in drawn) * 2 > len(drawn)
         self.candidates = [{code: shapes[glyph["shape"]] for code, glyph in font["glyphs"].items()
                             if glyph["shape"] in shapes} for font in fonts]
         self.fonts, self.shared = read_fonts(self.candidates)
@@ -98,6 +112,14 @@ class Text:
         self.layout = {} if layout.get("error") else dict(layout["code_to_character"])
         self.unknown = 0
         self.inferred = 0
+
+    @classmethod
+    def empty(cls) -> Text:
+        """The text of an image whose fonts cannot be read: every code unknown."""
+        text = cls.__new__(cls)
+        text.candidates, text.fonts, text.shared, text.layout = [], [], {}, {}
+        text.logitech, text.unknown, text.inferred = False, 0, 0
+        return text
 
     def _read(self, code: int, attribute: int | None) -> str:
         """A character, or the characters it may be, or "" when nothing reads it."""

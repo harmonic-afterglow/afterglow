@@ -79,6 +79,14 @@ class Actions:
         inputs reached by stepping, one step."""
         inputs = self.devices[index]["inputs"]
         if "direct" in inputs:
-            command = inputs["direct"][value]
-            return [] if command is None else [(self.command(index, command), OBJECT_ATOM)]
+            chosen = inputs["direct"][value]
+            if chosen is None:
+                return []
+            if isinstance(chosen, list):
+                out = []
+                for kind, item in chosen:
+                    out += ([(self.command(index, item), OBJECT_ATOM)] if kind == "send"
+                            else waits(index, item))
+                return out
+            return [(self.command(index, chosen), OBJECT_ATOM)]
         return [(self.command(index, inputs["next"]), OBJECT_ATOM)]

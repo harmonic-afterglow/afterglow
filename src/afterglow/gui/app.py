@@ -396,13 +396,14 @@ class MainWindow(QMainWindow):
             return
         try:
             from .. import ezhex as harmony_ezhex
-            from ..importer import build_project
+            from ..importer import import_result
             stem = Path(path).stem
             extracted = Path(path).resolve().parent / f"{stem}_extracted"
             if extracted.exists():
                 shutil.rmtree(extracted)
             harmony_ezhex.unpack(path, str(extracted))
-            data = build_project(str(extracted))
+            imported = import_result(str(extracted))
+            data = imported.project
             # Rebuild on the imported tree and keep its (possibly exotic) IrProto verbatim;
             # The imported devices and activities are kept; the config is rebuilt from
             # the scaffold rather than from the imported tree, so nothing unmodelled
@@ -436,7 +437,11 @@ class MainWindow(QMainWindow):
                 + (f"Found {n_rec} RF blaster base station(s) - each device's 'IR output' "
                    "picker now lists them." if n_rec else
                    "No RF blaster base was configured; all devices emit from the remote's front IR.")
-                + learned)
+                + learned
+                # what could not be carried over, as the backend said it
+                + ("\n\nNot carried over:\n" + "\n".join(f"- {note}" for note in
+                                                       imported.warnings)
+                   if imported.warnings else ""))
         except Exception as e:
             QMessageBox.critical(self, "Import Failed", str(e))
 
