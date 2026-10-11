@@ -17,6 +17,7 @@ Format reference: docs/harmony_one/gspm.md
 from __future__ import annotations
 
 from . import keys
+from .devices import PRESS_INTERKEY_DEFAULT
 
 VOLUME_KEYS = ("VolumeUp", "VolumeDown", "VolumeMute")
 DIGITS = {str(n): f"Number{n}" for n in range(10)}
@@ -40,7 +41,8 @@ def plan(project: dict, devices: list[dict]) -> dict:
         off = list(range(len(devices)))
     return {"activities": out,
             "all_off": {"off": [index for index in dict.fromkeys(off)
-                                if devices[index].get("power")],
+                                if devices[index].get("power")
+                                and not specs[index].get("always_on")],
                         "label": project.get("power_off_label")},
             "skipped": skipped}
 
@@ -68,8 +70,10 @@ def _activity(activity: dict, specs, devices, index_of, skipped) -> dict:
         on = [device(did) for did in activity["power_on_devices"]]
     else:
         on = [device(did) for did in roles if did is not None]
-    on = list(dict.fromkeys(on))
-    off = [index for index in range(len(devices)) if index not in on]
+    # a device marked Always on is never switched by the remote, either way
+    steady = {index for index, spec in enumerate(specs) if spec.get("always_on")}
+    on = [index for index in dict.fromkeys(on) if index not in steady]
+    off = [index for index in range(len(devices)) if index not in on and index not in steady]
 
     inputs, enter = [], []
     steps = list(activity.get("enter") or [])
@@ -130,7 +134,8 @@ def _favourites(activity, specs, devices, index_of, where, skipped) -> list[dict
         here = f"{where} favourite {label!r}"
         if kind == "channel":
             target = _device(index_of, control, here)
-            interkey = int(specs[target].get("press_interkey") or 0)
+            interkey = int(PRESS_INTERKEY_DEFAULT if specs[target].get("press_interkey") is None
+                           else specs[target]["press_interkey"])
             steps = []
             for digit in str(payload):
                 name = _digit_command(specs[target], digit)

@@ -181,8 +181,8 @@ def learn(project: dict, extracted_dir: str | Path, library: Path | str = LIBRAR
         # The inputs an activity can switch this device to. Only the ones that send a
         # command are portable: an input that works by setting a second state refers to
         # that device's own state machine, which does not transfer to another config.
-        inputs = [[name, command] for name, command in (device.get("inputs") or [])
-                  if command]
+        inputs = [list(entry[:2]) for entry in (device.get("inputs") or [])
+                  if len(entry) > 1 and entry[1]]
         if inputs:
             spec["inputs"] = inputs
         # Whether this device can be given a channel to dial. Only the *shape* is

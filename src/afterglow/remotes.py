@@ -73,12 +73,16 @@ DEVICE_PAGES = ("search", "identity", "commands", "inputs", "timing", "advanced"
 ACTIVITY_PAGES = ("identity", "roles", "favourites", "screen_buttons", "hard_buttons",
                   "startup", "power", "advanced")
 SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme", "preferences")
+# The device Timing page's fields, by the project key each one sets.
+TIMING_FIELDS = ("always_on", "power_delay", "press_presilence", "press_interkey",
+                 "hold_presilence", "hold_interkey")
 # What each list may contain, and what it must: a device is its commands, and so on.
 INTERFACE = {
     "tabs": (TABS, ("devices", "flash")),
     "device_pages": (DEVICE_PAGES, ("identity", "commands")),
     "activity_pages": (ACTIVITY_PAGES, ("identity", "roles")),
     "settings": (SETTINGS_FIELDS, ("output_file",)),
+    "timing": (TIMING_FIELDS, ()),
 }
 
 
@@ -208,6 +212,11 @@ class RemoteProfile:
     @property
     def settings_fields(self) -> tuple:
         return self._offered("settings")
+
+    @property
+    def timing_fields(self) -> tuple:
+        """The device Timing page's fields this remote's builder uses."""
+        return self._offered("timing")
 
     @property
     def languages(self) -> tuple:

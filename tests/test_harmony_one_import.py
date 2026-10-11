@@ -209,3 +209,24 @@ def test_a_type_is_read_from_the_icon_its_menu_row_draws(built, tmp_path):
     assert [device["type"] for device in project["devices"]] == ["Television", "Amplifier"]
     assert [activity["type"] for activity in project["activities"]] == [
         "VirtualTelevisionN", "VirtualCdMulti"]
+
+
+def test_an_imported_one_is_learned_into_the_library_even_with_inputs_without_commands(
+        tmp_path):
+    # An input no command selects is `[name]` alone, which a project may hold; learning the
+    # import into the library refused the whole configuration over it.
+    from afterglow import library
+    from test_harmony_one_activities import AMP, TV
+
+    tv = dict(TV, inputs=[["HDMI1", "InputHdmi1"], ["Antenna"]])
+    imported = _imported(generate.build({**PROJECT, "devices": [tv, AMP]})["image"], tmp_path)
+    learned = library.learn(imported, tmp_path, library=tmp_path / "library")
+    assert learned
+
+
+def test_an_activity_s_display_is_the_device_it_switches_on_that_shows_a_picture(tmp_path):
+    # the receiver is the control; the television is still what is watched
+    project = {**PROJECT, "activities": [dict(PROJECT["activities"][0], control="amp")]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    tv = imported["devices"][0]["id"]
+    assert imported["activities"][0]["display"] == tv

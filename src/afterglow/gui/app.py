@@ -22,7 +22,8 @@ from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
 from .remote_bar import ChooseRemoteDialog, MigrationDialog
 from .status_bar import ProjectStatusBar
-from .tabs import ActivitiesTab, DevicesTab, SettingsTab, UpdateTab, remote_profiles
+from .tabs import (
+    ActivitiesTab, DevicesTab, SettingsTab, UpdateTab, project_remote, remote_profiles)
 from .widgets import load_repo_templates
 
 
@@ -430,18 +431,22 @@ class MainWindow(QMainWindow):
             except Exception as exc:                       # never block an import
                 learned = f"\n\nCould not update the library: {exc}"
             n_rec = len(rf_receivers(self.project))
-            QMessageBox.information(
-                self, "Import Complete",
-                f"Imported {len(self.project['devices'])} device(s) and "
-                f"{len(self.project['activities'])} activity/ies from {Path(path).name}.\n\n"
-                + (f"Found {n_rec} RF blaster base station(s) - each device's 'IR output' "
-                   "picker now lists them." if n_rec else
-                   "No RF blaster base was configured; all devices emit from the remote's front IR.")
-                + learned
-                # what could not be carried over, as the backend said it
-                + ("\n\nNot carried over:\n" + "\n".join(f"- {note}" for note in
-                                                       imported.warnings)
-                   if imported.warnings else ""))
+            parts = [f"Imported {len(self.project['devices'])} device(s) and "
+                     f"{len(self.project['activities'])} activity/ies from {Path(path).name}."]
+            # Blasters only mean something on a remote that has them.
+            if "rf_blasters" in project_remote(self.project).settings_fields:
+                parts.append(
+                    f"Found {n_rec} RF blaster base station(s) - each device's 'IR output' "
+                    "picker now lists them." if n_rec else
+                    "No RF blaster base was configured; all devices emit from the remote's "
+                    "front IR.")
+            if learned:
+                parts.append(learned.strip())
+            # what could not be carried over, as the backend said it
+            if imported.warnings:
+                parts.append("Not carried over:\n" + "\n".join(
+                    f"- {note}" for note in imported.warnings))
+            QMessageBox.information(self, "Import Complete", "\n\n".join(parts))
         except Exception as e:
             QMessageBox.critical(self, "Import Failed", str(e))
 

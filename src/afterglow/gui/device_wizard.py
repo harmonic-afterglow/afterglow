@@ -52,7 +52,8 @@ class DeviceWizard(QWizard):
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
-        self.page_timing   = TimingPage(self._existing)
+        self.page_timing   = TimingPage(self._existing,
+                                        fields=self.profile.timing_fields)
         self.page_props    = PropertiesPage("device", self._existing.get("properties"),
                                     kind=self._existing.get("type"), remote=self.profile)
 
@@ -1136,7 +1137,7 @@ class CommandsPage(QWizardPage):
 
 
 class TimingPage(QWizardPage):
-    def __init__(self, existing, parent=None):
+    def __init__(self, existing, parent=None, fields=None):
         super().__init__(parent)
         self.setTitle("Timing & Options")
         self.setSubTitle("Set IR timing delays and device behaviour in activities.")
@@ -1184,6 +1185,16 @@ class TimingPage(QWizardPage):
         self.hold_key.setSuffix(" ms")
         self.hold_key.setValue(existing.get("hold_interkey", 100))
         layout.addRow("Hold repeat gap:", self.hold_key)
+
+        # Only the fields this remote's builder uses (its profile's `interface.timing`);
+        # the rest keep their values, so collecting hands back what was there.
+        if fields is not None:
+            for key, widget in (("always_on", self.always_on), ("power_delay", self.pwr_delay),
+                                ("press_presilence", self.pre_sil),
+                                ("press_interkey", self.inter_key),
+                                ("hold_presilence", self.hold_sil),
+                                ("hold_interkey", self.hold_key)):
+                layout.setRowVisible(widget, key in fields)
 
     def load_template(self, t):
         """A device that is always on, or needs a long warm-up, says so itself."""
@@ -1282,7 +1293,8 @@ class DeviceEditor(QDialog):
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
-        self.page_timing   = TimingPage(self._existing)
+        self.page_timing   = TimingPage(self._existing,
+                                        fields=self.profile.timing_fields)
         self.page_props    = PropertiesEditor("device", self._existing.get("properties"),
                                       kind=self._existing.get("type"), remote=self.profile)
         

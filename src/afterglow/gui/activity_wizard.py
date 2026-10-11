@@ -21,6 +21,10 @@ from .properties_editor import PropertiesEditor, PropertiesPage
 from .widgets import _new_act_id
 
 
+def _steps(macro) -> str:
+    return f"{len(macro)} step" + ("" if len(macro) == 1 else "s")
+
+
 class ActivityWizard(QWizard):
     def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None):
         super().__init__(parent)
@@ -332,7 +336,7 @@ class ActivityHardButtonsPage(QWizardPage):
             self.table.insertRow(r)
             self.table.setItem(r, 0, QTableWidgetItem(slot))
             macro = self.macros.get(slot, [])
-            self.table.setItem(r, 1, QTableWidgetItem(f"{len(macro)} steps" if macro else "Default"))
+            self.table.setItem(r, 1, QTableWidgetItem(_steps(macro) if macro else "Default"))
             
         self.table.itemDoubleClicked.connect(self._edit_macro)
         
@@ -367,7 +371,7 @@ class ActivityHardButtonsPage(QWizardPage):
             macro = dlg.macro_edit.get_macro()
             if macro:
                 self.macros[slot] = macro
-                self.table.setItem(r, 1, QTableWidgetItem(f"{len(macro)} steps"))
+                self.table.setItem(r, 1, QTableWidgetItem(_steps(macro)))
             else:
                 if slot in self.macros:
                     del self.macros[slot]

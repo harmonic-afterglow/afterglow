@@ -18,6 +18,7 @@ from afterglow import preferences, properties, remotes
 # The least a profile has to say about its interface (remotes.INTERFACE).
 MINIMAL_INTERFACE = {"tabs": ["devices", "flash"], "device_pages": ["identity", "commands"],
                      "activity_pages": ["identity", "roles"], "settings": ["output_file"],
+                     "timing": [],
                      "languages": [["English", "enu"]]}
 
 def test_profiles_load():

@@ -12,6 +12,11 @@ from . import keys
 from .structures import OBJECT_ATOM, object_body
 
 
+# What a device that does not say waits after switching on, and between the digits of a
+# channel - what the device editor shows for one (gui/device_wizard.py), so a build never
+# does other than what the editor showed.
+POWER_DELAY_DEFAULT, PRESS_INTERKEY_DEFAULT = 1500, 500
+
 # "From any value", as upstairs' and Kāt's direct inputs all have it: it runs on every
 # write, the same value included, which is how picking the running activity again
 # re-sends its inputs. (Downstairs has one television with `0xFFFD` instead.)
@@ -248,7 +253,8 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
     toggle = device.get("power_cmd")
     if (on or toggle) and (off or toggle):
         out["power"] = {"on": command(on or toggle), "off": command(off or toggle),
-                        "delay_ms": device.get("power_delay") or 0}
+                        "delay_ms": (POWER_DELAY_DEFAULT if device.get("power_delay") is None
+                                     else device["power_delay"])}
     def selection(chosen):
         """What choosing an input sends: one command's id, or - when the project gives
         a sequence (`[name, [steps]]`, as the other remotes' builders take it) - its
