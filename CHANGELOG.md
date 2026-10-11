@@ -4,6 +4,70 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0-beta.1] - Unreleased
+
+The **Harmony One**, as an experimental remote: Afterglow builds its configuration from
+your devices and activities - every screen, button, light and menu generated, nothing
+copied from a previous configuration - and imports the one already on it. Like the
+Harmony 1100, it is written only through **Test write**, which backs the remote up
+first. Builds have booted on testers' remotes, with activities, favourites and the
+Remote Assistant working; a write from inside Afterglow itself has not been reported
+yet, and that is what this beta is for.
+
+### Added
+
+- **Harmony One configurations, built from scratch.** The Activities menu, the device
+  list and each device's command pages; activities that switch devices on and off, set
+  inputs, route the keys and show their own buttons, with favourite channels and their
+  logos, Help, and the Remote Assistant asking whether everything turned on; Off;
+  Options with Date and Time, Screen Sensitivity, Screen Sounds, the Remote Assistant
+  switch and a Tutorial; the keypad lights, sleep and waking when picked up, and the
+  USB and charging screens. A step can hold a command for as long as a device needs, and
+  an input can be chosen in several steps.
+- **Importing a Harmony One configuration** brings across its devices - with their
+  commands' names, power, inputs and the keys they are on - and its activities, with
+  their buttons, keys and favourites, the favourites' logos (into `Logos/Imported`),
+  and the type of every device and activity. A One draws its text rather than storing
+  it, so names are read from their letters' shapes, in any language. **Import Complete**
+  says what could not be carried over.
+- **Themes for the Harmony One.** `Documents/Afterglow/Themes/harmony-one/Example` is
+  the look Afterglow ships, to copy and change - pictures, fonts and colours, and a
+  TrueType font of your own. **Remote Settings > Theme** lists your themes; a project
+  remembers its theme by name.
+- **A folder for each kind of file** in `Documents/Afterglow`: `Projects`, `Dumps`
+  (configurations read from a remote or imported), `Generated` (configurations built
+  here) and `Themes`, beside `Library` and `Logos`. Each dialog opens in its own.
+- The Flash tab's log says what a build wrote, and where.
+
+### Changed
+
+- A device's **Timing** page, and the device and activity **Advanced** pages, show only
+  what the remote's builder uses: the Harmony One has the power-on delay, the delay
+  between a channel's digits and Always on.
+- The activity list shows a type's name ("Watch a DVD"), as the editor does.
+- Shareable projects unpack into `Projects`; an existing lowercase `projects` folder is
+  renamed to it.
+
+### Fixed
+
+- Learning an imported configuration into the device library failed when a device had
+  an input that no command selects.
+- A macro of one step was described as "1 steps".
+
+### Known issues
+
+- **Harmony One:**
+  - Its screens are in English only: an imported configuration in another language is
+    rebuilt in English.
+  - Logitech's Off turns off whatever is on; an imported configuration's Off turns off
+    every device that has a power command, which comes to the same.
+  - Commands a Logitech configuration never shows on any button or key have no name in
+    it, and keep a numbered one ("Command 12"). A favourite that shows only a logo is
+    named after its channel or the command it sends.
+  - A letter none of the configurations Afterglow has learned from draws, in that size
+    of font, cannot be read: it shows as � and Import Complete lists the names that
+    have one.
+
 ## [0.2.0] - 2026-10-10
 
 The first stable release of 0.2.0. Since 0.1.1, across four betas: Harmony 900
