@@ -387,8 +387,9 @@ def drawing_inventory(payload: bytes) -> dict:
     }
 
 
-def _glyph_shape(payload: bytes, offset: int) -> dict:
-    """Decode a font glyph's mode-0 run stream into a palette-independent shape."""
+def glyph_mask(payload: bytes, offset: int) -> tuple[list[bytes], int]:
+    """A font glyph's pixels, row by row, 1 where it draws and 0 where it does not, and
+    the bytes its run stream takes."""
     if not 0 <= offset < len(payload):
         raise ValueError(f"glyph starts outside the GSPM image: {offset:#x}")
     declared_width = payload[offset]
@@ -433,10 +434,17 @@ def _glyph_shape(payload: bytes, offset: int) -> dict:
     if any(len(item) != width for item in rows) or declared_width != width:
         raise ValueError(
             f"glyph at {offset:#x} declares width {declared_width}, decoded {width}")
+    return rows, cursor - offset
+
+
+def _glyph_shape(payload: bytes, offset: int) -> dict:
+    """Decode a font glyph's mode-0 run stream into a palette-independent shape."""
+    rows, size = glyph_mask(payload, offset)
+    width = len(rows[0])
     shape = bytes([width, len(rows)]) + b"".join(rows)
     return {
         "offset": offset, "width": width, "height": len(rows),
-        "shape": hashlib.sha256(shape).hexdigest(), "encoded_size": cursor - offset,
+        "shape": hashlib.sha256(shape).hexdigest(), "encoded_size": size,
     }
 
 
