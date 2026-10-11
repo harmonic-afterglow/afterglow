@@ -15,7 +15,7 @@ from .project import (mark_device_new, new_device_ids)
 
 from .activity_wizard import ActivityEditor, ActivityWizard
 from .icons import pixmap as type_pixmap
-from .constants import user_files
+from .constants import user_files, user_folder
 from .device_wizard import DeviceEditor, DeviceWizard
 from .rf_routing import rf_label, rf_set
 from .widgets import bold, sep
@@ -336,17 +336,19 @@ class SettingsTab(QWidget):
         form.addRow("Last Name:", self.last_name)
         form.addRow("Language:", self.locale)
 
-        # A theme is a scaffold folder of the remote's own: its pictures, fonts and
-        # colours. Empty is the look the application ships.
+        # A theme is a folder in Documents/Afterglow/Themes/<remote>, laid out like the
+        # remote's scaffold: its pictures, fonts and colours (themes.py). The Example
+        # there is a copy of the default to start one from, so it is not offered.
         theme_row = QHBoxLayout()
-        self.theme = QLineEdit(s.get("theme_folder", ""))
-        self.theme.setPlaceholderText("default look")
-        self.theme.setToolTip("A folder laid out like the remote's scaffold, with its own "
-                              "pictures, fonts and colours (see the scaffold's README)")
+        self.theme = QComboBox()
+        self.theme.setToolTip("Themes are the folders in Documents/Afterglow/Themes for this "
+                              "remote. Copy the Example folder there and change its pictures, "
+                              "fonts and colours to make one.")
         theme_row.addWidget(self.theme, 1)
-        browse = QPushButton("Choose…")
-        browse.clicked.connect(self._choose_theme)
-        theme_row.addWidget(browse)
+        open_themes = QPushButton("Open folder")
+        open_themes.setToolTip("Show this remote's themes folder")
+        open_themes.clicked.connect(self._open_themes)
+        theme_row.addWidget(open_themes)
         self.theme_row = theme_row
         form.addRow("Theme:", theme_row)
 
@@ -377,9 +379,10 @@ class SettingsTab(QWidget):
         layout.addLayout(form)
         layout.addStretch()
 
-        for field in (self.out_file, self.first_name, self.last_name, self.theme):
+        for field in (self.out_file, self.first_name, self.last_name):
             field.textEdited.connect(self.changed)
         self.locale.activated.connect(self.changed)
+        self.theme.activated.connect(self.changed)
         self.refresh()
 
     def _profile(self):
@@ -436,12 +439,29 @@ class SettingsTab(QWidget):
             self.prefs[key] = widget
             self.prefs_form.addRow(QLabel(definition["label"] + ":"), widget)
 
-    def _choose_theme(self):
-        folder = QFileDialog.getExistingDirectory(self, "Choose a theme folder",
-                                                  self.theme.text() or "")
-        if folder:
-            self.theme.setText(folder)
-            self.changed.emit()
+    def _fill_themes(self, profile, chosen: str):
+        """The themes this remote has, the default first; a project's theme that is not
+        there any more stays listed, so saving does not silently drop it."""
+        from .. import themes
+        self.theme.clear()
+        self.theme.addItem("Default", "")
+        names = themes.names(profile.id) if profile else []
+        for name in names:
+            self.theme.addItem(name, name)
+        if chosen and chosen not in names:
+            self.theme.addItem(f"{chosen} (missing)", chosen)
+        self.theme.setCurrentIndex(max(0, self.theme.findData(chosen)))
+
+    def _open_themes(self):
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+        from .. import themes
+        profile = self._profile()
+        if profile is None:
+            return
+        target = themes.folder(profile.id)
+        target.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
 
     def _refresh_blasters(self):
         from .rf_routing import rf_receivers
@@ -474,7 +494,7 @@ class SettingsTab(QWidget):
         if "language" in shown and self.locale.currentData():
             settings["locale"] = self.locale.currentData()
         if "theme" in shown:
-            theme = self.theme.text().strip()
+            theme = self.theme.currentData() or ""
             if theme:
                 settings["theme_folder"] = theme
             else:
@@ -513,7 +533,7 @@ class SettingsTab(QWidget):
         self.out_file.setText(s.get("out_file", ""))
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
-        self.theme.setText(s.get("theme_folder", ""))
+        self._fill_themes(profile, s.get("theme_folder", ""))
         idx = self.locale.findData(s.get("locale", "enu"))
         self.locale.setCurrentIndex(idx if idx >= 0 else 0)
         self._refresh_blasters()
@@ -648,7 +668,7 @@ class UpdateTab(QWidget):
         self.progress.setVisible(True)
         self._building_new_device_ids = new_device_ids(self.project)
 
-        self.worker = ConfigBuildWorker(user_files(), self.project)
+        self.worker = ConfigBuildWorker(user_folder("generated"), self.project)
         self.worker.log.connect(self.log_box.append)
         self.worker.success.connect(self._on_success)
         self.worker.failure.connect(self._on_failure)
@@ -739,7 +759,7 @@ class UpdateTab(QWidget):
         """Save the configuration currently on the remote. This is the way back."""
         path, _ = QFileDialog.getSaveFileName(
             self, "Save the remote's current configuration",
-            str(user_files() / "my-remote.ezhex"), "Harmony config (*.ezhex)")
+            str(user_folder("dumps") / "my-remote.ezhex"), "Harmony config (*.ezhex)")
         if not path:
             return
         self.log_box.clear()
@@ -779,7 +799,8 @@ class UpdateTab(QWidget):
     def flash(self):
         self.settings.save()
         out = self.project["settings"].get("out_file", "")
-        out_path = Path(out) if out and Path(out).is_absolute() else user_files() / (out or "")
+        out_path = (Path(out) if out and Path(out).is_absolute()
+                    else user_folder("generated") / (out or ""))
         if not out or not out_path.exists():
             QMessageBox.warning(self, "Nothing to flash",
                                 f"{out_path.name or 'The output file'} does not exist "

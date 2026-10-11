@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
                              QStackedWidget, QTableWidget, QTableWidgetItem,
                              QVBoxLayout, QWidget, QWizardPage)
 
+from .. import paths
 from .icon_picker import choose as choose_icon
 from .icons import pixmap as glyph_pixmap
 from .macro import MacroEditorWidget
@@ -201,7 +202,7 @@ class FavouriteDialog(QDialog):
 
     def _browse(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Choose a logo", "", "Images (*.png *.jpg *.jpeg *.gif)")
+            self, "Choose a logo", str(paths.logos_dir()), "Images (*.png *.jpg *.jpeg *.gif)")
         if not path:
             return
         # Fit it to the touchscreen's cell first: what goes in the configuration is the

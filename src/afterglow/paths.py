@@ -200,7 +200,45 @@ def user_library(*parts) -> Path:
 
 def logos_dir() -> Path:
     """Logos prepared for the favourites grid, which projects refer to by path."""
-    return app_dir() / "Logos"
+    folder = app_dir() / "Logos"
+    with contextlib.suppress(OSError):
+        folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+# The folders in `Documents/Afterglow`, one per kind of file a person keeps, so every
+# dialog can open where that kind of file is rather than at the top: projects, the
+# configurations read off remotes or imported, the ones built here, and themes by remote.
+FOLDERS = {
+    "projects": "Projects",
+    "dumps": "Dumps",
+    "generated": "Generated",
+    "themes": "Themes",
+}
+
+
+def user_folder(kind: str) -> Path:
+    """The `Documents/Afterglow` folder for one kind of file (FOLDERS), created on demand
+    - and its absence is not fatal, as for app_dir()."""
+    folder = app_dir() / FOLDERS[kind]
+    with contextlib.suppress(OSError):
+        folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def prepare_user_folders() -> list[Path]:
+    """Create every folder the application offers, at start-up, so they are there to be
+    found before anything is saved into them. Shareable projects used to unpack into a
+    lowercase `projects`; it becomes `Projects` rather than standing beside it."""
+    old, new = app_dir() / "projects", app_dir() / FOLDERS["projects"]
+    if old.is_dir() and not new.exists():
+        with contextlib.suppress(OSError):
+            old.rename(new)
+    folders = [user_folder(kind) for kind in FOLDERS] + [user_library(), logos_dir()]
+    for folder in folders:
+        with contextlib.suppress(OSError):
+            folder.mkdir(parents=True, exist_ok=True)
+    return folders
 
 
 # What a previous version left in application data, and what it was renamed to once

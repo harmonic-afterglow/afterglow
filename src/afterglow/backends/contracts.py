@@ -12,6 +12,8 @@ class BuildContext:
     root: Path
     log: Callable[[str], None]
     find_scaffold: Callable[[str, Path | None], Path | None]
+    # A theme by name, for a remote that offers them (themes.py): (remote id, name).
+    find_theme: Callable[[str, str], Path | None] = lambda _remote, _name: None
 
 
 @dataclass(frozen=True)

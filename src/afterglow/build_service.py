@@ -42,7 +42,7 @@ class ConfigBuildService:
 
     def build_result(self, project: dict):
         """Build while retaining backend validation, change and provenance evidence."""
-        from . import backends, remotes
+        from . import backends, remotes, themes
 
         # Which remote is this for, and has its profile entered build testing? This is
         # deliberately weaker than the write gate: experimental profiles can produce
@@ -55,5 +55,6 @@ class ConfigBuildService:
             root=self.root,
             log=self.log,
             find_scaffold=find_scaffold,
+            find_theme=themes.path,
         )
         return backend.build_project(project, profile, context)

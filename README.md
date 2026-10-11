@@ -87,8 +87,12 @@ Then:
 Configurations are built from scratch.
 Importing takes your devices and activities and leaves the other remote's state behind.
 
-**Your files** - projects, backups, your device library and logos - are all in
-`Documents/Afterglow`. To send someone a project, use **File > Export Shareable Project**:
+**Your files** are all in `Documents/Afterglow`, a folder for each kind: `Projects`,
+`Dumps` (configurations read from a remote or imported), `Generated` (configurations
+built here), `Themes`, your device `Library` and `Logos`. Each dialog opens in its own
+folder. A remote that takes themes (the Harmony One) has an `Example` in
+`Themes/<remote>` - copy it, rename the copy, change its pictures, fonts and colours, and
+pick it under **Settings > Theme**. To send someone a project, use **File > Export Shareable Project**:
 the `.afterglow` file it writes holds everything needed to build it, and **File > Open**
 reads it.
 
