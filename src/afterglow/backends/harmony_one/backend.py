@@ -67,9 +67,10 @@ def build_project(project, profile, context) -> BuildResult:
 
     Nothing is read from a previous image: devices, activities and settings in, every
     screen, light and handler generated (generate.py) onto the scaffold - or onto the
-    theme folder the project's settings name (`theme_folder`), a scaffold of its own; not
-    `theme`, which the Harmony 900 already uses for a preference of its own. The safety gate
-    comes first: a read-only profile produces nothing.
+    theme the project's settings name (`theme_folder`): a theme's name in the owner's
+    Themes folder (themes.py), or a folder of its own; not `theme`, which the Harmony 900
+    already uses for a preference of its own. The safety gate comes first: a read-only
+    profile produces nothing.
     """
     from . import generate
 
@@ -78,11 +79,12 @@ def build_project(project, profile, context) -> BuildResult:
     theme = settings.get("theme_folder")
     directory = context.find_scaffold(profile.id, context.root)
     if theme:
-        directory = Path(theme)
+        directory = context.find_theme(profile.id, theme) or Path(theme)
         if not directory.is_absolute():
             directory = Path(context.root) / directory
         if not (directory / "assets.json").is_file():
-            raise ValueError(f"theme {theme!r} is not a scaffold folder: it has no assets.json")
+            raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
+                             "folder, and no scaffold folder of that name")
     built = generate.build(project, directory=directory)
     payload = built["image"]
     validation = validate_payload(payload, profile)

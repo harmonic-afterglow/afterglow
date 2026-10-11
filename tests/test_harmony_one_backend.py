@@ -1294,3 +1294,28 @@ def test_all_off_is_every_driving_property_returning_to_zero():
         if item["power_toggle"]:
             assert item["limit"] == 1
     assert report["command_ids"] == sorted(set(report["command_ids"]))
+
+
+def test_a_theme_named_in_the_project_is_found_in_the_themes_folder(tmp_path):
+    # A project names its theme, so it builds on another computer that has a theme of that
+    # name; the build looks it up through the context, never by guessing a path.
+    import shutil
+
+    from afterglow import paths
+    from afterglow.backends import BuildContext
+
+    theme = tmp_path / "Mario"
+    shutil.copytree(paths.scaffolds("harmony-one"), theme)
+    profile = remotes.get("harmony-one")
+    asked = []
+
+    def find_theme(remote_id, name):
+        asked.append((remote_id, name))
+        return theme if name == "Mario" else None
+    context = BuildContext(root=tmp_path, log=lambda _line: None,
+                           find_scaffold=lambda _id, _root: None, find_theme=find_theme)
+    project = {"devices": [], "activities": [],
+               "settings": {"out_file": "mine", "theme_folder": "Mario"}}
+    result = backends.for_profile(profile).build_project(project, profile, context)
+    assert asked == [("harmony-one", "Mario")]
+    assert result.metadata["scaffold"] == str(theme)

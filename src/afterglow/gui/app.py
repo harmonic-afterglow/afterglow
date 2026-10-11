@@ -16,7 +16,7 @@ from PyQt6.QtSvg import QSvgRenderer
 
 from .project import new_project as empty_project
 
-from .constants import USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY, user_files
+from .constants import USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY, user_files, user_folder
 from .project import drop_retired_fields, retire_new_devices
 from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
@@ -39,7 +39,10 @@ class MainWindow(QMainWindow):
         # Earlier versions kept the library and logos in application data. Brought into
         # Documents/Afterglow once, here, before anything reads them.
         self._adopted = paths.adopt_previous_library(previous_prepared_dir())
+        paths.prepare_user_folders()
         paths.user_library("devices").mkdir(parents=True, exist_ok=True)
+        from .. import themes
+        self._adopted += themes.seed_examples()
         self.templates = load_repo_templates(paths.user_library())
         self.source_preferences = SourcePreferences.load()
         self._project_path = None
@@ -143,7 +146,7 @@ class MainWindow(QMainWindow):
     def flash_file(self):
         """Write any configuration file, such as a backup, as `concordance -C` would."""
         from .flash_file import flash_file_dialog
-        flash_file_dialog(self, user_files())
+        flash_file_dialog(self, user_folder("generated"))
 
     def configure_sources(self):
         dialog = SourceSettingsDialog(self.source_preferences, self)
@@ -262,7 +265,8 @@ class MainWindow(QMainWindow):
             return
         stem = Path(self._project_path).stem if self._project_path else "project"
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save the moved project", str(user_files() / f"{stem}-{target.id}.json"),
+            self, "Save the moved project",
+            str(user_folder("projects") / f"{stem}-{target.id}.json"),
             "JSON Project (*.json);;All (*)")
         if not path:
             return
@@ -311,7 +315,7 @@ class MainWindow(QMainWindow):
     def open_project(self):
         from .. import project_bundle
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Project", str(user_files()),
+            self, "Open Project", str(user_folder("projects")),
             f"Projects (*.json *{project_bundle.SUFFIX});;"
             f"Shareable project (*{project_bundle.SUFFIX});;JSON Project (*.json);;All (*)")
         if not path or not self._keep_or_discard_changes():
@@ -334,7 +338,7 @@ class MainWindow(QMainWindow):
     def open_bundle(self, path):
         """Unpack a shareable project into a folder of its own and work on it there."""
         from .. import project_bundle
-        stem, parent = Path(path).stem, user_files() / "projects"
+        stem, parent = Path(path).stem, user_folder("projects")
         folder, n = parent / stem, 2
         while folder.exists():                      # never unpack over an earlier copy
             folder, n = parent / f"{stem}-{n}", n + 1
@@ -360,7 +364,7 @@ class MainWindow(QMainWindow):
         stem = Path(self._project_path).stem if self._project_path else "project"
         if stem == "project" and self._project_path:
             stem = Path(self._project_path).parent.name
-        suggested = user_files() / f"{stem}{project_bundle.SUFFIX}"
+        suggested = user_folder("projects") / f"{stem}{project_bundle.SUFFIX}"
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Shareable Project", str(suggested),
             f"Shareable project (*{project_bundle.SUFFIX})")
@@ -386,7 +390,8 @@ class MainWindow(QMainWindow):
         blaster setup (so the base station's MAC is now known and devices can be routed to
         it), and load the result as an editable project that rebuilds on the donor's own tree."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Import .ezhex", str(user_files()), "Harmony Config (*.ezhex);;All (*)")
+            self, "Import .ezhex", str(user_folder("dumps")),
+            "Harmony Config (*.ezhex);;All (*)")
         if not path or not self._keep_or_discard_changes():
             return
         try:
@@ -443,7 +448,7 @@ class MainWindow(QMainWindow):
 
     def save_project_as(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Project As", str(user_files() / "project.json"),
+            self, "Save Project As", str(user_folder("projects") / "project.json"),
             "JSON Project (*.json);;All (*)")
         if path:
             self._project_path = path
