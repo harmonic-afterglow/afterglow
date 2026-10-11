@@ -277,8 +277,8 @@ def test_the_hub_is_activities_devices_and_back_as_logitech_builds_it():
         assert texts == {x["activities"]: fonts["activities"], x["devices"]: fonts["devices"]}
     # the image boots into Activities, and that is what OK on a firmware notice opens
     start = gspm.section_ranges(image)[9][0]
-    routine = command_index.objects(image)[struct.unpack_from("<H", image, start + 1)[0]]
-    assert (HOME, generate.ENTER_MODE) in routine["atoms"]
+    routine = _run(image, struct.unpack_from("<H", image, start + 1)[0])
+    assert (HOME, generate.ENTER_MODE) in routine
 
 
 @pytest.mark.skipif(CARRIED is None, reason="the scaffold carries no Options screens")
@@ -720,6 +720,19 @@ def test_each_command_object_is_followed_by_the_wrapper_a_key_binds_to():
         assert wrapper[1] == (row["operand"] - 1, 0x7F)
 
 
+def _run(image, index) -> list[tuple[int, int]]:
+    """An object's instructions in the order the remote runs them, every call expanded -
+    a build keeps objects short by chaining them (generate.bounded_objects)."""
+    atoms = {item["index"]: item["atoms"] for item in command_index.objects(image)}
+    out = []
+    for operand, category in atoms[index]:
+        if category == generate.OBJECT_ATOM:
+            out += _run(image, operand)
+        else:
+            out.append((operand, category))
+    return out
+
+
 def _configured(project=None):
     return generate.configuration(project or PROJECT)
 
@@ -994,27 +1007,31 @@ def test_section_nine_opens_with_the_list_that_starts_the_image():
                              (_configured(), scaffold.SYSTEM_SCREENS, generate.USB_SCREEN)):
         start = gspm.section_ranges(image)[9][0]
         assert image[start] == 1 and image[start + 3] == generate.OBJECT_ATOM
-        atoms = {item["index"]: item["atoms"] for item in command_index.objects(image)}
-        routine = atoms[struct.unpack_from("<H", image, start + 1)[0]]
+        routine = tuple(_run(image, struct.unpack_from("<H", image, start + 1)[0]))
         if usb is None:
             assert routine == ((generate.PUSH_CONTEXT, 0x1F),
                                (generate.PUSH_CURRENT_MODE, 0x1F),
-                               (home, generate.ENTER_MODE), generate.BACKLIGHT)
+                               (home, generate.ENTER_MODE), generate.TIMER_UNIT)
             continue
-        # with the idle layer, as upstairs starts: the screen timer and flag resets, then
-        # the event context, the current mode and the key light on top, then home
-        assert routine[0] == generate.BACKLIGHT
+        # with the idle layer, as every donor starts: the screen timer and flag resets,
+        # then the events, 0xFE, the current mode, 0xFC and the key light on top, then
+        # home, and Off's context selected last so nothing is running
+        assert routine[0] == generate.TIMER_UNIT
         pushes = [value for value, category in routine
                   if category == 0x1F and value >> 8 == 0xFE]
         assert pushes == [generate.PUSH_CONTEXT | generate.EVENT_CONTEXT,
-                          generate.PUSH_CURRENT_MODE,
+                          generate.PUSH_CONTEXT | 0xFE, generate.PUSH_CURRENT_MODE,
+                          generate.PUSH_CONTEXT | 0xFC,
                           generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT]
+        selects = [value for value, category in routine
+                   if category == 0x1F and value >> 8 == 0xFF]
+        assert selects == [0xFF00 | (len(activity_index.contexts(image)) - 1)]
         assert routine.index((home, generate.ENTER_MODE)) > routine.index(
             (generate.PUSH_CONTEXT | generate.KEY_LIGHT_CONTEXT, 0x1F))
-        load, call = atoms[routine[-1][0]]
-        assert load == (generate.LOAD_ONE, 0x1F) and call[1] == generate.OBJECT_ATOM
-        assert atoms[call[0]] == ((generate.USB_CONNECTED, generate.COMPARE),
-                                  (usb, generate.ENTER_MODE))
+        # and last, the USB check: load 1, compare the USB flag, enter the USB screen
+        assert routine[-3:] == ((generate.LOAD_ONE, 0x1F),
+                                (generate.USB_CONNECTED, generate.COMPARE),
+                                (usb, generate.ENTER_MODE))
 
 
 class _Idle:
@@ -1104,7 +1121,9 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     # context shows the USB screen on plugging in and goes back on unplugging.
     image = generate.configuration(THREE)
     contexts = activity_index.contexts(image)
-    assert len(contexts) == 3
+    # the image's own (the normal charge context), the events, the key light, the USB and
+    # low battery charge contexts, and Off's (no activities here)
+    assert len(contexts) == 6
     keys = contexts[generate.KEY_LIGHT_CONTEXT]
     assert keys["form"] == "long"
     # every physical key, and the two codes below them both donors wake on: 0x17, the
@@ -1122,7 +1141,9 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     assert all(machine.lights[channel] == idle.KEY_LEVEL for channel in idle.KEYPAD)
     events = {row["key_code"]: (row["operand"], row["category"])
               for row in contexts[generate.EVENT_CONTEXT]["rows"]}
-    assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF}
+    # the firmware's events, and the two keys the flow owns: Activities and Off
+    assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF,
+                           0x80 | 34, 0x80 | 37}
 
     machine = _Idle(image)
     machine.run(wake)
@@ -1230,9 +1251,10 @@ def test_section_fourteen_holds_the_clock_the_platform_and_a_terminator():
     records = activity_index.engine_records(image)
     shape = activity_index.engine_shape(image)
 
-    # the Options screens' own flags sit between the platform's and the terminator
+    # the Options screens' own flags sit between the platform's and the terminator, and
+    # the activity counter after them
     carried = len(CARRIED["variables"]) if CARRIED else 0
-    assert len(records) == activity_index.PLATFORM_PROPERTIES + carried + 1
+    assert len(records) == activity_index.PLATFORM_PROPERTIES + carried + bool(CARRIED) + 1
     assert shape["terminator"] is not None
     assert [(r["initial"], r["limit"]) for r in shape["platform"]] == list(
         generate.PLATFORM_RECORDS)

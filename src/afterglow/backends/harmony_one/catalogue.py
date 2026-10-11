@@ -76,6 +76,9 @@ SOFTKEY = "a softkey label, bottom of the screen; about 70 pixels"
 BUTTON = "a button label, centred on a 81-pixel button; may wrap to two lines"
 ROW = "a row label, centred on a 164-pixel row"
 MESSAGE = "a message centred on the screen; about 160 pixels a line"
+TUTORIAL_NOTE = ("A Tutorial screen, centred, about 160 pixels a line, eight lines in "
+                 "all; a line break starts a new paragraph. The last paragraph says which "
+                 "key moves on.")
 
 
 def _messages() -> list[po.Message]:
@@ -89,8 +92,69 @@ def _messages() -> list[po.Message]:
         po.Message("softkey.options", "Options", "Opens Options: " + SOFTKEY),
         po.Message("softkey.activities", "Activities", "Back to Activities: " + SOFTKEY),
         po.Message("softkey.devices", "Devices", "Opens the device list: " + SOFTKEY),
+        po.Message("softkey.current-activity", "Current Activity",
+                   "Back to the activity that is running, from the device list and a "
+                   "device's screens: " + SOFTKEY),
         po.Message("pages", "page", "After a screen's page total, e.g. '1/3 pages', in the "
                    "small counter font; about 40 pixels", plural="pages"),
+        po.Message("activity.starting", "Starting {activity}",
+                   "While an activity starts, under its icon; {activity} is its name. One "
+                   "line of about 164 pixels, cut to fit", brace_format=True),
+        po.Message("activity.keep-pointed", "Keep the remote pointed at your system.",
+                   "While an activity starts or Help is fixing it, at the bottom: "
+                   + MESSAGE + "; two lines at most"),
+        po.Message("activity.fixing", "Attempting to fix the problem...",
+                   "Help, under the activity's name, while it re-sends what the activity "
+                   "needs: " + MESSAGE),
+        po.Message("activity.power-off", "Power Off",
+                   "The title of Help when nothing is running, while it turns everything "
+                   "off again: " + TITLE),
+        po.Message("softkey.commands", "Commands",
+                   "On an activity's favourite channels, opens its commands: " + SOFTKEY),
+        po.Message("softkey.favourites", "Favorites",
+                   "On an activity's commands, opens its favourite channels: " + SOFTKEY),
+        po.Message("assistant.question", "Did everything turn on?",
+                   "Remote Assistant, after an activity starts or Help has run, above Yes "
+                   "and No: " + MESSAGE + "; three lines at most"),
+        po.Message("assistant.yes", "Yes", "Remote Assistant's answer: " + BUTTON),
+        po.Message("assistant.no", "No", "Remote Assistant's answer: " + BUTTON),
+        po.Message("assistant.is-on", "Is the {device} on?",
+                   "Remote Assistant asks about each device; {device} is its name: "
+                   + MESSAGE + "; three lines at most", brace_format=True),
+        po.Message("assistant.input", "Is the {device} set to {input}?",
+                   "Remote Assistant asks about each input; {device} and {input} are "
+                   "names: " + MESSAGE + "; three lines at most", brace_format=True),
+        po.Message("options.assistant-off", "Turn Remote Assistant Off",
+                   "An Options row while the Remote Assistant asks after each start: "
+                   + ROW),
+        po.Message("options.assistant-on", "Turn Remote Assistant On",
+                   "An Options row while it does not: " + ROW),
+        po.Message("options.tutorial", "Tutorial", "An Options row: " + ROW),
+        po.Message("tutorial.title", "Tutorial", "The Tutorial's screens: " + TITLE),
+        po.Message("softkey.exit", "Exit", "Leaves the Tutorial: " + SOFTKEY),
+    ]
+    tutorial = TUTORIAL_NOTE
+    out += [
+        po.Message("tutorial.welcome", "Your remote uses Activities to give you simple "
+                   "one-touch control of your entertainment system.\nPress the right "
+                   "arrow to continue.", tutorial),
+        po.Message("tutorial.activities", "Activities are what you do with your system, "
+                   "like watching TV or listening to music.\nTouch {activity} now.",
+                   tutorial + " {activity} is the first activity's name.",
+                   brace_format=True),
+        po.Message("tutorial.switching", "To choose another Activity, press the "
+                   "Activities button.\nPress it now.", tutorial),
+        po.Message("tutorial.pages", "When a screen has more than one page, the arrows at "
+                   "its sides move between them.\nPress the right arrow now.", tutorial),
+        po.Message("tutorial.help", "If an Activity doesn't start properly, press Help: "
+                   "the remote sends what it needs again.\nPress Help now.", tutorial),
+        po.Message("tutorial.assistant", "The Remote Assistant then asks whether "
+                   "everything turned on, and fixes what didn't.\nPress the right arrow "
+                   "to continue.", tutorial),
+        po.Message("tutorial.off", "To turn off your whole system, press the Off "
+                   "button.\nPress Off now.", tutorial),
+        po.Message("tutorial.done", "That's it! Enjoy one-touch control of your "
+                   "entertainment system.\nPress Exit now.", tutorial),
         po.Message("options.title", "Options", "The Options screen: " + TITLE),
         po.Message("options.date-and-time", "Date and Time", "An Options row: " + ROW),
         po.Message("options.screen-sensitivity", "Screen Sensitivity",
@@ -153,6 +217,17 @@ class Words:
         text = found if found is not None else message.text
         return text.format(**values) if message.brace_format else text
 
+    def fixed(self, key: str) -> str:
+        """The words of a message without what is filled into it: the characters it
+        draws whatever the values are."""
+        message = _ENGLISH[key]
+        found = self.catalogue.get(key, message.text) if self.catalogue else None
+        text = found if found is not None else message.text
+        if not message.brace_format:
+            return text
+        import string
+        return "".join(literal for literal, *_field in string.Formatter().parse(text))
+
     def plural(self, key: str, n: int) -> str:
         message = _ENGLISH[key]
         found = self.catalogue.get(key, message.text, n) if self.catalogue else None
@@ -191,7 +266,7 @@ def characters(words: Words) -> set[str]:
             for n in (1, 2, 5):
                 out.update(words.plural(message.context, n))
         elif message.brace_format:
-            out.update(words(message.context, number=0))
+            out.update(words.fixed(message.context))
         else:
             out.update(words(message.context))
     return out

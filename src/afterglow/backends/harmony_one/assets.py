@@ -67,14 +67,17 @@ def to_image(rows: list[list]) -> list[list[tuple[int, int, int, int]]]:
 
 # A text instruction stores a glyph code in one byte below 0x80; a slot holds at most this
 # many characters, numbered from 1.
-MAX_CODES = 0x7F
+# A slot's codes run from 1; past 0x7F a code takes two bytes (drawing.GlyphCodes).
+MAX_CODES = 0x7FFF
 
 
-def slot_font(role: str, entry: dict, face, characters=None) -> dict:
+def slot_font(role: str, entry: dict, face, characters=None, fallback=None) -> dict:
     """Draw a font slot from ``face`` (faces.py): the characters it is given - printable
     ASCII unless the build says which - numbered from 1, in the slot's colour over its
-    shadow (the manifest entry's ``look``). A character the face lacks is left out, and a
-    label using it is refused by name when it is laid out."""
+    shadow (the manifest entry's ``look``). A character the face lacks comes from
+    ``fallback`` - the scaffold's default face, under an owner's own font - so a theme's
+    font need not have every character the remote draws; one neither has is left out,
+    and a label using it is refused by name when it is laid out."""
     from . import faces
 
     if face is None:
@@ -85,13 +88,19 @@ def slot_font(role: str, entry: dict, face, characters=None) -> dict:
     height = entry["height"]
     glyphs = {}
     wanted = sorted(set(faces.REPERTOIRE if characters is None else characters) | {" "})
-    wanted = [char for char in wanted if face.glyph(char) is not None]
+    def source(char):
+        if face.glyph(char) is not None:
+            return face
+        if fallback is not None and fallback.glyph(char) is not None:
+            return fallback
+        return None
+    wanted = [char for char in wanted if source(char) is not None]
     if len(wanted) > MAX_CODES:
         raise ValueError(
             f"font {role!r} would draw {len(wanted)} different characters; a slot holds "
             f"{MAX_CODES}")
     for code, char in enumerate(wanted, start=1):
-        made = faces.face_glyph(face, char, height, look["colour"], look.get("shadow"))
+        made = faces.face_glyph(source(char), char, height, look["colour"], look.get("shadow"))
         rows = [[None if pixel is None else bitmap.from_rgb565(bitmap.to_rgb565(pixel))
                  for pixel in line] for line in made["rows"]]
         glyphs[code] = {"char": char, "width": made["width"], "rows": rows,
@@ -120,9 +129,14 @@ def typeface(directory, small: bool = False):
         own = directory / TYPEFACE
     if own.is_file():
         return typeface_file(own)
+    return default_typeface(directory, small)
+
+
+def default_typeface(directory, small: bool = False):
+    """The scaffold's own face (the manifest's ``typeface``), whatever an owner adds."""
     default = read_manifest(directory).get("typeface") or {}
     name = default.get("small" if small else "regular") or default.get("regular")
-    return typeface_file(directory / name) if name else None
+    return typeface_file(Path(directory) / name) if name else None
 
 
 def typeface_file(path: Path):
@@ -154,8 +168,11 @@ def load_font(directory, role: str, entry: dict, characters=None) -> dict:
     """
     if "look" in entry:
         from .faces import SMALL_SLOT
-        return slot_font(role, entry,
-                         typeface(directory, small=entry["height"] <= SMALL_SLOT), characters)
+        small = entry["height"] <= SMALL_SLOT
+        face = typeface(directory, small=small)
+        fallback = default_typeface(directory, small)
+        return slot_font(role, entry, face, characters,
+                         fallback if fallback is not face else None)
     path = Path(directory) / entry["file"]
     if not path.is_file():
         raise FileNotFoundError(f"font {role!r} names {path}, which does not exist")

@@ -32,6 +32,7 @@ for the 11-pixel slots, if your font comes in a smaller size.
   size and the display has no grey, so a pixel is either drawn or not: fonts with thick,
   simple strokes survive best, and an ornate one will look rough, which is allowed.
 - Weight comes from the font file. Want bold text? Use the font's bold `.ttf`.
-- A character the font does not have cannot be drawn: a label that needs it is refused
-  with a message naming it.
+- A character your font does not have is drawn from Galmuri, so a themed font with
+  capitals only, or no punctuation, still draws every screen. A character neither has is
+  refused with a message naming it.
 - Your `font.ttf` and `font-small.ttf` are yours: git ignores them here.

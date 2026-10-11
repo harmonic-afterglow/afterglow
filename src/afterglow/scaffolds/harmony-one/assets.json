@@ -276,6 +276,70 @@
     }
   },
   "pictures": {
+    "activity/button-frame/0": {
+      "file": "images/activity/button-frame/0.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/button-frame/1": {
+      "file": "images/activity/button-frame/1.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/button-frame/2": {
+      "file": "images/activity/button-frame/2.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/button-frame/3": {
+      "file": "images/activity/button-frame/3.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/button-frame/4": {
+      "file": "images/activity/button-frame/4.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/button-frame/5": {
+      "file": "images/activity/button-frame/5.png",
+      "mode": "raw",
+      "size": [
+        81,
+        50
+      ]
+    },
+    "activity/row-frame": {
+      "file": "images/activity/row-frame.png",
+      "mode": "raw",
+      "size": [
+        164,
+        50
+      ]
+    },
+    "activity/sending": {
+      "file": "images/activity/sending.png",
+      "mode": "raw",
+      "size": [
+        62,
+        33
+      ]
+    },
     "backdrop": {
       "file": "images/backdrop.png",
       "mode": "raw",
