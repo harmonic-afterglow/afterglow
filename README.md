@@ -36,6 +36,10 @@ Nothing is sent anywhere.
 - Harmony 1100 - experimental: configurations are read, imported and built, and
   written only through **Test write**, which backs the remote up first and checks
   the result.
+- Harmony One - experimental, the same way: its configuration is built from scratch
+  from your devices and activities, the one already on it can be imported, and it is
+  written only through **Test write**. Its screens can be restyled with a
+  [theme](#themes).
 
 ## Before you start
 
@@ -87,14 +91,38 @@ Then:
 Configurations are built from scratch.
 Importing takes your devices and activities and leaves the other remote's state behind.
 
-**Your files** are all in `Documents/Afterglow`, a folder for each kind: `Projects`,
-`Dumps` (configurations read from a remote or imported), `Generated` (configurations
-built here), `Themes`, your device `Library` and `Logos`. Each dialog opens in its own
-folder. A remote that takes themes (the Harmony One) has an `Example` in
-`Themes/<remote>` - copy it, rename the copy, change its pictures, fonts and colours, and
-pick it under **Settings > Theme**. To send someone a project, use **File > Export Shareable Project**:
-the `.afterglow` file it writes holds everything needed to build it, and **File > Open**
-reads it.
+**Your files** are all in `Documents/Afterglow`, a folder for each kind:
+
+| Folder | What is in it |
+|---|---|
+| `Projects` | your projects, and shareable projects you open |
+| `Dumps` | configurations read from a remote, and ones you import |
+| `Generated` | configurations Afterglow builds - what **Test write** and **Flash** write |
+| `Themes` | themes, a folder per remote that takes them (see [Themes](#themes)) |
+| `Library` | your own devices, and what you learn from the original remote |
+| `Logos` | favourite-channel logos, including ones brought across by an import |
+
+Each dialog opens in its own folder. To send someone a project, use **File > Export
+Shareable Project**: the `.afterglow` file it writes holds everything needed to build
+it, and **File > Open** reads it.
+
+### Themes
+
+A Harmony One's screens - its backgrounds, button frames, icons, fonts and colours -
+come from a theme. Themes live in **`Documents/Afterglow/Themes/harmony-one/`**, one
+folder each. Afterglow puts an `Example` there the first time it starts: it is the look
+Afterglow ships, to start from.
+
+1. Copy `Example` and give the copy a name of your own - `Example` itself is never
+   offered, and is put back if it goes missing.
+2. Change its pictures (PNG files under `images/`), its font (save a TrueType font as
+   `fonts/font.ttf`; a letter it lacks comes from the default font) and its text colours
+   (`assets.json`). Its own `README.md` says what each file is.
+3. Choose it under **Remote Settings > Theme** - the **Open folder** button there opens
+   the themes folder - and build.
+
+A project keeps its theme by name, so a shared project uses the theme of the same name
+on the other computer, and the default look if there is none.
 
 ## Something went wrong
 

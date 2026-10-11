@@ -62,7 +62,11 @@ the format and the safety gates as load-bearing, because they are.
 afterglow.py              launcher; puts src/ on the path FIRST, then imports the package
 pyproject.toml            src-layout, package data (library/icons/scaffolds), ruff, pytest
 src/afterglow/
-  paths.py                the ONE answer to "where does shipped data live" - see §4
+  paths.py                the ONE answer to "where does shipped data live" - see §4;
+                          also the user's folders (FOLDERS: Projects, Dumps, Generated,
+                          Themes) that each dialog opens in
+  themes.py               a remote's themes in Documents/Afterglow/Themes/<remote>, for a
+                          profile that offers "theme"; seeds the Example copy
   ezhex.py                the .ezhex container: unpack / pack_standalone / rehash
   project_devices.py      canonical portable device shape stored in projects
   remotes.py              remote profiles + the build/write safety gates
@@ -85,6 +89,7 @@ src/afterglow/
                           generated-native registry, and its RF blasters: rf (the
                           XmlUserRfSetting format) and rf_pairing (reached through
                           backends.rf_link(profile), only for a remote offering them)
+    harmony_one/          GSPM images (Harmony One) - generated, never edited. See §2d
   payloads/               container formats, selected by profile.payload: pk, blob
   gui/                    PyQt6 authoring app ONLY
     app.py                MainWindow + main() entry point
@@ -149,7 +154,8 @@ the root. The order below is also the order the tests will stop you in.
 1. Add `library/remotes/<model>.json`: `identity` (skin id), `payload`, `infrared`,
    `capabilities`, `vocabulary`, `properties`, `interface` and `preferences`. Copy
    `harmony-900.json` and edit. `interface` is what the GUI shows for that remote - its
-   tabs, device and activity editor pages, settings rows and languages - and
+   tabs, device and activity editor pages, settings rows, the Timing fields its builder
+   uses (`timing`) and languages - and
    `preferences` defines its own settings files. Both are required and checked when the
    profile loads: a remote that does not say what it has is refused, never given the
    900's answer.
@@ -191,6 +197,52 @@ indexed tree beginning `GSPM`; it does not belong to the `harmony_pk` backend.
    addition cannot make an existing one undeletable.
 
 ---
+
+## 2d. The Harmony One backend - generated, never edited
+
+`backends/harmony_one/` builds a GSPM image from the project alone. Nothing is read from
+the configuration the remote had; an earlier path that patched it was removed on purpose,
+because it carried unknown state along and is the opposite of §4's rule 3.
+
+**Building** - `generate.build()` prepares the project, then `skeleton()` runs the layout
+in a fixed order:
+
+| Module | What it is |
+|---|---|
+| `layout.py` | the image under construction: objects, modes, templates, switch tables |
+| `screens.py` | how an owned screen is reserved and drawn (title, backdrop, softkeys) |
+| `ordinals.py` | every screen's ordinal and context, planned before anything is drawn |
+| `scaffold.py`, `firmware_screens.py`, `carried.py` | the platform layer, the firmware's 40 screens, the carried Options/idle models |
+| `hub.py`, `options_screens.py`, `activity_screens.py`, `actions.py` | the features |
+| `assemble.py` | placement and the nineteen section tables |
+| `structures.py`, `pages.py`, `devices.py`, `pictures.py` | byte forms, page drawing, device lowering, composed pictures |
+| `activities.py`, `idle.py`, `options.py` | the activity plan, the idle machine, the Options model |
+
+Every number in an image - object, screen, context, switch table - is a position handed
+out in the order the layout asks for it. **A refactor must not change that order**: check
+it by building a fixed set of projects with a fixed stamp
+(`generate.build(project, stamp_fields=...)`) before and after, and comparing the images
+byte for byte. Behaviour tests (`tests/test_harmony_one_activities.py` runs an image as the
+remote does) catch what a byte comparison does not explain.
+
+**Importing** - `importing.py` reads what an image *does*: commands are named by the
+buttons that send them, devices by their pages and their section-0 state variables,
+activities by the context whose enter writes `CurrentActivityState`. A One stores its text
+as glyph codes that differ in every image, so `labels.py` reads letters by the shape of
+their glyphs. Two tables in the scaffold hold fingerprints only, never Logitech's pixels;
+regenerate them from configurations you have, never commit the configurations:
+
+```bash
+python3 tools/harmony_one_glyph_shapes.py CONFIG.ezhex ...   # platform/glyph-shapes.json
+python3 tools/harmony_one_type_icons.py CONFIG.ezhex ...     # platform/type-icons.json
+```
+
+An import never guesses: what it cannot read keeps a plain name (`Command 12`, `�`), and
+what it cannot carry over goes into the result's notes, which Import Complete shows.
+
+**Hardware** - nothing about the One is verified until a tester's remote boots it. Probe
+images are built outside the repository and sent to testers; real configurations used
+for checking live in `configs/one/` (git-ignored), where the import tests pick them up.
 
 ## 2c. Documentation - where the format is written down
 
@@ -401,6 +453,16 @@ env -i PATH=/var/empty HOME="$HOME" QT_QPA_PLATFORM=offscreen python3 -m pytest 
 A developer machine has `pkexec`, `pgrep`, `dnsmasq`; a CI runner has none of them. A test
 that stubs the wrong function still passes locally, because the real lookup succeeds, and
 fails on every runner.
+
+**Test on Python 3.11**, the declared floor, when the system has a newer Python only -
+`uv` fetches a standalone interpreter into a folder of your choosing, nothing system-wide:
+```bash
+python3 -m venv /tmp/uv && /tmp/uv/bin/pip install uv
+UV_PYTHON_INSTALL_DIR=/tmp/py /tmp/uv/bin/uv python install 3.11
+"$(UV_PYTHON_INSTALL_DIR=/tmp/py /tmp/uv/bin/uv python find 3.11)" -m venv /tmp/venv311
+/tmp/venv311/bin/pip install -e '.[dev,gui]'
+QT_QPA_PLATFORM=offscreen /tmp/venv311/bin/python -m pytest -q -p no:cacheprovider
+```
 
 **Lint:**
 ```bash
