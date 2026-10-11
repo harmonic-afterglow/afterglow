@@ -35,7 +35,7 @@ def test_a_profile_without_an_interface_is_refused():
         remotes._from_json(data)
 
 
-@pytest.mark.parametrize("key", ["tabs", "device_pages", "activity_pages", "settings",
+@pytest.mark.parametrize("key", ["tabs", "device_pages", "activity_pages", "settings", "timing",
                                  "languages"])
 def test_every_part_of_the_interface_is_required(key):
     data = _900_json()

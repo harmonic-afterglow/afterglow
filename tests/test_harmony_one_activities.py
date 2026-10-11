@@ -589,3 +589,13 @@ def test_a_slot_holds_more_than_127_characters_with_two_byte_codes():
     assert all(any(label.startswith(text) or text in label for text in drawn if text)
                for label in labels)
     assert any(code > 0x7F for table in built["characters"] for code in table)
+
+
+def test_a_device_marked_always_on_is_never_switched():
+    # The Power page promises it: a device marked Always on is neither switched on nor
+    # off by an activity, nor by Off.
+    project = {**PROJECT, "devices": [dict(TV, always_on=True), AMP]}
+    planned = activities.plan(project, devices.lowered_devices(project))
+    for activity in planned["activities"]:
+        assert 0 not in activity["on"] and 0 not in activity["off"]
+    assert 0 not in planned["all_off"]["off"]

@@ -829,6 +829,14 @@
     "device_pages": ["search", "identity", "commands", "inputs", "timing", "advanced"],
     "activity_pages": ["identity", "roles", "favourites", "screen_buttons", "hard_buttons",
                        "startup", "power", "advanced"],
+    "timing": [
+      "always_on",
+      "power_delay",
+      "press_presilence",
+      "press_interkey",
+      "hold_presilence",
+      "hold_interkey"
+    ],
     "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
     "languages": [
       ["English", "enu"], ["Spanish", "esp"], ["Russian", "rus"], ["German", "deu"],

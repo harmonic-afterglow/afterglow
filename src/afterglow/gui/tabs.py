@@ -147,7 +147,7 @@ class DevicesTab(QWidget):
             self.refresh()
             self.changed.emit()
 class ActivityCard(QWidget):
-    def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None):
+    def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None, type_names=None):
         super().__init__(parent)
         self.spec = spec
         layout = QHBoxLayout(self)
@@ -164,7 +164,8 @@ class ActivityCard(QWidget):
 
         info = QVBoxLayout()
         info.addWidget(bold(spec.get("label","?")))
-        sub = QLabel(f"{atype}  ·  Display: {disp_lbl}  ·  Control: {ctrl_lbl}")
+        shown = (type_names or {}).get(atype, atype)
+        sub = QLabel(f"{shown}  ·  Display: {disp_lbl}  ·  Control: {ctrl_lbl}")
         sub.setStyleSheet("color: gray;")
         info.addWidget(sub)
 
@@ -220,10 +221,17 @@ class ActivitiesTab(QWidget):
                 item.widget().deleteLater()
 
         by_id = self._by_id()
+        try:
+            from .. import vocabulary
+            names = {identifier: label for label, identifier in vocabulary.activity_types(
+                project_remote(self.project))}
+        except LookupError:
+            names = {}
         for i, spec in enumerate(self.project["activities"]):
             card = ActivityCard(spec, by_id,
                                 on_edit   = lambda _, idx=i: self.edit_activity(idx),
-                                on_delete = lambda _, idx=i: self.delete_activity(idx))
+                                on_delete = lambda _, idx=i: self.delete_activity(idx),
+                                type_names=names)
             self.list_layout.insertWidget(self.list_layout.count()-1, card)
             self.list_layout.insertWidget(self.list_layout.count()-1, sep())
 

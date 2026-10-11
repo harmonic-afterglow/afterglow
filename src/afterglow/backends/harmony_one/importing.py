@@ -586,8 +586,7 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
             out["power_cmd"] = names[power["on"]]
         else:
             out["power_on_cmd"], out["power_off_cmd"] = names[power["on"]], names[power["off"]]
-        if power["delay_ms"]:
-            out["power_delay"] = power["delay_ms"]
+        out["power_delay"] = power["delay_ms"]
     inputs = state.get("inputs")
     if inputs and "direct" in inputs:
         out["inputs"] = []
@@ -616,6 +615,9 @@ def _plain_send(macro: list[list]) -> bool:
     return len(macro) == 1 and macro[0][0] == "command" and len(macro[0]) == 3
 
 VOLUME_KEYS = ("VolumeUp", "VolumeDown", "VolumeMute")
+# Device types that show the picture, as the activity editor offers them for Display.
+DISPLAY_TYPES = {"Television", "Projector", "Monitor", "TvDvd", "TvDvdVcr", "TvVcr", "TvHdd",
+                 "MediaCenterPC", "Laptop", "Computer"}
 FLOW_KEYS = ("Activities", "Off", "Help")
 OFF_KEY = keys.by_name("Off")
 DIGIT_KEYS = {f"Number{digit}": str(digit) for digit in range(10)}
@@ -764,8 +766,18 @@ class Activities:
                "leave": self.macro([step for step in hooks.get(activity_index.LEAVE, [])
                                     if step[0] in (SEND, WAIT)]) or []}
         out.update(self.key_fields(hooks))
+        out["display"] = self._display(on, inputs) or out["control"]
         out.update(self.screens(label))
         return out
+
+    def _display(self, on: list[str], inputs: list[list]) -> str | None:
+        """The device an activity watches: one it switches on that shows a picture,
+        else the first it sets an input on."""
+        types = {device["id"]: device.get("type") for device in self.devices}
+        shown = [device for device in on if types.get(device) in DISPLAY_TYPES]
+        if shown:
+            return shown[0]
+        return inputs[0][1] if inputs else None
 
     def _input_name(self, device: int, value: int) -> str:
         inputs = self.devices[device].get("inputs") or []
@@ -1013,9 +1025,9 @@ def menu_icons(image: Image) -> list[dict]:
             if not rows:
                 continue
             try:
-                drawn = {(item["x"], item["y"]): item["target"] for item in ui_index.drawing_program(
-                    image.payload, slot["program_offset"])["instructions"]
-                    if item["opcode"] == "bitmap"}
+                program = ui_index.drawing_program(image.payload, slot["program_offset"])
+                drawn = {(item["x"], item["y"]): item["target"]
+                         for item in program["instructions"] if item["opcode"] == "bitmap"}
             except ValueError:
                 continue
             items = image.page_text(slot["program_offset"])

@@ -936,6 +936,14 @@
       "power",
       "advanced"
     ],
+    "timing": [
+      "always_on",
+      "power_delay",
+      "press_presilence",
+      "press_interkey",
+      "hold_presilence",
+      "hold_interkey"
+    ],
     "settings": [
       "output_file",
       "owner",

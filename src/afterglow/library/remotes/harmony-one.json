@@ -203,7 +203,7 @@
   },
   "properties": {},
   "interface": {
-    "_comment": "No RF blasters, no owner name (nothing on the One shows it) and no preferences file; a theme folder instead. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
+    "_comment": "No RF blasters, no owner name (nothing on the One shows it) and no preferences file; a theme folder instead. No Advanced pages: the device and activity properties they edit are the Harmony 900's, which the One's builder does not read. Timing offers what the builder uses - power-on delay, the delay between digits, Always on. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
     "tabs": [
       "devices",
       "activities",
@@ -215,8 +215,7 @@
       "identity",
       "commands",
       "inputs",
-      "timing",
-      "advanced"
+      "timing"
     ],
     "activity_pages": [
       "identity",
@@ -225,8 +224,12 @@
       "screen_buttons",
       "hard_buttons",
       "startup",
-      "power",
-      "advanced"
+      "power"
+    ],
+    "timing": [
+      "always_on",
+      "power_delay",
+      "press_interkey"
     ],
     "settings": [
       "output_file",

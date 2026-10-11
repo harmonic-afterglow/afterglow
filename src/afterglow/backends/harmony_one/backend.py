@@ -17,7 +17,7 @@ import tempfile
 
 from ... import ezhex, payloads
 from ..contracts import BuildResult, ImportResult
-from . import command_index, gspm, importing, inventory
+from . import command_index, gspm, importing, inventory, labels
 
 
 def validate_payload(payload: bytes, _profile=None) -> dict:
@@ -38,18 +38,18 @@ def import_project(source, profile, context) -> ImportResult:
     image = importing.Image(payload)
     devices = importing.project_devices(image, command_index.portable_devices(
         ownership, native["keys"], native["ui"]["device_menus"]), notes, naming)
+    # each type from the icon its menu row draws, before the activities, whose display
+    # is the device among theirs that shows a picture
+    types = importing.read_types(image)
+    for index, device in enumerate(devices):
+        device["type"] = types.get(("device", index)) or device.get("type")
     # favourites' logos go to the owner's logos folder, by the configuration's name
     from ... import paths
     name = Path(str(source)).name.removesuffix("_extracted") or "imported"
     logos = paths.logos_dir() / "Imported" / name
     activities, off = importing.Activities(image, devices, naming, notes, logos).read()
-    # each type from the icon its menu row draws; a row whose icon is not known keeps none
-    types = importing.read_types(image)
-    unknown = []
-    for index, device in enumerate(devices):
-        device["type"] = types.get(("device", index)) or device.get("type")
-        if ("device", index) not in types:
-            unknown.append(device["label"])
+    unknown = [device["label"] for index, device in enumerate(devices)
+               if ("device", index) not in types]
     for activity in activities:
         activity["type"] = types.get(("activity", int(activity["id"])))
         if activity["type"] is None:
@@ -57,6 +57,14 @@ def import_project(source, profile, context) -> ImportResult:
     if unknown:
         notes.append("no type was recognised for " + ", ".join(repr(name) for name in unknown)
                      + "; their icons are the default ones")
+    # a name with a character the text reader does not know is said, to be put right
+    unread = [label for label in (
+        [device["label"] for device in devices]
+        + [name for device in devices for name in device["signals"]]
+        + [activity["label"] for activity in activities]) if labels.UNKNOWN in label]
+    if unread:
+        notes.append("these names have characters that could not be read (shown as "
+                     f"{labels.UNKNOWN}): " + ", ".join(repr(name) for name in unread))
     notes += [f"could not read the image's {item}" for item in image.unreadable]
     settings = {"remote": profile.id}
     if context.get("out_file"):
@@ -104,6 +112,8 @@ def build_project(project, profile, context) -> BuildResult:
         if not (directory / "assets.json").is_file():
             raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
                              "folder, and no scaffold folder of that name")
+    context.log(f"Building for {profile.model}"
+                + (f" with the theme {theme!r}" if theme else ""))
     built = generate.build(project, directory=directory)
     payload = built["image"]
     validation = validate_payload(payload, profile)
@@ -122,6 +132,7 @@ def build_project(project, profile, context) -> BuildResult:
         shutil.rmtree(work, ignore_errors=True)
     for note in built["skipped"]:
         context.log(f"WARNING: {note}")
+    context.log(f"Wrote {output} ({output.stat().st_size:,} bytes)")
     return BuildResult(
         artifact=output,
         validation=validation,

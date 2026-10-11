@@ -97,3 +97,17 @@ def test_a_harmony_one_offers_its_themes_by_name_and_a_900_does_not(qapp_or_skip
         assert not SettingsTab(nine).form.isRowVisible(SettingsTab(nine).theme_row)
     finally:
         shutil.rmtree(paths.user_folder("themes"))
+
+def test_the_timing_page_offers_what_the_remote_s_builder_uses(qapp_or_skip):
+    # The One's builder uses the power-on delay, the delay between digits and Always on;
+    # the 900's pre-silences and hold timings mean nothing to it, so they are not shown.
+    from afterglow.gui.device_wizard import DeviceEditor
+
+    one = {"settings": {"remote": "harmony-one"}, "devices": [], "activities": []}
+    page = DeviceEditor([], None, existing={}, project=one).page_timing
+    form = page.layout()
+    assert form.isRowVisible(page.pwr_delay) and form.isRowVisible(page.inter_key)
+    assert not form.isRowVisible(page.pre_sil) and not form.isRowVisible(page.hold_key)
+    nine = {"settings": {"remote": "harmony-900"}, "devices": [], "activities": []}
+    page = DeviceEditor([], None, existing={}, project=nine).page_timing
+    assert page.layout().isRowVisible(page.hold_key)
