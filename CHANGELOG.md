@@ -54,12 +54,22 @@ yet, and that is what this beta is for.
   unpacked out of sight, and the pictures the project uses are kept in
   `Logos/Imported/<name>`. Folders left by earlier versions can be deleted once no
   project made before this one is built again.
+- **Harmony One:** a device's pages leave out what its keys already send - VolumeUp on
+  VolumeUp, 1 on Number1 - as Logitech's do, and keep a command put on a key in another's
+  place (Return on Exit). An imported configuration's press-only copies and nameless
+  codes are on no page either. Kāt's devices now show the buttons Logitech showed.
+
 
 ### Fixed
 
 - Learning an imported configuration into the device library failed when a device had
   an input that no command selects.
 - A macro of one step was described as "1 steps".
+- The Harmony One's Remote Assistant asked whether a TV was "set to InputHdmi1"; it
+  now says "HDMI 1".
+- Reading a Harmony One built here back in could misread a look-alike letter ("Xbox
+  One" as "Xbox ane"), skipping that device's buttons.
+
 
 ### Known issues
 

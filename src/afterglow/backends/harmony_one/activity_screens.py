@@ -9,6 +9,8 @@ Format reference: docs/harmony_one/gspm.md
 
 from __future__ import annotations
 
+from ...project_devices import input_label
+
 from . import activity_index, keys, structures
 from .hub import page_zones
 from .idle import MODE_STACK
@@ -248,7 +250,7 @@ class Flow:
             else:
                 value = asked[2]
                 text = words("assistant.input", device=device["label"],
-                             input=device["inputs"]["values"][value])
+                             input=input_label(device["inputs"]["values"][value]))
                 fix = actions.input_fix(asked[1], value)
             self._yes_no(act["label"], text, following,
                          layout.atoms_object(fix + [(ordinal, ENTER_MODE)]), fix_object=True)

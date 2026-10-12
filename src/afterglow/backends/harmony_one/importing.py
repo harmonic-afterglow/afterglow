@@ -435,10 +435,15 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
         state = states.get(index, {})
         ids = {signal["native"]["harmony-one"]["command_id"]: name
                for name, signal in device["signals"].items()}
-        same = _duplicates(device["signals"], ids, page["names"])
-        holds = _held_copies(device["signals"], ids, page["names"])
+        # A command a button or a key names is one of the device's own; the copies of
+        # one that Logitech keeps for power, inputs and held steps are found against them.
+        known = dict(page["names"])
+        for key, command in sorted(page["keys"].items()):
+            known.setdefault(command, key)
+        same = _duplicates(device["signals"], ids, known)
+        holds = _held_copies(device["signals"], ids, known)
         same.update({command: twin for command, (twin, _ms) in holds.items()})
-        copies = _press_copies(device["signals"], ids, page["names"])
+        copies = _press_copies(device["signals"], ids, known)
         names = _command_names({command: name for command, name in ids.items()
                                 if command not in same}, page, state, copies)
         names.update({command: names[twin] for command, twin in same.items()})
@@ -448,8 +453,11 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
         signals = {names[command]: dict(device["signals"][old], name=names[command])
                    for command, old in ids.items() if command not in same}
         label = named.get(index) or page["title"] or device["label"]
+        # A command the configuration's pages do not show - a press-only copy, a code
+        # with no name, one on a key - keeps no label, so a rebuild leaves it off too.
         project = dict(device, label=label, signals=signals, commands=[
-            [names[command], names[command], "", "", sorted(slots[command]) or None]
+            [names[command], names[command] if command in page["names"] else "", "", "",
+             sorted(slots[command]) or None]
             for command in ids if command not in same])
         project.update(_state_fields(state, names))
         if naming is not None:

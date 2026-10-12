@@ -1474,3 +1474,50 @@ def test_each_font_slot_carries_only_the_characters_its_image_draws():
     assert max(counts) < len(generate.catalogue.characters(ENGLISH))
     clock = font_index.fonts(image)[17]["glyphs"]
     assert 10 <= len(clock) < 40
+
+
+def test_a_device_page_shows_what_no_key_sends_and_a_device_all_on_keys_keeps_its_page():
+    # As Logitech's pages: a key's own command is pressed there - VolumeUp on VolumeUp, 1 on
+    # Number1 - while one put on a key in its place, Return on Exit, keeps its button; one
+    # with no label - an import's press-only copy or nameless code - is on no page.
+    from afterglow.backends.harmony_one import hub
+
+    lowered = devices.lowered_devices({"devices": [
+        {"label": "TV", "signals": {name: _nec(4, n) for n, name in enumerate(
+            ("Netflix", "VolumeUp", "Code 7", "Guide", "1", "Return"))},
+         "commands": [["Netflix", "Netflix", "", "", None],
+                      ["VolumeUp", "VolumeUp", "", "", ["VolumeUp"]],
+                      ["Code 7", "", "", "", None], ["Guide", "Guide", "", "", None],
+                      ["1", "1", "", "", ["Number1"]], ["Return", "Return", "", "", ["Exit"]]]},
+        {"label": "Amp", "signals": {"VolumeUp": _nec(11, 1)},
+         "commands": [["VolumeUp", "VolumeUp", "", "", ["VolumeUp"]]]}]})
+    bodies = {role: item["body"] for role, item in _LOADED["pictures"].items()}
+    shown = hub.device_pages(lowered, pages.frames(bodies), set(bodies), FONTS[0])
+    assert [[command["name"] for command in page] for page in shown[0]] == [
+        ["Guide", "Netflix", "Return"]]
+    assert shown[1] == [[]]
+
+
+def test_the_remote_assistant_asks_after_an_input_by_the_name_a_person_reads():
+    from afterglow.project_devices import input_label
+
+    assert [input_label(name) for name in (
+        "InputHdmi1", "InputTv", "InputComponent", "InputVideo2", "HDMI 1", "Netflix")] == [
+        "HDMI 1", "TV", "Component", "Video 2", "HDMI 1", "Netflix"]
+    tv = {"id": "tv", "label": "TV", "signals": {"PowerOn": _nec(4, 1), "PowerOff": _nec(4, 2),
+                                                 "InputHdmi1": _nec(4, 3)},
+          "power_on_cmd": "PowerOn", "power_off_cmd": "PowerOff",
+          "inputs": [["InputHdmi1", "InputHdmi1"]]}
+    built = generate.build({"devices": [tv], "activities": [
+        {"id": "1", "label": "Watch", "type": "VirtualTelevisionN", "display": "tv",
+         "control": "tv", "power_on_devices": ["tv"],
+         "enter": [["input", "tv", "InputHdmi1"]]}]})
+    from afterglow.backends.harmony_one import labels
+
+    image = built["image"]
+    text = labels.Text(image)
+    drawn = {item["text"] for screen in ui_index.screen_slots(image)
+             for slot in screen["slots"]
+             for item in labels.screen_text(image, slot["program_offset"], text)}
+    assert any(line.endswith("HDMI 1?") for line in drawn)
+    assert not any("InputHdmi1?" in line for line in drawn)
