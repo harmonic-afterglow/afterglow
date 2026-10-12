@@ -45,7 +45,7 @@ class Screens:
         self._current_labels: dict[str, int] = {}
 
     def owned(self, rows, zones, build, kind=None, title=None, page=None, keys=(),
-              on_enter=None):
+              on_enter=None, bare=False):
         """Reserve a mode this image owns: the platform's handlers, then a fragment
         drawing the backdrop, then the page program, which calls it and draws the rest.
         ``build(picture, prologue)`` returns the page program's instructions, and
@@ -54,9 +54,10 @@ class Screens:
         screen that has several, which are numbered as the donors number theirs.
         ``keys`` are rows for the physical keys, bound in the mode's own list, and
         ``on_enter`` is `(before, after)`, instructions run either side of the
-        platform's own enter handler when the screen is entered."""
+        platform's own enter handler when the screen is entered. A ``bare`` screen has no
+        fragment: its page program draws everything there is."""
         fonts = self.fonts
-        backdrop = "backdrop" in self.roles
+        backdrop = "backdrop" in self.roles and not bare
         title_font, counter_font = TITLE_FONTS.get(kind, (None, None))
         titled = (title is not None and title_font is not None and fonts is not None
                   and max(title_font, counter_font) < len(fonts))

@@ -24,8 +24,8 @@ from pathlib import Path
 
 from . import activities as activity_plan
 from . import (
-    assemble, catalogue, firmware_screens, font_index, keys, ordinals, platform_text, scaffold,
-    structures)
+    assemble, catalogue, charging, firmware_screens, font_index, keys, ordinals, platform_text,
+    scaffold, structures)
 from . import idle as idle_machine
 from .actions import Actions
 from .activity_screens import Flow
@@ -80,9 +80,14 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     # start-up - is built into the same namespace.
     label = label_font if label_font is not None else 0
     hub = system is not None and bool(fonts) and softkey_fonts is not None
-    model = idle_machine.attach(options, system) if hub and options else None
+    # The charging screens are the idle layer's, so only an image with it has them.
+    charging_pictures = (charging.roles(pictures) if hub and options
+                         and isinstance(pictures, dict) else [])
+    model = (idle_machine.attach(options, system, len(charging_pictures)) if hub and options
+             else None)
     numbers = ordinals.hub(platform=platform.count, hub=hub,
-                           carried_modes=len(model["modes"]) if model else None)
+                           carried_modes=len(model["modes"]) if model else None,
+                           charging=len(charging_pictures))
     carried = _carried(layout, model, numbers, platform, system, engine, household)
     _command_objects(layout, devices)
     variables = state_variables(
@@ -114,7 +119,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         status_object=status_object,
         current=(variables.state, len(acts)) if variables.state is not None else None)
     activity_rows = _owned_screens(
-        screens, numbers, carried, variables, devices, acts, pages, hub=hub, frames=frames,
+        screens, numbers, carried, variables, devices, acts, pages, charging_pictures,
+        hub=hub, frames=frames,
         geometry=touch_templates() if templates is None else templates,
         all_off=(activities or {}).get("all_off"), platform=platform)
     startup, global_keys = _start_up(layout, numbers, carried, variables,
@@ -177,7 +183,9 @@ def _carried(layout, model, numbers, platform, system, engine, household) -> Car
     carried = Carried(model, engine_size=len(engine), system=system,
                       first_platform=platform.first, first_mode=numbers.carried,
                       exits={"options": numbers.options, "home": numbers.home,
-                             "devices": numbers.first_menu})
+                             "devices": numbers.first_menu,
+                             **{f"charging-{index}": ordinal
+                                for index, ordinal in enumerate(numbers.charging)}})
     carried.number_objects(layout)
     layout.group_base = len(model["groups"])
     if carried.idle:
@@ -217,10 +225,11 @@ def _activity_variables(variables, acts):
             "initial": 1, "limit": 1, "padding": 0, "transitions": []})
 
 
-def _owned_screens(screens, numbers, carried, variables, devices, acts, pages, *, hub,
-                   frames, geometry, all_off, platform) -> dict[int, list]:
+def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
+                   charging_pictures, *, hub, frames, geometry, all_off,
+                   platform) -> dict[int, list]:
     """Every screen the image owns, in the order their objects are numbered: Activities,
-    Options, the device menu and pages, the activities' screens, Options' second page and
+    Options, the charging screens, the device menu and pages, the activities' screens, Options' second page and
     the Tutorial. Each activity's context rows, then Off's, by context."""
     layout = screens.layout
     flow = None
@@ -239,6 +248,7 @@ def _owned_screens(screens, numbers, carried, variables, devices, acts, pages, *
         settings = Options(screens, numbers, carried, frames=frames, flow=flow,
                            assistant=variables.assistant)
         settings.carry()
+    charging.place(screens, numbers, charging_pictures)
     owned.device_menu()
     owned.command_pages()
     rows = flow.activities() if hub and acts else {}

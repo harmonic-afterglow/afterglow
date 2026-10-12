@@ -4,7 +4,7 @@ The firmware lights nothing by itself - the factory image has no light instructi
 keys stay dark - so every Logitech configuration carries a small machine that lights the
 keypad when a key is pressed, darkens it when a timer runs out, lights the zones the shown
 screen uses, and answers the events the firmware posts: USB in and out, charging, the side
-strips. docs/harmony_one/gspm.md, "The idle layer", is its specification, read from
+strips - and, while the remote charges, shows the charging screens in a ring. docs/harmony_one/gspm.md, "The idle layer", is its specification, read from
 upstairs by running its handlers under every combination of the platform's variables.
 
 This module builds that machine from the specification rather than carrying upstairs' own.
@@ -42,8 +42,10 @@ KEYPAD = (0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x10)
 ZONES = 8
 SCREEN_LEVEL, KEY_LEVEL = 6, 1
 # Setting 1: arm the motion sensor, so the next movement posts MOTION (0x17) once - what
-# upstairs writes after darkening everything, so picking the remote up wakes it.
+# upstairs writes after darkening everything, so picking the remote up wakes it - or
+# disarm it, as the donors do when the remote starts charging.
 LIGHTS_OUT = (0xF101, SETTING)
+MOTION_OFF = (0xF100, SETTING)
 
 # The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, HOLD and
 # CHARGING as upstairs tests them, and AWAKE - the infrared engine's state, 0 when idle.
@@ -52,6 +54,10 @@ LOW_BATTERY = 2
 
 # Timers: the keypad goes dark when OFF runs out; POLL re-arms OFF while AWAKE says so.
 OFF_DURATION, POLL_DURATION = 10, 2
+# Charging, as every donor has it: the charging screens start this long after the remote
+# starts charging, the battery stays up for BATTERY_SHOWN and each photo after it for
+# PHOTO_SHOWN; a charging problem's notice stays lit for PROBLEM_SHOWN.
+SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, PROBLEM_SHOWN = 5, 5, 1, 20
 
 # What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
 # the arrows light only where there are pages to turn, a softkey's bar only where the
@@ -76,6 +82,9 @@ LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
 ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
+# The firmware's charging events: charging stops, charging starts, a charging problem.
+CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
+REDRAW = 0x2D
 # The battery events each charge context answers, as all three donors' contexts 0, 5, 6.
 CHARGE_EVENTS = {"normal": (0x1A, 0x1B, 0x1C, 0x1D), "usb": (0x1E,), "low": (0x18, 0x19)}
 
@@ -128,18 +137,20 @@ def _write(variable, value: int) -> list:
     return [value, {"write": variable}]
 
 
-def build(system: dict | None, sounds: dict | None = None) -> dict:
+def build(system: dict | None, sounds: dict | None = None, charging: int = 0) -> dict:
     """The machine as a model, with its entry points under ``"idle"``.
 
     ``system`` is the platform model (system-screens.json): the firmware's own screens,
     whose enter and leave handlers the machine extends. ``sounds`` is the Options model's
-    Screen Sounds switch, whose flag start-up clears as upstairs does.
+    Screen Sounds switch, whose flag start-up clears as upstairs does. ``charging`` is how
+    many charging screens the image has - the battery, then its photos - which it names
+    ``{"exit": "charging-<n>"}``; none, and the remote shows nothing while it charges.
     """
-    machine = _Machine()
+    machine = _Machine(charging)
     events, key_rows = machine.events(), machine.key_rows()
     screens = (system or {}).get("screens", ())
     handlers = machine.platform_handlers(screens)
-    kinds = machine.screen_kinds(screens)
+    kinds = {**machine.screen_kinds(screens), **machine.charging_kinds()}
     m = machine.m
     return {
         "objects": m.objects,
@@ -170,7 +181,7 @@ class _Machine:
     keypad lights and their timers, then what the charging events choose, then the
     events, the key rows, and the screens' handlers."""
 
-    def __init__(self):
+    def __init__(self, charging: int = 0):
         m = self.m = _Model()
         self.zone_flags = [m.flag() for _ in range(ZONES)]
         self.usb_shown = m.flag()
@@ -178,6 +189,9 @@ class _Machine:
         self._zone_objects: dict[tuple, list] = {}
         self._lights()
         self._charge()
+        self.charging = charging
+        if charging:
+            self._charging()
 
     def guarded(self, byte: int, test: list, step: list) -> list:
         """Run ``step`` when ``test`` holds against ``byte``, in the donors' shape: the
@@ -198,7 +212,7 @@ class _Machine:
         lights_out = m.object(
             [_timer(STOP_TIMER, off_timer)] + [light(c, 0) for c in KEYPAD]
             + [light(z, 0) for z in range(ZONES)] + [light(SCREEN, 0), list(LIGHTS_OUT)])
-        m.timers[off_timer]["action"] = lights_out
+        m.timers[off_timer]["action"] = self.lights_out = lights_out
         # Arm: start the off timer when AWAKE is set, and poll again either way.
         arm_slot = m.reserve()
         arm = [{"object": arm_slot}, OBJECT]
@@ -232,6 +246,23 @@ class _Machine:
             guarded(1, _test(EQUAL, USB), [0xF200, SETTING])])]))
         self.low_battery_wake = guarded(LOW_BATTERY, _test(AT_MOST, BATTERY), self.wake)
 
+    def _charging(self):
+        """The charging screens in a ring, each entering the next when its timer runs out,
+        and the timer that opens the ring after charging starts - over what was shown,
+        which charging stopping goes back to while the ring is up."""
+        m, count = self.m, self.charging
+        self.charging_shown = m.flag()
+        self.frame_timers = [m.timer(BATTERY_SHOWN if index == 0 else PHOTO_SHOWN)
+                             for index in range(count)]
+        for index, timer in enumerate(self.frame_timers):
+            m.timers[timer]["action"] = [{"exit": f"charging-{(index + 1) % count}"},
+                                         ENTER_MODE]
+        self.show_timer = m.timer(SHOW_DELAY)
+        m.timers[self.show_timer]["action"] = m.object(
+            [[PUSH_MODE, MODE_STACK], [{"exit": "charging-0"}, ENTER_MODE]])
+        self.problem_timer = m.timer(PROBLEM_SHOWN)
+        m.timers[self.problem_timer]["action"] = self.lights_out
+
     def events(self) -> dict[int, list]:
         m, guarded, charge, wake = self.m, self.guarded, self.charge, self.wake
         return {
@@ -251,6 +282,31 @@ class _Machine:
             0x25: [0, 0],
             0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
             0xAF: m.object([[BEEP_PAGE, BEEP], [NEXT_PAGE, PAGE]]),
+            **self._charging_events(),
+        }
+
+    def _charging_events(self) -> dict[int, list]:
+        """Charging starts: wake, stop the motion sensor waking it on the cradle, and open
+        the charging screens a moment later. Charging stops: back to what was shown, if
+        the charging screens are still up, as unplugging USB does. A charging problem
+        shows the firmware's notice."""
+        if not self.charging:
+            return {}
+        m, guarded, charge, wake = self.m, self.guarded, self.charge, self.wake
+        return {
+            CHARGING_STARTED: m.object([
+                list(MOTION_OFF), [BEEP_KEY, BEEP], charge, wake, self.usb_setting,
+                guarded(1, _test(EQUAL, HOLD), _timer(START_TIMER, self.show_timer))]),
+            CHARGING_STOPPED: m.object([
+                [BEEP_KEY, BEEP], [BEEP_SHORT, BEEP], [BEEP_SHORT, BEEP], [BEEP_SHORT, BEEP],
+                [BEEP_KEY, BEEP], _timer(STOP_TIMER, self.show_timer), charge,
+                guarded(0, _test(NOT_EQUAL, self.charging_shown), [POP_MODE, MODE_STACK]),
+                wake, guarded(1, _test(EQUAL, BATTERY), [0xFFF6, MODE_STACK]),
+                self.low_battery_wake]),
+            # A charging problem: the firmware's notice (screen 9), lit for a while.
+            CHARGING_PROBLEM: m.object([[BEEP_KEY, BEEP], wake, [SCREEN_NINE, ENTER_MODE],
+                                        [STATUS, MODE_STACK],
+                                        _timer(START_TIMER, self.problem_timer)]),
         }
 
     def key_rows(self) -> dict[int, list]:
@@ -310,11 +366,33 @@ class _Machine:
                        for tag in (ENTER, LEAVE)}
                 for kind, chosen in SCREEN_ZONES.items()}
 
+    def charging_kinds(self) -> dict[str, dict]:
+        """Each charging screen's enter and leave: entering stops every timer - the
+        keypad's too, so the screen stays lit while the remote charges - darkens the keypad
+        and starts the screen's own timer; leaving stops it. A redraw draws nothing over
+        the picture."""
+        if not self.charging:
+            return {}
+        m = self.m
+        usb = [{"charge": "usb", "band": CHARGE}, REGISTER]
+        dark = [light(channel, 0) for channel in KEYPAD]
+        return {f"charging-{index}": {
+                    f"{ENTER:#04x}": m.object(
+                        [[STATUS, MODE_STACK], light(SCREEN, SCREEN_LEVEL)] + dark
+                        + [usb, _write(self.charging_shown, 1), _timer(START_TIMER, timer)]),
+                    f"{LEAVE:#04x}": m.object(
+                        [_timer(STOP_TIMER, timer), _write(self.charging_shown, 0),
+                         self.charge]),
+                    f"{REDRAW:#04x}": [0, 0]}
+                for index, timer in enumerate(self.frame_timers)}
+
     def startup(self, sounds) -> dict:
         """What start-up resets, then sets up: the charge context, the zone records, the
         lights, and the Screen Sounds flag with its setting."""
         m = self.m
         resets = [[SILENT, MODE_STACK], _write(self.usb_shown, 0)]
+        if self.charging:
+            resets.append(_write(self.charging_shown, 0))
         setup = [self.charge, m.object([_write(flag, 0) for flag in self.zone_flags]),
                  self.wake]
         if sounds is not None:
@@ -338,12 +416,12 @@ def _shift(value, objects: int, timers: int, variables: int):
     return {key: _shift(item, objects, timers, variables) for key, item in value.items()}
 
 
-def attach(options: dict, system: dict | None) -> dict:
+def attach(options: dict, system: dict | None, charging: int = 0) -> dict:
     """The Options model with the idle machine appended in its namespace, and each of
     its ``{"zones": ...}`` references made a call of the machine's zone object."""
     model = copy.deepcopy(options)
     sounds = model.get("sounds", {}).get("switch")
-    machine = build(system, sounds)
+    machine = build(system, sounds, charging)
     shift = (len(model["objects"]), len(model["timers"]), len(model["variables"]))
 
     def zones(value):

@@ -221,6 +221,80 @@ def activity_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     return roles
 
 
+def charging_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
+    """Name the pictures the remote shows while it charges: a battery, then photographs.
+
+    Each is a screen of one full-screen picture whose enter handler starts a timer that
+    enters the next, round in a ring; the battery is the one shown longest. The ring is
+    followed from the screens' own handlers, so the pictures are named in the order the
+    remote shows them - `charging/battery`, then `charging/photo-1` onwards.
+    """
+    p = payload
+    ranges = gspm.section_ranges(p)
+
+    def u24(at):
+        return int.from_bytes(p[at:at + 3], "little") - gspm.BASE
+
+    def atoms(index):
+        at = u24(ranges[11][0] + 2 + 3 * index)
+        return [(int.from_bytes(p[at + 1 + 3 * k:at + 3 + 3 * k], "little"), p[at + 3 + 3 * k])
+                for k in range(p[at])]
+
+    def timer(index):
+        at = u24(ranges[13][0] + 1 + 3 * index)
+        return (int.from_bytes(p[at + 1:at + 4], "little"),
+                int.from_bytes(p[at + 4:at + 6], "little"), p[at + 6])
+
+    def rows(at):
+        if p[at]:
+            return [(p[at + 1 + 4 * k], int.from_bytes(p[at + 2 + 4 * k:at + 4 + 4 * k],
+                                                        "little"), p[at + 4 + 4 * k])
+                    for k in range(p[at])]
+        return [(p[at + 3 + 5 * k], int.from_bytes(p[at + 4 + 5 * k:at + 6 + 5 * k], "little"),
+                 p[at + 6 + 5 * k]) for k in range(p[at + 1])]
+
+    screens = ui_index.screen_slots(p)
+    count = int.from_bytes(p[ranges[6][0]:ranges[6][0] + 2], "little")
+    pictures, following = {}, {}
+    for mode in range(min(count, len(screens))):
+        drawn = [item for block in drawing.program_blocks(
+                     p, [slot["program_offset"] for slot in screens[mode]["slots"]]).values()
+                 for item in block if item["opcode"] in ("bitmap", "text", "inline_text")]
+        if len(drawn) != 1 or drawn[0]["opcode"] != "bitmap" \
+                or (drawn[0]["x"], drawn[0]["y"]) != (0, 0):
+            continue
+        shape = bitmap.decode(p, drawn[0]["target"])
+        if (shape["width"], shape["height"]) != (176, 220):
+            continue
+        pictures[mode] = drawn[0]["target"]
+        entry = u24(ranges[6][0] + 3 + 3 * mode)
+        for key, operand, opcode in rows(u24(entry + 1)):
+            if key != scaffold.ENTER or opcode != 0x7F:
+                continue
+            for value, code in atoms(operand):
+                if code == 0x1F and value >> 8 == 0xEB:
+                    duration, target, kind = timer(value & 0xFF)
+                    if kind == 0x7E:
+                        following[mode] = (target, duration)
+    rings = []
+    for start in following:
+        ring, mode = [], start
+        while mode in following and mode in pictures and mode not in ring:
+            ring.append(mode)
+            mode = following[mode][0]
+        if mode == start and len(ring) > 1:
+            rings.append(ring)
+    if not rings:
+        return {}
+    # the ring with the longest-shown picture, started there: the battery
+    ring = max(rings, key=lambda ring: max(following[mode][1] for mode in ring))
+    first = max(ring, key=lambda mode: following[mode][1])
+    ring = ring[ring.index(first):] + ring[:ring.index(first)]
+    names = ["charging/battery"] + [f"charging/photo-{n}" for n in range(1, len(ring))]
+    return {name: pictures[mode] for name, mode in zip(names, ring)
+            if pictures[mode] not in taken}
+
+
 def activity_frame_roles(payload: bytes) -> dict[str, int]:
     """Name the frames activities are drawn in - blue where a device's are orange and
     Options' green: the Activities menu's row frame, and the frame at each of the six
@@ -725,6 +799,7 @@ def main() -> int:
     roles = {**picture_roles(payload), **overlay_roles(payload)}
     roles.update(system_picture_roles(payload, set(roles.values())))
     roles.update(activity_picture_roles(payload, set(roles.values())))
+    roles.update(charging_picture_roles(payload, set(roles.values())))
     for role, target in sorted(roles.items()):
         name = f"images/{role}.png"
         pictures[role] = {"file": name, **write_picture(payload, target, args.directory / name)}

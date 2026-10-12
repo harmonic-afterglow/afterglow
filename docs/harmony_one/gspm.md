@@ -1156,7 +1156,10 @@ holds the same codes:
 | `0x19` | nothing | `07 FFF6` |
 | `0x2D` | `07 FFFA` | `07 FFFA` |
 | `0x25` | enter screen 17 | nothing |
-| `0x1E`, `0x1F`, `0x23`, `0x0F` | beeps, screen 0 / a beep | cradle, standby and low-battery screens: not generated yet |
+| `0x1F` charging started | a beep | `3F F100` (the motion sensor disarmed); beep; the charge context; wake; if 13 is set, timer 5 (5 later: push the mode, the charging screens - see "Charging") |
+| `0x1E` charging stopped | beeps, screen 0 | beeps `4664 1FF 1FF 1FF 4664`; back to what was shown if the charging screens are up; the charge context; wake |
+| `0x23` charging problem | - | beep; screen 9 (the charging-problem notice); `07 FFFB`; timer 14 (20 later: lights out) |
+| `0x0F` | beeps | when the battery is above 2, the current activity's screen: not generated |
 | `0xAE`, `0xAF` | - | beep `0x0FCA`, previous / next page (`0F FFA0`/`FFA1`) |
 
 The USB screen's enter handler sets a flag and its leave handler clears it; `0x27` pops only
@@ -1184,11 +1187,35 @@ variables to 504, 4 and 3.
 `one-tools/compare_idle.py` runs a generated image and upstairs side by side - the key
 light, the eight events and both timers, under every combination of variables 9, 13, 15, 16
 and 17, five sets of lit zones, and the USB screen shown or not: 5,280 runs, none differ
-(upstairs' timer 7, the charging screen, set aside). The screens' enter and leave handlers
+(upstairs' timer 7, the charging screens, set aside; they are generated now, below). The
+screens' enter and leave handlers
 light and darken the same zones as their upstairs counterparts. One ordering was fixed on
 the way: the carried start-up entered Activities before clearing the zone flags, so the
 first timeout lost Activities' zones; start-up now clears them first and enters last, as
 upstairs does.
+
+### Charging
+
+While a One charges, every donor shows the same four whole-screen pictures in a ring: a
+battery for 5, then three photographs for 1 each, round again (upstairs' screens 174, 178,
+177, 179; downstairs' and Kāt's are the same pictures). Each is a screen of one bitmap at
+(0, 0) and nothing else - no title, no status bar - and each screen's enter handler runs
+`07 FFFB` (which also stops the keypad's off timer, so the screen stays lit), pushes a
+context binding every key to "enter the battery again", puts the USB charge context under
+`0xFC`, and starts the timer that enters the next; its leave handler stops that timer and
+chooses the charge context again. Charging starting (`0x1F`) opens the ring after timer 5
+(5), over what was shown; charging stopping (`0x1E`) goes back. Upstairs' USB-in handler
+also starts a timer into the ring when 13 is set (timer 7).
+
+A build generates the same (`backends/harmony_one/charging.py`, `idle.py`): the scaffold's
+`charging/battery` and `charging/photo-<n>` pictures - extracted by
+`tools/harmony_one_extract_assets.py`, which follows the ring from the screens' own timers -
+as bare owned screens straight after the screens carried behind Options, every key bound
+in the screen's own list to the battery's screen rather than in a pushed context, and a
+flag the enter and leave handlers keep so that `0x1E` pops the mode only while the ring is
+up. USB in does not open the ring: the USB screen's own flag would no longer be the one
+shown, and unplugging would leave the ring up. A theme without `charging/battery` gets no
+charging screens and no `0x1E`/`0x1F`/`0x23` rows.
 
 ### Activities
 

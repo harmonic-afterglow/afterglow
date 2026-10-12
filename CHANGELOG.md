@@ -38,6 +38,9 @@ yet, and that is what this beta is for.
   (configurations read from a remote or imported), `Generated` (configurations built
   here) and `Themes`, beside `Library` and `Logos`. Each dialog opens in its own.
 - The Flash tab's log says what a build wrote, and where.
+- **Harmony One:** while it charges it shows the battery, then three photos in turn, as
+  Logitech's configurations did, and goes back to what it was showing when it is lifted
+  off; a charging problem shows its notice. A theme can replace the pictures.
 
 ### Changed
 
