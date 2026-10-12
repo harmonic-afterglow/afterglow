@@ -47,6 +47,10 @@ yet, and that is what this beta is for.
 - The activity list shows a type's name ("Watch a DVD"), as the editor does.
 - Shareable projects unpack into `Projects`; an existing lowercase `projects` folder is
   renamed to it.
+- Importing no longer leaves a `<name>_extracted` folder beside the file: it is
+  unpacked out of sight, and the pictures the project uses are kept in
+  `Logos/Imported/<name>`. Folders left by earlier versions can be deleted once no
+  project made before this one is built again.
 
 ### Fixed
 

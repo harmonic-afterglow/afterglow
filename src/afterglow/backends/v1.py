@@ -33,7 +33,10 @@ class Backend:
         return getattr(self.module, name)
 
     def import_project(self, source, profile, context) -> ImportResult:
-        project = self.module.import_project(source, out_file=context.get("out_file"))
+        # the built file is named after the configuration, not the folder it was read from
+        name = context.get("name")
+        out_file = context.get("out_file") or (f"{name}_mod.ezhex" if name else None)
+        project = self.module.import_project(source, out_file=out_file)
         return ImportResult(project=project)
 
     @staticmethod

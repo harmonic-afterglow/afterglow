@@ -100,7 +100,7 @@ Importing takes your devices and activities and leaves the other remote's state 
 | `Generated` | configurations Afterglow builds - what **Test write** and **Flash** write |
 | `Themes` | themes, a folder per remote that takes them (see [Themes](#themes)) |
 | `Library` | your own devices, and what you learn from the original remote |
-| `Logos` | favourite-channel logos, including ones brought across by an import |
+| `Logos` | favourite-channel logos; an import keeps the pictures it brings in `Logos/Imported` |
 
 Each dialog opens in its own folder. To send someone a project, use **File > Export
 Shareable Project**: the `.afterglow` file it writes holds everything needed to build

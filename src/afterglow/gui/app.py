@@ -2,7 +2,6 @@
 
 import sys
 import json
-import shutil
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
@@ -387,23 +386,17 @@ class MainWindow(QMainWindow):
                else ""))
 
     def import_ezhex(self):
-        """Import an existing .ezhex: unpack it, extract its devices/activities AND its RF
-        blaster setup (so the base station's MAC is now known and devices can be routed to
-        it), and load the result as an editable project that rebuilds on the donor's own tree."""
+        """Import an existing .ezhex: its devices and activities, and on a remote that has
+        them its RF blasters (so devices can be routed to a known base station), as an
+        editable project. Nothing is left beside the file (importer.import_file)."""
         path, _ = QFileDialog.getOpenFileName(
             self, "Import .ezhex", str(user_folder("dumps")),
             "Harmony Config (*.ezhex);;All (*)")
         if not path or not self._keep_or_discard_changes():
             return
         try:
-            from .. import ezhex as harmony_ezhex
-            from ..importer import import_result
-            stem = Path(path).stem
-            extracted = Path(path).resolve().parent / f"{stem}_extracted"
-            if extracted.exists():
-                shutil.rmtree(extracted)
-            harmony_ezhex.unpack(path, str(extracted))
-            imported = import_result(str(extracted))
+            from ..importer import import_file
+            imported = import_file(path)
             data = imported.project
             # Rebuild on the imported tree and keep its (possibly exotic) IrProto verbatim;
             # The imported devices and activities are kept; the config is rebuilt from
@@ -425,7 +418,7 @@ class MainWindow(QMainWindow):
             try:
                 from ..library import learn, summarise
                 learned = "\n\nLearned into the library:\n" + summarise(
-                    learn(self.project, str(extracted)))
+                    learn(self.project, path))
                 from .. import paths
                 self.templates[:] = load_repo_templates(paths.user_library())
             except Exception as exc:                       # never block an import
