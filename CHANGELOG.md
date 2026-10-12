@@ -59,6 +59,12 @@ yet, and that is what this beta is for.
   place (Return on Exit). An imported configuration's press-only copies and nameless
   codes are on no page either. Kāt's devices now show the buttons Logitech showed.
 
+- **Harmony One: Help, the Remote Assistant and the Tutorial are Logitech's.** Help re-sends
+  what the activity set, asks whether that fixed it, then asks after each device and input
+  in turn, re-sending whatever is not right. The Remote Assistant shows Logitech's notes
+  after a start and after Off - a new remote opens on its welcome - until it is hidden;
+  Options turns it back on. The Tutorial is Logitech's eleven pages with their pictures of
+  the remote, keeping a small page counter.
 
 ### Fixed
 

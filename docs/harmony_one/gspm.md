@@ -513,8 +513,14 @@ the One until a One donor bears them out; each one below has been checked agains
 - **Instructions** are `u16 operand, u8 opcode`, run from a queue. Opcodes from `0x80` write
   variable `opcode & 0x7f`; `7F` runs an object (section 11); `7E` enters a mode; `73` draws a
   section-12 program; `70`/`71` compare a variable with the accumulator or byte register (low
-  nibble of the operand's high byte picks the test, bit 7 inverts it) and drop the next
-  instruction when it fails; `07` with `FD`/`FC` pushes and pops the current mode.
+  nibble of the operand's high byte picks the test) and drop the next instruction when it
+  fails; `07` with `FD`/`FC` pushes and pops the current mode. The 800's handler reads bit 7
+  of the high byte as inverting the test. The One's configurations do not use it that way:
+  upstairs chooses the Remote Assistant's first note with `== 0` *with* bit 7 and skips it
+  with `== 3` *without*, shows its welcome on `<= 1` with bit 7, and Kāt's waits for a smart
+  TV's apps on `OnlinePower == 0` with bit 7 before marking them up - each the obvious intent
+  only if the test runs the next instruction when it holds. A build copies bit 7 only where
+  a donor has it, and new logic uses plain tests.
   `1F` bands: `FF` select the running context, `FE`/`FD` push and pop the key stack, `FB` load
   the byte register, `FA`/`F9`/`F8` add, multiply, divide, `EB`/`EA` start and stop a timer.
   `3F` bands: `F0` sets a timer length (`F064` = 100, as the factory and both donors have it),
@@ -1156,10 +1162,29 @@ holds the same codes:
 | `0x19` | nothing | `07 FFF6` |
 | `0x2D` | `07 FFFA` | `07 FFFA` |
 | `0x25` | enter screen 17 | nothing |
-| `0x1F` charging started | a beep | `3F F100` (the motion sensor disarmed); beep; the charge context; wake; if 13 is set, timer 5 (5 later: push the mode, the charging screens - see "Charging") |
-| `0x1E` charging stopped | beeps, screen 0 | beeps `4664 1FF 1FF 1FF 4664`; back to what was shown if the charging screens are up; the charge context; wake |
-| `0x23` charging problem | - | beep; screen 9 (the charging-problem notice); `07 FFFB`; timer 14 (20 later: lights out) |
-| `0x0F` | beeps | when the battery is above 2, the current activity's screen: not generated |
+| `0x1F` on external power | a beep | `3F F100` (the motion sensor disarmed); beep; the charge context; wake; if 13 is set, timer 5 (5 later: push the mode, the charging screens - see "Charging") |
+| `0x1E` off external power | beeps, screen 0 | beeps `4664 1FF 1FF 1FF 4664`; back to what was shown if the charging screens are up; the charge context; wake |
+| `0x23` charge fault | - | beep; screen 9 (the charging-problem notice); `07 FFFB`; timer 14 (20 later: lights out) |
+| `0x0F` battery level up | beeps | the current activity's screen, then the charging screens 5 later if 13 is set - `0x1F`'s second half, without its beep: not generated |
+
+**Where the events come from.** The One's application firmware (Region 2 of the 54.2.5 and
+3.4 `.hfw` files, PIC18 code loaded at `0x20000`, disassembled with Ghidra) posts an event
+by queueing `1F FCxx` - the event through the key stack - from a few routines that each
+compare a reading with the last one:
+
+| events | posted when |
+|---|---|
+| `0x0F` / `0x10` | the battery level (0-7) went up / down, then `0x18`-`0x1D` for levels 0-5, `0x0D` for 6, `0x0E` for 7 |
+| `0x15` / `0x16` | a second reading (0-3; the light sensor, it seems) went up / down, then `0x11`-`0x14` for its level |
+| `0x17` | the remote moved, while the motion sensor is armed |
+| `0x20`, then `0x1F` / `0x1E` | external power (pin RB1 low): connected - the cradle or a charger - / removed |
+| `0x21`, then `0x22` / `0x24` / `0x25` / `0x23` | the charger's state: off external power / charging / charged / a fault |
+| `0x28`, then `0x26` / `0x27` | USB connected / disconnected |
+
+Both firmware versions post the same numbers. The 800's differ - it posts `0x18` plus the
+level for every level, and its own codes for power - so its numbering is not the One's.
+The charge contexts fit the One's: the low one answers levels 0-1, the normal one 2-5, the
+USB one external power removed.
 | `0xAE`, `0xAF` | - | beep `0x0FCA`, previous / next page (`0F FFA0`/`FFA1`) |
 
 The USB screen's enter handler sets a flag and its leave handler clears it; `0x27` pops only
@@ -1203,8 +1228,9 @@ battery for 5, then three photographs for 1 each, round again (upstairs' screens
 `07 FFFB` (which also stops the keypad's off timer, so the screen stays lit), pushes a
 context binding every key to "enter the battery again", puts the USB charge context under
 `0xFC`, and starts the timer that enters the next; its leave handler stops that timer and
-chooses the charge context again. Charging starting (`0x1F`) opens the ring after timer 5
-(5), over what was shown; charging stopping (`0x1E`) goes back. Upstairs' USB-in handler
+chooses the charge context again. External power connected (`0x1F`) - the remote set on
+its cradle - opens the ring after timer 5 (5), over what was shown; removed (`0x1E`) goes
+back. Upstairs' USB-in handler
 also starts a timer into the ring when 13 is set (timer 7).
 
 A build generates the same (`backends/harmony_one/charging.py`, `idle.py`): the scaffold's
@@ -1274,25 +1300,48 @@ drawn in; a favourite without one shows its name. An activity with favourites an
 opens on its favourites, the left softkey going between them ("Commands"/"Favorites"),
 lighting zones 5 and 7 as the donors' screens with both softkeys do.
 
-**The Remote Assistant.** Logitech's asks after a start whether everything turned on (Kāt's
-configuration says so in Finnish, tied to a counter), and its Help asks "Is the TV on? Yes /
-No" (upstairs' tutorial shows it). A build asks after every start and every Help while
-`RemoteAssistant_2` is set - Options' second page switches it, on to begin with - by ending
-the start with a switch on it. No asks about each device the activity turned on and then
-each input it set; No to one sends that device's power or input again - a toggle too, since
-the remote has just been told the device is off - and asks again; the last Yes opens the
-activity.
+**Help.** Upstairs' Help, read with `one-tools/flow.py` (which follows a screen's keys,
+touches and handlers to every screen they enter), re-sends the activity's power and inputs
+under "Attempting to fix the problem... Keep the remote pointed to your system.", then asks
+"Did that fix the problem? If not, the remote will ask you questions to help correct the
+problem." No asks after each device's power and then each input in turn - "Is the AV
+Receiver on?", "Is the TV set to the TV input?" - over the activity's icon, Yes and No the
+softkeys. Yes moves on to the next; No sends it again and asks "Now is ...?", whose Yes asks
+"Did that fix the problem?" (Yes: the activity; No: the next question) and whose No sends it
+again and asks the first question once more. After the last, the activity. Help on any of
+these screens goes back to the activity. Off's Help is the same about each device being off.
+A build generates exactly that: Help's screen, the first question, and four screens per
+question (`ordinals.QUESTION`), the words Logitech's.
+
+**The Remote Assistant.** Upstairs keeps one state for the whole remote (its variable 19,
+0-3, unnamed): 0 never shown, 1 welcomed, 2 shown before, 3 hidden. After an activity
+starts - or is picked again - a switch on it opens a note titled with the activity's name
+and a colon, under "Remote Assistant:": at 0, "If any devices are not set up correctly,
+press "Help" now." (entering it sets 2), OK to the activity; at 1, "The remote has now set
+up your system for this Activity." (also sets 2), OK to that note; at 2, that note, OK to "Do
+you want to hide the Remote Assistant?", whose Yes sets 3 and says "To hide the remote
+assistant, use the software to update the display settings for your remote."; at 3,
+nothing. Off has its own: at 0 or 1, "Welcome to your remote." (OK sets 1), then "Ensure all
+your devices are off. If any devices are still on, press "Help" now."; at 2, that and the
+offer to hide it. Start-up runs Off, so a new remote opens on the welcome. Options' first row
+is a switch on the same state: at 3 it reads "Turn Remote Assistant On" and sets 1, else
+"Turn Remote Assistant Off" and sets 3. A build generates all of it, its state
+`RemoteAssistant_4` (activity_screens.Flow._notes).
 
 **Options and the Tutorial.** Both household donors' Options have two pages: the Remote
 Assistant, the Tutorial and Date and Time, then Screen Sounds and Screen Sensitivity. A
 build with activities lays them out the same; without activities, Options is one page of
-Date and Time, Screen Sounds and Screen Sensitivity. Upstairs' Tutorial (its screens 206-223)
-is a chain of pages each moved on by the key it teaches - the right arrow, Activities, Help,
-Off, touching an activity - with the left arrow back and Exit out, its pictures Logitech's
-photographs of the remote. A build writes its own: eight pages of the catalogue's words,
-the first activity's own row to touch on the second, the keys it teaches bound in each
-page's own list so that pressing Help or Off there teaches rather than does, and Exit back
-to what is running.
+Date and Time, Screen Sounds and Screen Sensitivity. Every donor's Tutorial is the same
+eleven pages (upstairs' screens 218, 219, 215, 216, 208, 209, 206, 207, 211, 222, 223): a
+black screen - its fragment a filled rectangle, not the backdrop - one of Logitech's pictures
+of the remote, the words from the left at x 10 in attribute 14, eleven pixels a line, and
+Exit bottom right. Each is moved on by the key it teaches (the right arrow, Activities,
+Help, Off) or by touching the page, the left arrow back, Exit back to what is running. A
+build generates the same from a page table (options_screens.TUTORIAL: the picture and
+where, where the words start, the keys and touch zones that move on, the labels drawn over
+the picture) with the scaffold's `tutorial/<n>` pictures, which the extractor finds as the
+black-screen pages and orders by their own left arrows, and Logitech's words from the
+catalogue; it adds a small page counter, top right.
 
 **Held steps.** A sequence step held for a duration becomes a record of its own: the
 command's press, then its repeat frame (or the press again) until the hold has lasted that

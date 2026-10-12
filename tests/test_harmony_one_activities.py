@@ -13,8 +13,8 @@ import pytest
 
 from afterglow import ir_signal
 from afterglow.backends.harmony_one import (
-    activities, activity_index, command_index, devices, generate, gspm, keys,
-    options_screens, pages, scaffold, ui_index)
+    activities, activity_index, activity_screens, command_index, devices, generate, gspm,
+    keys, options_screens, pages, scaffold, ui_index)
 
 ENTER, LEAVE, REFRESH = activity_index.ENTER, activity_index.LEAVE, activity_index.REFRESH
 
@@ -201,14 +201,32 @@ def remote():
     return built
 
 
-YES, NO = pages.FIRST_BUTTON_KEY + 4, pages.FIRST_BUTTON_KEY + 5
+# Help's and the Remote Assistant's answers, as upstairs binds them: Yes or OK, and No.
+YES, NO = activity_screens.ANSWER_KEYS
+OK = YES
+
+
+def _answers(machine) -> set[int]:
+    return {entry["key_code"] for entry in machine.screens[machine.mode]["slots"][0]["entries"]}
+
+
+def _past_the_assistant(machine):
+    """Close whatever Remote Assistant note an activity's start shows: OK, and No to
+    hiding it."""
+    for _ in range(3):
+        if _answers(machine) == {OK}:
+            machine.touch(OK)
+        elif _answers(machine) == {YES, NO}:
+            machine.touch(NO)
+        else:
+            return
 
 
 def _start(machine, row):
-    """Start the activity on menu row ``row`` and tell the Remote Assistant it worked."""
+    """Start the activity on menu row ``row`` and close the Remote Assistant's note."""
     machine.enter(scaffold.SYSTEM_SCREENS)
     machine.touch(pages.MENU_ROW_KEYS[row])
-    machine.touch(YES)
+    _past_the_assistant(machine)
 
 
 def _fresh(built):
@@ -228,11 +246,12 @@ def test_an_activity_switches_its_devices_on_sets_their_inputs_and_shows_its_scr
     assert ("wait", 0, 30) in machine.log
     texts = [machine.mode]
     assert machine.mode != scaffold.SYSTEM_SCREENS
-    # picking it again re-sends its inputs and nothing else, and asks nothing
+    # picking it again re-sends its inputs and nothing else
     machine.sent.clear()
     machine.enter(scaffold.SYSTEM_SCREENS)
     machine.touch(pages.MENU_ROW_KEYS[0])
     assert machine.sent == [_command("InputHdmi1"), _command("InputTv", 1)]
+    _past_the_assistant(machine)
     assert machine.mode == texts[0]
 
 
@@ -242,7 +261,7 @@ def test_switching_activities_turns_off_what_the_next_one_does_not_use(remote):
     machine.sent.clear()
     machine.enter(scaffold.SYSTEM_SCREENS)
     machine.touch(pages.MENU_ROW_KEYS[1])                  # Listen to Music
-    machine.touch(YES)
+    _past_the_assistant(machine)
     assert machine.sent == [_command("InputCd", 1), _command("PowerOff")]
 
 
@@ -252,6 +271,7 @@ def test_off_turns_everything_off_and_goes_back_to_the_activities_menu(remote):
     machine.sent.clear()
     machine.press(keys.code(keys.OFF))
     assert sorted(machine.sent) == sorted([_command("PowerOff"), _command("Power", 1)])
+    _past_the_assistant(machine)                          # every device should be off
     assert machine.mode == scaffold.SYSTEM_SCREENS
 
 
@@ -288,7 +308,7 @@ def test_help_resends_what_the_activity_set_but_never_a_toggle(remote):
     # the TV's own power-on and both inputs again; the receiver's toggle would turn it off
     assert machine.sent == [_command("PowerOn"), _command("InputHdmi1"),
                             _command("InputTv", 1)]
-    # then the Remote Assistant asks whether that did it; Yes goes back to the activity
+    # then whether that fixed it; Yes goes back to the activity
     machine.touch(YES)
     assert machine.mode == screen
 
@@ -381,33 +401,89 @@ def test_a_held_step_sends_one_record_held_that_long_and_shows_no_button():
         ui_index.screen_slots(generate.build(plain)["image"]))
 
 
-def test_the_remote_assistant_asks_after_a_start_and_fixes_what_is_not_on(remote):
-    # Logitech's Remote Assistant: after a start, did everything turn on? No asks about
-    # each device and input in turn; No to one sends its power - a toggle too, since the
-    # remote has just been told the device is off - and asks again.
+def test_help_asks_after_each_device_and_input_and_sends_what_is_not_right(remote):
+    # Logitech's Help: after re-sending everything, did that fix it? No asks after each
+    # device's power and then each input in turn; No to one sends it again - a toggle too,
+    # since the remote has just been told the device is off - and asks whether it is now
+    # right, and once it is, whether that fixed the problem.
     machine = _fresh(remote)
-    machine.enter(scaffold.SYSTEM_SCREENS)
-    machine.touch(pages.MENU_ROW_KEYS[0])
+    _start(machine, 0)
+    home = machine.mode
+    machine.press(keys.code(keys.HELP))
     prompt = machine.mode
-    machine.touch(NO)                       # not everything: is the TV on?
-    first = machine.mode
-    assert first != prompt
+    machine.touch(NO)                                     # is the TV on?
+    asked = machine.mode
+    assert asked != prompt
     machine.sent.clear()
-    machine.touch(NO)                       # the TV is not on: its power, asked again
-    assert machine.sent == [_command("PowerOn")] and machine.mode == first
-    machine.touch(YES)                      # is the receiver on?
+    machine.touch(NO)                                     # not on: its power, sent again
+    assert machine.sent == [_command("PowerOn")]
+    now = machine.mode                                    # now is the TV on?
+    machine.sent.clear()
+    machine.touch(NO)                                     # still not: sent again, asked again
+    assert machine.sent == [_command("PowerOn")] and machine.mode not in (asked, now)
+    machine.touch(YES)                                    # did that fix the problem?
+    machine.touch(NO)                                     # no: is the receiver on?
     machine.sent.clear()
     machine.touch(NO)
     assert machine.sent == [_command("Power", 1)]
-    machine.touch(YES)                      # is the TV on HDMI1?
+    machine.touch(YES)
+    machine.touch(NO)                                     # is the TV on HDMI 1?
     machine.sent.clear()
     machine.touch(NO)
     assert machine.sent == [_command("InputHdmi1")]
     machine.touch(YES)
-    machine.touch(YES)                      # the receiver's input: done
-    # back on the activity's own first page, where its buttons are
-    assert pages.FIRST_BUTTON_KEY in {
-        e["key_code"] for e in machine.screens[machine.mode]["slots"][0]["entries"]}
+    machine.touch(YES)                                    # that fixed it: the activity
+    assert machine.mode == home
+    # and Help on any of its screens goes back to the activity too
+    machine.press(keys.code(keys.HELP))
+    machine.touch(NO)
+    machine.press(keys.code(keys.HELP))
+    assert machine.mode == home
+
+
+def test_the_remote_assistant_shows_logitechs_notes_until_it_is_hidden(remote):
+    # Upstairs' Remote Assistant, one state for the remote: the first start notes to press
+    # Help if anything is wrong; every later one the same, and offers to hide it; hidden,
+    # a start goes straight to the activity.
+    machine = _fresh(remote)
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
+    assert _answers(machine) == {OK}                      # press Help if anything is wrong
+    machine.touch(OK)
+    home = machine.mode
+    assert pages.FIRST_BUTTON_KEY in _answers(machine)
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[1])
+    machine.touch(OK)
+    assert _answers(machine) == {YES, NO}                 # hide the Remote Assistant?
+    machine.touch(YES)
+    assert _answers(machine) == {OK}                      # how to hide it
+    machine.touch(OK)
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
+    assert machine.mode == home                           # hidden: no note
+    # Options brings it back as just set up: that note, then the first
+    options = scaffold.SYSTEM_SCREENS + 1
+    machine.enter(options)
+    machine.touch(pages.MENU_ROW_KEYS[0])
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[1])
+    set_up = machine.mode
+    assert _answers(machine) == {OK}
+    machine.touch(OK)
+    assert machine.mode != set_up and _answers(machine) == {OK}
+    machine.touch(OK)
+    assert _answers(machine) not in ({OK}, {YES, NO})    # the activity's own page
+
+
+def test_a_new_remote_starts_on_the_welcome_and_off_notes_every_device_should_be_off(remote):
+    machine = _fresh(remote)                              # start-up runs Off
+    welcome = machine.mode
+    assert welcome != scaffold.SYSTEM_SCREENS and _answers(machine) == {OK}
+    machine.touch(OK)                                     # ensure every device is off
+    assert machine.mode not in (welcome, scaffold.SYSTEM_SCREENS)
+    machine.touch(OK)
+    assert machine.mode == scaffold.SYSTEM_SCREENS
 
 
 def test_options_turns_the_remote_assistant_off(remote):
@@ -417,9 +493,8 @@ def test_options_turns_the_remote_assistant_off(remote):
     machine.touch(pages.MENU_ROW_KEYS[0])  # its first row, as in Logitech's Options
     machine.enter(scaffold.SYSTEM_SCREENS)
     machine.touch(pages.MENU_ROW_KEYS[0])
-    # straight to the activity: its buttons, no question
-    assert pages.FIRST_BUTTON_KEY in {
-        e["key_code"] for e in machine.screens[machine.mode]["slots"][0]["entries"]}
+    # straight to the activity: its buttons, no note
+    assert pages.FIRST_BUTTON_KEY in _answers(machine)
 
 
 FAVOURITES = {**PROJECT, "activities": [dict(
@@ -458,28 +533,24 @@ def test_options_has_logitechs_two_pages_and_the_tutorial_teaches_without_doing(
     assert second != options
     machine.touch(pages.SIDE_NEXT_KEY)
     assert machine.mode == options
-    # the Tutorial, each page moved on by the key it teaches; Help and Off send nothing
+    # the Tutorial, Logitech's eleven pages, each moved on by the key it teaches - Help
+    # and Off send nothing there - or by touching it
     machine.touch(pages.MENU_ROW_KEYS[1])
     seen = [machine.mode]
-    machine.touch(pages.SIDE_NEXT_KEY)                    # right arrow
-    seen.append(machine.mode)
-    machine.touch(pages.MENU_ROW_KEYS[2])                 # touch the first activity
-    seen.append(machine.mode)
-    machine.press(keys.code(keys.ACTIVITIES))
-    seen.append(machine.mode)
-    machine.touch(pages.SIDE_NEXT_KEY)
-    seen.append(machine.mode)
     machine.sent.clear()
-    machine.press(keys.code(keys.HELP))
-    seen.append(machine.mode)
-    machine.touch(pages.SIDE_NEXT_KEY)
-    seen.append(machine.mode)
-    machine.press(keys.code(keys.OFF))
-    seen.append(machine.mode)
-    assert machine.sent == [] and len(set(seen)) == len(options_screens.TUTORIAL)
+    for step in ("next", "next", "activities", 0xB1, "next", "next", "next", "help",
+                 "next", "off"):
+        if step == "next":
+            machine.touch(pages.SIDE_NEXT_KEY)
+        elif isinstance(step, int):
+            machine.touch(step)                           # the picture's Watch TV row
+        else:
+            machine.press(keys.code({"activities": keys.ACTIVITIES, "help": keys.HELP,
+                                     "off": keys.OFF}[step]))
+        seen.append(machine.mode)
+    assert machine.sent == [] and len(set(seen)) == len(options_screens.TUTORIAL) == 11
     machine.touch(pages.SIDE_PREV_KEY)                    # back a page
     assert machine.mode == seen[-2]
-    machine.press(keys.code(keys.OFF))
     machine.touch(pages.PAGE_DEVICES_KEY)                 # Exit
     assert machine.mode == scaffold.SYSTEM_SCREENS  # nothing running: the menu
 

@@ -1519,5 +1519,6 @@ def test_the_remote_assistant_asks_after_an_input_by_the_name_a_person_reads():
     drawn = {item["text"] for screen in ui_index.screen_slots(image)
              for slot in screen["slots"]
              for item in labels.screen_text(image, slot["program_offset"], text)}
-    assert any(line.endswith("HDMI 1?") for line in drawn)
-    assert not any("InputHdmi1?" in line for line in drawn)
+    # "Is the TV set to the HDMI 1 input?", as Logitech's Help asks
+    assert any(line.endswith("set to the HDMI 1") for line in drawn)
+    assert not any("set to" in line and "InputHdmi1" in line for line in drawn)

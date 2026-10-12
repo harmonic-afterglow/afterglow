@@ -154,11 +154,13 @@ FRAME_WIDTH = 81
 SOFTKEY_LEFT_ZONE = {"x": 1257, "width": 1395, "y": 271, "height": 1001}
 SOFTKEY_RIGHT_ZONE = {"x": 2406, "width": 1150, "y": 271, "height": 1001}
 SOFTKEYS = {"options": (22, 202), "activities": (16, 202), "devices": (110, 202),
-            "commands": (16, 202), "favourites": (16, 202), "exit": (110, 202)}
+            "commands": (16, 202), "favourites": (16, 202), "exit": (142, 202),
+            # Help's and the Remote Assistant's answers, as upstairs draws them
+            "yes": (32, 201), "no": (125, 201), "ok": (124, 201)}
 
 
 SOFTKEY_FONTS = {"options": 13, "activities": 6, "devices": 9, "commands": 6,
-                 "favourites": 6, "exit": 9}
+                 "favourites": 6, "exit": 15, "yes": 1, "no": 1, "ok": 1}
 
 
 # The keys each screen binds them to, as upstairs does: the Activities screen's softkeys
@@ -274,6 +276,11 @@ START_TEXT_Y, START_KEEP_TOP = 124, 179
 HELP_TOP, HELP_KEEP_TOP, HELP_SENDING_XY = 43, 162, (57, 95)
 QUESTION_TOP = 70
 LINE_SPACING = 12
+# Help's questions and the Remote Assistant's notes, as upstairs lays them out: the
+# activity's icon where its starting screen has it, a question under it, Help's first
+# question higher with its explanation below; the Remote Assistant's heading and note in
+# the middle of an otherwise empty screen.
+HELP_QUESTION_Y, HELP_PROMPT_Y, ASSISTANT_Y = 137, 119, 99
 
 
 def labeller(fonts: list[dict]):

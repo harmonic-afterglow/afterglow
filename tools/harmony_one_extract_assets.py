@@ -221,6 +221,65 @@ def activity_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     return roles
 
 
+class _Modes:
+    """A configuration's screens as the remote runs them: each one's list rows, the atoms
+    of an object, a timer's record, and the pictures and words its pages draw."""
+
+    def __init__(self, payload: bytes):
+        self.p = payload
+        self.ranges = gspm.section_ranges(payload)
+        self.screens = ui_index.screen_slots(payload)
+        self.count = min(len(self.screens), int.from_bytes(
+            payload[self.ranges[6][0]:self.ranges[6][0] + 2], "little"))
+
+    def u24(self, at):
+        return int.from_bytes(self.p[at:at + 3], "little") - gspm.BASE
+
+    def atoms(self, index):
+        p, at = self.p, self.u24(self.ranges[11][0] + 2 + 3 * index)
+        return [(int.from_bytes(p[at + 1 + 3 * k:at + 3 + 3 * k], "little"), p[at + 3 + 3 * k])
+                for k in range(p[at])]
+
+    def timer(self, index):
+        p, at = self.p, self.u24(self.ranges[13][0] + 1 + 3 * index)
+        return (int.from_bytes(p[at + 1:at + 4], "little"),
+                int.from_bytes(p[at + 4:at + 6], "little"), p[at + 6])
+
+    def rows(self, mode):
+        """The mode's list rows, ``(key, operand, opcode)``."""
+        p = self.p
+        at = self.u24(self.u24(self.ranges[6][0] + 3 + 3 * mode) + 1)
+        if p[at]:
+            return [(p[at + 1 + 4 * k], int.from_bytes(p[at + 2 + 4 * k:at + 4 + 4 * k],
+                                                        "little"), p[at + 4 + 4 * k])
+                    for k in range(p[at])]
+        return [(p[at + 3 + 5 * k], int.from_bytes(p[at + 4 + 5 * k:at + 6 + 5 * k], "little"),
+                 p[at + 6 + 5 * k]) for k in range(p[at + 1])]
+
+    def entered(self, mode, key):
+        """The screen ``key`` opens from ``mode``, directly or through an object."""
+        for row_key, operand, opcode in self.rows(mode):
+            if row_key != key:
+                continue
+            if opcode == 0x7E:
+                return operand
+            if opcode == 0x7F:
+                for value, code in self.atoms(operand):
+                    if code == 0x7E:
+                        return value
+        return None
+
+    def page(self, mode, *, prologue=False):
+        """What the screen's first page draws, in order; with ``prologue``, what the
+        fragment it calls draws too."""
+        roots = [self.screens[mode]["slots"][0]["program_offset"]]
+        listing = ui_index.drawing_program(self.p, roots[0])["instructions"]
+        if prologue:
+            return [item for block in drawing.program_blocks(self.p, roots).values()
+                    for item in block]
+        return listing
+
+
 def charging_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     """Name the pictures the remote shows while it charges: a battery, then photographs.
 
@@ -229,51 +288,24 @@ def charging_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     followed from the screens' own handlers, so the pictures are named in the order the
     remote shows them - `charging/battery`, then `charging/photo-1` onwards.
     """
-    p = payload
-    ranges = gspm.section_ranges(p)
-
-    def u24(at):
-        return int.from_bytes(p[at:at + 3], "little") - gspm.BASE
-
-    def atoms(index):
-        at = u24(ranges[11][0] + 2 + 3 * index)
-        return [(int.from_bytes(p[at + 1 + 3 * k:at + 3 + 3 * k], "little"), p[at + 3 + 3 * k])
-                for k in range(p[at])]
-
-    def timer(index):
-        at = u24(ranges[13][0] + 1 + 3 * index)
-        return (int.from_bytes(p[at + 1:at + 4], "little"),
-                int.from_bytes(p[at + 4:at + 6], "little"), p[at + 6])
-
-    def rows(at):
-        if p[at]:
-            return [(p[at + 1 + 4 * k], int.from_bytes(p[at + 2 + 4 * k:at + 4 + 4 * k],
-                                                        "little"), p[at + 4 + 4 * k])
-                    for k in range(p[at])]
-        return [(p[at + 3 + 5 * k], int.from_bytes(p[at + 4 + 5 * k:at + 6 + 5 * k], "little"),
-                 p[at + 6 + 5 * k]) for k in range(p[at + 1])]
-
-    screens = ui_index.screen_slots(p)
-    count = int.from_bytes(p[ranges[6][0]:ranges[6][0] + 2], "little")
+    modes = _Modes(payload)
     pictures, following = {}, {}
-    for mode in range(min(count, len(screens))):
-        drawn = [item for block in drawing.program_blocks(
-                     p, [slot["program_offset"] for slot in screens[mode]["slots"]]).values()
-                 for item in block if item["opcode"] in ("bitmap", "text", "inline_text")]
+    for mode in range(modes.count):
+        drawn = [item for item in modes.page(mode, prologue=True)
+                 if item["opcode"] in ("bitmap", "text", "inline_text")]
         if len(drawn) != 1 or drawn[0]["opcode"] != "bitmap" \
                 or (drawn[0]["x"], drawn[0]["y"]) != (0, 0):
             continue
-        shape = bitmap.decode(p, drawn[0]["target"])
+        shape = bitmap.decode(payload, drawn[0]["target"])
         if (shape["width"], shape["height"]) != (176, 220):
             continue
         pictures[mode] = drawn[0]["target"]
-        entry = u24(ranges[6][0] + 3 + 3 * mode)
-        for key, operand, opcode in rows(u24(entry + 1)):
+        for key, operand, opcode in modes.rows(mode):
             if key != scaffold.ENTER or opcode != 0x7F:
                 continue
-            for value, code in atoms(operand):
+            for value, code in modes.atoms(operand):
                 if code == 0x1F and value >> 8 == 0xEB:
-                    duration, target, kind = timer(value & 0xFF)
+                    duration, target, kind = modes.timer(value & 0xFF)
                     if kind == 0x7E:
                         following[mode] = (target, duration)
     rings = []
@@ -293,6 +325,44 @@ def charging_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
     names = ["charging/battery"] + [f"charging/photo-{n}" for n in range(1, len(ring))]
     return {name: pictures[mode] for name, mode in zip(names, ring)
             if pictures[mode] not in taken}
+
+
+# The keys a Tutorial page is turned with: the side strips.
+_PREVIOUS, _NEXT = 0xAE, 0xAF
+
+
+def tutorial_picture_roles(payload: bytes, taken: set[int]) -> dict[str, int]:
+    """Name the Tutorial's pictures, page by page: `tutorial/1` onwards.
+
+    A Tutorial page is the one kind of screen drawn on a blank black screen - its fragment
+    fills the screen with black rather than drawing the backdrop - with one picture of the
+    remote. The pages are put in order by their own left strips, each going back to the
+    page before; the first goes back to none.
+    """
+    modes = _Modes(payload)
+    pages = {}
+    for mode in range(modes.count):
+        listing = modes.page(mode)
+        if not listing or listing[0]["opcode"] != "call":
+            continue
+        fragment = ui_index.drawing_program(payload, listing[0]["target"])["instructions"]
+        if not fragment or fragment[0]["opcode"] != "rectangle" or (
+                fragment[0]["width"], fragment[0]["height"], fragment[0]["color"]) != (
+                176, 220, 0):
+            continue
+        drawn = [item["target"] for item in listing if item["opcode"] == "bitmap"]
+        if len(drawn) == 1:
+            pages[mode] = drawn[0]
+    back = {mode: modes.entered(mode, _PREVIOUS) for mode in pages}
+    firsts = [mode for mode in pages if back[mode] not in pages]
+    if len(firsts) != 1:
+        return {}
+    order, mode = [], firsts[0]
+    while mode is not None and mode not in order:
+        order.append(mode)
+        mode = next((other for other in pages if back[other] == mode), None)
+    return {f"tutorial/{number}": pages[mode] for number, mode in enumerate(order, 1)
+            if pages[mode] not in taken}
 
 
 def activity_frame_roles(payload: bytes) -> dict[str, int]:
@@ -800,6 +870,7 @@ def main() -> int:
     roles.update(system_picture_roles(payload, set(roles.values())))
     roles.update(activity_picture_roles(payload, set(roles.values())))
     roles.update(charging_picture_roles(payload, set(roles.values())))
+    roles.update(tutorial_picture_roles(payload, set(roles.values())))
     for role, target in sorted(roles.items()):
         name = f"images/{role}.png"
         pictures[role] = {"file": name, **write_picture(payload, target, args.directory / name)}

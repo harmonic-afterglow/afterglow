@@ -82,7 +82,8 @@ LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
 ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
-# The firmware's charging events: charging stops, charging starts, a charging problem.
+# The firmware's charging events (gspm.md, "Where the events come from"): external power
+# removed and connected - lifted off the cradle and set on it - and a charger fault.
 CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
 REDRAW = 0x2D
 # The battery events each charge context answers, as all three donors' contexts 0, 5, 6.
