@@ -60,6 +60,7 @@ def remote_lua(tmp_path_factory):
     shutil.copy(STUBS / "env_svc.lua", root / "lua" / "env_svc.lua")
     shutil.copy(STUBS / "lxp" / "lom.lua", root / "lua" / "lxp" / "lom.lua")
     shutil.copy(STUBS / "run.lua", root / "run.lua")
+    shutil.copy(STUBS / "help.lua", root / "help.lua")
     return root, lua
 
 
@@ -128,3 +129,36 @@ def test_a_device_that_can_only_cycle_its_inputs_boots(remote_lua, build, tmp_pa
     """With its input names it is written as Logitech writes it; without them - a project
     from before they were kept - the cycle is left out rather than crash the remote."""
     assert_answers(boot(remote_lua, build(_cycling(values)), tmp_path), "cycling device")
+
+
+def test_help_asks_after_each_device_and_input_an_activity_sets(remote_lua, build, tmp_path):
+    """The 900's Help is the firmware's: it reads the activity's power-on list and the
+    states its start sets, re-sends them and asks about each. A project made here gives
+    it all of that, the same as an imported one."""
+    from afterglow import ir_signal
+
+    def nec(address, command):
+        return ir_signal.protocol_signal("nec1", {"address": address, "command": command})
+
+    def device(did, label, kind, address, names, **extra):
+        return {"schema": "afterglow-project-device/1", "id": did, "label": label,
+                "type": kind, "mfr": "Test", "model": label,
+                "commands": [[name, name, "", "", None] for name in names],
+                "signals": {name: nec(address, n + 1) for n, name in enumerate(names)},
+                **extra}
+    tv = device("1", "TV", "Television", 4, ["PowerOn", "PowerOff", "InputHdmi1", "InputHdmi2"],
+                power_on_cmd="PowerOn", power_off_cmd="PowerOff",
+                inputs=[["HDMI 1", "InputHdmi1"], ["HDMI 2", "InputHdmi2"]])
+    amp = device("2", "Receiver", "Amplifier", 11, ["PowerToggle", "InputCd", "InputTv"],
+                 power_cmd="PowerToggle", inputs=[["CD", "InputCd"], ["TV", "InputTv"]])
+    config = build({"settings": {}, "devices": [tv, amp], "activities": [{
+        "id": "1", "label": "Watch TV", "type": "VirtualTelevisionN", "display": "1",
+        "volume": "2", "control": "1", "power_on_devices": ["1", "2"],
+        "enter": [["input", "1", "HDMI 1"], ["input", "2", "TV"]]}]})
+    root, lua = remote_lua
+    tree = tmp_path / "help"
+    with contextlib.redirect_stdout(io.StringIO()):
+        ezhex.unpack(str(config), str(tree))
+    asked = subprocess.run([lua, "help.lua", str(tree), "1"], cwd=root, capture_output=True,
+                           text=True, errors="replace", timeout=120).stderr.splitlines()
+    assert asked == ["1 Power On", "1 Input HDMI 1", "2 Power On", "2 Input TV"]
