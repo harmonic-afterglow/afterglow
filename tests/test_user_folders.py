@@ -40,6 +40,15 @@ def test_each_themed_remote_gets_an_example_that_is_never_offered():
         assert themes.path("harmony-one", "../Mario") is None
         # and it is not copied again
         assert themes.seed_examples() == []
+        # unless the scaffold has changed since: then it is replaced, and the owner's
+        # copy is left alone
+        (example / themes.STAMP).write_text("an older scaffold\n")
+        (example / "images" / "backdrop.png").unlink()
+        notes = themes.seed_examples()
+        assert notes and notes[0].startswith("updated")
+        assert (example / "images" / "backdrop.png").is_file()
+        assert themes.seed_examples() == []
+        assert themes.names("harmony-one") == ["Mario"]
         # only a remote whose profile offers themes gets a folder
         assert not themes.folder("harmony-900").exists()
     finally:

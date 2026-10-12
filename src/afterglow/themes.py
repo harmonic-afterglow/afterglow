@@ -6,12 +6,15 @@ remote's profile's to say (`interface.settings` lists "theme"); nothing here nam
 
 Each such remote's folder is given an `Example`: the shipped scaffold, copied in so there
 is something to copy and change. It is a starting point, not a choice: it draws exactly
-what the default does, so it is never offered, and it is put back if it goes missing. A
+what the default does, so it is never offered, and it is put back if it goes missing - or
+replaced when the scaffold has changed since, so a copy made from it has every picture the
+default draws. Changes made to `Example` itself are therefore not kept. A
 project names its theme by folder name, so a project moved to another computer finds the
 theme of that name there.
 """
 from __future__ import annotations
 
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -20,6 +23,8 @@ from . import paths
 EXAMPLE = "Example"
 # A folder is a theme when it has the scaffold's asset manifest.
 MANIFEST = "assets.json"
+# In an example: which scaffold it was copied from, as its fingerprint.
+STAMP = ".afterglow-example"
 
 
 def themed_remotes() -> list:
@@ -52,20 +57,39 @@ def path(remote_id: str, name: str) -> Path | None:
     return candidate if (candidate / MANIFEST).is_file() else None
 
 
+def fingerprint(scaffold: Path) -> str:
+    """Every file of a scaffold, by path and contents."""
+    digest = hashlib.sha256()
+    for item in sorted(scaffold.rglob("*")):
+        if item.is_file() and "__pycache__" not in item.parts:
+            digest.update(item.relative_to(scaffold).as_posix().encode() + b"\0")
+            digest.update(hashlib.sha256(item.read_bytes()).digest())
+    return digest.hexdigest()
+
+
 def seed_examples() -> list[str]:
-    """Copy each themed remote's scaffold in as its `Example`, where it is missing."""
+    """Copy each themed remote's scaffold in as its `Example` where it is missing, and
+    again where the scaffold has changed since it was copied."""
     from .build_service import find_scaffold
 
     notes = []
     for profile in themed_remotes():
         scaffold = find_scaffold(profile.id)
-        target = folder(profile.id) / EXAMPLE
-        if scaffold is None or (target / MANIFEST).is_file():
+        if scaffold is None:
             continue
+        target = folder(profile.id) / EXAMPLE
+        wanted = fingerprint(Path(scaffold))
+        stamp = target / STAMP
+        present = (target / MANIFEST).is_file()
         try:
-            shutil.copytree(scaffold, target, dirs_exist_ok=True)
+            if present and stamp.is_file() and stamp.read_text("utf-8").strip() == wanted:
+                continue
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(scaffold, target, ignore=shutil.ignore_patterns("__pycache__"))
+            stamp.write_text(wanted + "\n", "utf-8")
         except OSError as exc:
             notes.append(f"could not copy the example theme to {target}: {exc}")
             continue
-        notes.append(f"copied an example theme to {target}")
+        notes.append(f"{'updated' if present else 'copied'} the example theme in {target}")
     return notes

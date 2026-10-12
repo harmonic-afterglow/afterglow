@@ -4,9 +4,9 @@ context in section 10, decided before any of them is drawn.
 A screen's ordinal is its position in section 6, not its emission order, so every page's
 ordinal can be assigned first and a navigation can name a page that has not been emitted
 yet. The order is the hub's: Activities (the home screen), Options and the screens
-carried behind it, the device menu, each device's command pages, the rest of the
-Activities menu, each activity's screens, then Help with nothing running, Options' second
-page and the Tutorial.
+carried behind it, the charging screens, the device menu, each device's command pages,
+the rest of the Activities menu, each activity's screens, then Help with nothing running,
+Options' second page and the Tutorial.
 
 Format reference: docs/harmony_one/gspm.md
 """
@@ -25,6 +25,7 @@ class Ordinals:
     home: int | None = None             # Activities, the first screen the image owns
     options: int | None = None
     carried: int | None = None          # the first carried screen behind Options
+    charging: list[int] = field(default_factory=list)   # the battery, then its photos
     first_menu: int = 0                 # the device menu's first page
     menu: list[int] = field(default_factory=list)
     commands: dict[int, list[int]] = field(default_factory=dict)   # by device index
@@ -39,16 +40,21 @@ class Ordinals:
     off_context: int = CHARGE_CONTEXTS["low"] + 1
 
 
-def hub(*, platform: int, hub: bool, carried_modes: int | None) -> Ordinals:
+def hub(*, platform: int, hub: bool, carried_modes: int | None, charging: int = 0) -> Ordinals:
     """The hub's own screens, which the carried screens name before anything else is
-    numbered. ``carried_modes`` is how many screens Options carries, None without Options."""
+    numbered. ``carried_modes`` is how many screens Options carries, None without Options;
+    ``charging`` how many charging screens the idle layer shows, which it names too."""
     carried = carried_modes is not None
     out = Ordinals(platform=platform)
     out.home = platform if hub else None
-    # Options, and the screens carried behind it, come straight after Activities.
+    # Options, and the screens carried behind it, come straight after Activities; then
+    # the charging screens, which only an image with the idle layer has.
     out.options = platform + 1 if carried else None
     out.carried = platform + 2 if carried else None
-    out.first_menu = platform + (1 if hub else 0) + (1 + carried_modes if carried else 0)
+    first_charging = platform + 2 + carried_modes if carried else None
+    out.charging = list(range(first_charging, first_charging + charging)) if carried else []
+    out.first_menu = (platform + (1 if hub else 0) + (1 + carried_modes if carried else 0)
+                      + len(out.charging))
     return out
 
 

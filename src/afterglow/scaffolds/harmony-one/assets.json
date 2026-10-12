@@ -396,6 +396,38 @@
         50
       ]
     },
+    "charging/battery": {
+      "file": "images/charging/battery.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
+    "charging/photo-1": {
+      "file": "images/charging/photo-1.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
+    "charging/photo-2": {
+      "file": "images/charging/photo-2.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
+    "charging/photo-3": {
+      "file": "images/charging/photo-3.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
     "options/button-frame/0": {
       "file": "images/options/button-frame/0.png",
       "mode": "raw",

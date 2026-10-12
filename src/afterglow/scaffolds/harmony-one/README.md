@@ -14,11 +14,17 @@ and is the only place names, sizes and glyph positions are declared.
     images/status/progress*.png      88x10   the bar at (88,19)
     images/options/button-frame/0..5.png  81x50  the green buttons of Date and Time
     images/options/row-frame/0..2.png    164x50  the green rows of Options
+    images/charging/battery.png     176x220  shown while the remote charges, then...
+    images/charging/photo-1..3.png  176x220  ...each photo in turn, round again
     fonts/galmuri/Galmuri9.bdf.gz, Galmuri7.bdf.gz   the typeface every slot is drawn from
     fonts/font.ttf                           optional: your own font for all text
 
 A picture the manifest does not name is not loaded; one it names but that is missing is an
 error rather than a silent omission.
+
+The charging screens are the battery for five seconds, then each `charging/photo-<n>` for
+one, numbered from 1; to show fewer photos or more, remove or add them in `assets.json`
+too. Without `charging/battery` the remote shows nothing while it charges.
 
 ## Row icons
 

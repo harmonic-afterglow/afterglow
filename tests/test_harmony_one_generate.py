@@ -16,22 +16,23 @@ from afterglow import ir_signal, paths
 from afterglow import po
 from afterglow.backends.harmony_one.catalogue import ENGLISH
 from afterglow.backends.harmony_one import (
-    activity_index, assets, bitmap, command_index, devices, drawing, firmware_screens,
+    activity_index, assets, bitmap, charging, command_index, devices, drawing, firmware_screens,
     font_index, generate, gspm, idle, key_index, named_index, pages, pictures, scaffold,
     structures, ui_index)
 
 
 SCAFFOLD = paths.scaffolds("harmony-one")
 
-# Activities, then Options and the screens carried behind it, then the device list; the
-# idle machine is built into the Options model's namespace.
+# Activities, then Options and the screens carried behind it, then the charging screens,
+# then the device list; the idle machine is built into the Options model's namespace.
 _LOADED = assets.load(SCAFFOLD)
 FONTS = [generate.font_from_scaffold(_LOADED["fonts"][role]) for role in sorted(_LOADED["fonts"])]
 OPTIONS_MODEL = generate.options_model(FONTS, generate.build_stamp()[-1])
-CARRIED = (idle.attach(OPTIONS_MODEL, firmware_screens.load_system())
+CHARGING = len(charging.roles(_LOADED["pictures"])) if OPTIONS_MODEL is not None else 0
+CARRIED = (idle.attach(OPTIONS_MODEL, firmware_screens.load_system(), CHARGING)
            if OPTIONS_MODEL is not None else None)
 HOME, OPTIONS = scaffold.SYSTEM_SCREENS, scaffold.SYSTEM_SCREENS + 1
-MENU = HOME + 1 + ((1 + len(CARRIED["modes"])) if CARRIED else 0)
+MENU = HOME + 1 + ((1 + len(CARRIED["modes"])) if CARRIED else 0) + CHARGING
 
 
 def test_a_configuration_can_be_built_from_nothing():
@@ -1141,9 +1142,11 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     assert all(machine.lights[channel] == idle.KEY_LEVEL for channel in idle.KEYPAD)
     events = {row["key_code"]: (row["operand"], row["category"])
               for row in contexts[scaffold.EVENT_CONTEXT]["rows"]}
-    # the firmware's events, and the two keys the flow owns: Activities and Off
+    # the firmware's events - charging's among them - and the two keys the flow owns:
+    # Activities and Off
     assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF,
-                           0x80 | 34, 0x80 | 37}
+                           idle.CHARGING_STOPPED, idle.CHARGING_STARTED,
+                           idle.CHARGING_PROBLEM, 0x80 | 34, 0x80 | 37}
 
     machine = _Idle(image)
     machine.run(wake)

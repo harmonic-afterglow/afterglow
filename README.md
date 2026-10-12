@@ -114,7 +114,8 @@ folder each. Afterglow puts an `Example` there the first time it starts: it is t
 Afterglow ships, to start from.
 
 1. Copy `Example` and give the copy a name of your own - `Example` itself is never
-   offered, and is put back if it goes missing.
+   offered, is put back if it goes missing, and is replaced whenever Afterglow's own look
+   changes, so anything changed in it is lost.
 2. Change its pictures (PNG files under `images/`), its font (save a TrueType font as
    `fonts/font.ttf`; a letter it lacks comes from the default font) and its text colours
    (`assets.json`). Its own `README.md` says what each file is.
