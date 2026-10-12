@@ -12,6 +12,8 @@ waveform signals work with any backend able to reproduce their meaning.
 """
 from __future__ import annotations
 
+import re
+
 from copy import deepcopy
 
 from . import ir_signal
@@ -85,6 +87,25 @@ def is_portable(device: dict) -> bool:
     except (TypeError, ValueError):
         return False
     return True
+
+
+# Abbreviations an input's command spells as a word ("InputHdmi1"), as Logitech's
+# input names write them ("HDMI 1").
+_INPUT_WORDS = {word.casefold(): word for word in (
+    "AV", "TV", "HDMI", "DVI", "VGA", "USB", "PC", "RGB", "CD", "DVD", "VCR", "FM", "AM",
+    "AUX", "DTV", "ATV", "BD", "LAN", "DVR", "SAT", "CBL", "MD", "DAB", "HD", "SD", "S")}
+
+
+def input_label(name: str) -> str:
+    """An input as a person reads it: a command name like `InputHdmi1` becomes `HDMI 1`
+    and `InputComponent` `Component`; anything else - `HDMI 1`, `Netflix` - is already
+    one, and stays as it is."""
+    match = re.fullmatch(r"Input([A-Z][A-Za-z]*?)(\d*)", name or "")
+    if not match:
+        return name
+    words = re.findall(r"[A-Z][a-z]*", match[1])
+    spelled = " ".join(_INPUT_WORDS.get(word.casefold(), word) for word in words)
+    return f"{spelled} {match[2]}".strip() if match[2] else spelled
 
 
 def input_names(device: dict) -> list[str]:

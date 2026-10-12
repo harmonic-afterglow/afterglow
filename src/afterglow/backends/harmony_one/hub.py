@@ -19,16 +19,18 @@ from .structures import OBJECT_ATOM
 
 def device_pages(devices: list[dict], frames, roles, font) -> dict[int, list]:
     """Each device's command pages, six commands a page, by device index - when there is a
-    font to label them with and a frame to draw them on. A held code an activity sends
-    has a record but no button."""
+    font to label them with and a frame to draw them on. A command on one of the device's
+    keys, one with no label and a held code an activity sends have a record but no button,
+    as on Logitech's pages; a device with no button left still has its one page, which is
+    where its keys are bound."""
     out = {}
     if not (all(role in roles for role in frames.buttons) and font is not None):
         return out
     for device in devices:
         commands = [command for command in device["commands"] if not command.get("hidden")]
-        for first in range(0, len(commands), len(BUTTON_POSITIONS)):
-            out.setdefault(device["index"], []).append(
-                commands[first:first + len(BUTTON_POSITIONS)])
+        out[device["index"]] = [commands[first:first + len(BUTTON_POSITIONS)]
+                                for first in range(0, len(commands), len(BUTTON_POSITIONS))
+                                ] or [[]]
     return out
 
 

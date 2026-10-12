@@ -204,17 +204,23 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
         if len(signals) > 0xFF:
             raise ValueError(
                 f"device {label!r} has {len(signals)} commands; an ordinal is one byte")
-        # The keys each command is bound to, from the project's own hard slots.
-        slots = {}
+        # The keys each command is bound to, from the project's own hard slots, and the
+        # commands with no label - ones a device's pages never show.
+        slots, unlabelled = {}, set()
         for entry in device.get("commands") or []:
             if len(entry) > 4 and entry[4]:
                 slots[entry[0]] = entry[4] if isinstance(entry[4], list) else [entry[4]]
+            if len(entry) > 1 and entry[1] == "":
+                unlabelled.add(entry[0])
         commands = []
         for ordinal, (name, signal) in enumerate(sorted(signals.items())):
             lowered = ir_lowering.lower(signal, library=library)
             commands.append({
                 "name": name,
                 "keys": slots.get(name, []),
+                # As Logitech's pages: a key's own command is pressed there, not on a page.
+                **({"hidden": True} if name in unlabelled or any(
+                    keys.is_own_command(key, name) for key in slots.get(name, ())) else {}),
                 "command_id": (index << 8) | ordinal,
                 "carrier_period_ns": lowered.carrier_period_ns,
                 "carrier_half_period_ns": lowered.carrier_half_period_ns,

@@ -41,7 +41,10 @@ def test_every_label_a_build_draws_reads_back_by_the_shape_of_its_glyphs(built):
     assert text.unknown == 0
     for device in PROJECT["devices"]:
         assert device["label"] in drawn
-        assert {name for name in device["signals"] if len(name) < 9} <= drawn
+        # a command on a key is not on the device's pages, as on Logitech's
+        keyed = {entry[0] for entry in device.get("commands") or [] if entry[4]}
+        assert {name for name in device["signals"]
+                if len(name) < 9 and name not in keyed} <= drawn
     assert {"Watch TV", "Listen to Music"} <= drawn
 
 
@@ -81,8 +84,10 @@ def test_a_device_comes_back_with_its_names_power_inputs_and_keys(built, tmp_pat
     project = _imported(built["image"], tmp_path)
     tv, amp = project["devices"]
     assert (tv["label"], amp["label"]) == ("Living Room TV", "Receiver")
-    # every command a page shows is named by its button; held codes have no button
-    source = {name for name in PROJECT["devices"][0]["signals"]}
+    # every command a page shows is named by its button; one on a key is on no page, as
+    # on Logitech's, and is named by its key; held codes have no button
+    keyed = {entry[0]: entry[4] for entry in PROJECT["devices"][0]["commands"] if entry[4]}
+    source = {keyed.get(name, name) for name in PROJECT["devices"][0]["signals"]}
     assert source <= set(tv["signals"])
     assert (tv["power_on_cmd"], tv["power_off_cmd"], tv["power_delay"]) == (
         "PowerOn", "PowerOff", 3000)
@@ -92,9 +97,12 @@ def test_a_device_comes_back_with_its_names_power_inputs_and_keys(built, tmp_pat
     # a device page's physical keys, as the project's hard slots
     slots = {entry[0]: entry[4] for entry in tv["commands"]}
     assert slots["VolumeUp"] == ["VolumeUp"]
-    assert slots["Mute"] == ["VolumeMute"]
-    assert slots["1"] == ["Number1"]
+    assert slots["VolumeMute"] == ["VolumeMute"]
+    assert slots["Number1"] == ["Number1"]
     assert slots["PowerOn"] is None
+    # and only what a page shows keeps a label
+    labels = {entry[0]: entry[1] for entry in tv["commands"]}
+    assert (labels["Guide"], labels["PowerOn"], labels["Number1"]) == ("", "PowerOn", "")
 
 
 def test_an_activity_comes_back_with_what_it_turns_on_sets_binds_and_shows(built, tmp_path):
@@ -107,7 +115,8 @@ def test_an_activity_comes_back_with_what_it_turns_on_sets_binds_and_shows(built
     assert (watch["control"], watch["volume"]) == (tv, amp)
     # the keys the roles route, and the one bound on purpose
     assert {"VolumeUp", "Guide", "Info"} <= set(watch["bound_keys"])
-    assert watch["hard_macros"] == {"Info": [["command", tv, "1"], ["command", tv, "2"]]}
+    assert watch["hard_macros"] == {"Info": [["command", tv, "Number1"],
+                                             ["command", tv, "Number2"]]}
     assert watch["soft_buttons"] == [
         ["Guide", tv, "Guide"],
         {"label": "Movie", "macro": [["command", tv, "Menu"], ["delay", tv, 500],
@@ -129,8 +138,10 @@ def test_a_favourite_channel_comes_back_dialled_and_confirmed(tmp_path):
 
 
 def _comparable(project: dict) -> dict:
+    # a build numbers commands in name order, so a command renamed after its key moves
     return {
-        "devices": [{key: device.get(key) for key in (
+        "devices": [{key: sorted(device[key]) if key == "commands" else device.get(key)
+                     for key in (
             "label", "commands", "power_cmd", "power_on_cmd", "power_off_cmd", "power_delay",
             "inputs", "input_cycle", "press_interkey")} for device in project["devices"]],
         "activities": [{key: value for key, value in activity.items() if key != "id"}
@@ -230,3 +241,18 @@ def test_an_activity_s_display_is_the_device_it_switches_on_that_shows_a_picture
     imported = _imported(generate.build(project)["image"], tmp_path)
     tv = imported["devices"][0]["id"]
     assert imported["activities"][0]["display"] == tv
+
+
+def test_a_build_s_look_alikes_are_read_in_their_own_font_not_by_other_fonts_codes(tmp_path):
+    # A build numbers each font's characters from 1, so a code another font reads alone
+    # says nothing about this one: "One" in a title once read "ane", and "PwrOff" "Pwrwff".
+    from test_harmony_one_activities import _nec
+
+    names = ("PwrOff", "PwrOn", "Xbox360Guide", "View", "A", "B")
+    project = {"devices": [{"id": "x", "label": "Xbox One", "type": "GameConsole",
+                            "signals": {name: _nec(9, n) for n, name in enumerate(names)},
+                            "commands": [[name, name, "", "", None] for name in names]}]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    [device] = imported["devices"]
+    assert device["label"] == "Xbox One"
+    assert set(names) <= set(device["signals"])

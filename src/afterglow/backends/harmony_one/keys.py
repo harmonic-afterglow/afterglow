@@ -27,6 +27,22 @@ COMMAND_KEYS = tuple(name for name, scan in SCANS.items()
                      if scan not in (ACTIVITIES, OFF, HELP))
 
 
+# Names a key's own command goes by in Logitech's database besides the key's: the digits
+# are "1" to "0", mute is "Mute" (gspm.md, "A page you can press").
+_OWN_NAMES = {**{f"Number{digit}": (str(digit),) for digit in range(10)},
+              "VolumeMute": ("Mute",), "NumberEnter": ("Enter",)}
+
+
+def is_own_command(key: str, command: str) -> bool:
+    """Whether ``command`` is the one ``key`` is for - VolumeUp on VolumeUp, 1 on Number1,
+    a device's NextTrack on SkipForward - rather than one put on it in its place, as
+    Return on Exit is. Logitech's device pages leave out only the first kind."""
+    from ...project_devices import KEY_STAND_INS
+
+    return (command == key or command in _OWN_NAMES.get(key, ())
+            or command in KEY_STAND_INS.get(key, ()))
+
+
 def code(scan: int) -> int:
     """The key code a list or context row binds a scan code by."""
     return 0x80 | scan

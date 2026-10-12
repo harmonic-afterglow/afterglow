@@ -105,10 +105,12 @@ class Text:
         self.logitech = bool(drawn) and sum(item in logitech for item in drawn) * 2 > len(drawn)
         self.candidates = [{code: shapes[glyph["shape"]] for code, glyph in font["glyphs"].items()
                             if glyph["shape"] in shapes} for font in fonts]
-        self.fonts, self.shared = read_fonts(self.candidates)
+        # Logitech numbers characters across the whole image, so a code read alone in one
+        # font settles it in all; a build numbers each font's from 1, so it settles nothing.
+        self.fonts, self.shared = read_fonts(self.candidates, image_wide=self.logitech)
         for font, read in zip(fonts, self.fonts):
             _read_accents(payload, font, read)
-        layout = glyph_codec.inspect(payload)
+        layout = glyph_codec.inspect(payload) if self.logitech else {"error": "per font"}
         self.layout = {} if layout.get("error") else dict(layout["code_to_character"])
         self.unknown = 0
         self.inferred = 0
@@ -155,7 +157,8 @@ def _by_neighbours(characters: str, before: str, following: str) -> str:
     and what the next glyph may be."""
     after = following if len(following) == 1 else ""
     digits = [character for character in characters if character.isdigit()]
-    if digits and not before.isalpha() and not after.isalpha():
+    # among digits - "360" - or with no letter beside it, a look-alike is a digit
+    if digits and (before.isdigit() or not (before.isalpha() or after.isalpha())):
         return digits[0]
     letters = [character for character in characters if character.isalpha()] or list(characters)
     if before.isalpha() or after.isalpha():
@@ -169,9 +172,15 @@ def _by_neighbours(characters: str, before: str, following: str) -> str:
     return letters[0]
 
 
-def read_fonts(candidates: list[dict[int, str]]) -> tuple[list[dict[int, str]], dict[int, str]]:
+def read_fonts(candidates: list[dict[int, str]], *, image_wide: bool = True
+               ) -> tuple[list[dict[int, str]], dict[int, str]]:
     """Each font's codes as characters, from the characters each code's shape may be.
-    The second result is what a code is in every font that can read it alone."""
+    The second result is what a code is in every font that can read it alone. Only where
+    codes are ``image_wide`` does one font's reading settle another's look-alikes; where
+    each font numbers its own, a look-alike is left to its neighbours (``decode``)."""
+    if not image_wide:
+        return [{code: characters for code, characters in table.items()
+                 if len(characters) == 1} for table in candidates], {}
     votes: dict[int, Counter] = defaultdict(Counter)
     for table in candidates:
         for code, characters in table.items():
