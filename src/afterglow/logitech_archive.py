@@ -388,6 +388,43 @@ def parse_pronto(text: str) -> dict:
     }
 
 
+RAW_RE = re.compile(r"F(?P<carrier>[0-9A-F]{4})(?P<pairs>(?:P[0-9A-F]+S[0-9A-F]+)+)")
+
+
+def parse_logitech_raw(text: str) -> dict:
+    """Decode a command learned in Logitech's software, which keeps no protocol, only
+    what it captured: `F` and the carrier in hertz, then each mark (`P`) and space (`S`)
+    in microseconds - all hexadecimal, four digits, or eight for a space too long for
+    four. The whole capture is one frame, sent again while the key is held."""
+    match = RAW_RE.fullmatch(text.strip())
+    if not match:
+        raise ArchiveError("learned command is not Logitech's F/P/S timings")
+    durations = [int(value, 16) for value in re.findall(r"[PS]([0-9A-F]+)",
+                                                        match.group("pairs"))]
+    if any(duration == 0 for duration in durations):
+        raise ArchiveError("learned command has a zero duration")
+    pulses = [value if index % 2 == 0 else -value for index, value in enumerate(durations)]
+    return {"carrier_hz": int(match.group("carrier"), 16), "pulses_us": pulses,
+            "sections": {"intro_pulses": 0, "repeat_pulses": len(pulses)}}
+
+
+def _learned(relative: str, command: dict) -> dict:
+    """A command with no protocol: its learned timings as a waveform, if it has them."""
+    item = {"name": command.get("name"), "protocol": None,
+            "source": _source(relative, command)}
+    try:
+        parsed = parse_logitech_raw(command.get("raw") or "")
+    except ArchiveError as exc:
+        return {**item, "classification": "corrupt-source",
+                "reason": f"command has no key code: {exc}"}
+    return {**item, "classification": "waveform-only",
+            "reason": "learned in Logitech's software: the timings it captured",
+            "signal": ir_signal.waveform(
+                parsed["pulses_us"], name=command.get("name", ""),
+                carrier_hz=parsed["carrier_hz"], sections=parsed["sections"],
+                provenance={"kind": "learned", "source": "logitech-raw"})}
+
+
 def _keycode_groups(keycode: str) -> dict[str, list[str]]:
     match = KEYCODE_RE.match(keycode)
     if not match:
@@ -1194,6 +1231,9 @@ def transform_codeset(archive: Archive, relative: str, source_record: dict, *,
     generics = {}
     converted = []
     for command in commands:
+        if not command.get("keycode") and not command.get("protocol"):
+            converted.append(_learned(relative, command))
+            continue
         protocol_relative, source_protocol = archive.protocol(command.get("protocol"))
         wrapped = protocol_record(
             protocol_relative, source_protocol, library=portable_library)

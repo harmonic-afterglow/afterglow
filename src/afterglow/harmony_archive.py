@@ -194,6 +194,9 @@ def project_protocol(definition: dict) -> dict:
 
 def project_command(command: dict, protocols: dict) -> dict:
     out = {"name": command.get("Name"), "keycode": command.get("KeyCode")}
+    if not command.get("KeyCode") and command.get("Raw"):
+        # learned in Logitech's software: no protocol, only the timings it captured
+        out["raw"] = command["Raw"]
     protocol = protocols.get(str(command.get("ProtocolId")))
     if protocol is not None:
         out["protocol"] = protocol.get("Name")

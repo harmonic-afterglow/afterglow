@@ -20,7 +20,7 @@ from urllib.parse import unquote
 
 import pytest
 
-from afterglow import corpus_provider, device_json, harmony_archive
+from afterglow import corpus_provider, device_json, harmony_archive, logitech_archive
 
 HERE = Path(__file__).resolve().parent
 TV_ID = 272385
@@ -60,8 +60,13 @@ TV = {
     "codeset": CODESET,
     "catalog": {"DeviceType": "Television", "MinRepeats": 2},
 }
+# Learned in Logitech's software: no key code, no protocol, only the timings captured -
+# a 40 kHz carrier, a 2.4 ms mark, then 0.6/1.2 ms marks, and a long gap written in eight
+# digits.
+LEARNED = ("F9C40P0960S0258P04B0S0258P0258S0258P04B0S000186A0")
 COMMANDS = [_command("PowerOn", 0x807F02FD), _command("PowerOff", 0x807F00FF),
-            _command("InputHdmi1", 0x807F807F), _command("Netflix", 0x807FB04F)]
+            _command("InputHdmi1", 0x807F807F), _command("Netflix", 0x807FB04F),
+            {"Name": "Guide", "TransportType": 1, "Raw": LEARNED}]
 
 
 def _api(root: Path) -> Path:
@@ -115,6 +120,27 @@ def test_a_catalogue_device_gets_its_input_delay_and_the_wait_for_its_apps(tmp_p
     assert (device["input_delay"], device["app_power_delay"], device["power_delay"]) == (
         1000, 10000, 8000)
     assert device["online_inputs"] == ["Netflix"]
+
+
+def test_a_learned_command_is_its_captured_timings():
+    parsed = logitech_archive.parse_logitech_raw(LEARNED)
+    assert parsed["carrier_hz"] == 40000
+    assert parsed["pulses_us"] == [2400, -600, 1200, -600, 600, -600, 1200, -100000]
+    # one frame, sent again while the key is held
+    assert parsed["sections"] == {"intro_pulses": 0, "repeat_pulses": 8}
+    with pytest.raises(logitech_archive.ArchiveError):
+        logitech_archive.parse_logitech_raw("P0960S0258")       # no carrier
+
+
+def test_a_device_with_a_learned_command_has_it_beside_the_others(tmp_path):
+    """A command with no protocol used to stop the whole device: the catalogue looked
+    up every command's protocol."""
+    archive = harmony_archive.ApiArchive(_api(tmp_path / "archive"), tmp_path / "cache")
+    catalog = corpus_provider.LogitechCatalog(archive)
+    result = catalog.materialize(catalog.models("Panasonic", "TH")[0])
+    assert result["counts"] == {"source": 5, "supported": 5, "excluded": 0}
+    [guide] = [c for c in result["template"]["commands"] if c["name"] == "Guide"]
+    assert guide["signal"]["pulses_us"][:2] == [2400, -600]
 
 
 def test_looking_a_device_up_fetches_only_its_own_files(tmp_path, monkeypatch):
