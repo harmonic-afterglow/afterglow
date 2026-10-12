@@ -368,7 +368,6 @@ class SearchPage(QWizardPage):
 
         openers = {
             "logitech_online": lambda: online_logitech_catalog(
-                follow_latest=self._sources.logitech_follow_latest,
                 remote_id=self._profile.id),
             "flipper_irdb_online": lambda: FlipperIrdbCatalog(remote_id=self._profile.id),
             "irdb_online": lambda: IrdbCatalog(remote_id=self._profile.id),
@@ -566,7 +565,6 @@ class SearchPage(QWizardPage):
 
             openers = {
                 "logitech_online": lambda: online_logitech_catalog(
-                    follow_latest=self._sources.logitech_follow_latest,
                     remote_id=self._profile.id),
                 "flipper_irdb_online": lambda: FlipperIrdbCatalog(
                     remote_id=self._profile.id),

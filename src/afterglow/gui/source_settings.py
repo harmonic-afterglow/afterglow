@@ -38,15 +38,10 @@ class SourcePreferences:
 
     local_devices: bool = True
     # The Logitech archive is the device catalogue: 276,236 devices, and without it Add
-    # Device has almost nothing to offer. It reads from a public GitHub mirror, one
-    # record at a time, only for models the user actually opens - so it is on by default
+    # Device has almost nothing to offer. It reads from Afterglow's own archive, a few
+    # files at a time, only for models the user actually opens - so it is on by default
     # while the other online catalogues stay opt-in.
     logitech_online: bool = True
-    # Read the archive at its tip rather than the revision this release was tested
-    # against. Off by default: a pinned revision is what makes a bug report reproducible,
-    # and an upstream change cannot reach anyone until the pin is deliberately moved.
-    # On, for checking whether something has already been fixed upstream.
-    logitech_follow_latest: bool = False
     flipper_irdb_online: bool = False
     irdb_online: bool = False
     external_repositories: tuple[ExternalRepository, ...] = ()
@@ -65,8 +60,6 @@ class SourcePreferences:
         return cls(
             local_devices=_boolean(store.value("sources/local_devices", True)),
             logitech_online=_boolean(store.value("sources/logitech_online", True)),
-            logitech_follow_latest=_boolean(
-                store.value("sources/logitech_follow_latest", False)),
             flipper_irdb_online=_boolean(
                 store.value("sources/flipper_irdb_online", False)),
             irdb_online=_boolean(store.value("sources/irdb_online", False)),
@@ -79,7 +72,6 @@ class SourcePreferences:
                    for entry in self.external_repositories]
         store.setValue("sources/local_devices", self.local_devices)
         store.setValue("sources/logitech_online", self.logitech_online)
-        store.setValue("sources/logitech_follow_latest", self.logitech_follow_latest)
         store.setValue("sources/flipper_irdb_online", self.flipper_irdb_online)
         store.setValue("sources/irdb_online", self.irdb_online)
         store.setValue("sources/external_afterglow_repositories", json.dumps(records))
@@ -88,6 +80,7 @@ class SourcePreferences:
             "sources/external_afterglow_databases",
             "sources/logitech_local",
             "sources/logitech_local_path",
+            "sources/logitech_follow_latest",
         ):
             store.remove(retired)
         store.sync()

@@ -203,63 +203,83 @@ def project_command(command: dict, protocols: dict) -> dict:
     return out
 
 
+def _store(path: Path, payload: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(payload)
+    temporary.replace(path)
+
+
+def _decode(relative: str, payload: bytes):
+    if relative.endswith(".gz"):
+        payload = gzip.decompress(payload)
+    try:
+        return json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ArchiveError(f"archive file is not JSON: {relative}") from exc
+
+
 class ApiArchive(logitech_archive.Archive):
     """Afterglow's archive over HTTPS (or a local checkout's `docs/`), a few files a
-    device, kept in ``cache`` - which is safe to keep, as a capture never changes."""
+    device, kept in ``cache``. The manifest is fetched afresh each time the archive is
+    opened - the copy in the cache is only for when the archive cannot be reached - and
+    every other file is cached under the manifest's `build`, which changes whenever any
+    of them does: a rebuilt archive is read at once, and nothing is fetched twice."""
 
     def __init__(self, base, cache):
         self.base = str(base).rstrip("/")
         self.local = not self.base.startswith(("https://", "http://"))
-        self.cache_root = Path(cache).expanduser().resolve()
-        self.cache_root.mkdir(parents=True, exist_ok=True)
+        self.cache_base = Path(cache).expanduser().resolve()
+        self.cache_base.mkdir(parents=True, exist_ok=True)
         self._buckets: dict[str, dict] = {}
         self._slugs: dict[str, str] = {}
         self._protocols: dict | None = None
+        manifest = self.cache_base / "manifest.json"
+        try:
+            payload = self._download("manifest.json")
+            _store(manifest, payload)
+        except ArchiveError:
+            if not manifest.is_file():
+                raise
+            payload = manifest.read_bytes()
+        self._api_manifest = _decode("manifest.json", payload)
+        if self._api_manifest.get("api") != 1:
+            raise ArchiveError(f"expected archive API 1, got "
+                               f"{self._api_manifest.get('api')!r}")
+        build = str(self._api_manifest.get("build") or "unstamped")
+        self.cache_root = self.cache_base / build
         logitech_archive.Archive.__init__(self, self.cache_root)
-        self.revision = self.api_manifest.get("capture_sha256")
+        self.revision = build
 
     # -- the API's own files
 
-    def _fetch(self, relative: str) -> bytes:
-        cached = self.cache_root / API / relative
-        if cached.is_file():
-            return cached.read_bytes()
+    def _download(self, relative: str) -> bytes:
         if self.local:
-            path = Path(self.base) / API / relative
             try:
-                payload = path.read_bytes()
+                return (Path(self.base) / API / relative).read_bytes()
             except OSError as exc:
                 raise ArchiveError(f"archive file is missing: {relative}") from exc
-        else:
-            request = Request(f"{self.base}/{API}/{relative}",
-                              headers={"User-Agent": "Afterglow archive reader/1"})
-            try:
-                with urlopen(request, timeout=60) as response:
-                    payload = response.read()
-            except OSError as exc:
-                raise ArchiveError(f"could not fetch {relative}: {exc}") from exc
-        cached.parent.mkdir(parents=True, exist_ok=True)
-        temporary = cached.with_name(cached.name + ".tmp")
-        temporary.write_bytes(payload)
-        temporary.replace(cached)
+        request = Request(f"{self.base}/{API}/{relative}",
+                          headers={"User-Agent": "Afterglow archive reader/1"})
+        try:
+            with urlopen(request, timeout=60) as response:
+                return response.read()
+        except OSError as exc:
+            raise ArchiveError(f"could not fetch {relative}: {exc}") from exc
+
+    def _fetch(self, relative: str) -> bytes:
+        cached = self.cache_root / relative
+        if cached.is_file():
+            return cached.read_bytes()
+        payload = self._download(relative)
+        _store(cached, payload)
         return payload
 
     def _json(self, relative: str):
-        payload = self._fetch(relative)
-        if relative.endswith(".gz"):
-            payload = gzip.decompress(payload)
-        try:
-            return json.loads(payload)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ArchiveError(f"archive file is not JSON: {relative}") from exc
+        return _decode(relative, self._fetch(relative))
 
     @property
     def api_manifest(self) -> dict:
-        if not hasattr(self, "_api_manifest"):
-            self._api_manifest = self._json("manifest.json")
-            if self._api_manifest.get("api") != 1:
-                raise ArchiveError(f"expected archive API 1, got "
-                                   f"{self._api_manifest.get('api')!r}")
         return self._api_manifest
 
     def _bucket(self, relative: str) -> dict:
