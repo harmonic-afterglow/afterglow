@@ -1266,46 +1266,6 @@ def test_whole_converter_checkpoints_and_resumes_without_expanding_shared_codese
     assert '"verified": true' in verified.stdout.lower()
 
 
-def test_the_archive_revision_is_pinned_and_can_be_overridden(monkeypatch):
-    """A third-party repository read at run time must not be a moving target.
-
-    Following `main` means a change upstream alters what a build produces with nothing
-    here changing: the same version of Afterglow, the same device, a different answer next
-    week, and a bug report nobody can reproduce. Pinning also keeps an upstream mistake
-    away from users until the pin is deliberately moved.
-
-    The escape hatch matters as much as the pin - checking whether something is already
-    fixed upstream must not need a code edit - so there is an environment variable and a
-    setting, and the two caches are kept apart so a record fetched at the tip is never
-    served as though it came from the pinned revision.
-    """
-    from afterglow import corpus_provider, harmony_archive
-
-    assert len(corpus_provider.LOGITECH_ARCHIVE_REVISION) == 40, "pin a full commit"
-    assert corpus_provider.logitech_archive_url().endswith(
-        f"/{corpus_provider.LOGITECH_ARCHIVE_REVISION}/docs")
-
-    monkeypatch.setenv("AFTERGLOW_LOGITECH_ARCHIVE_REVISION", "main")
-    assert corpus_provider.logitech_archive_url().endswith("/main/docs")
-    monkeypatch.delenv("AFTERGLOW_LOGITECH_ARCHIVE_REVISION")
-
-    # The tip is read at the commit it is at, so its cache is that commit's.
-    opened = []
-
-    class Opened:
-        def __init__(self, base, cache):
-            opened.append((base, cache))
-    monkeypatch.setattr(harmony_archive, "ApiArchive", Opened)
-    monkeypatch.setattr(corpus_provider, "LogitechCatalog", lambda archive, **_: archive)
-    monkeypatch.setattr(corpus_provider, "latest_archive_revision", lambda: "f" * 40)
-    corpus_provider.online_logitech_catalog()
-    corpus_provider.online_logitech_catalog(follow_latest=True)
-    (pinned_base, pinned), (latest_base, latest) = opened
-    assert pinned_base == corpus_provider.logitech_archive_url()
-    assert latest_base.endswith("/" + "f" * 40 + "/docs")
-    assert pinned != latest, "the pinned and tip caches must not be shared"
-
-
 def test_all_sources_merges_offline_catalogues_and_prefers_the_local_one(tmp_path,
                                                                         qapp_or_skip,
                                                                         monkeypatch):

@@ -19,52 +19,22 @@ from dataclasses import dataclass
 import os
 from pathlib import Path, PurePosixPath
 import re
-from urllib.request import Request, urlopen
 
 from . import (backends, device_json, harmony_archive, logitech_archive, paths,
                project_devices, remotes)
 
 
 # Logitech's device database is read from Afterglow's own archive,
-# harmonic-afterglow/harmony-ir-archive: the raw capture of Logitech's service, served as
-# a static API a device at a time (`harmony_archive`). It is read at a **pinned commit**,
-# not from a moving branch.
-#
-# It is a repository the application reads device and protocol records from at run
-# time. Following `main` means a change there can alter what a build produces
-# without anything here changing, which makes a report from a user impossible to
-# reproduce: the same version of Afterglow, the same device, a different answer next
-# week. Pinning also means an upstream mistake cannot reach anyone until this constant is
-# deliberately moved.
-#
-# `AFTERGLOW_LOGITECH_ARCHIVE_REVISION` overrides it with any branch, tag or commit -
-# `main` to follow the tip, a different SHA to test one. That is the escape hatch for
-# checking a fix before the pin is updated, and it is why the pin is not a hardcoded URL.
-LOGITECH_ARCHIVE_REVISION = "0f8b7340fc8e124502b24ea9f8cd44a377914096"
-LOGITECH_ARCHIVE_REPOSITORY = (
-    "https://raw.githubusercontent.com/harmonic-afterglow/harmony-ir-archive"
-)
-# Where in the repository the API is: `docs/`, which GitHub Pages also publishes.
-LOGITECH_ARCHIVE_ROOT = "docs"
-LOGITECH_ARCHIVE_COMMITS = (
-    "https://api.github.com/repos/harmonic-afterglow/harmony-ir-archive/commits/main")
-
-
-def logitech_archive_revision() -> str:
-    """The archive commit to read, honouring the override."""
-    return (os.environ.get("AFTERGLOW_LOGITECH_ARCHIVE_REVISION")
-            or LOGITECH_ARCHIVE_REVISION)
+# harmonic-afterglow/harmony-ir-archive: the raw capture of Logitech's service, served by
+# GitHub Pages as a static API, a device at a time (`harmony_archive`). The archive is
+# Afterglow's, so it is read as it is now: a rebuild is picked up by its manifest's build.
+# `AFTERGLOW_ARCHIVE_URL` reads another copy - a URL, or a checkout's `docs` folder.
+LOGITECH_ARCHIVE_URL = "https://harmonic-afterglow.github.io/harmony-ir-archive"
 
 
 def logitech_archive_url() -> str:
-    """Base URL for the pinned - or overridden - archive revision."""
-    return (f"{LOGITECH_ARCHIVE_REPOSITORY}/{logitech_archive_revision()}"
-            f"/{LOGITECH_ARCHIVE_ROOT}")
-
-
-# Kept as a module attribute because callers and tests refer to it by name; it follows
-# the override, so importing this module after setting the variable gets the right base.
-LOGITECH_ARCHIVE_URL = logitech_archive_url()
+    """Where the archive's API is read from, honouring the override."""
+    return os.environ.get("AFTERGLOW_ARCHIVE_URL") or LOGITECH_ARCHIVE_URL
 
 
 @dataclass(frozen=True)
@@ -359,38 +329,11 @@ class LogitechCatalog:
         return base
 
 
-def latest_archive_revision() -> str:
-    """The commit the archive's `main` is at now, from GitHub's API."""
-    request = Request(LOGITECH_ARCHIVE_COMMITS, headers={
-        "User-Agent": "Afterglow archive reader/1", "Accept": "application/vnd.github.sha"})
-    try:
-        with urlopen(request, timeout=30) as response:
-            revision = response.read().decode().strip()
-    except OSError as exc:
-        raise logitech_archive.ArchiveError(
-            f"could not find the archive's latest commit: {exc}") from exc
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise logitech_archive.ArchiveError(
-            f"the archive's latest commit is not a commit: {revision[:60]!r}")
-    return revision
-
-
 def online_logitech_catalog(*, cache: Path | None = None,
-                            remote_id: str | None = None,
-                            follow_latest: bool = False) -> LogitechCatalog:
-    """Open the live Logitech database and read only records the user selects.
-
-    `follow_latest` reads the archive's `main` as it is now instead of the pinned
-    revision - at the commit `main` is at, so what is cached for one commit is never
-    served for another, and each is cached apart: a record fetched from one revision must
-    not be served as if it came from the other - that would make the pin meaningless the
-    moment anyone toggled it.
-    """
-    revision = latest_archive_revision() if follow_latest else logitech_archive_revision()
-    cache_root = (cache or paths.cache_dir() / "sources"
-                  / f"harmony-ir-archive@{revision[:12]}")
-    base = f"{LOGITECH_ARCHIVE_REPOSITORY}/{revision}/{LOGITECH_ARCHIVE_ROOT}"
-    archive = harmony_archive.ApiArchive(base, cache_root)
+                            remote_id: str | None = None) -> LogitechCatalog:
+    """Open the live Logitech database and read only records the user selects."""
+    cache_root = cache or paths.cache_dir() / "sources" / "harmony-ir-archive"
+    archive = harmony_archive.ApiArchive(logitech_archive_url(), cache_root)
     return LogitechCatalog(archive, remote_id=remote_id)
 
 

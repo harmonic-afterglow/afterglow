@@ -74,7 +74,7 @@ def _api(root: Path) -> Path:
         payload = json.dumps(value).encode()
         path.write_bytes(gzip.compress(payload) if packed else payload)
     write("manifest.json", {
-        "api": 1, "capture_sha256": "c" * 64, "device_buckets": 1024, "codeset_prefix": 3,
+        "api": 1, "build": "b1", "capture_sha256": "c" * 64, "device_buckets": 1024, "codeset_prefix": 3,
         "counts": {"devices": 1, "manufacturers": 1, "codesets": 1,
                    "commands_in_codesets": len(COMMANDS), "protocols": 1}})
     write("manufacturers.json", [{"name": "Panasonic", "slug": "panasonic", "devices": 1}])
@@ -150,11 +150,41 @@ def test_looking_a_device_up_fetches_only_its_own_files(tmp_path, monkeypatch):
         "manifest.json", "manufacturers.json", "manufacturers/panasonic.json",
         f"devices/{TV_ID % 1024:03x}.json.gz", f"codesets/{CODESET[:3]}.json.gz",
         "protocols.json"])
-    # and a second look is served from the cache: a capture never changes
+    # and a second look is served from the cache, but for the manifest: the build
+    # it names is what the cache is kept by
     fetched.clear()
     again = corpus_provider.online_logitech_catalog(cache=tmp_path / "cache")
     again.materialize(again.models("Panasonic", "TH")[0])
-    assert fetched == []
+    assert fetched == ["manifest.json"]
+
+
+def test_the_archive_is_read_from_its_pages_or_where_the_override_says(monkeypatch):
+    monkeypatch.delenv("AFTERGLOW_ARCHIVE_URL", raising=False)
+    assert corpus_provider.logitech_archive_url() == (
+        "https://harmonic-afterglow.github.io/harmony-ir-archive")
+    monkeypatch.setenv("AFTERGLOW_ARCHIVE_URL", "/somewhere/harmony-ir-archive/docs")
+    assert corpus_provider.logitech_archive_url() == "/somewhere/harmony-ir-archive/docs"
+
+
+def test_a_rebuilt_archive_is_read_at_once_and_an_unreachable_one_from_the_cache(tmp_path):
+    root = _api(tmp_path / "archive")
+    first = harmony_archive.ApiArchive(root, tmp_path / "cache")
+    first.read_json(f"devices/panasonic/{TV_ID}.json")
+
+    # rebuilt: the model has a new name, and the build a new id
+    api = root / harmony_archive.API
+    (api / "manufacturers/panasonic.json").write_text(json.dumps(
+        [{"id": TV_ID, "model": "TH-50CS610B", "type": "Television", "name": None}]))
+    manifest = json.loads((api / "manifest.json").read_text())
+    (api / "manifest.json").write_text(json.dumps({**manifest, "build": "b2"}))
+    rebuilt = harmony_archive.ApiArchive(root, tmp_path / "cache")
+    assert rebuilt.read_json("devices/panasonic/index.json")[0]["m"] == "TH-50CS610B"
+
+    # gone: what the cache has of the last build it saw still answers
+    import shutil
+    shutil.rmtree(root)
+    offline = harmony_archive.ApiArchive(root, tmp_path / "cache")
+    assert offline.read_json("devices/panasonic/index.json")[0]["m"] == "TH-50CS610B"
 
 
 def test_an_archive_from_another_api_is_refused(tmp_path):

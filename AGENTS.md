@@ -376,10 +376,11 @@ together.
 **Logitech's database is Afterglow's own archive**,
 [harmonic-afterglow/harmony-ir-archive](https://github.com/harmonic-afterglow/harmony-ir-archive):
 the raw capture of Logitech's service, which its `build_api.py` serves as a static API
-under `docs/api/v1` (also on GitHub Pages). The application reads it at a pinned commit,
-`corpus_provider.LOGITECH_ARCHIVE_REVISION` - move the pin deliberately, after the
-archive's change is pushed - and `harmony_archive` turns its raw records into the device
-records the catalogue reads. A field only the raw capture has (an input's `IsOnline`,
+under `docs/api/v1`, published by GitHub Pages. The archive is ours, so the application
+reads it unpinned, from Pages (`AFTERGLOW_ARCHIVE_URL` points it elsewhere, a checkout's
+`docs` included): the manifest afresh, every other file cached by the manifest's
+`build`, so a pushed rebuild reaches users at once - push only a build that works.
+`harmony_archive` turns its raw records into the device records the catalogue reads. A field only the raw capture has (an input's `IsOnline`,
 `ConnectedAppPowerOnDelay`) is added there, then mapped in `corpus_provider` and built by
 each backend; `tests/test_harmony_archive.py` holds a small archive in the API's layout.
 
