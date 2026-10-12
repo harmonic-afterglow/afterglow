@@ -22,6 +22,8 @@ POWER_DELAY_DEFAULT, PRESS_INTERKEY_DEFAULT = 1500, 500
 # re-sends its inputs. (Downstairs has one television with `0xFFFD` instead.)
 TRANSITION_FROM_ANY = 0xFFFE
 WAIT = 0x7C                    # (device << 8 | tenths): wait before that device's next send
+LOAD_BYTE = (0xFB00, 0x1F)     # the byte register, 0: what a test compares with
+EQUALS = 0x71                  # (0 << 8 | variable): the next instruction runs if it is equal
 
 
 def waits(device_index: int, milliseconds: int) -> list[tuple[int, int]]:
@@ -40,7 +42,8 @@ def transition(source: int, target: int, operand: int, category: int) -> dict:
             "category": category}
 
 
-def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
+def device_state_records(device: dict, place_object,
+                         online: int | None = None) -> list[tuple[str, dict]]:
     """A device's `<Label>_Power_2` and `<Label>_Input_<n>` variables, with transitions.
 
     As downstairs and upstairs build them: power going 1 to 0 sends the off command, 0 to
@@ -48,6 +51,11 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
     is a transition from any value to it sending that input's command, and inputs reached
     by stepping get one transition per ordered pair, sending "next" as many times as it
     takes with the input delay after each. ``place_object`` numbers an object body.
+
+    A device with online inputs (`device["online"]`) also has `<Label>_Online_2`,
+    variable ``online``, which says its apps are up: power-on clears it, and choosing an
+    online input while it is clear first waits out the rest of the apps' delay, then
+    sets it - so only the first app after power-on waits, as Logitech's remotes did.
     """
     label = device["label"].replace(" ", "_")
     index = device["index"]
@@ -55,8 +63,11 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
                for command in device["commands"]}
     out = []
     power = device.get("power")
+    gate = device.get("online") if online is not None else None
     if power:
         on = [(objects[power["on"]], OBJECT_ATOM)] + waits(index, power["delay_ms"])
+        if gate:
+            on.append((0, 0x80 | online))
         on_operand = (place_object(object_body(on)) if len(on) > 1
                       else objects[power["on"]])
         out.append((f"{label}_Power_2", {
@@ -69,6 +80,15 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
         transitions = []
         if "direct" in inputs:
             for value, chosen in enumerate(inputs["direct"]):
+                if gate and value in gate["values"] and chosen is not None:
+                    # the apps' delay counts from power-on, whose own wait is part of it
+                    rest = waits(index, max(0, gate["delay_ms"] - power["delay_ms"]))
+                    first = [LOAD_BYTE, (online, EQUALS)]
+                    first += ([(place_object(object_body(rest)), OBJECT_ATOM)
+                               if len(rest) > 1 else rest[0]] if rest else [])
+                    first.append((1, 0x80 | online))
+                    chosen = [("atoms", first)] + (
+                        chosen if isinstance(chosen, list) else [("send", chosen)])
                 if chosen is None:
                     transitions.append(transition(TRANSITION_FROM_ANY, value, 0, 0))
                 elif isinstance(chosen, list):
@@ -76,7 +96,7 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
                     atoms = []
                     for kind, item in chosen:
                         atoms += ([(objects[item], OBJECT_ATOM)] if kind == "send"
-                                  else waits(index, item))
+                                  else item if kind == "atoms" else waits(index, item))
                     transitions.append(transition(TRANSITION_FROM_ANY, value,
                                                    place_object(object_body(atoms)),
                                                    OBJECT_ATOM))
@@ -99,6 +119,9 @@ def device_state_records(device: dict, place_object) -> list[tuple[str, dict]]:
                                                    OBJECT_ATOM))
         out.append((f"{label}_Input_{count}", {
             "initial": 0, "limit": count - 1, "padding": 0, "transitions": transitions}))
+    if gate:
+        out.append((f"{label}_Online_2", {
+            "initial": 0, "limit": 1, "padding": 0, "transitions": []}))
     return out
 
 
@@ -284,12 +307,28 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
             return steps[0][1]
         return steps or None
 
-    inputs = [(entry[0], selection(entry[1]) if len(entry) > 1 else None)
+    # How long the device needs after switching before its next command: a wait after
+    # each input's sends, as the donors have after theirs.
+    delay = int(device.get("input_delay") or 0)
+
+    def settled(chosen):
+        if not delay or chosen is None:
+            return chosen
+        steps = chosen if isinstance(chosen, list) else [("send", chosen)]
+        return steps + [("wait", delay)]
+    inputs = [(entry[0], settled(selection(entry[1])) if len(entry) > 1 else None)
               for entry in device.get("inputs") or []]
     cycle = device.get("input_cycle") or {}
     if inputs:
         out["inputs"] = {"values": [name for name, _id in inputs],
                          "direct": [command_id for _name, command_id in inputs]}
+        # A smart TV's online inputs - its apps - answer only `app_power_delay` after it
+        # comes on: those values, and the wait.
+        online = set(device.get("online_inputs") or [])
+        app_delay = int(device.get("app_power_delay") or 0)
+        values = [index for index, (name, _id) in enumerate(inputs) if name in online]
+        if values and app_delay and out.get("power"):
+            out["online"] = {"values": values, "delay_ms": app_delay}
     elif cycle.get("next") and cycle.get("values"):
         step = cycle["next"]
         step = step[0] if isinstance(step, list) else step
@@ -317,14 +356,19 @@ class Variables:
 def state_variables(devices: list[dict], place_object, first: int | None) -> Variables:
     """Each device's power and input as state variables, as every donor has them, from
     variable ``first`` on: a transition sends what changing the state takes. None for
-    ``first`` is an image without section 14's records, which holds none."""
+    ``first`` is an image without section 14's records, which holds none. A device
+    with online inputs has a third, its apps' gate (`device_state_records`)."""
     out = Variables(first)
     if first is None:
         return out
     for device in devices:
-        records = device_state_records(device, place_object)
         kinds = ["power"] * bool(device.get("power"))
-        kinds += ["input"] * (len(records) - len(kinds))
+        kinds += ["input"] * bool((device.get("inputs") or {}).get("values"))
+        online = None
+        if device.get("online") and device.get("power") and "direct" in device["inputs"]:
+            online = out.first + len(out.records) + len(kinds)
+            kinds.append("online")
+        records = device_state_records(device, place_object, online)
         out.slots.append({kind: out.add(name, record)
                           for kind, (name, record) in zip(kinds, records)})
     return out

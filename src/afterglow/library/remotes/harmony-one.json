@@ -229,7 +229,9 @@
     "timing": [
       "always_on",
       "power_delay",
-      "press_interkey"
+      "press_interkey",
+      "input_delay",
+      "app_power_delay"
     ],
     "settings": [
       "output_file",

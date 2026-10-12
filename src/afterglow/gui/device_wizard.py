@@ -120,13 +120,7 @@ class DeviceWizard(QWizard):
             "model":             ident.model_edit.text().strip(),
             **cmds.power_fields(),
             "properties":        self.page_props.values(),
-            "always_on":         (None if tim._always_on_absent
-                                  else tim.always_on.isChecked()),
-            "power_delay":       tim.pwr_delay.value(),
-            "press_presilence":  tim.pre_sil.value(),
-            "press_interkey":    tim.inter_key.value(),
-            "hold_presilence":   tim.hold_sil.value(),
-            "hold_interkey":     tim.hold_key.value(),
+            **tim.values(),
             "commands":          command_rows,
             # Tracks the template chosen on the search page, which is not necessarily
             # the one the spec was carried from if the user changed their mind.
@@ -1186,6 +1180,21 @@ class TimingPage(QWizardPage):
         self.hold_key.setValue(existing.get("hold_interkey", 100))
         layout.addRow("Hold repeat gap:", self.hold_key)
 
+        # How long the device needs after switching inputs before the next command, and
+        # after switching on before its online apps (Netflix) answer - Logitech's own
+        # figures for a catalogue device; 0 waits for nothing.
+        self.input_delay = QSpinBox()
+        self.input_delay.setRange(0, 30000); self.input_delay.setSingleStep(100)
+        self.input_delay.setSuffix(" ms")
+        self.input_delay.setValue(existing.get("input_delay") or 0)
+        layout.addRow("Input switch delay:", self.input_delay)
+
+        self.app_delay = QSpinBox()
+        self.app_delay.setRange(0, 120000); self.app_delay.setSingleStep(1000)
+        self.app_delay.setSuffix(" ms")
+        self.app_delay.setValue(existing.get("app_power_delay") or 0)
+        layout.addRow("Online apps ready after:", self.app_delay)
+
         # Only the fields this remote's builder uses (its profile's `interface.timing`);
         # the rest keep their values, so collecting hands back what was there.
         if fields is not None:
@@ -1193,14 +1202,33 @@ class TimingPage(QWizardPage):
                                 ("press_presilence", self.pre_sil),
                                 ("press_interkey", self.inter_key),
                                 ("hold_presilence", self.hold_sil),
-                                ("hold_interkey", self.hold_key)):
+                                ("hold_interkey", self.hold_key),
+                                ("input_delay", self.input_delay),
+                                ("app_power_delay", self.app_delay)):
                 layout.setRowVisible(widget, key in fields)
+
+    def values(self) -> dict:
+        """The timing fields as a project device keeps them."""
+        return {
+            "always_on": None if self._always_on_absent else self.always_on.isChecked(),
+            "power_delay": self.pwr_delay.value(),
+            "press_presilence": self.pre_sil.value(),
+            "press_interkey": self.inter_key.value(),
+            "hold_presilence": self.hold_sil.value(),
+            "hold_interkey": self.hold_key.value(),
+            "input_delay": self.input_delay.value(),
+            "app_power_delay": self.app_delay.value(),
+        }
 
     def load_template(self, t):
         """A device that is always on, or needs a long warm-up, says so itself."""
         self.always_on.setChecked(bool(t.get("always_on")))
         if t.get("power_delay") is not None:
             self.pwr_delay.setValue(int(t["power_delay"]))
+        for key, widget in (("input_delay", self.input_delay),
+                            ("app_power_delay", self.app_delay)):
+            if t.get(key) is not None:
+                widget.setValue(int(t[key]))
 
 
 # Keys that describe where a library entry came from rather than what the device is.
@@ -1426,13 +1454,7 @@ class DeviceEditor(QDialog):
             "model":             ident.model_edit.text().strip(),
             **cmds.power_fields(),
             "properties":        self.page_props.values(),
-            "always_on":         (None if tim._always_on_absent
-                                  else tim.always_on.isChecked()),
-            "power_delay":       tim.pwr_delay.value(),
-            "press_presilence":  tim.pre_sil.value(),
-            "press_interkey":    tim.inter_key.value(),
-            "hold_presilence":   tim.hold_sil.value(),
-            "hold_interkey":     tim.hold_key.value(),
+            **tim.values(),
             "commands":          command_rows,
         })
         self.page_inputs.apply(spec)

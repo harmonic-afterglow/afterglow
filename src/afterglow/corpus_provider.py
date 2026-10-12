@@ -19,14 +19,19 @@ from dataclasses import dataclass
 import os
 from pathlib import Path, PurePosixPath
 import re
+from urllib.request import Request, urlopen
 
-from . import backends, device_json, logitech_archive, paths, project_devices, remotes
+from . import (backends, device_json, harmony_archive, logitech_archive, paths,
+               project_devices, remotes)
 
 
-# The archive is read at a **pinned commit**, not from a moving branch.
+# Logitech's device database is read from Afterglow's own archive,
+# harmonic-afterglow/harmony-ir-archive: the raw capture of Logitech's service, served as
+# a static API a device at a time (`harmony_archive`). It is read at a **pinned commit**,
+# not from a moving branch.
 #
-# It is a third-party repository that the application reads device and protocol records
-# from at run time. Following `main` means a change there can alter what a build produces
+# It is a repository the application reads device and protocol records from at run
+# time. Following `main` means a change there can alter what a build produces
 # without anything here changing, which makes a report from a user impossible to
 # reproduce: the same version of Afterglow, the same device, a different answer next
 # week. Pinning also means an upstream mistake cannot reach anyone until this constant is
@@ -35,10 +40,14 @@ from . import backends, device_json, logitech_archive, paths, project_devices, r
 # `AFTERGLOW_LOGITECH_ARCHIVE_REVISION` overrides it with any branch, tag or commit -
 # `main` to follow the tip, a different SHA to test one. That is the escape hatch for
 # checking a fix before the pin is updated, and it is why the pin is not a hardcoded URL.
-LOGITECH_ARCHIVE_REVISION = "1dbdb5904ab6d3d15418abd1718047b96083a54c"
+LOGITECH_ARCHIVE_REVISION = "0f8b7340fc8e124502b24ea9f8cd44a377914096"
 LOGITECH_ARCHIVE_REPOSITORY = (
-    "https://raw.githubusercontent.com/pickysysadmin/logitech-harmony-ir-archive"
+    "https://raw.githubusercontent.com/harmonic-afterglow/harmony-ir-archive"
 )
+# Where in the repository the API is: `docs/`, which GitHub Pages also publishes.
+LOGITECH_ARCHIVE_ROOT = "docs"
+LOGITECH_ARCHIVE_COMMITS = (
+    "https://api.github.com/repos/harmonic-afterglow/harmony-ir-archive/commits/main")
 
 
 def logitech_archive_revision() -> str:
@@ -49,7 +58,8 @@ def logitech_archive_revision() -> str:
 
 def logitech_archive_url() -> str:
     """Base URL for the pinned - or overridden - archive revision."""
-    return f"{LOGITECH_ARCHIVE_REPOSITORY}/{logitech_archive_revision()}"
+    return (f"{LOGITECH_ARCHIVE_REPOSITORY}/{logitech_archive_revision()}"
+            f"/{LOGITECH_ARCHIVE_ROOT}")
 
 
 # Kept as a module attribute because callers and tests refer to it by name; it follows
@@ -267,6 +277,14 @@ class LogitechCatalog:
             inputs = _inputs(names)
         if inputs:
             template["inputs"] = inputs
+            # The inputs that are a smart TV's online apps - Netflix, nearly always - which
+            # answer only once the TV has been on for `app_power_delay`.
+            online = {entry.get("name") for entry in
+                      ((control.get("inputs") or {}).get("list") or [])
+                      if isinstance(entry, dict) and entry.get("online")}
+            listed = [label for label, _command in inputs if label in online]
+            if listed:
+                template["online_inputs"] = listed
         cycle = _archive_input_cycle(control.get("inputs"), names, control.get("timing"))
         if cycle:
             template["input_cycle"] = cycle
@@ -341,20 +359,38 @@ class LogitechCatalog:
         return base
 
 
+def latest_archive_revision() -> str:
+    """The commit the archive's `main` is at now, from GitHub's API."""
+    request = Request(LOGITECH_ARCHIVE_COMMITS, headers={
+        "User-Agent": "Afterglow archive reader/1", "Accept": "application/vnd.github.sha"})
+    try:
+        with urlopen(request, timeout=30) as response:
+            revision = response.read().decode().strip()
+    except OSError as exc:
+        raise logitech_archive.ArchiveError(
+            f"could not find the archive's latest commit: {exc}") from exc
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise logitech_archive.ArchiveError(
+            f"the archive's latest commit is not a commit: {revision[:60]!r}")
+    return revision
+
+
 def online_logitech_catalog(*, cache: Path | None = None,
                             remote_id: str | None = None,
                             follow_latest: bool = False) -> LogitechCatalog:
     """Open the live Logitech database and read only records the user selects.
 
-    `follow_latest` reads the tip instead of the pinned revision. Its cache is kept
-    separate, because a record fetched from one revision must not be served as if it came
-    from the other - that would make the pin meaningless the moment anyone toggled it.
+    `follow_latest` reads the archive's `main` as it is now instead of the pinned
+    revision - at the commit `main` is at, so what is cached for one commit is never
+    served for another, and each is cached apart: a record fetched from one revision must
+    not be served as if it came from the other - that would make the pin meaningless the
+    moment anyone toggled it.
     """
-    revision = "main" if follow_latest else logitech_archive_revision()
+    revision = latest_archive_revision() if follow_latest else logitech_archive_revision()
     cache_root = (cache or paths.cache_dir() / "sources"
-                  / f"logitech-harmony-ir-archive@{revision[:12]}")
-    base = f"{LOGITECH_ARCHIVE_REPOSITORY}/{revision}"
-    archive = logitech_archive.LiveHttpArchive(base, cache_root)
+                  / f"harmony-ir-archive@{revision[:12]}")
+    base = f"{LOGITECH_ARCHIVE_REPOSITORY}/{revision}/{LOGITECH_ARCHIVE_ROOT}"
+    archive = harmony_archive.ApiArchive(base, cache_root)
     return LogitechCatalog(archive, remote_id=remote_id)
 
 
@@ -521,12 +557,13 @@ def _archive_states(states, names) -> list[dict]:
 
 
 def _archive_timing(timing) -> dict:
-    """Logitech's per-device pacing, in the two fields this project already models.
+    """Logitech's per-device pacing, in the fields this project models: the delay
+    between keys, after an input switch, and before a smart TV's online apps answer.
 
-    Archive schema 2 publishes nine timing fields. Only these two have an existing
-    meaning here, so only these two are taken; inventing homes for the rest would be
-    modelling by coincidence of name. The others stay on the catalogue device's
-    ``control`` block for whoever needs them.
+    The archive publishes more timing fields than that. Only these have a meaning here,
+    so only these are taken; inventing homes for the rest would be modelling by
+    coincidence of name. The others stay on the catalogue device's ``control`` block for
+    whoever needs them.
 
     Deliberately *not* mapped: `pressMinRepeats`. It plausibly explains the native
     minimum-repeat byte, agreeing with 13 of 16 measured donor devices, but three
@@ -536,7 +573,10 @@ def _archive_timing(timing) -> dict:
     if not isinstance(timing, dict):
         return {}
     out = {}
-    for source, target in (("interKeyDelay", "press_interkey"),):
+    # how long a switch of input needs before the next command, and how long after
+    # power-on a smart TV's online apps take to answer: both are waits the builders model
+    for source, target in (("interKeyDelay", "press_interkey"), ("inputDelay", "input_delay"),
+                          ("connectedAppPowerOnDelay", "app_power_delay")):
         value = timing.get(source)
         if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
             out[target] = value

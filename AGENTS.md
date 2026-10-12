@@ -373,6 +373,16 @@ model; "reproducible" describes one remote's backend. They differ by half the co
 it, so quoting the first alone is a false claim. Both numbers come out of one `tools/logitech_archive.py … audit --reproduce <remote>` run; report them
 together.
 
+**Logitech's database is Afterglow's own archive**,
+[harmonic-afterglow/harmony-ir-archive](https://github.com/harmonic-afterglow/harmony-ir-archive):
+the raw capture of Logitech's service, which its `build_api.py` serves as a static API
+under `docs/api/v1` (also on GitHub Pages). The application reads it at a pinned commit,
+`corpus_provider.LOGITECH_ARCHIVE_REVISION` - move the pin deliberately, after the
+archive's change is pushed - and `harmony_archive` turns its raw records into the device
+records the catalogue reads. A field only the raw capture has (an input's `IsOnline`,
+`ConnectedAppPowerOnDelay`) is added there, then mapped in `corpus_provider` and built by
+each backend; `tests/test_harmony_archive.py` holds a small archive in the API's layout.
+
 **The safety gate:** `remotes.py` profiles have
 `status: read-only | experimental | verified`. `profile.require_buildable()` permits
 controlled builds for experimental profiles; `profile.require_writable()` permits only

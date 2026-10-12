@@ -835,7 +835,9 @@
       "press_presilence",
       "press_interkey",
       "hold_presilence",
-      "hold_interkey"
+      "hold_interkey",
+      "input_delay",
+      "app_power_delay"
     ],
     "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
     "languages": [
