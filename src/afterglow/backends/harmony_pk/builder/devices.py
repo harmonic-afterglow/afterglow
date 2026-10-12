@@ -8,6 +8,10 @@ from .actions import _a_send, digit_command
 from .codes import CODECS, code_pre, esc, necext_code, portable_code
 
 
+# The state saying a smart TV's online apps are up (`_gen_device`).
+APPS_STATE = "OnlineApps"
+
+
 def _gen_device(spec):
     """Return (device_xml, actionlists_fragment) for one device spec."""
     did = spec["id"]; cmds = spec["commands"]; inputs = spec.get("inputs", [])
@@ -97,6 +101,25 @@ def _gen_device(spec):
                 f'<Parameter name="DeviceId">{did}</Parameter>'
                 f'<Parameter name="Command">{esc(cmd)}</Parameter>'
                 f'<Parameter name="Modifier">Press</Parameter></Operation></Action>')
+    # A smart TV's online inputs - its apps, Netflix nearly always - answer only
+    # `app_power_delay` after power-on. A state of their own says whether they are up:
+    # power-on's `Reset` (`State.lua` runs it only on a real Off to On) clears it, and
+    # choosing an online input sets it, whose `ChangeAction` - run only on a change -
+    # waits what is left of the delay after power-on's own. So only the first app after
+    # power-on waits, as on Logitech's servers. Not for a device carrying its real states,
+    # whose power this does not write.
+    online = set(spec.get("online_inputs") or ()) & {
+        pair[0] for pair in spec.get("inputs") or () if len(pair) == 2 and pair[1]}
+    apps_wait = int(spec.get("app_power_delay") or 0) - int(delay or 0)
+    gated = (online and apps_wait > 0 and not spec.get("states")
+             and (spec.get("power_on_cmd") and spec.get("power_off_cmd")
+                  or spec.get("power_cmd") and not spec.get("always_on")))
+
+    def _apps(value):
+        return (f'<Action><Target>Device</Target><Operation><Name>SetValue</Name>'
+                f'<Parameter name="DeviceId">{did}</Parameter>'
+                f'<Parameter name="State">{APPS_STATE}</Parameter>'
+                f'<Parameter name="Value">{value}</Parameter></Operation></Action>')
     if spec.get("power_on_cmd") and spec.get("power_off_cmd"):
         # Discrete power: On is idempotent.
         states_content += (f"<State><Id>Power</Id><Value>Off</Value><Value>On</Value><Delay>{delay}</Delay>"
@@ -104,12 +127,16 @@ def _gen_device(spec):
                    # <Action> before <Name>, as every real configuration writes it.
                    f"<SetAction>{_pwr_send(spec['power_on_cmd'])}<Name>On</Name></SetAction>"
                    f"<SetAction>{_pwr_send(spec['power_off_cmd'])}<Name>Off</Name></SetAction>"
-                   f"</DiscreteActions></State>")
+                   + (f"<SetAction>{_apps('Off')}<Name>Reset</Name></SetAction>"
+                      if gated else "")
+                   + "</DiscreteActions></State>")
     elif spec.get("power_cmd") and not spec.get("always_on"):
         # Toggle power: one code cycles On<->Off.
         states_content += (f"<State><Id>Power</Id><Value>Off</Value><Value>On</Value><Delay>{delay}</Delay>"
                    f"<RelativeActions><NextAction>{_pwr_send(spec['power_cmd'])}"
-                   f"</NextAction></RelativeActions></State>")
+                   f"</NextAction>"
+                   + (f"<ResetAction>{_apps('Off')}</ResetAction>" if gated else "")
+                   + "</RelativeActions></State>")
     def _op(name, params):
         """One <Action> for this device."""
         body = "".join(f'<Parameter name="{n}">{esc(str(v))}</Parameter>'
@@ -165,6 +192,10 @@ def _gen_device(spec):
             f"<Value>{esc(v)}</Value>" for v in cycle.get("values", []))
         if not inputs and cycle.get("delay_ms"):
             sv += f"<Delay>{int(cycle['delay_ms'])}</Delay>"
+        elif inputs and spec.get("input_delay"):
+            # how long the device needs after switching before it takes the next
+            # command, where Logitech's configurations put it (the archive's inputDelay)
+            sv += f"<Delay>{int(spec['input_delay'])}</Delay>"
         body = sv
         # Never both: `State.lua` reads `RelativeActions` and only falls through to
         # `DiscreteActions` in an `elseif`, so a state carrying both loses its discrete
@@ -172,7 +203,8 @@ def _gen_device(spec):
         # No catalogue device publishes both, but an authored one can.
         if inputs:
             sa = "".join(
-                f"<SetAction>{_input_steps(cn)}<Name>{esc(v)}</Name></SetAction>"
+                f"<SetAction>{_apps('On') if gated and v in online else ''}"
+                f"{_input_steps(cn)}<Name>{esc(v)}</Name></SetAction>"
                 for v, cn in inputs)
             body += f"<DiscreteActions>{sa}</DiscreteActions>"
         elif cycle:
@@ -185,6 +217,12 @@ def _gen_device(spec):
                 body += f"<RelativeActions>{rel}</RelativeActions>"
         input_state = f"<State><Id>Input</Id>{body}</State>"
         states_content += input_state
+        if gated:
+            states_content += (
+                f"<State><Id>{APPS_STATE}</Id><Value>Off</Value><Value>On</Value>"
+                f"<DiscreteActions><ChangeAction>"
+                f"{_op('SendDelay', [('Delay', apps_wait)])}<Name>On</Name>"
+                f"</ChangeAction></DiscreteActions></State>")
     
     # A device imported from a real config carries its whole state machine; emit that
     # rather than the four-field approximation above, which cannot express indirect

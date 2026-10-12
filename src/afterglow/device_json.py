@@ -225,12 +225,12 @@ def to_project_device(spec: dict, device_id: str = "", *,
     if power.get("delay_ms") is not None:
         out["power_delay"] = power["delay_ms"]
     for key in ("inputs", "input_cycle", "numeric", "properties", "states",
-                "control_states", "icons"):
+                "control_states", "icons", "online_inputs"):
         if spec.get(key):
             out[key] = json.loads(json.dumps(spec[key]))
     for key, value in (spec.get("timing") or {}).items():
         if key in ("press_presilence", "press_interkey", "hold_presilence",
-                   "hold_interkey"):
+                   "hold_interkey", "input_delay", "app_power_delay"):
             out[key] = value
     for command in spec["commands"]:
         address, value = command_fields(resolved[command["name"]])

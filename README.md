@@ -152,7 +152,7 @@ example `AFTERGLOW_LIBCONCORD=~/concordance/libconcord/.libs/libconcord.so.6`.
 ## Special Thanks
 
 - **[Concordance / libconcord](https://github.com/jaymzh/concordance)** — for reverse engineering the Harmony USB protocol and maintaining `libconcord`.
-- **[Logitech Harmony IR Archive](https://github.com/pickysysadmin/logitech-harmony-ir-archive)** — for preserving and sharing the archived Logitech IR device database.
+- **[Logitech Harmony IR Archive](https://github.com/pickysysadmin/logitech-harmony-ir-archive)** — for capturing, preserving and sharing Logitech's device database, which Afterglow reads from its own copy, [harmony-ir-archive](https://github.com/harmonic-afterglow/harmony-ir-archive).
 - **[Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB)** — for the open community IR remote database.
 - **[IRDB](https://github.com/probonopd/irdb)** — for the public open-source IR database.
 - **The community** — who provided donor configuration dumps, hardware captures, and testing to make open Harmony configuration possible.

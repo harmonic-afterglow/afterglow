@@ -41,12 +41,24 @@ yet, and that is what this beta is for.
 - **Harmony One:** while it charges it shows the battery, then three photos in turn, as
   Logitech's configurations did, and goes back to what it was showing when it is lifted
   off; a charging problem shows its notice. A theme can replace the pictures.
+- **Smart TVs wait for their apps, and every device for its inputs** - on the Harmony
+  One, 900 and 1100. A TV's online input (Netflix, nearly always) is sent only once its
+  apps are up, Logitech's own delay after power-on - the first time after power-on only,
+  as Logitech's remotes did - and a device switching inputs gets Logitech's time to
+  settle before the next command. Both come with a device from the Logitech database and
+  are on its **Timing** page.
 
 ### Changed
 
+- **The Logitech device database is read from Afterglow's own archive**,
+  [harmony-ir-archive](https://github.com/harmonic-afterglow/harmony-ir-archive): the
+  capture of Logitech's service as it answered, served a device at a time - looking a
+  device up fetches a few hundred kilobytes, never the database. It carries what the
+  earlier source left out, such as which inputs are a TV's apps and how long they take.
+
 - A device's **Timing** page, and the device and activity **Advanced** pages, show only
   what the remote's builder uses: the Harmony One has the power-on delay, the delay
-  between a channel's digits and Always on.
+  between a channel's digits, the input and apps delays and Always on.
 - The activity list shows a type's name ("Watch a DVD"), as the editor does.
 - Shareable projects unpack into `Projects`; an existing lowercase `projects` folder is
   renamed to it.

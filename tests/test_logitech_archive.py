@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from urllib.parse import unquote
 
 import pytest
 
@@ -685,48 +684,6 @@ def test_external_afterglow_repository_clone_is_shallow_and_unpinned(tmp_path, m
     assert not any("commit" in argument for argument in clone)
 
 
-def test_online_catalog_fetches_selected_records_without_a_clone(tmp_path, monkeypatch):
-    source = _fixed_waveform_archive(tmp_path / "source")
-    prefix = corpus_provider.LOGITECH_ARCHIVE_URL + "/"
-    fetched = []
-
-    class Response:
-        def __init__(self, payload):
-            self.payload = payload
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self):
-            return self.payload
-
-    def open_record(request, timeout):
-        assert timeout == 60
-        assert request.full_url.startswith(prefix)
-        relative = unquote(request.full_url.removeprefix(prefix))
-        fetched.append(relative)
-        return Response((source / relative).read_bytes())
-
-    monkeypatch.setattr(logitech_archive, "urlopen", open_record)
-    catalog = corpus_provider.online_logitech_catalog(cache=tmp_path / "cache")
-    model = catalog.models("Sony", "CDP")[0]
-    result = catalog.materialize(model)
-
-    assert result["counts"] == {"source": 1, "supported": 1, "excluded": 0}
-    assert set(fetched) == {
-        "manifest.json",
-        "index.json",
-        "devices/Sony/index.json",
-        "devices/Sony/CDP222ES.json",
-        "codesets/ab/abcdef0123456789.json",
-        "protocols/index.json",
-        "protocols/Example_4_Bit.json",
-    }
-
-
 def test_audit_resumes_by_codeset_and_finishes_every_command_in_an_explicit_class(
         tmp_path):
     archive, _device_relative = _archive(tmp_path)
@@ -1322,20 +1279,31 @@ def test_the_archive_revision_is_pinned_and_can_be_overridden(monkeypatch):
     setting, and the two caches are kept apart so a record fetched at the tip is never
     served as though it came from the pinned revision.
     """
-    from afterglow import corpus_provider
+    from afterglow import corpus_provider, harmony_archive
 
     assert len(corpus_provider.LOGITECH_ARCHIVE_REVISION) == 40, "pin a full commit"
     assert corpus_provider.logitech_archive_url().endswith(
-        corpus_provider.LOGITECH_ARCHIVE_REVISION)
+        f"/{corpus_provider.LOGITECH_ARCHIVE_REVISION}/docs")
 
     monkeypatch.setenv("AFTERGLOW_LOGITECH_ARCHIVE_REVISION", "main")
-    assert corpus_provider.logitech_archive_url().endswith("/main")
+    assert corpus_provider.logitech_archive_url().endswith("/main/docs")
     monkeypatch.delenv("AFTERGLOW_LOGITECH_ARCHIVE_REVISION")
 
-    pinned = corpus_provider.online_logitech_catalog()
-    latest = corpus_provider.online_logitech_catalog(follow_latest=True)
-    assert pinned.archive.cache_root != latest.archive.cache_root, (
-        "the pinned and tip caches must not be shared")
+    # The tip is read at the commit it is at, so its cache is that commit's.
+    opened = []
+
+    class Opened:
+        def __init__(self, base, cache):
+            opened.append((base, cache))
+    monkeypatch.setattr(harmony_archive, "ApiArchive", Opened)
+    monkeypatch.setattr(corpus_provider, "LogitechCatalog", lambda archive, **_: archive)
+    monkeypatch.setattr(corpus_provider, "latest_archive_revision", lambda: "f" * 40)
+    corpus_provider.online_logitech_catalog()
+    corpus_provider.online_logitech_catalog(follow_latest=True)
+    (pinned_base, pinned), (latest_base, latest) = opened
+    assert pinned_base == corpus_provider.logitech_archive_url()
+    assert latest_base.endswith("/" + "f" * 40 + "/docs")
+    assert pinned != latest, "the pinned and tip caches must not be shared"
 
 
 def test_all_sources_merges_offline_catalogues_and_prefers_the_local_one(tmp_path,

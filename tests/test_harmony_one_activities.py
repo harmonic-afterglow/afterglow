@@ -670,3 +670,44 @@ def test_a_device_marked_always_on_is_never_switched():
     for activity in planned["activities"]:
         assert 0 not in activity["on"] and 0 not in activity["off"]
     assert 0 not in planned["all_off"]["off"]
+
+
+# A smart TV as the archive gives one: each input switch needs a second before the next
+# command, and Netflix - an online input - answers only 8 s after power-on.
+SMART_TV = dict(_device("tv", "Living Room TV", "Television", 4, {
+    "PowerOn": None, "PowerOff": None, "InputHdmi1": None, "InputNetflix": None}),
+    power_on_cmd="PowerOn", power_off_cmd="PowerOff", power_delay=3000,
+    inputs=[["HDMI1", "InputHdmi1"], ["Netflix", "InputNetflix"]],
+    input_delay=1000, online_inputs=["Netflix"], app_power_delay=8000)
+STREAMING = {"devices": [SMART_TV], "activities": [
+    {"id": "1", "label": "Netflix", "type": "VirtualTelevisionN", "display": "tv",
+     "control": "tv", "enter": [["input", "tv", "Netflix"]]},
+    {"id": "2", "label": "Watch TV", "type": "VirtualTelevisionN", "display": "tv",
+     "control": "tv", "enter": [["input", "tv", "HDMI1"]]},
+]}
+
+
+def _long_waits(machine):
+    """The waits a device's own timing asks for, without the tenth of a second an
+    activity leaves between its sends."""
+    return [entry for entry in machine.log if entry[0] == "wait" and entry[2] > 1]
+
+
+def test_an_input_switch_waits_the_device_s_input_delay():
+    machine = _fresh(generate.build(STREAMING))
+    _start(machine, 1)                                        # Watch TV: HDMI1
+    names = sorted(SMART_TV["signals"])
+    assert machine.sent == [(0, names.index("PowerOn")), (0, names.index("InputHdmi1"))]
+    # power-on's 3 s, then 1 s after the switch
+    assert _long_waits(machine) == [("wait", 0, 30), ("wait", 0, 10)]
+
+
+def test_an_online_input_waits_for_the_apps_only_after_power_on():
+    machine = _fresh(generate.build(STREAMING))
+    _start(machine, 0)                                        # Netflix, the TV off
+    # power-on's 3 s, then the 5 s more the apps need, before Netflix is sent
+    assert _long_waits(machine) == [("wait", 0, 30), ("wait", 0, 50), ("wait", 0, 10)]
+    machine.log.clear()
+    _start(machine, 1)                                        # the TV stays on
+    _start(machine, 0)
+    assert ("wait", 0, 50) not in machine.log                 # the apps are up already

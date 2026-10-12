@@ -61,6 +61,7 @@ def remote_lua(tmp_path_factory):
     shutil.copy(STUBS / "lxp" / "lom.lua", root / "lua" / "lxp" / "lom.lua")
     shutil.copy(STUBS / "run.lua", root / "run.lua")
     shutil.copy(STUBS / "help.lua", root / "help.lua")
+    shutil.copy(STUBS / "start.lua", root / "start.lua")
     return root, lua
 
 
@@ -162,3 +163,48 @@ def test_help_asks_after_each_device_and_input_an_activity_sets(remote_lua, buil
     asked = subprocess.run([lua, "help.lua", str(tree), "1"], cwd=root, capture_output=True,
                            text=True, errors="replace", timeout=120).stderr.splitlines()
     assert asked == ["1 Power On", "1 Input HDMI 1", "2 Power On", "2 Input TV"]
+
+
+def test_a_smart_tv_waits_its_input_delay_and_for_its_apps_once_after_power_on(
+        remote_lua, build, tmp_path):
+    """The archive's timing, run by the remote's own Lua: a second after each input
+    switch, and Netflix - an online input - only once the TV's apps are up, 8 s after
+    power-on. Starting Netflix again with the TV left on does not wait for them again."""
+    from afterglow import ir_signal
+
+    names = ["PowerOn", "PowerOff", "InputHdmi1", "InputNetflix"]
+    tv = {"schema": "afterglow-project-device/1", "id": "1", "label": "TV",
+          "type": "Television", "mfr": "Test", "model": "Smart",
+          "commands": [[name, name, "", "", None] for name in names],
+          "signals": {name: ir_signal.protocol_signal("nec1", {"address": 4, "command": n})
+                      for n, name in enumerate(names)},
+          "power_on_cmd": "PowerOn", "power_off_cmd": "PowerOff", "power_delay": 3000,
+          "inputs": [["HDMI 1", "InputHdmi1"], ["Netflix", "InputNetflix"]],
+          "input_delay": 1000, "online_inputs": ["Netflix"], "app_power_delay": 8000}
+    config = build({"settings": {}, "devices": [tv], "activities": [
+        {"id": "1", "label": "Netflix", "type": "VirtualTelevisionN", "display": "1",
+         "control": "1", "power_on_devices": ["1"], "enter": [["input", "1", "Netflix"]]},
+        {"id": "2", "label": "Watch TV", "type": "VirtualTelevisionN", "display": "1",
+         "control": "1", "power_on_devices": ["1"], "enter": [["input", "1", "HDMI 1"]]}]})
+    root, lua = remote_lua
+    tree = tmp_path / "start"
+    with contextlib.redirect_stdout(io.StringIO()):
+        ezhex.unpack(str(config), str(tree))
+    lines = subprocess.run([lua, "start.lua", str(tree), "1", "2", "1"], cwd=root,
+                           capture_output=True, text=True, errors="replace",
+                           timeout=120).stderr.splitlines()
+
+    starts = [[], [], []]
+    run = 0
+    for previous, line in zip([None] + lines, lines):
+        if previous and previous.split()[0] != line.split()[0]:
+            run += 1
+        starts[run].append(line)
+    waits = [[int(line.split()[3]) for line in start if line.split()[1] == "delay"]
+             for start in starts]
+    # power-on's 3 s, the 5 s more the apps need, then Netflix and a second after it
+    assert waits[0] == [3000, 5000, 1000]
+    assert starts[0][3].split()[1] == "send"
+    # the TV left on: the key delay, the input, a second after it - and no wait for apps
+    assert waits[1] == [500, 1000]
+    assert waits[2] == [500, 1000]
