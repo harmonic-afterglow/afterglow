@@ -1165,7 +1165,7 @@ holds the same codes:
 | `0x1F` on external power | a beep | `3F F100` (the motion sensor disarmed); beep; the charge context; wake; if 13 is set, timer 5 (5 later: push the mode, the charging screens - see "Charging") |
 | `0x1E` off external power | beeps, screen 0 | beeps `4664 1FF 1FF 1FF 4664`; back to what was shown if the charging screens are up; the charge context; wake |
 | `0x23` charge fault | - | beep; screen 9 (the charging-problem notice); `07 FFFB`; timer 14 (20 later: lights out) |
-| `0x0F` battery level up | beeps | the current activity's screen, then the charging screens 5 later if 13 is set - `0x1F`'s second half, without its beep: not generated |
+| `0x0F` battery level up | beeps | the current activity's screen, then the charging screens 5 later if 13 is set - `0x1F`'s second half: a build beeps, goes back to what was shown and starts that timer again |
 
 **Where the events come from.** The One's application firmware (Region 2 of the 54.2.5 and
 3.4 `.hfw` files, PIC18 code loaded at `0x20000`, disassembled with Ghidra) posts an event
