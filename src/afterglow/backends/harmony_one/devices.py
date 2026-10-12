@@ -55,7 +55,8 @@ def device_state_records(device: dict, place_object,
     A device with online inputs (`device["online"]`) also has `<Label>_Online_2`,
     variable ``online``, which says its apps are up: power-on clears it, and choosing an
     online input while it is clear first waits out the rest of the apps' delay, then
-    sets it - so only the first app after power-on waits, as Logitech's remotes did.
+    sets it - so only the first app after power-on waits. Logitech's One configurations
+    gate an input on the same delay (Kāt's: a 45-second timer from the TV's power-on).
     """
     label = device["label"].replace(" ", "_")
     index = device["index"]

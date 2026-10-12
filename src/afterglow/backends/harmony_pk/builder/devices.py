@@ -102,11 +102,17 @@ def _gen_device(spec):
                 f'<Parameter name="Command">{esc(cmd)}</Parameter>'
                 f'<Parameter name="Modifier">Press</Parameter></Operation></Action>')
     # A smart TV's online inputs - its apps, Netflix nearly always - answer only
-    # `app_power_delay` after power-on. A state of their own says whether they are up:
-    # power-on's `Reset` (`State.lua` runs it only on a real Off to On) clears it, and
-    # choosing an online input sets it, whose `ChangeAction` - run only on a change -
-    # waits what is left of the delay after power-on's own. So only the first app after
-    # power-on waits, as on Logitech's servers. Not for a device carrying its real states,
+    # `app_power_delay` after power-on. Logitech's One configurations wait for them; its
+    # 900 ones do not, so this is ours, done the One's way. A state of their own says
+    # whether they are up: power-on's `Reset` (`State.lua` runs it only on a real Off to
+    # On) clears it, and choosing an online input sets it, whose `ChangeAction` - run
+    # only on a change - waits what is left of the delay after power-on's own. So only
+    # the first app after power-on waits.
+    #
+    # Help asks after every `SetValue` in an activity's start, and power-on's actions are
+    # in it, so the clearing is a `ForceValue`: HAO.lua sets the state without running
+    # anything, and Help does not list it. The setting is a `SetValue` inside the input's
+    # own actions, which Help never sees. Not for a device carrying its real states,
     # whose power this does not write.
     online = set(spec.get("online_inputs") or ()) & {
         pair[0] for pair in spec.get("inputs") or () if len(pair) == 2 and pair[1]}
@@ -115,10 +121,12 @@ def _gen_device(spec):
              and (spec.get("power_on_cmd") and spec.get("power_off_cmd")
                   or spec.get("power_cmd") and not spec.get("always_on")))
 
-    def _apps(value):
-        return (f'<Action><Target>Device</Target><Operation><Name>SetValue</Name>'
+    def _apps(value, operation="SetValue"):
+        # ForceValue names its state `StateName`, SetValue `State` (HAO.lua)
+        name = "StateName" if operation == "ForceValue" else "State"
+        return (f'<Action><Target>Device</Target><Operation><Name>{operation}</Name>'
                 f'<Parameter name="DeviceId">{did}</Parameter>'
-                f'<Parameter name="State">{APPS_STATE}</Parameter>'
+                f'<Parameter name="{name}">{APPS_STATE}</Parameter>'
                 f'<Parameter name="Value">{value}</Parameter></Operation></Action>')
     if spec.get("power_on_cmd") and spec.get("power_off_cmd"):
         # Discrete power: On is idempotent.
@@ -127,7 +135,7 @@ def _gen_device(spec):
                    # <Action> before <Name>, as every real configuration writes it.
                    f"<SetAction>{_pwr_send(spec['power_on_cmd'])}<Name>On</Name></SetAction>"
                    f"<SetAction>{_pwr_send(spec['power_off_cmd'])}<Name>Off</Name></SetAction>"
-                   + (f"<SetAction>{_apps('Off')}<Name>Reset</Name></SetAction>"
+                   + (f"<SetAction>{_apps('Off', 'ForceValue')}<Name>Reset</Name></SetAction>"
                       if gated else "")
                    + "</DiscreteActions></State>")
     elif spec.get("power_cmd") and not spec.get("always_on"):
@@ -135,7 +143,7 @@ def _gen_device(spec):
         states_content += (f"<State><Id>Power</Id><Value>Off</Value><Value>On</Value><Delay>{delay}</Delay>"
                    f"<RelativeActions><NextAction>{_pwr_send(spec['power_cmd'])}"
                    f"</NextAction>"
-                   + (f"<ResetAction>{_apps('Off')}</ResetAction>" if gated else "")
+                   + (f"<ResetAction>{_apps('Off', 'ForceValue')}</ResetAction>" if gated else "")
                    + "</RelativeActions></State>")
     def _op(name, params):
         """One <Action> for this device."""

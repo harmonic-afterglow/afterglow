@@ -1080,9 +1080,21 @@ As downstairs and upstairs build them (arch 12):
   variables'; they now name the variables, as the donors do.
 
 A generated image builds them from the project's device fields - `power_on_cmd`,
-`power_off_cmd` or a toggle `power_cmd`, `power_delay`, `inputs`, `input_cycle` - after the
-Options screens' variables. Nothing sets them yet: activities will, by writing a device's
-power and input variables on entry.
+`power_off_cmd` or a toggle `power_cmd`, `power_delay`, `inputs`, `input_cycle`,
+`input_delay`, `online_inputs` and `app_power_delay` - after the Options screens'
+variables, and activities set them by writing a device's power and input variables.
+
+**The input delay and a smart TV's apps.** Logitech keeps a device's input delay (the
+archive's `InputDelay`) in each input's own command object: Kāt's Hisense 50R6 has
+InputDelay 1000 and its ten input sends carry `0x7C` low byte 10, which no other command of
+it does (its power send has 1) - so there the low byte is the wait after, in tenths, as
+arch 12 reads it. Its apps' delay (`ConnectedAppPowerOnDelay`, 45 s) is a variable
+`Kate_TV_OnlinePower_2`: power-on starts timer 2 (`1F EB02`), which after 45 s writes it 1;
+power-off writes it 0; the Netflix input loads the byte register with 0 and, behind a test
+of it, waits 45.2 s and writes it 1, then sends. A generated image has `<Label>_Online_2`
+instead, with no timer: power-on clears it, and the first app after waits only what the
+power-on wait has not, `app_power_delay - power_delay`, then sets it. An import reads both,
+and the input delay either way (importing.py).
 
 ### The idle layer: key lights, USB, start-up
 

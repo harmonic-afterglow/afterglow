@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 import struct
-from collections import defaultdict
+from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
 
@@ -38,6 +38,11 @@ TESTS = (0x70, 0x71)
 BUTTON_HEIGHT = 50
 POWER_NAME = re.compile(r"^(?P<label>.+)_Power_2$")
 INPUT_NAME = re.compile(r"^(?P<label>.+)_Input_(?P<count>\d+)$")
+# Whether a smart TV's apps are up: Logitech's `<Label>_OnlinePower_2`, which a timer
+# started at power-on sets after the apps' delay, and ours, `<Label>_Online_2`, which the
+# first app after power-on sets after waiting the rest of that delay
+# (devices.device_state_records).
+ONLINE_NAME = re.compile(r"^(?P<label>.+)_Online(?P<power>Power)?_2$")
 # A transition taken from any value, as direct inputs have them.
 ANY = (activity_index.ANY_STATE, 0xFFFD)
 
@@ -356,16 +361,66 @@ def device_variables(image: Image) -> list[tuple[dict, int, str]]:
     return found
 
 
+def timers(payload: bytes) -> list[tuple[int, int, int]]:
+    """Section 13's timers: ``(seconds, operand, opcode)`` each, by number."""
+    start = gspm.section_ranges(payload)[13][0]
+    out = []
+    for number in range(payload[start]):
+        at = int.from_bytes(payload[start + 1 + 3 * number:start + 4 + 3 * number],
+                            "little") - gspm.BASE
+        out.append((int.from_bytes(payload[at + 1:at + 4], "little"),
+                    int.from_bytes(payload[at + 4:at + 6], "little"), payload[at + 6]))
+    return out
+
+
+def online_gates(image: Image) -> dict[int, dict]:
+    """Each smart TV's apps' gate, by its variable's number: ``{"ours": bool,
+    "timer_ms": the delay a Logitech timer sets it after, or None}``."""
+    gates = {}
+    for number, record in enumerate(image.engine):
+        name = image.names.get(record["property_id"])
+        match = name and ONLINE_NAME.match(name)
+        if match:
+            gates[number] = {"ours": not match["power"], "timer_ms": None}
+    try:
+        found = timers(image.payload)
+    except (ValueError, IndexError, KeyError):
+        found = []
+    for seconds, operand, opcode in found:
+        if opcode >= 0x80 and opcode & 0x7F in gates and operand == 1:
+            gates[opcode & 0x7F]["timer_ms"] = seconds * 1000
+    return gates
+
+
+def _gate(image: Image, index: int, gates: dict, depth: int = 6):
+    """The wait an object holds back behind a test on an apps' gate - ``(variable, ms)``
+    - or None: the instruction a test guards, with what it waits."""
+    if depth < 0 or not 0 <= index < len(image.objects):
+        return None
+    atoms = image.objects[index]["atoms"]
+    for at, (operand, opcode) in enumerate(atoms):
+        if opcode in TESTS and operand & 0xFF in gates and at + 1 < len(atoms):
+            guarded = image.atom(*atoms[at + 1])
+            return operand & 0xFF, sum(step[2] for step in guarded if step[0] == WAIT)
+        if opcode == OBJECT:
+            found = _gate(image, operand, gates, depth - 1)
+            if found:
+                return found
+    return None
+
+
 def read_states(image: Image) -> dict[int, dict]:
     """Each device's power and inputs, from its named variables' transitions, with
     every command as its id: ``{"power": {...}, "inputs": {...}}`` by device index."""
     out: dict[int, dict] = defaultdict(dict)
+    gates = online_gates(image)
     for record, device, kind in device_variables(image):
-        _state(out[device], record, kind == "power", image)
+        _state(out[device], record, kind == "power", image, gates)
     return dict(out)
 
 
-def _state(states: dict, record: dict, power, image: Image):
+def _state(states: dict, record: dict, power, image: Image, gates=None):
+    gates = gates or {}
     transitions = {(item["from"], item["to"]): item for item in record["transitions"]}
 
     def sent(item):
@@ -389,14 +444,49 @@ def _state(states: dict, record: dict, power, image: Image):
     count = record["limit"] + 1
     direct = [item for item in record["transitions"] if item["from"] in ANY]
     if direct:
-        commands = [None] * count
+        chosen = [None] * count
+        online, app = [], None
         for item in direct:
             if not 0 <= item["to"] < count:
                 continue
-            sends = sent(item)[0]
-            commands[item["to"]] = (sequence(item) if len(sends) > 1
-                                    else sends[0] if sends else None)
+            steps = sequence(item) if item["category"] == OBJECT else []
+            gate = _gate(image, item["operand"], gates) if item["category"] == OBJECT else None
+            if gate:
+                # an app: what waits before its first send belongs to the gate
+                online.append(item["to"])
+                while steps and steps[0][0] == WAIT:
+                    steps.pop(0)
+                variable, held = gate
+                app = (gates[variable]["timer_ms"] or held if not gates[variable]["ours"]
+                       else held + states.get("power", {}).get("delay_ms", 0))
+            # Logitech's configurations carry the input delay in the input's own command
+            # object, its 0x7C in tenths (Kāt's Hisense: InputDelay 1000, 10 there and on
+            # no other command); ours, as a wait after it. Both are the wait after.
+            sends = [step for step in image.steps(item["operand"]) if step[0] == SEND] \
+                if item["category"] == OBJECT else []
+            if len(sends) == 1 and sends[0][2] > 1 and steps and steps[-1][0] == SEND:
+                steps = steps + [(WAIT, sends[0][2] * 100)]
+            chosen[item["to"]] = steps
+        # The wait after an input's sends that most inputs have is the device's input
+        # delay (the archive's InputDelay): taken off each, it is said once.
+        trailing = Counter(steps[-1][1] for steps in chosen
+                           if steps and steps[-1][0] == WAIT)
+        delay = trailing.most_common(1)[0][0] if trailing else 0
+        if delay and trailing[delay] * 2 < sum(1 for steps in chosen if steps):
+            delay = 0
+        commands = []
+        for steps in chosen:
+            if delay and steps and steps[-1] == (WAIT, delay):
+                steps = steps[:-1]
+            sends = [step for step in steps if step[0] == SEND]
+            commands.append(None if not sends else sends[0][1] if steps == sends[:1]
+                            else steps)
         states["inputs"] = {"direct": commands}
+        if delay:
+            states["inputs"]["delay_ms"] = delay
+        if online and app:
+            states["inputs"]["online"] = sorted(online)
+            states["inputs"]["app_delay_ms"] = app
         return
     step = transitions.get((0, 1))
     if step is not None:
@@ -608,6 +698,11 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
                     for kind, item in chosen]])
             else:
                 out["inputs"].append([names[chosen].removesuffix(" (press)"), names[chosen]])
+        if inputs.get("delay_ms"):
+            out["input_delay"] = inputs["delay_ms"]
+        if inputs.get("online"):
+            out["online_inputs"] = [out["inputs"][value][0] for value in inputs["online"]]
+            out["app_power_delay"] = inputs["app_delay_ms"]
     elif inputs:
         out["input_cycle"] = {"next": names[inputs["next"]], "delay_ms": inputs["delay_ms"],
                               "values": [f"Input {value + 1}"

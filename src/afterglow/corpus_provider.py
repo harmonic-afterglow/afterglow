@@ -248,7 +248,8 @@ class LogitechCatalog:
         if inputs:
             template["inputs"] = inputs
             # The inputs that are a smart TV's online apps - Netflix, nearly always - which
-            # answer only once the TV has been on for `app_power_delay`.
+            # answer only once the TV has been on for `app_power_delay`, which every
+            # remote waits for.
             online = {entry.get("name") for entry in
                       ((control.get("inputs") or {}).get("list") or [])
                       if isinstance(entry, dict) and entry.get("online")}
@@ -516,8 +517,9 @@ def _archive_timing(timing) -> dict:
     if not isinstance(timing, dict):
         return {}
     out = {}
-    # how long a switch of input needs before the next command, and how long after
-    # power-on a smart TV's online apps take to answer: both are waits the builders model
+    # how long a switch of input needs before the next command, which every builder
+    # waits; and how long after power-on a smart TV's online apps take to answer, which
+    # every builder waits for the first of them
     for source, target in (("interKeyDelay", "press_interkey"), ("inputDelay", "input_delay"),
                           ("connectedAppPowerOnDelay", "app_power_delay")):
         value = timing.get(source)

@@ -137,13 +137,43 @@ def test_a_favourite_channel_comes_back_dialled_and_confirmed(tmp_path):
     assert imported["devices"][0]["press_interkey"] == 300
 
 
+def test_a_smart_tv_comes_back_with_its_input_delay_and_its_apps(tmp_path):
+    from test_harmony_one_activities import STREAMING
+    imported = _imported(generate.build(STREAMING)["image"], tmp_path)
+    tv = imported["devices"][0]
+    assert (tv["power_delay"], tv["input_delay"], tv["app_power_delay"]) == (3000, 1000, 8000)
+    assert tv["online_inputs"] == [name for name, *_ in tv["inputs"]
+                                   if name.startswith("InputNetflix")]
+    # each input a plain send again, the delay said once
+    assert all(isinstance(entry[1], str) for entry in tv["inputs"])
+
+
+KATE = Path(__file__).resolve().parents[2] / "new_donors" / "one-kate-livingroom.ezhex"
+
+
+@pytest.mark.skipif(not KATE.is_file(), reason="needs Kāt's Harmony One configuration")
+def test_logitech_s_apps_gate_and_input_delay_are_read_from_a_real_one():
+    """Kāt's Hisense: Logitech waits 45 s for its apps (a timer from power-on, and the
+    Netflix input held behind it) and keeps its InputDelay, 1000, in each input's own
+    command object, in tenths."""
+    import contextlib
+    import io
+    from afterglow import importer
+    with contextlib.redirect_stdout(io.StringIO()):
+        project = importer.import_file(str(KATE)).project
+    [tv] = [device for device in project["devices"] if device["label"] == "Kate TV"]
+    assert (tv["power_delay"], tv["input_delay"], tv["app_power_delay"]) == (8000, 1000, 45000)
+    assert tv["online_inputs"] == ["Netflix"]
+
+
 def _comparable(project: dict) -> dict:
     # a build numbers commands in name order, so a command renamed after its key moves
     return {
         "devices": [{key: sorted(device[key]) if key == "commands" else device.get(key)
                      for key in (
             "label", "commands", "power_cmd", "power_on_cmd", "power_off_cmd", "power_delay",
-            "inputs", "input_cycle", "press_interkey")} for device in project["devices"]],
+            "inputs", "input_cycle", "press_interkey", "input_delay", "online_inputs",
+            "app_power_delay")} for device in project["devices"]],
         "activities": [{key: value for key, value in activity.items() if key != "id"}
                        for activity in project["activities"]],
     }

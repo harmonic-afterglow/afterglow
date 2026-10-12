@@ -48,6 +48,22 @@ def test_an_untouched_page_changes_nothing(qapp_or_skip):
     assert spec == device
 
 
+def test_an_input_can_be_ticked_as_the_tv_s_app_without_editing_the_inputs(qapp_or_skip):
+    from PyQt6.QtCore import Qt
+    device = _device(inputs=[["HDMI 1", "HDMI1"], ["Netflix", "HDMI2"]],
+                     online_inputs=["Netflix"],
+                     states=[{"id": "Input", "values": [], "actions": []}])
+    page = _page(device)
+    assert page.online_inputs() == ["Netflix"]          # as the catalogue gave it
+    page.table.item(0, 2).setCheckState(Qt.CheckState.Checked)
+    page.table.item(1, 2).setCheckState(Qt.CheckState.Unchecked)
+    spec = dict(device)
+    page.apply(spec)
+    assert spec["online_inputs"] == ["HDMI 1"]
+    # the imported Input state is kept: ticking an app is not an edit of the inputs
+    assert "inputs_edited" not in spec
+
+
 def test_a_device_that_steps_through_its_inputs_builds_with_them(qapp_or_skip, build):
     from afterglow.gui.device_inputs import CYCLE
     device = _device()

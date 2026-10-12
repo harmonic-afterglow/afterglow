@@ -381,8 +381,10 @@ reads it unpinned, from Pages (`AFTERGLOW_ARCHIVE_URL` points it elsewhere, a ch
 `docs` included): the manifest afresh, every other file cached by the manifest's
 `build`, so a pushed rebuild reaches users at once - push only a build that works.
 `harmony_archive` turns its raw records into the device records the catalogue reads. A field only the raw capture has (an input's `IsOnline`,
-`ConnectedAppPowerOnDelay`) is added there, then mapped in `corpus_provider` and built by
-each backend; `tests/test_harmony_archive.py` holds a small archive in the API's layout.
+`ConnectedAppPowerOnDelay`) is added there and mapped in `corpus_provider`; a backend
+builds it the way Logitech's own configurations do where they have it (the One gates
+the apps delay); where they do not (the 900/1100), it must not change what Help asks -
+there the gate is cleared with a `ForceValue`, which Help does not list; `tests/test_harmony_archive.py` holds a small archive in the API's layout.
 
 **The safety gate:** `remotes.py` profiles have
 `status: read-only | experimental | verified`. `profile.require_buildable()` permits
