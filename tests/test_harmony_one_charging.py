@@ -160,6 +160,18 @@ def test_charging_stopping_goes_back_to_what_was_shown(built):
     assert machine.mode == scaffold.SYSTEM_SCREENS
 
 
+def test_the_battery_rising_on_the_cradle_shows_what_was_shown_then_the_ring_again(built):
+    machine = _on_home(built)
+    ring = _pictures(built)
+    machine.event(idle.CHARGING_STARTED)
+    machine.fire(next(t for t in machine.running if machine.timer(t)[0] == idle.SHOW_DELAY))
+    assert machine.mode == ring[0]
+    machine.event(idle.BATTERY_UP)
+    assert machine.mode == scaffold.SYSTEM_SCREENS and not machine.stack
+    machine.fire(next(t for t in machine.running if machine.timer(t)[0] == idle.SHOW_DELAY))
+    assert machine.mode == ring[0]
+
+
 def test_a_charging_problem_shows_the_firmware_s_notice(built):
     machine = _on_home(built)
     machine.event(idle.CHARGING_PROBLEM)

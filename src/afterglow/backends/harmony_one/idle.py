@@ -85,6 +85,8 @@ MOTION = 0x17            # the event the firmware posts when the remote is picke
 # The firmware's charging events (gspm.md, "Where the events come from"): external power
 # removed and connected - lifted off the cradle and set on it - and a charger fault.
 CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
+# The battery level went up: on the cradle, as it charges.
+BATTERY_UP = 0x0F
 REDRAW = 0x2D
 # The battery events each charge context answers, as all three donors' contexts 0, 5, 6.
 CHARGE_EVENTS = {"normal": (0x1A, 0x1B, 0x1C, 0x1D), "usb": (0x1E,), "low": (0x18, 0x19)}
@@ -289,8 +291,9 @@ class _Machine:
     def _charging_events(self) -> dict[int, list]:
         """Charging starts: wake, stop the motion sensor waking it on the cradle, and open
         the charging screens a moment later. Charging stops: back to what was shown, if
-        the charging screens are still up, as unplugging USB does. A charging problem
-        shows the firmware's notice."""
+        the charging screens are still up, as unplugging USB does. The battery level rising
+        goes back to what was shown and opens them again. A charging problem shows the
+        firmware's notice."""
         if not self.charging:
             return {}
         m, guarded, charge, wake = self.m, self.guarded, self.charge, self.wake
@@ -304,6 +307,12 @@ class _Machine:
                 guarded(0, _test(NOT_EQUAL, self.charging_shown), [POP_MODE, MODE_STACK]),
                 wake, guarded(1, _test(EQUAL, BATTERY), [0xFFF6, MODE_STACK]),
                 self.low_battery_wake]),
+            # The battery level rose, as it does on the cradle: back to what was shown,
+            # and the charging screens again a moment later, as every donor does.
+            BATTERY_UP: m.object([
+                [BEEP_KEY, BEEP], _timer(STOP_TIMER, self.show_timer),
+                guarded(0, _test(NOT_EQUAL, self.charging_shown), [POP_MODE, MODE_STACK]),
+                wake, guarded(1, _test(EQUAL, HOLD), _timer(START_TIMER, self.show_timer))]),
             # A charging problem: the firmware's notice (screen 9), lit for a while.
             CHARGING_PROBLEM: m.object([[BEEP_KEY, BEEP], wake, [SCREEN_NINE, ENTER_MODE],
                                         [STATUS, MODE_STACK],

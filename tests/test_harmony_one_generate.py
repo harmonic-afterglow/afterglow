@@ -1146,7 +1146,7 @@ def test_every_key_lights_the_keypad_and_usb_comes_and_goes_as_upstairs_does():
     # Activities and Off
     assert set(events) == {0x10, 0x19, 0x25, 0x26, 0x27, 0x2D, 0xAE, 0xAF,
                            idle.CHARGING_STOPPED, idle.CHARGING_STARTED,
-                           idle.CHARGING_PROBLEM, 0x80 | 34, 0x80 | 37}
+                           idle.CHARGING_PROBLEM, idle.BATTERY_UP, 0x80 | 34, 0x80 | 37}
 
     machine = _Idle(image)
     machine.run(wake)
