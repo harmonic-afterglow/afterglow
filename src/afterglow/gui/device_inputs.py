@@ -59,9 +59,15 @@ class DeviceInputsPage(QWizardPage):
         self.direct = QWidget()
         direct = QVBoxLayout(self.direct)
         direct.setContentsMargins(20, 0, 0, 0)
-        self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Input", "Command"])
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Input", "Command", "App"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        # A smart TV's apps (Netflix) answer only a while after it comes on: the remote
+        # waits the Timing page's "Online apps ready after" before the first after
+        # power-on. Not an edit of the inputs, so an imported Input state stays as it was.
+        self.table.horizontalHeaderItem(2).setToolTip(
+            "One of the TV's own apps, such as Netflix: after the TV comes on, the remote "
+            "waits until its apps are ready before choosing it.")
         self.table.itemChanged.connect(self._touch_inputs)
         direct.addWidget(self.table)
         row = QHBoxLayout()
@@ -138,6 +144,7 @@ class DeviceInputsPage(QWizardPage):
         self.refresh_commands()
         inputs = device.get("inputs") or []
         cycle = device.get("input_cycle") or {}
+        self._online = set(device.get("online_inputs") or [])
         direct = [pair for pair in inputs if len(pair) == 2 and pair[1]]
         mode = DIRECT if direct else CYCLE if cycle else DIRECT if inputs else NONE
         self.modes[mode].setChecked(True)
@@ -202,6 +209,12 @@ class DeviceInputsPage(QWizardPage):
         row = self.table.rowCount()
         self.table.insertRow(row)
         self.table.setItem(row, 0, QTableWidgetItem(name))
+        app = QTableWidgetItem()
+        app.setFlags((app.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                     & ~Qt.ItemFlag.ItemIsEditable)
+        app.setCheckState(Qt.CheckState.Checked if name in getattr(self, "_online", ())
+                          else Qt.CheckState.Unchecked)
+        self.table.setItem(row, 2, app)
         command = _row_command(selection)
         if selection is not None and command is None:
             kept = QTableWidgetItem(KEPT)
@@ -253,7 +266,10 @@ class DeviceInputsPage(QWizardPage):
         self.direct.setVisible(mode == DIRECT)
         self.cycle.setVisible(mode == CYCLE)
 
-    def _touch_inputs(self, *_):
+    def _touch_inputs(self, item=None, *_):
+        # ticking App is not an edit of the inputs
+        if isinstance(item, QTableWidgetItem) and item.column() == 2:
+            return
         if not getattr(self, "_loading", False):
             self.inputs_touched = True
 
@@ -277,6 +293,16 @@ class DeviceInputsPage(QWizardPage):
                 out.append([name, selection])
         return out
 
+    def online_inputs(self) -> list[str]:
+        """The inputs ticked as the TV's apps."""
+        out = []
+        for row in range(self.table.rowCount()):
+            name = (self.table.item(row, 0) or QTableWidgetItem("")).text().strip()
+            app = self.table.item(row, 2)
+            if name and app is not None and app.checkState() == Qt.CheckState.Checked:
+                out.append(name)
+        return out
+
     def cycle_spec(self) -> dict:
         out = {"values": [self.values.item(i).text().strip()
                           for i in range(self.values.count())
@@ -291,6 +317,11 @@ class DeviceInputsPage(QWizardPage):
 
     def apply(self, spec: dict) -> None:
         """Write what was changed here into a device spec; leave the rest alone."""
+        online = self.online_inputs() if self._mode() == DIRECT else []
+        if online:
+            spec["online_inputs"] = online
+        else:
+            spec.pop("online_inputs", None)
         if self.inputs_touched:
             mode = self._mode()
             spec["inputs"] = self.direct_inputs() if mode == DIRECT else []

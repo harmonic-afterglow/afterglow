@@ -43,10 +43,11 @@ yet, and that is what this beta is for.
   off; a charging problem shows its notice. A theme can replace the pictures.
 - **Smart TVs wait for their apps, and every device for its inputs** - on the Harmony
   One, 900 and 1100. A TV's online input (Netflix, nearly always) is sent only once its
-  apps are up, Logitech's own delay after power-on - the first time after power-on only,
-  as Logitech's remotes did - and a device switching inputs gets Logitech's time to
-  settle before the next command. Both come with a device from the Logitech database and
-  are on its **Timing** page.
+  apps are up, Logitech's own delay after power-on, and only the first time after
+  power-on - as Logitech's One configurations do; the 900 and 1100 now do it too, without
+  Help asking anything more. A device switching inputs gets Logitech's time to settle
+  before the next command. Both come with a device from the Logitech database and are on
+  its **Timing** page.
 
 ### Changed
 
@@ -54,7 +55,8 @@ yet, and that is what this beta is for.
   [harmony-ir-archive](https://github.com/harmonic-afterglow/harmony-ir-archive): the
   capture of Logitech's service as it answered, served a device at a time - looking a
   device up fetches a few hundred kilobytes, never the database. It carries what the
-  earlier source left out, such as which inputs are a TV's apps and how long they take.
+  earlier source left out, such as each device's input delay and which inputs are a TV's
+  apps, and the commands learned in Logitech's software, which were missing before.
 
 - A device's **Timing** page, and the device and activity **Advanced** pages, show only
   what the remote's builder uses: the Harmony One has the power-on delay, the delay

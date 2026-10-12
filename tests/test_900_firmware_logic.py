@@ -165,11 +165,13 @@ def test_help_asks_after_each_device_and_input_an_activity_sets(remote_lua, buil
     assert asked == ["1 Power On", "1 Input HDMI 1", "2 Power On", "2 Input TV"]
 
 
-def test_a_smart_tv_waits_its_input_delay_and_for_its_apps_once_after_power_on(
+def test_a_smart_tv_waits_for_its_apps_once_after_power_on_and_help_asks_no_more(
         remote_lua, build, tmp_path):
     """The archive's timing, run by the remote's own Lua: a second after each input
     switch, and Netflix - an online input - only once the TV's apps are up, 8 s after
-    power-on. Starting Netflix again with the TV left on does not wait for them again."""
+    power-on. Starting Netflix again with the TV left on does not wait for them again,
+    and Help, which asks after every state an activity's start sets, asks only after
+    power and input - the apps' state is cleared where it does not look."""
     from afterglow import ir_signal
 
     names = ["PowerOn", "PowerOff", "InputHdmi1", "InputNetflix"]
@@ -205,6 +207,9 @@ def test_a_smart_tv_waits_its_input_delay_and_for_its_apps_once_after_power_on(
     # power-on's 3 s, the 5 s more the apps need, then Netflix and a second after it
     assert waits[0] == [3000, 5000, 1000]
     assert starts[0][3].split()[1] == "send"
-    # the TV left on: the key delay, the input, a second after it - and no wait for apps
+    # the TV left on: the key delay, the input, a second after it - no wait for apps
     assert waits[1] == [500, 1000]
     assert waits[2] == [500, 1000]
+    asked = subprocess.run([lua, "help.lua", str(tree), "1"], cwd=root, capture_output=True,
+                           text=True, errors="replace", timeout=120).stderr.splitlines()
+    assert asked == ["1 Power On", "1 Input Netflix"]
