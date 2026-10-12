@@ -5,6 +5,7 @@ config verifies, and something is quietly missing or wrong. Each test below is a
 that was silently lost at least once.
 """
 import re
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -324,3 +325,30 @@ def test_a_configuration_imports_with_no_protocols_installed(a_config, unpacked,
         f"every command must convert, not fall back: {kinds}")
     assert kinds.get("protocol", 0) > 0
     json.dumps(project)          # a portable project must be serialisable as-is
+
+
+def test_an_import_leaves_nothing_beside_the_file_and_keeps_its_pictures(configs, tmp_path,
+                                                                         build):
+    """A configuration used to be unpacked into `<name>_extracted` next to it, and kept
+    there because the project's pictures were read from it at every build."""
+    import shutil
+
+    from afterglow import paths
+    from afterglow.importer import import_file
+
+    with_pictures = [config for config in configs if config.parent.name == "martin"
+                     and config.stem == "a-1"] or configs
+    source = tmp_path / "dumps" / "mine.ezhex"
+    source.parent.mkdir()
+    shutil.copy2(with_pictures[0], source)
+    project = import_file(source).project
+    assert [path.name for path in source.parent.iterdir()] == ["mine.ezhex"]
+    assert project["settings"]["out_file"] == "mine_mod.ezhex"
+    kept = paths.logos_dir() / "Imported" / "mine"
+    try:
+        for asset in project.get("assets") or []:
+            assert Path(asset["source"]).parent == kept
+            assert Path(asset["source"]).is_file()
+        assert build(project).is_file()
+    finally:
+        shutil.rmtree(kept, ignore_errors=True)

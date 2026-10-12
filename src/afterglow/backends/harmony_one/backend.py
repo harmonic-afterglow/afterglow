@@ -45,7 +45,8 @@ def import_project(source, profile, context) -> ImportResult:
         device["type"] = types.get(("device", index)) or device.get("type")
     # favourites' logos go to the owner's logos folder, by the configuration's name
     from ... import paths
-    name = Path(str(source)).name.removesuffix("_extracted") or "imported"
+    name = (context.get("name") or Path(str(source)).name.removesuffix("_extracted")
+            or "imported")
     logos = paths.logos_dir() / "Imported" / name
     activities, off = importing.Activities(image, devices, naming, notes, logos).read()
     unknown = [device["label"] for index, device in enumerate(devices)
