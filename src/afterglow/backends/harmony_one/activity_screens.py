@@ -15,17 +15,20 @@ from . import activity_index, keys, structures
 from .hub import page_zones
 from .idle import MODE_STACK
 from .pages import (
-    BUTTON_POSITIONS, FIRST_BUTTON_KEY, HELP_FONT, HELP_KEEP_TOP, HELP_SENDING_XY, HELP_TOP,
-    LABEL_BASELINE, MENU_DEVICES_KEY, MENU_OPTIONS_KEY, MENU_ROW_KEYS, MENU_ROWS_PER_PAGE,
-    PAGE_ACTIVITIES_KEY, PAGE_DEVICES_KEY, QUESTION_TOP, SCREEN_WIDTH, SIDE_NEXT_KEY,
-    SIDE_PREV_KEY, SOFTKEY_LEFT_ZONE, SOFTKEY_RIGHT_ZONE, START_FONT, START_KEEP_TOP,
-    START_TEXT_Y, button_page, fit_label, measure, menu_page)
+    ASSISTANT_Y, BUTTON_POSITIONS, FIRST_BUTTON_KEY, HELP_FONT, HELP_KEEP_TOP, HELP_PROMPT_Y,
+    HELP_QUESTION_Y, HELP_SENDING_XY, HELP_TOP, LINE_SPACING, MENU_DEVICES_KEY,
+    MENU_OPTIONS_KEY, MENU_ROW_KEYS, MENU_ROWS_PER_PAGE, PAGE_ACTIVITIES_KEY, PAGE_DEVICES_KEY,
+    SCREEN_WIDTH, SIDE_NEXT_KEY, SIDE_PREV_KEY, SOFTKEY_LEFT_ZONE, SOFTKEY_RIGHT_ZONE,
+    START_FONT, START_KEEP_TOP, START_TEXT_Y, button_page, menu_page)
 from .pictures import SENDING_XY, START_ICON_XY
 from .scaffold import menu_template
 from .structures import ENTER_MODE, OBJECT_ATOM, object_body
 
 # `07 FFFB`: stop every running timer, as each donor's activity does first.
 STOP_TIMERS = (0xFFFB, MODE_STACK)
+# The touch keys an answer softkey binds, as upstairs binds them: 0xB1 for Yes - or OK,
+# alone at the right - and 0xB2 for No.
+ANSWER_KEYS = (0xB1, 0xB2)
 
 
 def _enter(ordinal: int) -> list[dict]:
@@ -137,38 +140,146 @@ class Flow:
             out += [{"opcode": "bitmap", "x": HELP_SENDING_XY[0],
                      "y": HELP_SENDING_XY[1], "target": picture("activity/sending")}
                     ] if "activity/sending" in screens.roles else []
-            out += screens.lines(screens.words("activity.keep-pointed"), HELP_FONT,
+            out += screens.lines(screens.words("help.keep-pointed"), HELP_FONT,
                                  HELP_KEEP_TOP)
             return out + [{"opcode": "end"}]
         screens.owned([], [], program, "help", title, keys=self._swallow(), on_enter=before)
 
-    def _yes_no(self, title, question, yes, no, fix_object=False):
-        """A question with Yes and No on the bottom row: Yes opens ``yes``, No runs
-        ``no`` - a screen to open, or with ``fix_object`` an object to run."""
+    def _paragraphs(self, text, top, lines=3) -> list[dict]:
+        """``text`` centred, a paragraph per line break with a blank line between."""
+        screens, out = self.screens, []
+        for paragraph in text.split("\n"):
+            drawn = screens.lines(paragraph, HELP_FONT, top, lines=lines)
+            out += drawn
+            top += LINE_SPACING * (len(drawn) - 1) + LINE_SPACING
+        return out
+
+    def _answered(self, title, draw, answers, *, icon=None, on_enter=None, home=None):
+        """A screen of Help or the Remote Assistant, as upstairs draws one: its title,
+        ``draw``'s words (with the activity's ``icon`` above them, for Help), and its
+        answers as softkeys - Yes bottom left, No or OK bottom right. ``answers`` is
+        {"yes"|"no"|"ok": object}; with ``home``, Help goes back to the activity."""
         screens, layout = self.screens, self.layout
-        frames, frame_width = self._frames(), self.frames.width
-        rows = [(FIRST_BUTTON_KEY + 4, layout.navigation(yes), OBJECT_ATOM),
-                (FIRST_BUTTON_KEY + 5, no if fix_object else layout.navigation(no),
-                 OBJECT_ATOM)]
-        zones = [zone for zone in self.geometry[len(BUTTON_POSITIONS)]
-                 if (zone["tag"] | 0x80) in (FIRST_BUTTON_KEY + 4, FIRST_BUTTON_KEY + 5)]
+        zone = {"yes": (SOFTKEY_LEFT_ZONE, ANSWER_KEYS[0]),
+                "no": (SOFTKEY_RIGHT_ZONE, ANSWER_KEYS[1]),
+                "ok": (SOFTKEY_RIGHT_ZONE, ANSWER_KEYS[0])}
+        rows = [(zone[name][1], target, OBJECT_ATOM) for name, target in answers.items()]
+        zones = [dict(zone[name][0], tag=zone[name][1] & 0x7F) for name in answers]
+        mode_keys = ([(keys.code(keys.HELP), layout.navigation(home), OBJECT_ATOM)]
+                     if home is not None else [])
 
         def program(picture, prologue):
             out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
-            out += screens.lines(question, HELP_FONT, QUESTION_TOP, lines=3)
-            widths, _codes = measure(screens.font)
-            out.append({"opcode": "attribute", "value": screens.label})
-            for slot, text in ((4, screens.words("assistant.yes")),
-                               (5, screens.words("assistant.no"))):
-                left, top = BUTTON_POSITIONS[slot]
-                out.append({"opcode": "bitmap", "x": left, "y": top,
-                            "target": picture(frames[slot])})
-                [glyphs] = fit_label(text, screens.font, frame_width, lines=1)
-                width = sum(widths[code] for code in glyphs)
-                out.append({"opcode": "inline_text", "x": (2 * left + frame_width - width) // 2,
-                            "y": top + LABEL_BASELINE, "glyphs": glyphs.hex()})
-            return out + [{"opcode": "end"}]
-        screens.owned(rows, zones, program, "question", title)
+            if icon:
+                out.append({"opcode": "bitmap", "x": START_ICON_XY[0], "y": START_ICON_XY[1],
+                            "target": picture(icon)})
+            out += draw()
+            return screens.softkeys(out + [{"opcode": "end"}], list(answers))
+        screens.owned(rows, zones, program, "question", title, keys=mode_keys,
+                      on_enter=on_enter)
+
+    def _help(self, title, ordinals, before, home, icon=None):
+        """Help as upstairs runs it: re-send everything and ask whether that fixed it;
+        if not, ask after each device and input in turn - No sends it again and asks
+        whether it is now right, and once it is, whether that fixed the problem."""
+        words, layout = self.screens.words, self.layout
+        self.help_screen(title, (before, [(ordinals["prompt"], ENTER_MODE)]))
+        nav = layout.navigation
+        items = list(zip(ordinals["asked"], ordinals["questions"]))
+        first = items[0][1]["ask"] if items else home
+        self._answered(title, lambda: self._paragraphs(words("help.fixed-first"),
+                                                       HELP_PROMPT_Y),
+                       {"yes": nav(home), "no": nav(first)}, icon=icon, home=home)
+        for number, (asked, screens_) in enumerate(items):
+            following = items[number + 1][1]["ask"] if number + 1 < len(items) else home
+            ask, now, fix = self._question(asked)
+
+            def fixing(ordinal, fix=fix):
+                return layout.atoms_object(fix + [(ordinal, ENTER_MODE)])
+
+            def question(text):
+                return lambda: self._paragraphs(text, HELP_QUESTION_Y)
+            self._answered(title, question(ask), {"yes": nav(following),
+                                                  "no": fixing(screens_["now"])},
+                           icon=icon, home=home)
+            self._answered(title, question(now), {"yes": nav(screens_["fixed"]),
+                                                  "no": fixing(screens_["again"])},
+                           icon=icon, home=home)
+            self._answered(title, question(ask), {"yes": nav(screens_["fixed"]),
+                                                  "no": fixing(screens_["now"])},
+                           icon=icon, home=home)
+            self._answered(title, question(words("help.fixed")),
+                           {"yes": nav(home), "no": nav(following)}, icon=icon, home=home)
+
+    def _question(self, asked) -> tuple[str, str, list]:
+        """What Help asks about one thing - the question, and again once fixed - and
+        what answering No sends."""
+        words, actions = self.screens.words, self.actions
+        device = self.devices[asked[1]]
+        if asked[0] == "power":
+            return (words("assistant.is-on", device=device["label"]),
+                    words("assistant.now-on", device=device["label"]),
+                    actions.direct_power([asked[1]], True, toggles=True))
+        if asked[0] == "off":
+            return (words("assistant.is-off", device=device["label"]),
+                    words("assistant.now-off", device=device["label"]),
+                    actions.direct_power([asked[1]], False, toggles=True))
+        name = input_label(device["inputs"]["values"][asked[2]])
+        return (words("assistant.input", device=device["label"], input=name),
+                words("assistant.now-input", device=device["label"], input=name),
+                actions.input_fix(asked[1], asked[2]))
+
+    def _notes(self, name, notes, home, *, off=False):
+        """The Remote Assistant's notes, as upstairs shows them (its state: 0 never
+        shown, 1 shown its welcome, 2 shown before, 3 hidden). After an activity starts:
+        the first time, a note to press Help if anything is wrong; back from hidden,
+        that the remote has set the system up, then that note; after that, the note and
+        whether to hide it. After Off: a welcome the first time, then that every device
+        should be off; after that, the same and whether to hide it."""
+        words, layout = self.screens.words, self.layout
+        state = 0x80 | self.variables.assistant
+        title = words("assistant.title", name=name)
+        nav = layout.navigation
+
+        def note(text):
+            return lambda: (self._paragraphs(words("assistant.heading"), ASSISTANT_Y, 1)
+                            + self._paragraphs(text, ASSISTANT_Y + LINE_SPACING, 4))
+
+        def setting(value, ordinal):
+            return layout.atoms_object([(value, state), (ordinal, ENTER_MODE)])
+        hide = (words("assistant.hide"), {"yes": setting(3, notes["how-to-hide"]),
+                                          "no": nav(home)})
+        if off:
+            alert = words("assistant.all-off")
+            sequence = [
+                ("welcome", words("assistant.welcome"), {"ok": setting(1, notes["first"])},
+                 None),
+                ("first", alert, {"ok": nav(home)}, None),
+                ("again", alert, {"ok": nav(notes["hide"])}, None)]
+        else:
+            alert = words("assistant.press-help")
+            sequence = [
+                ("first", alert, {"ok": nav(home)}, ([(2, state)], [])),
+                ("set-up", words("assistant.set-up"), {"ok": nav(notes["first"])},
+                 ([(2, state)], [])),
+                ("again", alert, {"ok": nav(notes["hide"])}, None)]
+        sequence += [("hide",) + hide + (None,),
+                     ("how-to-hide", words("assistant.how-to-hide"), {"ok": nav(home)}, None)]
+        for _key, text, answers, on_enter in sequence:
+            self._answered(title, note(text), answers, on_enter=on_enter)
+
+    def _assistant_after(self, notes, home, *, off=False) -> tuple[int, int]:
+        """Which note follows, by the Remote Assistant's state: after an activity, the
+        first, set-up or again note, or the activity itself once it is hidden; after
+        Off, the welcome or again note, or nothing."""
+        layout = self.layout
+        if off:
+            cases = [(0, notes["welcome"]), (1, notes["welcome"]), (2, notes["again"])]
+        else:
+            cases = [(0, notes["first"]), (1, notes["set-up"]), (2, notes["again"]),
+                     (3, home)]
+        group = layout.group([(value, layout.block(_enter(ordinal))) for value, ordinal in cases])
+        return ((group << 8) | self.variables.assistant, 0x72)
 
     def _start_screen(self, act):
         """Starting: its icon under the waves, "Starting ...", and every key held off
@@ -233,28 +344,6 @@ class Flow:
             kind = kind_name + ("-paged" if len(chunks) > 1 else "")
             screens.owned(rows, zones, program, kind, act["label"], (page_index, len(chunks)))
 
-    def _assistant(self, act, ordinals):
-        """The Remote Assistant: did everything turn on? No asks about each device and
-        input in turn, and fixes the one that is not."""
-        words, actions, layout = self.screens.words, self.actions, self.layout
-        questions = ordinals["questions"]
-        self._yes_no(act["label"], words("assistant.question"), ordinals["home"],
-                     questions[0] if questions else ordinals["help"])
-        for number, (asked, ordinal) in enumerate(zip(ordinals["asked"], questions)):
-            following = questions[number + 1] if number + 1 < len(questions) \
-                else ordinals["home"]
-            device = self.devices[asked[1]]
-            if asked[0] == "power":
-                text = words("assistant.is-on", device=device["label"])
-                fix = actions.direct_power([asked[1]], True, toggles=True)
-            else:
-                value = asked[2]
-                text = words("assistant.input", device=device["label"],
-                             input=input_label(device["inputs"]["values"][value]))
-                fix = actions.input_fix(asked[1], value)
-            self._yes_no(act["label"], text, following,
-                         layout.atoms_object(fix + [(ordinal, ENTER_MODE)]), fix_object=True)
-
     def activity(self, index: int) -> list[tuple[int, int]]:
         """One activity's screens; the rows of the context that runs it."""
         act, ordinals = self.acts[index], self.ordinals.activities[index]
@@ -271,17 +360,15 @@ class Flow:
                                ordinals["pages"], ordinals["favourites"][0] if both else None,
                                "favourites", kind_name)
 
-        # Where a start ends: the Remote Assistant's question while it is on, else the
-        # activity's own first page.
-        after = layout.group([(0, layout.block(_enter(ordinals["home"]))),
-                              (1, layout.block(_enter(ordinals["prompt"])))])
-        finish = ((after << 8) | variables.assistant, 0x72)
+        # Where a start ends: the Remote Assistant's note, by its state.
+        finish = self._assistant_after(ordinals["assistant"], ordinals["home"])
 
-        # Help: re-send the power and inputs the activity set, then the question.
-        self.help_screen(act["label"], (
-            [STOP_TIMERS] + actions.direct_power(act["on"], True)
-            + actions.input_writes(act["inputs"]), [finish]))
-        self._assistant(act, ordinals)
+        # Help: re-send the power and inputs the activity set, then ask.
+        self._help(act["label"], ordinals,
+                   [STOP_TIMERS] + actions.direct_power(act["on"], True)
+                   + actions.input_writes(act["inputs"]), ordinals["home"],
+                   icon=act.get("start_icon"))
+        self._notes(act["label"], ordinals["assistant"], ordinals["home"])
 
         return [
             (activity_index.ENTER, layout.atoms_object(
@@ -291,10 +378,11 @@ class Flow:
                 + actions.atoms(act["enter"]) + [finish])),
             (activity_index.LEAVE, layout.atoms_object(
                 [STOP_TIMERS] + actions.atoms(act["leave"]))),
-            # picked again while running: its inputs again, and back to its screen
+            # picked again while running: its inputs again, and back to its screen - by
+            # way of the Remote Assistant's note, as upstairs' refresh goes
             (activity_index.REFRESH, layout.atoms_object(
                 [STOP_TIMERS] + actions.input_writes(act["inputs"])
-                + [(ordinals["home"], ENTER_MODE)])),
+                + [(ordinals["home"], ENTER_MODE), finish])),
             (keys.code(keys.HELP), layout.navigation(ordinals["help"])),
         ] + [(code, actions.key_target(steps)) for code, steps in sorted(act["keys"].items())]
 
@@ -307,19 +395,23 @@ class Flow:
                 for index in range(len(self.acts))}
 
     def off(self) -> list[tuple[int, int]]:
-        """Off: nothing running, the Activities menu, and every device off behind it;
-        its Help turns them off again. It has no leave, as no donor's has."""
+        """Off: nothing running, the Activities menu, and every device off behind it,
+        then the Remote Assistant's note; its Help turns them off again and asks after
+        each. It has no leave, as no donor's has."""
         layout, ordinals, off = self.layout, self.ordinals, self.all_off
         home = ordinals.home
+        after = ([self._assistant_after(ordinals.off["assistant"], home, off=True)]
+                 if self.acts else [])
         rows = [
             (activity_index.ENTER, layout.atoms_object(
                 [(len(self.acts), 0x80 | self.variables.state), STOP_TIMERS,
-                 (home, ENTER_MODE)] + self.actions.power_writes(off["off"], 0))),
-            (activity_index.REFRESH, layout.object(object_body([(home, ENTER_MODE)]))),
+                 (home, ENTER_MODE)] + self.actions.power_writes(off["off"], 0) + after)),
+            (activity_index.REFRESH, layout.atoms_object([(home, ENTER_MODE)] + after)),
         ]
         if self.acts:
+            name = off.get("label") or self.screens.words("activity.power-off")
             rows.append((keys.code(keys.HELP), layout.navigation(ordinals.off_help)))
-            self.help_screen(off.get("label") or self.screens.words("activity.power-off"), (
-                [STOP_TIMERS] + self.actions.direct_power(off["off"], False),
-                [(home, ENTER_MODE)]))
+            self._help(name, ordinals.off,
+                       [STOP_TIMERS] + self.actions.direct_power(off["off"], False), home)
+            self._notes(name, ordinals.off["assistant"], home, off=True)
         return rows

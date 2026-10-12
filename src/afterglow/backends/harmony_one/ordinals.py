@@ -33,6 +33,7 @@ class Ordinals:
     activity_menu: list[int] = field(default_factory=list)
     activities: list[dict] = field(default_factory=list)          # per activity
     off_help: int | None = None
+    off: dict = field(default_factory=dict)        # Off's Help and Remote Assistant
     options_more: int | None = None
     tutorial: list[int] = field(default_factory=list)
     # section 10: each activity's context, then Off's
@@ -58,11 +59,21 @@ def hub(*, platform: int, hub: bool, carried_modes: int | None, charging: int = 
     return out
 
 
+# The Remote Assistant's notes each activity has, and Off's, in the order they are made.
+ASSISTANT = ("first", "set-up", "again", "hide", "how-to-hide")
+OFF_ASSISTANT = ("welcome", "first", "again", "hide", "how-to-hide")
+# Help's screens for each thing it asks about: the question, the question again after a
+# fix, the question asked once more, and whether that fixed it.
+QUESTION = ("ask", "now", "again", "fixed")
+
+
 def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, list],
-            acts: list[dict], device_slots: list[dict], tutorial_pages: int) -> Ordinals:
+            acts: list[dict], device_slots: list[dict], tutorial_pages: int,
+            off_devices: list[int] = ()) -> Ordinals:
     """Number every other owned screen, after the hub's. ``device_pages`` is each
     device's command pages, in menu order; ``device_slots`` which of power and input each
-    device has a variable for; ``system`` whether the image has the firmware's screens."""
+    device has a variable for; ``system`` whether the image has the firmware's screens;
+    ``off_devices`` the devices Off turns off."""
     menu_devices = list(device_pages)
     menu_count = (len(menu_devices) + MENU_ROWS_PER_PAGE - 1) // MENU_ROWS_PER_PAGE
     if hub:
@@ -89,8 +100,12 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
         cursor += count
         return list(range(cursor - count, cursor))
 
-    # Each activity: starting, its favourites' pages, its buttons' pages, Help, the
-    # Remote Assistant's question and then one per device and input it asks about.
+    def questions(asked):
+        return [dict(zip(QUESTION, take(len(QUESTION)))) for _ in asked]
+
+    # Each activity: starting, its favourites' pages, its buttons' pages, Help, Help's
+    # first question and then four screens per device and input it asks about, and the
+    # Remote Assistant's notes.
     for act in acts:
         favourite_pages = -(-len(act["favourites"]) // len(BUTTON_POSITIONS))
         command_pages = -(-len(act["buttons"]) // len(BUTTON_POSITIONS))
@@ -101,11 +116,15 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
                     if "input" in device_slots[index]])
         screens_ = {"start": take(1)[0], "favourites": take(favourite_pages),
                     "pages": take(command_pages), "help": take(1)[0],
-                    "prompt": take(1)[0], "questions": take(len(asked)), "asked": asked}
+                    "prompt": take(1)[0], "questions": questions(asked), "asked": asked,
+                    "assistant": dict(zip(ASSISTANT, take(len(ASSISTANT))))}
         screens_["home"] = (screens_["favourites"] or screens_["pages"])[0]
         out.activities.append(screens_)
     if acts:
         out.off_help = take(1)[0]
+        asked = [("off", index) for index in off_devices if "power" in device_slots[index]]
+        out.off = {"prompt": take(1)[0], "questions": questions(asked), "asked": asked,
+                   "assistant": dict(zip(OFF_ASSISTANT, take(len(OFF_ASSISTANT))))}
         # Options' second page, with the Remote Assistant's switch.
         out.options_more = take(1)[0]
         out.tutorial = take(tutorial_pages)

@@ -85,32 +85,112 @@ msgctxt "softkey.favourites"
 msgid "Favorites"
 msgstr "Favorites"
 
-#. Remote Assistant, after an activity starts or Help has run, above Yes and No: a message centred on the screen; about 160 pixels a line; three lines at most
-msgctxt "assistant.question"
-msgid "Did everything turn on?"
-msgstr "Did everything turn on?"
+#. Help, at the bottom while it re-sends: a message centred on the screen; about 160 pixels a line; two lines
+msgctxt "help.keep-pointed"
+msgid "Keep the remote pointed to your system."
+msgstr "Keep the remote pointed to your system."
 
-#. Remote Assistant's answer: a button label, centred on a 81-pixel button; may wrap to two lines
-msgctxt "assistant.yes"
-msgid "Yes"
-msgstr "Yes"
+#. Help's first question, after it has re-sent everything; a line break starts the explanation below it: a message centred on the screen; about 160 pixels a line
+msgctxt "help.fixed-first"
+msgid "Did that fix the problem?\nIf not, the remote will ask you questions to help correct the problem."
+msgstr "Did that fix the problem?\nIf not, the remote will ask you questions to help correct the problem."
 
-#. Remote Assistant's answer: a button label, centred on a 81-pixel button; may wrap to two lines
-msgctxt "assistant.no"
-msgid "No"
-msgstr "No"
+#. Help, after a device answered: a message centred on the screen; about 160 pixels a line
+msgctxt "help.fixed"
+msgid "Did that fix the problem?"
+msgstr "Did that fix the problem?"
 
-#. Remote Assistant asks about each device; {device} is its name: a message centred on the screen; about 160 pixels a line; three lines at most
+#. Help asks about each device an activity turns on; {device} is its name: a message centred on the screen; about 160 pixels a line; three lines at most
 #, python-brace-format
 msgctxt "assistant.is-on"
 msgid "Is the {device} on?"
 msgstr "Is the {device} on?"
 
-#. Remote Assistant asks about each input; {device} and {input} are names: a message centred on the screen; about 160 pixels a line; three lines at most
+#. Help asks again after sending its power: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-on"
+msgid "Now is the {device} on?"
+msgstr "Now is the {device} on?"
+
+#. Help asks about each input; {device} and {input} are names: a message centred on the screen; about 160 pixels a line; three lines at most
 #, python-brace-format
 msgctxt "assistant.input"
-msgid "Is the {device} set to {input}?"
-msgstr "Is the {device} set to {input}?"
+msgid "Is the {device} set to the {input} input?"
+msgstr "Is the {device} set to the {input} input?"
+
+#. Help asks again after sending the input: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-input"
+msgid "Now is the {device} set to the {input} input?"
+msgstr "Now is the {device} set to the {input} input?"
+
+#. Off's Help asks about each device: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.is-off"
+msgid "Is the {device} off?"
+msgstr "Is the {device} off?"
+
+#. Off's Help asks again after turning it off: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-off"
+msgid "Now is the {device} off?"
+msgstr "Now is the {device} off?"
+
+#. An answer, bottom left: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.yes"
+msgid "Yes"
+msgstr "Yes"
+
+#. An answer, bottom right: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.no"
+msgid "No"
+msgstr "No"
+
+#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.ok"
+msgid "OK"
+msgstr "OK"
+
+#. The Remote Assistant's screens: the activity's name, or Off's, as their title: a screen's title, top left; about 96 pixels in the title font
+#, python-brace-format
+msgctxt "assistant.title"
+msgid "{name}:"
+msgstr "{name}:"
+
+#. Above each Remote Assistant note: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.heading"
+msgid "Remote Assistant:"
+msgstr "Remote Assistant:"
+
+#. After an activity starts: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.press-help"
+msgid "If any devices are not set up correctly, press \"Help\" now."
+msgstr "If any devices are not set up correctly, press \"Help\" now."
+
+#. After an activity starts, once Remote Assistant is back on: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.set-up"
+msgid "The remote has now set up your system for this Activity."
+msgstr "The remote has now set up your system for this Activity."
+
+#. Above Yes and No: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.hide"
+msgid "Do you want to hide the Remote Assistant?"
+msgstr "Do you want to hide the Remote Assistant?"
+
+#. After choosing to hide it: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.how-to-hide"
+msgid "To hide the remote assistant, use the software to update the display settings for your remote."
+msgstr "To hide the remote assistant, use the software to update the display settings for your remote."
+
+#. The first note a new remote shows, when it starts: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.welcome"
+msgid "Welcome to your remote."
+msgstr "Welcome to your remote."
+
+#. After Off: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.all-off"
+msgid "Ensure all your devices are off.  If any devices are still on, press \"Help\" now."
+msgstr "Ensure all your devices are off.  If any devices are still on, press \"Help\" now."
 
 #. An Options row while the Remote Assistant asks after each start: a row label, centred on a 164-pixel row
 msgctxt "options.assistant-off"
@@ -137,46 +217,95 @@ msgctxt "softkey.exit"
 msgid "Exit"
 msgstr "Exit"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.1"
+msgid "Welcome to your Harmony One touch-screen remote. Touch the screen to learn more."
+msgstr "Welcome to your Harmony One touch-screen remote. Touch the screen to learn more."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.2"
+msgid "Use the arrow buttons on the sides of this screen to move between pages.\nPress the right arrow now."
+msgstr "Use the arrow buttons on the sides of this screen to move between pages.\nPress the right arrow now."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.3"
+msgid "The Harmony remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the Activities button now."
+msgstr "The Harmony remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the Activities button now."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.4"
+msgid "Activities are what you actually do with your entertainment system, like watch TV or listen to music.\nTouch Watch TV now."
+msgstr "Activities are what you actually do with your entertainment system, like watch TV or listen to music.\nTouch Watch TV now."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.5"
+msgid "Selecting the Watch TV Activity turns on the devices you use to watch TV.\nPress the right arrow to continue."
+msgstr "Selecting the Watch TV Activity turns on the devices you use to watch TV.\nPress the right arrow to continue."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.6"
+msgid "Look on the screen for functions you can't find elsewhere on the remote.\nPress the right arrow to continue."
+msgstr "Look on the screen for functions you can't find elsewhere on the remote.\nPress the right arrow to continue."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.7"
+msgid "To select another Activity, simply press the Activities button.\nPress the right arrow to continue."
+msgstr "To select another Activity, simply press the Activities button.\nPress the right arrow to continue."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.8"
+msgid "Use the Help button if your Activity doesn't start properly.\nPress Help now."
+msgstr "Use the Help button if your Activity doesn't start properly.\nPress Help now."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.9"
+msgid "Help asks you questions to get your Activity back on track. Press the right arrow to continue."
+msgstr "Help asks you questions to get your Activity back on track. Press the right arrow to continue."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.10"
+msgid "To turn off your entertainment system, press the Off button.\nPress the Off button to continue."
+msgstr "To turn off your entertainment system, press the Off button.\nPress the Off button to continue."
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.11"
+msgid "It's that easy!\nYou can now enjoy your entertainment system with one-touch Activity control.\nPress Exit now."
+msgstr "It's that easy!\nYou can now enjoy your entertainment system with one-touch Activity control.\nPress Exit now."
+
+#. The Tutorial's first page, above its words, in the large title font; about 160 pixels
 msgctxt "tutorial.welcome"
-msgid "Your remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the right arrow to continue."
-msgstr "Your remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the right arrow to continue."
+msgid "Welcome!"
+msgstr "Welcome!"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on. {activity} is the first activity's name.
-#, python-brace-format
-msgctxt "tutorial.activities"
-msgid "Activities are what you do with your system, like watching TV or listening to music.\nTouch {activity} now."
-msgstr "Activities are what you do with your system, like watching TV or listening to music.\nTouch {activity} now."
+#. On the activity row the Tutorial pictures; about 100 pixels
+msgctxt "tutorial.watch-tv"
+msgid "Watch TV"
+msgstr "Watch TV"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.switching"
-msgid "To choose another Activity, press the Activities button.\nPress it now."
-msgstr "To choose another Activity, press the Activities button.\nPress it now."
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.display"
+msgid "Display"
+msgstr "Display"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.pages"
-msgid "When a screen has more than one page, the arrows at its sides move between them.\nPress the right arrow now."
-msgstr "When a screen has more than one page, the arrows at its sides move between them.\nPress the right arrow now."
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.aspect"
+msgid "Aspect"
+msgstr "Aspect"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.help"
-msgid "If an Activity doesn't start properly, press Help: the remote sends what it needs again.\nPress Help now."
-msgstr "If an Activity doesn't start properly, press Help: the remote sends what it needs again.\nPress Help now."
+#. The question the Tutorial pictures Help asking: a message centred on the screen; about 160 pixels a line
+msgctxt "tutorial.is-tv-on"
+msgid "Is the TV on?"
+msgstr "Is the TV on?"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.assistant"
-msgid "The Remote Assistant then asks whether everything turned on, and fixes what didn't.\nPress the right arrow to continue."
-msgstr "The Remote Assistant then asks whether everything turned on, and fixes what didn't.\nPress the right arrow to continue."
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.yes"
+msgid "Yes"
+msgstr "Yes"
 
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.off"
-msgid "To turn off your whole system, press the Off button.\nPress Off now."
-msgstr "To turn off your whole system, press the Off button.\nPress Off now."
-
-#. A Tutorial screen, centred, about 160 pixels a line, eight lines in all; a line break starts a new paragraph. The last paragraph says which key moves on.
-msgctxt "tutorial.done"
-msgid "That's it! Enjoy one-touch control of your entertainment system.\nPress Exit now."
-msgstr "That's it! Enjoy one-touch control of your entertainment system.\nPress Exit now."
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.no"
+msgid "No"
+msgstr "No"
 
 #. The Options screen: a screen's title, top left; about 96 pixels in the title font
 msgctxt "options.title"

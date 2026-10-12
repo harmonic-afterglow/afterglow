@@ -76,9 +76,8 @@ SOFTKEY = "a softkey label, bottom of the screen; about 70 pixels"
 BUTTON = "a button label, centred on a 81-pixel button; may wrap to two lines"
 ROW = "a row label, centred on a 164-pixel row"
 MESSAGE = "a message centred on the screen; about 160 pixels a line"
-TUTORIAL_NOTE = ("A Tutorial screen, centred, about 160 pixels a line, eight lines in "
-                 "all; a line break starts a new paragraph. The last paragraph says which "
-                 "key moves on.")
+TUTORIAL_NOTE = ("A Tutorial page, from the left, about 160 pixels a line; a line break "
+                 "starts a new paragraph. The last paragraph says which key moves on.")
 
 
 def _messages() -> list[po.Message]:
@@ -113,17 +112,51 @@ def _messages() -> list[po.Message]:
                    "On an activity's favourite channels, opens its commands: " + SOFTKEY),
         po.Message("softkey.favourites", "Favorites",
                    "On an activity's commands, opens its favourite channels: " + SOFTKEY),
-        po.Message("assistant.question", "Did everything turn on?",
-                   "Remote Assistant, after an activity starts or Help has run, above Yes "
-                   "and No: " + MESSAGE + "; three lines at most"),
-        po.Message("assistant.yes", "Yes", "Remote Assistant's answer: " + BUTTON),
-        po.Message("assistant.no", "No", "Remote Assistant's answer: " + BUTTON),
+        po.Message("help.keep-pointed", "Keep the remote pointed to your system.",
+                   "Help, at the bottom while it re-sends: " + MESSAGE + "; two lines"),
+        po.Message("help.fixed-first", "Did that fix the problem?\nIf not, the remote will "
+                   "ask you questions to help correct the problem.",
+                   "Help's first question, after it has re-sent everything; a line break "
+                   "starts the explanation below it: " + MESSAGE),
+        po.Message("help.fixed", "Did that fix the problem?",
+                   "Help, after a device answered: " + MESSAGE),
         po.Message("assistant.is-on", "Is the {device} on?",
-                   "Remote Assistant asks about each device; {device} is its name: "
+                   "Help asks about each device an activity turns on; {device} is its "
+                   "name: " + MESSAGE + "; three lines at most", brace_format=True),
+        po.Message("assistant.now-on", "Now is the {device} on?",
+                   "Help asks again after sending its power: " + MESSAGE, brace_format=True),
+        po.Message("assistant.input", "Is the {device} set to the {input} input?",
+                   "Help asks about each input; {device} and {input} are names: "
                    + MESSAGE + "; three lines at most", brace_format=True),
-        po.Message("assistant.input", "Is the {device} set to {input}?",
-                   "Remote Assistant asks about each input; {device} and {input} are "
-                   "names: " + MESSAGE + "; three lines at most", brace_format=True),
+        po.Message("assistant.now-input", "Now is the {device} set to the {input} input?",
+                   "Help asks again after sending the input: " + MESSAGE, brace_format=True),
+        po.Message("assistant.is-off", "Is the {device} off?",
+                   "Off's Help asks about each device: " + MESSAGE, brace_format=True),
+        po.Message("assistant.now-off", "Now is the {device} off?",
+                   "Off's Help asks again after turning it off: " + MESSAGE,
+                   brace_format=True),
+        po.Message("softkey.yes", "Yes", "An answer, bottom left: " + SOFTKEY),
+        po.Message("softkey.no", "No", "An answer, bottom right: " + SOFTKEY),
+        po.Message("softkey.ok", "OK", "Closes a Remote Assistant note, bottom right: "
+                   + SOFTKEY),
+        po.Message("assistant.title", "{name}:", "The Remote Assistant's screens: the "
+                   "activity's name, or Off's, as their title: " + TITLE, brace_format=True),
+        po.Message("assistant.heading", "Remote Assistant:",
+                   "Above each Remote Assistant note: " + MESSAGE),
+        po.Message("assistant.press-help", 'If any devices are not set up correctly, press '
+                   '"Help" now.', "After an activity starts: " + MESSAGE),
+        po.Message("assistant.set-up", "The remote has now set up your system for this "
+                   "Activity.", "After an activity starts, once Remote Assistant is back "
+                   "on: " + MESSAGE),
+        po.Message("assistant.hide", "Do you want to hide the Remote Assistant?",
+                   "Above Yes and No: " + MESSAGE),
+        po.Message("assistant.how-to-hide", "To hide the remote assistant, use the software "
+                   "to update the display settings for your remote.",
+                   "After choosing to hide it: " + MESSAGE),
+        po.Message("assistant.welcome", "Welcome to your remote.",
+                   "The first note a new remote shows, when it starts: " + MESSAGE),
+        po.Message("assistant.all-off", 'Ensure all your devices are off.  If any devices '
+                   'are still on, press "Help" now.', "After Off: " + MESSAGE),
         po.Message("options.assistant-off", "Turn Remote Assistant Off",
                    "An Options row while the Remote Assistant asks after each start: "
                    + ROW),
@@ -134,28 +167,44 @@ def _messages() -> list[po.Message]:
         po.Message("softkey.exit", "Exit", "Leaves the Tutorial: " + SOFTKEY),
     ]
     tutorial = TUTORIAL_NOTE
+    out += [po.Message(f"tutorial.{number}", text, tutorial) for number, text in (
+        (1, "Welcome to your Harmony One touch-screen remote. Touch the screen to learn "
+            "more."),
+        (2, "Use the arrow buttons on the sides of this screen to move between pages.\n"
+            "Press the right arrow now."),
+        (3, "The Harmony remote uses Activities to give you simple one-touch control of "
+            "your entertainment system.\nPress the Activities button now."),
+        (4, "Activities are what you actually do with your entertainment system, like "
+            "watch TV or listen to music.\nTouch Watch TV now."),
+        (5, "Selecting the Watch TV Activity turns on the devices you use to watch TV.\n"
+            "Press the right arrow to continue."),
+        (6, "Look on the screen for functions you can't find elsewhere on the remote.\n"
+            "Press the right arrow to continue."),
+        (7, "To select another Activity, simply press the Activities button.\nPress the "
+            "right arrow to continue."),
+        (8, "Use the Help button if your Activity doesn't start properly.\nPress Help "
+            "now."),
+        (9, "Help asks you questions to get your Activity back on track. Press the right "
+            "arrow to continue."),
+        (10, "To turn off your entertainment system, press the Off button.\nPress the Off "
+             "button to continue."),
+        (11, "It's that easy!\nYou can now enjoy your entertainment system with "
+             "one-touch Activity control.\nPress Exit now."))]
     out += [
-        po.Message("tutorial.welcome", "Your remote uses Activities to give you simple "
-                   "one-touch control of your entertainment system.\nPress the right "
-                   "arrow to continue.", tutorial),
-        po.Message("tutorial.activities", "Activities are what you do with your system, "
-                   "like watching TV or listening to music.\nTouch {activity} now.",
-                   tutorial + " {activity} is the first activity's name.",
-                   brace_format=True),
-        po.Message("tutorial.switching", "To choose another Activity, press the "
-                   "Activities button.\nPress it now.", tutorial),
-        po.Message("tutorial.pages", "When a screen has more than one page, the arrows at "
-                   "its sides move between them.\nPress the right arrow now.", tutorial),
-        po.Message("tutorial.help", "If an Activity doesn't start properly, press Help: "
-                   "the remote sends what it needs again.\nPress Help now.", tutorial),
-        po.Message("tutorial.assistant", "The Remote Assistant then asks whether "
-                   "everything turned on, and fixes what didn't.\nPress the right arrow "
-                   "to continue.", tutorial),
-        po.Message("tutorial.off", "To turn off your whole system, press the Off "
-                   "button.\nPress Off now.", tutorial),
-        po.Message("tutorial.done", "That's it! Enjoy one-touch control of your "
-                   "entertainment system.\nPress Exit now.", tutorial),
+        po.Message("tutorial.welcome", "Welcome!", "The Tutorial's first page, above its "
+                   "words, in the large title font; about 160 pixels"),
+        po.Message("tutorial.watch-tv", "Watch TV", "On the activity row the Tutorial "
+                   "pictures; about 100 pixels"),
+        po.Message("tutorial.display", "Display", "On a button the Tutorial pictures: "
+                   + BUTTON),
+        po.Message("tutorial.aspect", "Aspect", "On a button the Tutorial pictures: "
+                   + BUTTON),
+        po.Message("tutorial.is-tv-on", "Is the TV on?", "The question the Tutorial "
+                   "pictures Help asking: " + MESSAGE),
+        po.Message("tutorial.yes", "Yes", "On a button the Tutorial pictures: " + BUTTON),
+        po.Message("tutorial.no", "No", "On a button the Tutorial pictures: " + BUTTON),
         po.Message("options.title", "Options", "The Options screen: " + TITLE),
+
         po.Message("options.date-and-time", "Date and Time", "An Options row: " + ROW),
         po.Message("options.screen-sensitivity", "Screen Sensitivity",
                    "An Options row, and the title of its screen: " + ROW),

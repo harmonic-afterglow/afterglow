@@ -11,19 +11,43 @@ from __future__ import annotations
 
 from . import keys, structures
 from .pages import (
-    EMPTY_MESSAGE_WIDTH, HELP_FONT, LINE_SPACING, MENU_ACTIVITIES_KEY, MENU_FRAME_XY,
-    MENU_LABEL_XY, MENU_ROW_KEYS, OPTIONS_FONT, OPTIONS_FRAME_WIDTH, OPTIONS_LABEL_ROOM,
-    PAGE_DEVICES_KEY, SCREEN_WIDTH, SIDE_NEXT_KEY, SIDE_PREV_KEY, SOFTKEY_RIGHT_ZONE,
-    fit_label, measure, menu_page)
+    MENU_ACTIVITIES_KEY, MENU_FRAME_XY, MENU_LABEL_XY, MENU_ROW_KEYS, OPTIONS_FONT,
+    OPTIONS_FRAME_WIDTH, OPTIONS_LABEL_ROOM, PAGE_DEVICES_KEY, SCREEN_WIDTH, SIDE_NEXT_KEY,
+    SIDE_PREV_KEY, SOFTKEY_RIGHT_ZONE, TITLE_FONTS, fit_label, measure)
 from .scaffold import menu_template
 from .structures import ENTER_MODE, OBJECT_ATOM, object_body
 
-# The Tutorial: each page's words, and what moves on from it - the key it teaches.
-TUTORIAL = (("tutorial.welcome", "next"), ("tutorial.activities", "touch"),
-            ("tutorial.switching", "activities"), ("tutorial.pages", "next"),
-            ("tutorial.help", "help"), ("tutorial.assistant", "next"),
-            ("tutorial.off", "off"), ("tutorial.done", "exit"))
-TUTORIAL_TOP, TUTORIAL_LINES = 40, 9
+# The Tutorial, page by page, as every donor has it: Logitech's picture of the remote
+# (the scaffold's `tutorial/<n>`) and where it is drawn, where the words start, what moves
+# on - keys, and the touch zones (raw panel coordinates, as upstairs' templates have
+# them) that do the same - and the words drawn over the picture: (key, attribute, x, y,
+# whether x is the label's centre). Exit, bottom right, is on every page.
+_TEXT = (1257, 2241, 2299, 2018)             # the words' half of the screen, for most pages
+TUTORIAL = (
+    {"picture": (65, 137), "top": 56, "keys": ("next",),
+     "touch": ((2041, 1288, 745, 936), (1257, 3937, 2299, 323), (1257, 2225, 2061, 1695),
+               (1257, 1272, 2791, 3165)),
+     "labels": (("tutorial.welcome", 16, 10, 13, False),)},
+    {"picture": (7, 106), "top": 35, "keys": ("next",), "touch": ((1257, 2548, 2299, 1711),)},
+    {"picture": (3, 118), "top": 25, "keys": ("activities",),
+     "touch": ((1257, 2354, 2299, 1905),)},
+    {"picture": (7, 135), "top": 33, "keys": (),
+     "touch": ((1257, 885, 2568, 1372), (1257, 1498, 2600, 807), (1257, 2273, 2299, 1986)),
+     "labels": (("tutorial.watch-tv", 5, 69, 151, False),)},
+    {"picture": (30, 123), "top": 32, "keys": ("next",), "touch": ((1257, 2290, 2299, 1970),)},
+    {"picture": (7, 133), "top": 43, "keys": ("next",), "touch": ((1257, 2128, 2299, 2131),),
+     "labels": (("tutorial.display", 8, 47, 149, True), ("tutorial.aspect", 8, 128, 149, True))},
+    {"picture": (3, 118), "top": 39, "keys": ("next", "activities"), "touch": (_TEXT,)},
+    {"picture": (8, 115), "top": 45, "keys": ("help",), "touch": (_TEXT,)},
+    {"picture": (21, 100), "top": 32, "keys": ("next",), "touch": ((1257, 2823, 2299, 1437),),
+     "labels": (("tutorial.is-tv-on", 14, 88, 135, True), ("tutorial.yes", 8, 51, 168, True),
+                ("tutorial.no", 8, 121, 168, True))},
+    {"picture": (7, 15), "top": 107, "keys": ("off",), "touch": ((1257, 1127, 2299, 2051),)},
+    {"picture": (68, 148), "top": 34, "keys": (), "touch": ()},
+)
+TUTORIAL_FONT, TUTORIAL_LEFT, TUTORIAL_LINE = 14, 10, 11
+# Where the page counter goes: top right, where no page draws anything.
+TUTORIAL_COUNTER_RIGHT, TUTORIAL_COUNTER_Y = 170, 2
 
 
 class Options:
@@ -65,14 +89,17 @@ class Options:
         if ordinals.options_more is None:
             self.pages.append([date_row, sounds_row, sensitivity_row])
         else:
+            # As upstairs' row: shown or not yet shown, it hides the Remote Assistant
+            # (state 3); hidden, it brings it back as just set up (state 1).
             redraw = {"opcode": "atom", "operand": ordinals.options, "category": ENTER_MODE}
             toggle = layout.group([
-                (value, layout.block([{"opcode": "atom", "operand": 1 - value,
+                (value, layout.block([{"opcode": "atom", "operand": 1 if value == 3 else 3,
                                        "category": 0x80 | self.assistant}, redraw,
-                                      {"opcode": "end"}])) for value in (0, 1)])
+                                      {"opcode": "end"}])) for value in range(4)])
             assistant_row = ("switch", self.assistant,
-                             {0: words("options.assistant-on"),
-                              1: words("options.assistant-off")},
+                             {value: words("options.assistant-on" if value == 3
+                                           else "options.assistant-off")
+                              for value in range(4)},
                              layout.object(object_body([
                                  (structures.IR_OBJECT_KIND_FALLBACK, 0x75),
                                  ((toggle << 8) | self.assistant, 0x72)])))
@@ -130,60 +157,68 @@ class Options:
                       (page_index, total) if total > 1 else None)
 
     def tutorial(self):
-        """The Tutorial, in its own words: a page per thing to learn, each moved on by
-        the key it teaches - bound in the page's own list, so pressing Help or Off here
-        teaches rather than does - the left arrow back, Exit back to what is running."""
+        """The Tutorial, as Logitech's: on a black screen, each page's picture of the
+        remote and its words, moved on by the key it teaches - bound in the page's own
+        list, so pressing Help or Off there teaches rather than does - or by touching the
+        page; the left arrow back, Exit back to what is running."""
         screens, layout, ordinals = self.screens, self.layout, self.ordinals
         pages = ordinals.tutorial
         exit_row = (PAGE_DEVICES_KEY, self.flow.back_to_current(), OBJECT_ATOM)
-        zones = [zone for zone in menu_template() if zone["tag"] in (0x2E, 0x2F, 0x32)]
-        zones.append(dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F))
-        first = self.flow.acts[0]
-        row_frame = ("activity/row-frame" if "activity/row-frame" in screens.roles
-                     else "row-frame")
-        widths, _codes = measure(screens.fonts[HELP_FONT])
-        flow_keys = (keys.ACTIVITIES, keys.HELP, keys.OFF)
+        sides = [zone for zone in menu_template() if zone["tag"] in (0x2E, 0x2F)]
+        exit_zone = dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F)
+        font = screens.fonts[TUTORIAL_FONT]
+        taught = {"next": SIDE_NEXT_KEY, "activities": keys.code(keys.ACTIVITIES),
+                  "help": keys.code(keys.HELP), "off": keys.code(keys.OFF)}
+        counter_font = TITLE_FONTS["tutorial"][1]
 
-        def paragraphs(text):
-            out, y = [{"opcode": "attribute", "value": HELP_FONT}], TUTORIAL_TOP
-            for paragraph in text.split("\n"):
-                for glyphs in fit_label(paragraph, screens.fonts[HELP_FONT],
-                                        EMPTY_MESSAGE_WIDTH, TUTORIAL_LINES):
-                    width = sum(widths[code] for code in glyphs)
-                    out.append({"opcode": "inline_text", "x": (SCREEN_WIDTH - width) // 2,
-                                "y": y, "glyphs": glyphs.hex()})
-                    y += LINE_SPACING
-                y += LINE_SPACING // 2
-            return out
-
-        for number, ((key, advance), ordinal) in enumerate(zip(TUTORIAL, pages)):
+        for number, (page, ordinal) in enumerate(zip(TUTORIAL, pages)):
             following = pages[number + 1] if number + 1 < len(TUTORIAL) else None
             onward = layout.navigation(following) if following is not None else None
-            text = (screens.words(key, activity=first["label"])
-                    if key == "tutorial.activities" else screens.words(key))
-            rows, mode_keys = [exit_row], []
+            rows = [exit_row]
             if number:
                 rows.append((SIDE_PREV_KEY, layout.navigation(pages[number - 1]), OBJECT_ATOM))
-            if advance == "next":
-                rows.append((SIDE_NEXT_KEY, onward, OBJECT_ATOM))
-            elif advance == "touch":
-                rows.append((MENU_ROW_KEYS[2], onward, OBJECT_ATOM))
-            elif advance in ("activities", "help", "off"):
-                scan = {"activities": keys.ACTIVITIES, "help": keys.HELP, "off": keys.OFF}
-                mode_keys.append((keys.code(scan[advance]), onward, OBJECT_ATOM))
-            # the keys the flow owns do nothing else while the Tutorial is shown
-            mode_keys += [(keys.code(scan), 0, 0) for scan in flow_keys
-                          if keys.code(scan) not in {row[0] for row in mode_keys}]
+            mode_keys = []
+            for name in page["keys"]:
+                if taught[name] == SIDE_NEXT_KEY:
+                    rows.append((SIDE_NEXT_KEY, onward, OBJECT_ATOM))
+                else:
+                    mode_keys.append((taught[name], onward, OBJECT_ATOM))
+            zones = list(sides) + [exit_zone]
+            for tag, (x, y, width, height) in enumerate(page["touch"], start=0x30):
+                zones.append({"tag": tag, "x": x, "y": y, "width": width, "height": height})
+                rows.append((0x80 | tag, onward, OBJECT_ATOM))
+            text = screens.words(f"tutorial.{number + 1}")
 
-            def program(picture, prologue, text=text, advance=advance):
-                out = [] if prologue is None else [{"opcode": "call", "target": prologue}]
-                if advance == "touch":
-                    # the first activity's own row, to touch
-                    out += menu_page([first["label"]], picture(row_frame),
-                                     [first.get("icon") and picture(first["icon"])],
-                                     screens.font, attribute=screens.label,
-                                     label_room=self.frames.row_label_room, rows=(2,))[:-1]
-                out += paragraphs(text)
+            def program(picture, _prologue, number=number, page=page, text=text):
+                out = [{"opcode": "rectangle", "x": 0, "y": 0, "width": SCREEN_WIDTH,
+                        "height": 220, "color": 0},
+                       {"opcode": "bitmap", "x": page["picture"][0], "y": page["picture"][1],
+                        "target": picture(f"tutorial/{number + 1}")}]
+                for key, attribute, x, y, centred in page.get("labels", ()):
+                    label_font = screens.fonts[attribute]
+                    [glyphs] = fit_label(screens.words(key), label_font, SCREEN_WIDTH - 12, 1)
+                    widths, _codes = measure(label_font)
+                    width = sum(widths[code] for code in glyphs)
+                    out += [{"opcode": "attribute", "value": attribute},
+                            {"opcode": "inline_text", "x": max(0, x - width // 2) if centred
+                             else x, "y": y, "glyphs": glyphs.hex()}]
+                out.append({"opcode": "attribute", "value": TUTORIAL_FONT})
+                y = page["top"]
+                widths, _codes = measure(font)
+                for paragraph in text.split("\n"):
+                    for glyphs in fit_label(paragraph, font, SCREEN_WIDTH - 2 * TUTORIAL_LEFT,
+                                            12):
+                        out.append({"opcode": "inline_text", "x": TUTORIAL_LEFT, "y": y,
+                                    "glyphs": glyphs.hex()})
+                        y += TUTORIAL_LINE
+                    y += TUTORIAL_LINE
+                # the page counter, kept from ours: "3/11", top right
+                counter = screens.fonts[counter_font]
+                [glyphs] = fit_label(f"{number + 1}/{len(TUTORIAL)}", counter, SCREEN_WIDTH, 1)
+                widths, _codes = measure(counter)
+                out += [{"opcode": "attribute", "value": counter_font},
+                        {"opcode": "inline_text",
+                         "x": TUTORIAL_COUNTER_RIGHT - sum(widths[code] for code in glyphs),
+                         "y": TUTORIAL_COUNTER_Y, "glyphs": glyphs.hex()}]
                 return screens.softkeys(out + [{"opcode": "end"}], ["exit"])
-            screens.owned(rows, zones, program, "tutorial", screens.words("tutorial.title"),
-                          (number, len(TUTORIAL)), keys=mode_keys)
+            screens.owned(rows, zones, program, "tutorial", keys=mode_keys, bare=True)

@@ -16,6 +16,7 @@ and is the only place names, sizes and glyph positions are declared.
     images/options/row-frame/0..2.png    164x50  the green rows of Options
     images/charging/battery.png     176x220  shown while the remote charges, then...
     images/charging/photo-1..3.png  176x220  ...each photo in turn, round again
+    images/tutorial/1..11.png                the Tutorial's pictures of the remote, a page each
     fonts/galmuri/Galmuri9.bdf.gz, Galmuri7.bdf.gz   the typeface every slot is drawn from
     fonts/font.ttf                           optional: your own font for all text
 

@@ -108,7 +108,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         firmware_screens.place(layout, system, household, platform.handlers,
                                platform.navigate, roles, platform.first)
     ordinals.screens(numbers, hub=hub, system=system is not None, device_pages=pages,
-                     acts=acts, device_slots=variables.slots, tutorial_pages=len(TUTORIAL))
+                     acts=acts, device_slots=variables.slots, tutorial_pages=len(TUTORIAL),
+                     off_devices=((activities or {}).get("all_off") or {}).get("off", []))
 
     owned = platform.owned
     screens = Screens(
@@ -216,13 +217,14 @@ def _command_objects(layout, devices):
 
 def _activity_variables(variables, acts):
     """`CurrentActivityState`: each activity is a value, and the one past them is nothing
-    running, the value it starts at - section 0 names it, as the donors do. Then whether
-    the Remote Assistant asks after each start: on until Options turns it off."""
+    running, the value it starts at - section 0 names it, as the donors do. Then the
+    Remote Assistant's state, as upstairs keeps it: 0 never shown, 1 welcomed, 2 shown
+    before, 3 hidden (activity_screens.Flow._notes)."""
     variables.state = variables.add(f"CurrentActivityState_0_{len(acts) + 1}", {
         "initial": len(acts), "limit": len(acts), "padding": 0, "transitions": []})
     if acts:
-        variables.assistant = variables.add("RemoteAssistant_2", {
-            "initial": 1, "limit": 1, "padding": 0, "transitions": []})
+        variables.assistant = variables.add("RemoteAssistant_4", {
+            "initial": 0, "limit": 3, "padding": 0, "transitions": []})
 
 
 def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,

@@ -691,6 +691,94 @@
         88,
         10
       ]
+    },
+    "tutorial/1": {
+      "file": "images/tutorial/1.png",
+      "mode": "raw",
+      "size": [
+        47,
+        58
+      ]
+    },
+    "tutorial/10": {
+      "file": "images/tutorial/10.png",
+      "mode": "raw",
+      "size": [
+        163,
+        83
+      ]
+    },
+    "tutorial/11": {
+      "file": "images/tutorial/11.png",
+      "mode": "raw",
+      "size": [
+        42,
+        52
+      ]
+    },
+    "tutorial/2": {
+      "file": "images/tutorial/2.png",
+      "mode": "raw",
+      "size": [
+        147,
+        114
+      ]
+    },
+    "tutorial/3": {
+      "file": "images/tutorial/3.png",
+      "mode": "raw",
+      "size": [
+        164,
+        85
+      ]
+    },
+    "tutorial/4": {
+      "file": "images/tutorial/4.png",
+      "mode": "raw",
+      "size": [
+        162,
+        85
+      ]
+    },
+    "tutorial/5": {
+      "file": "images/tutorial/5.png",
+      "mode": "raw",
+      "size": [
+        98,
+        80
+      ]
+    },
+    "tutorial/6": {
+      "file": "images/tutorial/6.png",
+      "mode": "raw",
+      "size": [
+        162,
+        48
+      ]
+    },
+    "tutorial/7": {
+      "file": "images/tutorial/7.png",
+      "mode": "raw",
+      "size": [
+        164,
+        85
+      ]
+    },
+    "tutorial/8": {
+      "file": "images/tutorial/8.png",
+      "mode": "raw",
+      "size": [
+        164,
+        89
+      ]
+    },
+    "tutorial/9": {
+      "file": "images/tutorial/9.png",
+      "mode": "raw",
+      "size": [
+        133,
+        96
+      ]
     }
   },
   "remote": "harmony-one",
