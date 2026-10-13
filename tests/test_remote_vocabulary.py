@@ -71,8 +71,8 @@ def other_remote(tmp_path, **vocab):
         **vocab,
     }
     (tmp_path / "harmony-900.json").write_text(
-        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
-    (tmp_path / "test-model.json").write_text(json.dumps(profile))
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "test-model.json").write_text(json.dumps(profile), encoding="utf-8")
     return tmp_path
 
 
@@ -130,8 +130,8 @@ def library_with(tmp_path, device_props):
                    identity={"arch": 15, "skin": 99}, status="untested")
     profile["properties"] = {"device": device_props, "activity": {}}
     (tmp_path / "harmony-900.json").write_text(
-        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
-    (tmp_path / "test-model.json").write_text(json.dumps(profile))
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "test-model.json").write_text(json.dumps(profile), encoding="utf-8")
     return remotes.get("test-model", tmp_path)
 
 
@@ -204,8 +204,8 @@ def two_verified(tmp_path):
     profile = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     profile.update(id="test-model", model="Test Model", identity={"arch": 15, "skin": 99})
     (tmp_path / "harmony-900.json").write_text(
-        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
-    (tmp_path / "test-model.json").write_text(json.dumps(profile))
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "test-model.json").write_text(json.dumps(profile), encoding="utf-8")
     return tmp_path
 
 
