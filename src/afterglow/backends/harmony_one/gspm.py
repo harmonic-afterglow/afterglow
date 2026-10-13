@@ -24,11 +24,21 @@ MAX_SAFE_SIZE = 0x390000
 
 def checksum(data: bytes, end: int) -> tuple[int, int]:
     """Return the firmware's two-lane XOR over complete pairs before ``end``."""
+    end -= end % 2
     low, high = CHECKSUM_SEED
-    for offset in range(0, end - end % 2, 2):
-        low ^= data[offset]
-        high ^= data[offset + 1]
-    return low, high
+    return low ^ _xor(data[0:end:2]), high ^ _xor(data[1:end:2])
+
+
+def _xor(lane: bytes) -> int:
+    """Every byte XORed together. A byte at a time in Python took 45 ms over a megabyte,
+    and an import checks the image some forty times; folding the lane as one integer -
+    each half XORed onto the other until a byte is left - is the same sum at C speed."""
+    value, width = int.from_bytes(lane, "little"), len(lane)
+    while width > 1:
+        half = (width + 1) // 2
+        value = (value & ((1 << (8 * half)) - 1)) ^ (value >> (8 * half))
+        width = half
+    return value
 
 
 def seal(body: bytes) -> bytes:
