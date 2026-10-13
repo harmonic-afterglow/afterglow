@@ -12,6 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   has no command - as Logitech's configurations write an input nothing selects. Such an
   input shows as "(none)", and a new input starts as "(none)" rather than the device's
   first command.
+- A Harmony One device whose icon Afterglow does not know showed no icon in the device
+  list. It is imported as a **Home appliance**, and Import Complete says so.
 
 ## [0.3.0-beta.1] - 2026-10-13
 

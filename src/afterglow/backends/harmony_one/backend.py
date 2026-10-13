@@ -20,7 +20,9 @@ from ..contracts import BuildResult, ImportResult
 from . import command_index, gspm, importing, inventory, labels
 
 
-# The type an activity gets when none is recognised: "Custom / Other".
+# The types a device and an activity get when none is recognised: "Home appliance" and
+# "Custom / Other".
+GENERIC_DEVICE = "HomeAppliance"
 GENERIC_ACTIVITY = "VirtualGeneric"
 
 
@@ -53,11 +55,18 @@ def import_project(source, profile, context) -> ImportResult:
             or "imported")
     logos = paths.logos_dir() / "Imported" / name
     activities, off = importing.Activities(image, devices, naming, notes, logos).read()
-    unknown = [device["label"] for index, device in enumerate(devices)
-               if ("device", index) not in types]
+    # A device whose icon is none Afterglow knows is a Home appliance - after the
+    # activities are read, whose display is chosen by type. There is no "other" device
+    # type, and an unknown one showed no icon in the device list and opened in the editor
+    # as a type it is not. On the One a type is only the row's icon.
+    unknown = []
+    for index, device in enumerate(devices):
+        if ("device", index) not in types:
+            device["type"] = GENERIC_DEVICE
+            unknown.append(device["label"])
     if unknown:
         notes.append("no type was recognised for " + ", ".join(repr(name) for name in unknown)
-                     + "; their icons are the default ones")
+                     + "; they are Home appliances")
     # An activity whose icon is none the One has a type for - the One+'s Netflix and
     # smart-TV icons - is "Custom / Other", as an editor would otherwise offer the first
     # type in its list. On the One a type is only the row's icon.
