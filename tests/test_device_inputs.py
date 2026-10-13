@@ -147,3 +147,21 @@ def test_an_imported_device_that_steps_opens_as_stepping(configs, unpacked):
         cycle = device["input_cycle"]
         assert cycle["values"] and (cycle.get("next") or cycle.get("previous"))
         assert project_devices.input_names(device)
+
+
+def test_an_input_no_command_selects_opens_with_none_and_stays_so(qapp_or_skip):
+    """An imported Harmony One writes such an input as its name alone, `["Input 3"]`;
+    the page took every input as a pair and the device editor crashed opening it. The
+    row shows no command - not the device's first, which saving would have set."""
+    from afterglow.gui.device_inputs import NO_COMMAND
+    device = _device(inputs=[["HDMI 1", "HDMI1"], ["Input 2"]])
+    page = _page(device)
+    assert page.table.rowCount() == 2
+    assert page.table.cellWidget(1, 1).currentText() == NO_COMMAND
+    spec = dict(device)
+    page.apply(spec)
+    assert spec["inputs"] == device["inputs"]               # untouched, unchanged
+    page._add_direct()
+    assert page.table.cellWidget(2, 1).currentText() == NO_COMMAND
+    page.apply(spec)
+    assert spec["inputs"] == [["HDMI 1", "HDMI1"], ["Input 2", None], ["Input 3", None]]
