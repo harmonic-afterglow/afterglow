@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIntValidator
 
+from .drag_rows import RowDragger, move_table_row
 from .ui_helpers import FilterCombo, order_by_participation
 
 class CommandPicker(QDialog):
@@ -263,12 +264,13 @@ class MacroEditorWidget(QWidget):
                            ("Wait", self._add_delay)):
             menu.addAction(text, slot)
         self.add_btn.setMenu(menu)
-        self.up_btn = QPushButton("Up")
-        self.dn_btn = QPushButton("Down")
         self.rem_btn = QPushButton("Remove")
-        for b in [self.add_btn, self.up_btn, self.dn_btn, self.rem_btn]:
+        for b in [self.add_btn, self.rem_btn]:
             btn_row.addWidget(b)
         btn_row.addStretch()
+        hint = QLabel("Drag a step by its grip to change the order.")
+        hint.setStyleSheet("color: gray;")
+        btn_row.addWidget(hint)
         layout.addLayout(btn_row)
 
         self.table = QTableWidget(0, 3)
@@ -277,10 +279,10 @@ class MacroEditorWidget(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
+        # In the order they run: dragged by the grip in the row header.
+        self.dragger = RowDragger(self.table, self._moved)
 
         self.rem_btn.clicked.connect(self._rem)
-        self.up_btn.clicked.connect(self._up)
-        self.dn_btn.clicked.connect(self._dn)
 
         if existing_macro:
             for m in existing_macro:
@@ -410,35 +412,10 @@ class MacroEditorWidget(QWidget):
             break
         self.changed.emit()
             
-    def _up(self):
-        r = self.table.currentRow()
-        if r > 0:
-            self._swap(r, r - 1)
-            self.table.selectRow(r - 1)
-            
-    def _dn(self):
-        r = self.table.currentRow()
-        if r >= 0 and r < self.table.rowCount() - 1:
-            self._swap(r, r + 1)
-            self.table.selectRow(r + 1)
-            
-    def _swap(self, r1, r2):
-        t1 = self.table.takeItem(r1, 0)
-        d1 = self.table.takeItem(r1, 1)
-        v1 = self.table.takeItem(r1, 2)
-        
-        t2 = self.table.takeItem(r2, 0)
-        d2 = self.table.takeItem(r2, 1)
-        v2 = self.table.takeItem(r2, 2)
-        
-        self.table.setItem(r1, 0, t2)
-        self.table.setItem(r1, 1, d2)
-        self.table.setItem(r1, 2, v2)
-        
-        self.table.setItem(r2, 0, t1)
-        self.table.setItem(r2, 1, d1)
-        self.table.setItem(r2, 2, v1)
-        
+    def _moved(self, from_row, to_row):
+        move_table_row(self.table, from_row, to_row)
+        self.changed.emit()
+
     def get_macro(self):
         out = []
         for r in range(self.table.rowCount()):
@@ -506,6 +483,8 @@ class SimpleStartupList(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
+        # The switches happen in this order; drag a row by its grip to change it.
+        self.dragger = RowDragger(self.table, lambda a, b: move_table_row(self.table, a, b))
 
         self.add_btn.clicked.connect(self._add)
         self.rem_btn.clicked.connect(self._remove)

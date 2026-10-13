@@ -34,6 +34,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   900's colour keys in their colours, the 1100 with the printing its guide leaves off.
   The list's Key column picks a key on the same drawing, and a key another command was
   on moves to the one picked.
+- **Drag to put things in order.** Devices and activities - the order the remote lists
+  them in - startup and shutdown steps, the devices an activity switches on, screen
+  buttons and favourites are moved by the grip on their row. Devices, activities,
+  screen buttons and favourites could not be reordered at all; the steps and the power
+  order had Up and Down buttons, which are gone.
 - **Each remote is a folder** in `library/remotes/`: `profile.json`, and beside it what is
   that remote's alone - its drawing, `art.svg`, and `art.json` with where its keys sit
   and how the drawing is cut from its guide. Removing the folder removes the remote.
@@ -47,6 +52,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Editing a favourite or a screen button moved it to the end of the list.
 - **Moving a Harmony 900 project to the One could fail** with "'tuple' object does not
   support item assignment" once a device had been edited: the editor kept its commands
   in a form the move could not change when it took away a key the One lacks.

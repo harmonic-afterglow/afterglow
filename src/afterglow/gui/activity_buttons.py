@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
                              QVBoxLayout, QWidget, QWizardPage)
 
 from .. import paths
+from .drag_rows import RowDragger, moved_list
 from .icon_picker import choose as choose_icon
 from .icons import pixmap as glyph_pixmap
 from .macro import MacroEditorWidget
@@ -338,6 +339,7 @@ class FavouritesPage(QWizardPage):
 
         self.table = _ButtonTable(["Logo", "Label", "Does"])
         layout.addWidget(self.table, 1)
+        self.dragger = RowDragger(self.table, self._moved)
 
         row = QHBoxLayout()
         add = QPushButton("Add favourite…")
@@ -424,10 +426,23 @@ class FavouritesPage(QWizardPage):
             existing={"label": label, "kind": kind, "payload": payload, "image": image},
             participating=getattr(self, "_participating", None))
         if dialog.exec() and dialog.result_data:
-            self.table.removeRow(row)
-            self._add_row(*dialog.result_data)
+            # In its place: it used to go to the end of the list.
+            entries = self.get_buttons()
+            entries[row] = tuple(dialog.result_data)
+            self._set_rows(entries, row)
             if dialog.image_path:
                 self._remember_asset(dialog.image_path)
+
+    def _set_rows(self, entries, select=None):
+        self.table.setRowCount(0)
+        for entry in entries:
+            self._add_row(*entry)
+        if select is not None:
+            self.table.selectRow(select)
+
+    def _moved(self, from_row, to_row):
+        """Favourites appear on the remote in this order."""
+        self._set_rows(moved_list(self.get_buttons(), from_row, to_row), to_row)
 
     def _remove(self):
         row = self.table.currentRow()
@@ -459,6 +474,7 @@ class ScreenButtonsPage(QWizardPage):
 
         self.table = _ButtonTable(["Icon", "Label", "Does"])
         layout.addWidget(self.table, 1)
+        self.dragger = RowDragger(self.table, self._moved)
 
         row = QHBoxLayout()
         add = QPushButton("Add command…")
@@ -521,8 +537,21 @@ class ScreenButtonsPage(QWizardPage):
             self.devices, self, participating=getattr(self, "_participating", None),
             existing=entry)
         if dialog.exec() and dialog.result_data:
-            self.table.removeRow(row)
-            self._add_row(dialog.result_data)
+            # In its place: it used to go to the end of the list.
+            entries = self.get_buttons()
+            entries[row] = dialog.result_data
+            self._set_rows(entries, row)
+
+    def _set_rows(self, entries, select=None):
+        self.table.setRowCount(0)
+        for entry in entries:
+            self._add_row(entry)
+        if select is not None:
+            self.table.selectRow(select)
+
+    def _moved(self, from_row, to_row):
+        """The buttons appear on the remote's screen in this order."""
+        self._set_rows(moved_list(self.get_buttons(), from_row, to_row), to_row)
 
     def _remove(self):
         row = self.table.currentRow()
