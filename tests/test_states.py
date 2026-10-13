@@ -417,3 +417,31 @@ def test_a_favourite_without_its_image_is_caught(tmp_path):
         ConfigBuildService(ROOT, lambda _m: None).build(project)
     names = entries_of(out).namelist()
     assert "userconfig/image/channel-one.png" in names, "the logo was not copied in"
+
+
+def test_an_imported_activity_with_a_held_command_opens_in_the_editor(qapp_or_skip, tmp_path):
+    """A Harmony One holds a code by repeating it, and its import says how long, after
+    the modifier: `["command", device, name, "Press", ms]`. The step editor took four
+    parts, and every such activity crashed the editor (GitHub issue #7)."""
+    import contextlib
+    import io
+    from test_harmony_one_activities import PROJECT
+    from test_harmony_one_import import _imported
+    from afterglow.backends.harmony_one import generate
+    from afterglow.gui.activity_wizard import ActivityEditor
+    from afterglow.gui.macro import MacroEditorWidget
+
+    held = ["command", "tv", "Menu", "Press", 2000]
+    project = dict(PROJECT, activities=[dict(PROJECT["activities"][0],
+                                             enter=[held] + PROJECT["activities"][0]["enter"])]
+                   + PROJECT["activities"][1:])
+    with contextlib.redirect_stdout(io.StringIO()):
+        imported = _imported(generate.build(project)["image"], tmp_path)
+    watch = imported["activities"][0]
+    [step] = [step for step in watch["enter"] if len(step) == 5]
+    editor = ActivityEditor(imported["devices"], None, existing=watch, remote="harmony-one")
+    assert editor is not None
+    # the step editor shows the hold and hands it back unchanged
+    widget = MacroEditorWidget(imported["devices"], [step])
+    assert widget.get_macro() == [tuple(step)]
+    assert "held" in widget.table.item(0, 2).text()

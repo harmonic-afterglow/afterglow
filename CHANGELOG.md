@@ -91,6 +91,9 @@ yet, and that is what this beta is for.
   One" as "Xbox ane"), skipping that device's buttons.
 - **Test write** refused a Harmony One whose flash chip it reported in lower case
   (`0x1f:0xc8` against `0x1F:0xC8`): the same chip, now recognised however it is written.
+- Editing an activity imported from a Harmony One crashed when one of its steps held a
+  command (the import says for how long); the hold is now shown and kept
+  ([#7](https://github.com/harmonic-afterglow/afterglow/issues/7)).
 
 
 ### Known issues
