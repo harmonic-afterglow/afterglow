@@ -1,6 +1,6 @@
 # scaffolds
 
-One base tree per remote, named after its profile id (`library/remotes/*.json`).
+One base tree per remote, named after its profile id (`library/remotes/<id>/profile.json`).
 
 A scaffold holds the parts of a configuration that are **properties of the remote, not of
 your setup**: its persisted settings (`platformconfig/system_*.dat`), its hardware

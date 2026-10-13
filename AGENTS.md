@@ -151,9 +151,13 @@ the root. The order below is also the order the tests will stop you in.
 
 **If evidence shows it uses the same `PK\x03\x04` payload and IR runtime:**
 
-1. Add `library/remotes/<model>.json`: `identity` (skin id), `payload`, `infrared`,
-   `capabilities`, `vocabulary`, `properties`, `interface` and `preferences`. Copy
-   `harmony-900.json` and edit. `interface` is what the GUI shows for that remote - its
+1. Add a folder `library/remotes/<model>/` with `profile.json`: `identity` (skin id),
+   `payload`, `infrared`, `capabilities`, `vocabulary`, `properties`, `interface` and
+   `preferences`. Copy `harmony-900/profile.json` and edit. Everything that is that
+   remote's alone goes in its folder, never in shared code or lists: its drawing for the
+   keys view is `art.svg` with `art.json` (where each key sits, and the recipe
+   `tools/remote_art.py` cuts it from the user guide by); without them its keys show as
+   a grid. `interface` is what the GUI shows for that remote - its
    tabs, device and activity editor pages, settings rows, the Timing fields its builder
    uses (`timing`) and languages - and
    `preferences` defines its own settings files. Both are required and checked when the
@@ -392,8 +396,8 @@ controlled builds for experimental profiles; `profile.require_writable()` permit
 verified profiles through the normal write path. Only
 `harmony-900` is verified. **Never** downgrade this gate or mark a profile `verified`
 that has not actually had a config flashed and booted on it. Adding support for a remote
-of an already-implemented architecture is **adding a JSON file to `library/remotes/`,
-not editing code.**
+of an already-implemented architecture is **adding a folder to `library/remotes/`, not
+editing code.**
 
 **Paths:** ask `paths.py`, never count directories from `__file__`.
 - `paths.root()` - where *shipped* data (`library/icons/scaffolds`) lives (found by

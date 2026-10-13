@@ -3,8 +3,7 @@
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QGridLayout,
-    QLabel, QPushButton, QListWidget, QDialog, QDialogButtonBox, QLineEdit
+    QWidget, QVBoxLayout, QLabel, QListWidget, QDialog, QDialogButtonBox, QLineEdit
 )
 from PyQt6.QtCore import QEvent, Qt, pyqtSignal
 
@@ -149,72 +148,62 @@ class _SuggestBox(QWidget):
     def text(self):        return self.edit.text()
     def setText(self, v):  self.edit.setText(v); self.list.setVisible(False)
 class RemotePickerDialog(QDialog):
-    """Shows the remote's own keypad. Click a button to assign it as the hard key slot
-    for a command. used_slots highlights already-mapped buttons; current_slot is the one
-    currently assigned to this command.
+    """Pick the key a command goes on, on the remote as it is drawn (keys_view): the
+    command's own key marked, the keys other commands hold tinted and named on hover.
+    A remote not drawn yet shows its keys as a grid, by the same widget.
 
-    The picture is the profile's `hard_key_layout`. A remote whose case has not been
-    drawn yet gets its keys as a plain grid instead - every key it has, none it lacks.
+    `used_slots` is {key: the command on it} - or, from older callers, just the keys.
     """
 
-    def __init__(self, current_slot, used_slots, parent=None, remote=None):
+    def __init__(self, current_slot, used_slots, parent=None, remote=None, command=None):
         super().__init__(parent)
-        self.setWindowTitle("Map to Remote Button")
+        from .. import vocabulary
+        from .keys_view import ASSIGNED, CHANGED, FREE, RemoteKeys, legend
+
+        self.setWindowTitle(f"Key for {command}" if command else "Choose a key")
         self.setModal(True)
         self.chosen = current_slot   # default = keep current
+        used = (dict(used_slots) if isinstance(used_slots, dict)
+                else {slot: None for slot in used_slots or ()})
 
         outer = QVBoxLayout(self)
-        outer.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
-        outer.addWidget(QLabel(
-            "Click a button to map it. "
-            "<span style='color:#e8a000'>Orange</span> = already used by another command."
-        ))
-
-        # Remote body (fixed grid, no scroll)
-        body = QWidget()
-        grid = QGridLayout(body)
-        grid.setSpacing(4)
-
-        from .. import vocabulary
-        profile = vocabulary.for_remote(remote)
-        cells = profile.hard_key_layout or [
-            {"row": index // 4, "column": index % 4, "rows": 1, "columns": 1,
-             "key": key, "label": key}
-            for index, key in enumerate(profile.hard_keys)]
-        self._btns = {}
-        for cell in cells:
-            row, col, rspan, cspan = cell["row"], cell["column"], cell["rows"], cell["columns"]
-            slot, label = cell["key"], cell["label"]
-            btn = QPushButton(label)
-            btn.setFixedHeight(32)
-            if slot is None:
-                btn.setEnabled(False)
-                btn.setStyleSheet("color: gray;")
+        intro = QLabel("Click the key to put it on. A key another command is on moves "
+                       "to this one.")
+        intro.setWordWrap(True)
+        outer.addWidget(intro)
+        self.keys = RemoteKeys(vocabulary.for_remote(remote))
+        label = self.keys.label
+        states = {}
+        for key in self.keys.keys():
+            if key == current_slot:
+                states[key] = (ASSIGNED, f"{label(key)}: {command or 'this command'}")
+            elif key in used:
+                states[key] = (CHANGED, f"{label(key)}: " + (used[key] or "another command"))
             else:
-                btn.setCheckable(True)
-                if slot == current_slot:
-                    btn.setChecked(True)
-                    btn.setStyleSheet("background:#3a7ede; color:white; font-weight:bold;")
-                elif slot in used_slots:
-                    btn.setStyleSheet("background:#e8a000; color:black;")
-                btn.clicked.connect(lambda _, s=slot, b=btn: self._pick(s, b))
-                self._btns[slot] = btn
-            grid.addWidget(btn, row, col, rspan, cspan)
+                states[key] = (FREE, f"{label(key)}: free")
+        self.keys.set_states(states)
+        self.keys.select(current_slot)
+        self.keys.key_clicked.connect(self._pick)
+        self.keys.setMinimumSize(self.keys.sizeHint() * 1.2)
+        outer.addWidget(self.keys, 1)
+        outer.addSpacing(6)
+        outer.addWidget(legend([(ASSIGNED, "This command"), (CHANGED, "Another command"),
+                                (FREE, "Free")]))
 
-        outer.addWidget(body)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        clear = buttons.addButton("No key", QDialogButtonBox.ButtonRole.ResetRole)
+        clear.clicked.connect(lambda: self._pick(None))
+        buttons.rejected.connect(self.reject)
+        outer.addWidget(buttons)
+        # Wide enough for the legend under a tall remote; a wide remote sets its own.
+        hint = self.sizeHint()
+        self.resize(max(440, hint.width()), hint.height())
 
-        # Clear mapping button
-        clear_btn = QPushButton("Clear mapping (no hard key)")
-        clear_btn.clicked.connect(lambda: self._pick(None, None))
-        outer.addWidget(clear_btn)
-
-        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
-        btns.rejected.connect(self.reject)
-        outer.addWidget(btns)
-
-    def _pick(self, slot, btn):
+    def _pick(self, slot):
         self.chosen = slot
         self.accept()
+
+
 def _new_act_id(existing=None):
     """An activity id that is free in this project."""
     return _next_free_id(existing, "1000", 1)

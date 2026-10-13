@@ -17,7 +17,7 @@ from afterglow import preferences, remotes
 
 
 def _900_json() -> dict:
-    return json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    return json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
 
 
 def _profile(**interface_changes) -> remotes.RemoteProfile:
@@ -71,7 +71,8 @@ def test_preferences_offered_and_defined_agree():
 
 def test_every_shipped_profile_describes_its_interface():
     """Loading drops a broken profile with a warning; none of ours may be one."""
-    shipped = {path.stem for path in remotes.LIBRARY.glob("*.json")} - {"models"}
+    shipped = {path.parent.name for path in remotes.LIBRARY.glob(f"*/{remotes.PROFILE}")}
+    shipped |= {path.stem for path in remotes.LIBRARY.glob("*.json")} - {"models"}
     assert {profile.id for profile in remotes.load_all()} == shipped
 
 

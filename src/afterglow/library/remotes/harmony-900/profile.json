@@ -1,38 +1,44 @@
 {
-  "schema": "afterglow-remote/1",
-  "id": "harmony-1100",
-  "model": "Harmony 1100",
+  "id": "harmony-900",
+  "model": "Harmony 900",
   "identity": {
-    "arch": 11,
-    "skin": 63,
-    "other_skins": [
-      62
-    ],
+    "arch": 15,
+    "skin": 61,
     "flash": "0x01:0x49",
-    "board": "0.3.0",
-    "software_type": 0,
-    "other_boards": [
-      "0.5.0"
-    ]
+    "board": "0.1.0",
+    "software_type": 0
   },
   "payload": "pk",
   "backend": "harmony-pk",
-  "status": "experimental",
-  "notes": "Identity from a Logitech-generated configuration (skin 62) and firmware 62.7.7/63.7.7, which are byte-identical but for the skin: the same remote sold under two model numbers. Its board is 0.3.0 on the first configuration and 0.5.0 on a later one; both run that firmware. Every command is a recorded device sequence (docs/harmony_pk/ssir-sequences.md). Configurations can be read, imported and built; a built one has not yet been written to a remote, so writing goes through the test-write flow, which backs the remote up first.",
+  "status": "verified",
   "capabilities": {
-    "rf_blaster": false,
+    "rf_blaster": true,
     "touchscreen": true,
     "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
-    "native_protocols": [],
+    "native_protocols": [
+      "nec1",
+      "nec1-toshiba",
+      "nec-ext",
+      "nec2",
+      "nec2-ext",
+    "samsung32",
+    "sony12",
+    "sony15",
+    "sony20",
+    "jvc16",
+      "rc5-13",
+      "rc6-mce"
+    ],
     "waveform": "carrier-period",
-    "notes": "No protocol programs: the firmware plays stored sequences (IRQueue.lua ir_send_device_ir). playback=device-sequence makes the build render every command into press and hold sequences in SsIr.bin, one variant per toggle state.",
-    "playback": "device-sequence"
+    "notes": "SsIr stores a u32 little-endian carrier period in nanoseconds followed by a u16 pulse-word count and signed mark/space words. Established from the unstripped irgen raw path and hardware-validated with a newly generated Yamaha RAV16 Volume Up waveform on 2026-08-30."
   },
+  "notes": "Identity taken from real dumps. Configs built by Afterglow have been flashed to one and boot.",
+  "schema": "afterglow-remote/1",
   "vocabulary": {
-    "_comment": "Device and activity types are the Harmony 900's until they are read out of the 1100's own app-main.swf; every type in the configuration examined is among them. The physical keys are the 13 that configuration binds.",
+    "_comment": "What this model can be told. Read out of its own app-main.swf: one movie clip per device and activity type, and the physical keys the case actually has. The identifiers are Logitech's; the readable labels are ours, because the firmware has no name table for them and the friendly names the web configurator showed went away with it. Another model has a different set - a remote with no touchscreen has no screen buttons, and one with fewer keys has fewer slots.",
     "device_types": {
       "Amplifier": "Amplifier",
       "AudioVideoSwitch": "A/V switch",
@@ -167,98 +173,163 @@
         "VirtualVcrRecorder"
       ]
     ],
+    "_hard_keys_comment": "The names Logitech's own Harmony 900 configurations bind, measured over 18 of them: Pg Up and Pg Dn are UpArrow and DownArrow, the transport skips are SkipBack and SkipForward, and the two keys beside 0 are NumberPlus (Clear) and NumberEnter (E).",
     "hard_keys": [
-      "VolumeUp",
-      "VolumeDown",
-      "VolumeMute",
-      "ChannelUp",
-      "ChannelDown",
-      "PrevChannel",
-      "DirectionUp",
-      "DirectionDown",
-      "DirectionLeft",
-      "DirectionRight",
-      "Select",
-      "UpArrow",
-      "DownArrow"
+      "VolumeUp", "VolumeDown", "VolumeMute", "ChannelUp", "ChannelDown", "PrevChannel",
+      "DirectionUp", "DirectionDown", "DirectionLeft", "DirectionRight", "Select",
+      "Menu", "Exit", "Info", "Guide", "UpArrow", "DownArrow",
+      "Play", "Pause", "Stop", "Rewind", "FastForward", "SkipBack", "SkipForward", "Record",
+      "Number0", "Number1", "Number2", "Number3", "Number4", "Number5", "Number6",
+      "Number7", "Number8", "Number9", "NumberPlus", "NumberEnter",
+      "Red", "Green", "Yellow", "Blue"
     ],
-    "hard_key_aliases": {},
-    "hard_key_layout": []
+    "_hard_key_aliases_comment": "Names this profile once used that no Harmony 900 configuration has, and the key each one meant; PageUp and PageDown are what the case prints. A project saved with them is renamed on load; Home and InputHDMI were never keys on this case and have no entry.",
+    "hard_key_labels": {
+      "VolumeUp": "Volume +",
+      "VolumeDown": "Volume −",
+      "VolumeMute": "Mute (*)",
+      "ChannelUp": "Channel +",
+      "ChannelDown": "Channel −",
+      "PrevChannel": "Back (previous channel)",
+      "DirectionUp": "Up",
+      "DirectionDown": "Down",
+      "DirectionLeft": "Left",
+      "DirectionRight": "Right",
+      "Select": "OK",
+      "Menu": "Menu",
+      "Exit": "Exit",
+      "Info": "Info",
+      "Guide": "Guide",
+      "UpArrow": "Page up",
+      "DownArrow": "Page down",
+      "Play": "Play",
+      "Pause": "Pause",
+      "Stop": "Stop",
+      "Rewind": "Rewind",
+      "FastForward": "Fast forward",
+      "SkipBack": "Replay",
+      "SkipForward": "Skip",
+      "Record": "Record",
+      "Number0": "0",
+      "Number1": "1",
+      "Number2": "2",
+      "Number3": "3",
+      "Number4": "4",
+      "Number5": "5",
+      "Number6": "6",
+      "Number7": "7",
+      "Number8": "8",
+      "Number9": "9",
+      "NumberPlus": "Clear (+)",
+      "NumberEnter": "Enter (E)",
+      "Red": "Red",
+      "Green": "Green",
+      "Yellow": "Yellow",
+      "Blue": "Blue"
+    },
+    "hard_key_aliases": {
+      "Replay": "SkipBack",
+      "Skip": "SkipForward",
+      "InputAV": "NumberEnter",
+      "Back": "NumberPlus",
+      "PageUp": "UpArrow",
+      "PageDown": "DownArrow"
+    },
+    "_hard_key_layout_comment": "The case seen from the front, for drawing it: [row, column, rows, columns, key, printed label]. Every key on it binds.",
+    "hard_key_layout": [
+      [0, 0, 1, 2, "Menu", "Menu"],
+      [0, 2, 1, 1, "UpArrow", "Pg Up"],
+      [0, 3, 1, 2, "Info", "Info"],
+      [1, 0, 1, 2, "Exit", "Exit"],
+      [1, 2, 1, 1, "DownArrow", "Pg Dn"],
+      [1, 3, 1, 2, "Guide", "Guide"],
+      [2, 0, 1, 1, "Red", "Red"],
+      [2, 1, 1, 1, "Green", "Green"],
+      [2, 3, 1, 1, "Yellow", "Yellow"],
+      [2, 4, 1, 1, "Blue", "Blue"],
+      [3, 0, 1, 1, "VolumeUp", "Vol +"],
+      [3, 2, 1, 1, "DirectionUp", "Up"],
+      [3, 4, 1, 1, "ChannelUp", "Ch +"],
+      [4, 1, 1, 1, "DirectionLeft", "Left"],
+      [4, 2, 1, 1, "Select", "OK"],
+      [4, 3, 1, 1, "DirectionRight", "Right"],
+      [5, 0, 1, 1, "VolumeDown", "Vol -"],
+      [5, 2, 1, 1, "DirectionDown", "Down"],
+      [5, 4, 1, 1, "ChannelDown", "Ch -"],
+      [6, 1, 1, 1, "VolumeMute", "*"],
+      [6, 3, 1, 1, "PrevChannel", "Return"],
+      [7, 0, 1, 1, "Rewind", "Rew"],
+      [7, 2, 1, 1, "Play", "Play"],
+      [7, 4, 1, 1, "FastForward", "FF"],
+      [8, 0, 1, 1, "SkipBack", "Skip back"],
+      [8, 2, 1, 1, "Pause", "Pause"],
+      [8, 4, 1, 1, "SkipForward", "Skip fwd"],
+      [9, 0, 1, 1, "Record", "Record"],
+      [9, 4, 1, 1, "Stop", "Stop"],
+      [10, 1, 1, 1, "Number1", "1"],
+      [10, 2, 1, 1, "Number2", "2"],
+      [10, 3, 1, 1, "Number3", "3"],
+      [11, 1, 1, 1, "Number4", "4"],
+      [11, 2, 1, 1, "Number5", "5"],
+      [11, 3, 1, 1, "Number6", "6"],
+      [12, 1, 1, 1, "Number7", "7"],
+      [12, 2, 1, 1, "Number8", "8"],
+      [12, 3, 1, 1, "Number9", "9"],
+      [13, 1, 1, 1, "NumberPlus", "Clear"],
+      [13, 2, 1, 1, "Number0", "0"],
+      [13, 3, 1, 1, "NumberEnter", "E"]
+    ]
   },
   "properties": {
-    "_comment": "The Harmony 900's, until measured on 1100 configurations, plus what 1100 configurations use that the 900 does not: their touchscreen page groups (ControlGroup_*, spelt HardButtons without the 900's space) and HideModePlayGroup, measured from the activities of two real ones.",
+    "_comment": "Which properties this model has, and what its own firmware does with each. applies_to is measured from real configurations of this model; when_absent is read out of its behaviour layer. A property missing here is not offered for this remote at all.",
     "device": {
       "AudioSwitch": {
-        "applies_to": [
-          "AudioVideoSwitch"
-        ],
+        "applies_to": ["AudioVideoSwitch"],
         "default": "true",
         "default_from": "observed",
-        "observed": {
-          "true": 2
-        },
+        "observed": {"true": 2},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
       "AutoPower": {
-        "applies_to": [
-          "Television"
-        ],
+        "applies_to": ["Television"],
         "optional": "on 3 of 20 televisions in 18 configurations - a model's property, not the type's",
         "default": "false",
         "default_from": "observed",
-        "observed": {
-          "false": 3
-        },
+        "observed": {"false": 3},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
       "RecordMedia Removable Dvd": {
-        "applies_to": [
-          "DvdRecorder"
-        ],
+        "applies_to": ["DvdRecorder"],
         "default": "true",
         "default_from": "observed",
-        "observed": {
-          "true": 1
-        },
+        "observed": {"true": 1},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
       "RecordMedia Removable Videotape": {
-        "applies_to": [
-          "Vcr"
-        ],
+        "applies_to": ["Vcr"],
         "default": "true",
         "default_from": "observed",
-        "observed": {
-          "true": 18
-        },
+        "observed": {"true": 18},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
       "RevertInput": {
-        "applies_to": [
-          "Television"
-        ],
+        "applies_to": ["Television"],
         "optional": "on 3 of 20 televisions in 18 configurations - a model's property, not the type's",
         "default": "true",
         "default_from": "observed",
-        "observed": {
-          "true": 3
-        },
+        "observed": {"true": 3},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
       "VideoSwitch": {
-        "applies_to": [
-          "AudioVideoSwitch"
-        ],
+        "applies_to": ["AudioVideoSwitch"],
         "default": "true",
         "default_from": "observed",
-        "observed": {
-          "true": 2
-        },
+        "observed": {"true": 2},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
@@ -470,14 +541,10 @@
     },
     "activity": {
       "HideModeListen": {
-        "applies_to": [
-          "VirtualRadioSimple"
-        ],
+        "applies_to": ["VirtualRadioSimple"],
         "default": "False",
         "default_from": "observed",
-        "observed": {
-          "False": 16
-        },
+        "observed": {"False": 16},
         "read_by": "touchscreen",
         "when_absent": "unknown"
       },
@@ -503,6 +570,16 @@
         "default_from": "observed",
         "observed": {
           "BasicChannels": 15
+        },
+        "read_by": "touchscreen",
+        "when_absent": "unknown"
+      },
+      "ControlGroup_Hard Buttons": {
+        "applies_to": "all",
+        "default": "True",
+        "default_from": "observed",
+        "observed": {
+          "True": 23
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
@@ -786,156 +863,15 @@
         },
         "read_by": "touchscreen",
         "when_absent": "unknown"
-      },
-      "ControlGroup_HardButtons": {
-        "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualCdMulti",
-          "VirtualDvd",
-          "VirtualGameConsole",
-          "VirtualGeneric",
-          "VirtualPvr",
-          "VirtualRadioSimple"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 11
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_Misc": {
-        "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualCdMulti",
-          "VirtualDvd",
-          "VirtualGameConsole",
-          "VirtualGeneric",
-          "VirtualPvr",
-          "VirtualRadioSimple"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 11
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_Numbers": {
-        "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualCdMulti",
-          "VirtualDvd",
-          "VirtualGameConsole",
-          "VirtualGeneric",
-          "VirtualPvr",
-          "VirtualRadioSimple"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 11
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_Transport": {
-        "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualCdMulti",
-          "VirtualDvd",
-          "VirtualGameConsole",
-          "VirtualGeneric",
-          "VirtualPvr"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 9
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_Discs": {
-        "applies_to": [
-          "VirtualCdJukebox",
-          "VirtualCdMulti",
-          "VirtualDvd"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 4
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_GameController": {
-        "applies_to": [
-          "VirtualGameConsole"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 1
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "ControlGroup_Favorites": {
-        "applies_to": [
-          "VirtualPvr"
-        ],
-        "default": "True",
-        "default_from": "observed",
-        "observed": {
-          "True": 1
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
-      },
-      "HideModePlayGroup": {
-        "applies_to": [
-          "VirtualCdJukebox"
-        ],
-        "default": "False",
-        "default_from": "observed",
-        "observed": {
-          "False": 1
-        },
-        "read_by": "touchscreen",
-        "when_absent": "unknown"
       }
     }
   },
   "interface": {
-    "_comment": "No RF blasters: the 1100's infrared path has no RF port (IRQueue.lua). Languages are the 900's until the 1100's own are read.",
-    "tabs": [
-      "devices",
-      "activities",
-      "settings",
-      "flash"
-    ],
-    "device_pages": [
-      "search",
-      "identity",
-      "commands",
-      "inputs",
-      "timing",
-      "advanced"
-    ],
-    "activity_pages": [
-      "identity",
-      "roles",
-      "favourites",
-      "screen_buttons",
-      "hard_buttons",
-      "startup",
-      "power",
-      "advanced"
-    ],
+    "_comment": "What Afterglow shows for this model. Every list is required: nothing is assumed for a remote that does not say.",
+    "tabs": ["devices", "activities", "settings", "flash"],
+    "device_pages": ["search", "identity", "commands", "inputs", "timing", "advanced"],
+    "activity_pages": ["identity", "roles", "favourites", "screen_buttons", "hard_buttons",
+                       "startup", "power", "advanced"],
     "timing": [
       "always_on",
       "power_delay",
@@ -946,103 +882,46 @@
       "input_delay",
       "app_power_delay"
     ],
-    "settings": [
-      "output_file",
-      "owner",
-      "language",
-      "preferences"
-    ],
+    "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
     "languages": [
-      [
-        "English",
-        "enu"
-      ],
-      [
-        "Spanish",
-        "esp"
-      ],
-      [
-        "Russian",
-        "rus"
-      ],
-      [
-        "German",
-        "deu"
-      ],
-      [
-        "Dutch",
-        "nld"
-      ],
-      [
-        "Danish",
-        "dan"
-      ],
-      [
-        "Finnish",
-        "fin"
-      ],
-      [
-        "Italian",
-        "ita"
-      ],
-      [
-        "Swedish",
-        "sve"
-      ]
+      ["English", "enu"], ["Spanish", "esp"], ["Russian", "rus"], ["German", "deu"],
+      ["Dutch", "nld"], ["Danish", "dan"], ["Finnish", "fin"], ["Italian", "ita"],
+      ["Swedish", "sve"]
     ]
   },
   "preferences": {
-    "_comment": "platformconfig/system_*.dat, read at boot through /system/<name> (the 1100's SysService.lua). system_volume.dat is left out until its scale is known.",
+    "_comment": "The remote's own settings: platformconfig/system_*.dat, read at boot through /system/<name> (SysService.lua). xml_property is a second home the value must also be written to, or the configuration contradicts itself.",
     "time_format": {
-      "file": "system_timeformat.dat",
-      "label": "Clock",
-      "default": "Military",
-      "choices": [
-        [
-          "24-hour",
-          "Military"
-        ],
-        [
-          "12-hour",
-          "Civilian"
-        ]
-      ],
+      "file": "system_timeformat.dat", "label": "Clock", "default": "Military",
+      "choices": [["24-hour", "Military"], ["12-hour", "Civilian"]],
       "xml_property": "TimeDisplayFormat"
     },
+    "sound": {
+      "file": "system_sound.dat", "label": "Key beep", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
+    },
+    "theme": {
+      "_comment": "Stored values are not the on-screen order: GeneralOptions.done_theme() writes hennessey 0, diode 1, polymer 2, tron 3, and content_enu.txt calls Hennessey Default.",
+      "file": "system_theme.dat", "label": "Theme", "default": "0",
+      "choices": [["Default (Hennessey)", "0"], ["Diode", "1"], ["Polymer", "2"], ["Tron", "3"]]
+    },
+    "large_font": {
+      "file": "system_uselargefont.dat", "label": "Large font", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
+    },
     "backlight_level": {
-      "_comment": "SysService.lua starts at 255, not the 900's 60: a master level on 0-255.",
-      "file": "system_backlightlevel.dat",
-      "label": "Backlight brightness",
-      "default": "255",
-      "range": [
-        0,
-        255
-      ]
+      "_comment": "A master brightness on 0-100: SysService.lua ramps 0..backlightlevel. The remote's own screen writes 33/66/100; the dumps store 60.",
+      "file": "system_backlightlevel.dat", "label": "Backlight brightness (%)", "default": "60",
+      "range": [0, 100]
     },
     "backlight_timeout": {
-      "_comment": "Seconds; SysService.lua defaults to 10.",
-      "file": "system_backlighttimeout.dat",
-      "label": "Backlight timeout (s)",
-      "default": "10",
-      "range": [
-        1,
-        99
-      ]
+      "_comment": "Two digits: the remote reads its own field back with int(text.substr(0,2)), so a stored 120 would return as 12.",
+      "file": "system_backlighttimeout.dat", "label": "Backlight timeout (s)", "default": "10",
+      "range": [1, 99]
     },
-    "remote_assistant": {
-      "file": "system_remoteassistant.dat",
-      "label": "Remote assistant",
-      "default": "false",
-      "choices": [
-        [
-          "Off",
-          "false"
-        ],
-        [
-          "On",
-          "true"
-        ]
-      ]
+    "child_lock": {
+      "file": "system_childlock.dat", "label": "Child lock", "default": "0",
+      "choices": [["Off", "0"], ["On", "1"]]
     }
   }
 }

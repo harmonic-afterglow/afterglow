@@ -8,7 +8,7 @@ clock, the font. Each lives in its own plain-text file, read at boot through a l
 Which ones a remote has, what they are called, their values and their ranges differ by
 model - the Harmony 900 has a theme and a child lock, the 1100 has neither and keeps its
 backlight on a different scale - so they are defined in the remote's profile
-(`preferences` in `library/remotes/<id>.json`), and every function here takes the
+(`preferences` in `library/remotes/<id>/profile.json`), and every function here takes the
 profile they apply to.
 
 ## Why this module exists

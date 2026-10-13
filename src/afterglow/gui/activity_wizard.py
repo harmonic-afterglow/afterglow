@@ -3,8 +3,8 @@
 import copy
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
-    QTableWidget, QTableWidgetItem,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
+    QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
     QSplitter, QAbstractItemView, QHeaderView, QWizardPage
 )
 from PyQt6.QtCore import Qt, QSize
@@ -18,6 +18,7 @@ from .. import vocabulary
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
+from .keys_view import CHANGED, FREE, KeysViewChoice, RemoteKeys, legend
 from .sections import SectionDialog, StepWizard
 from .widgets import _new_act_id
 
@@ -343,6 +344,38 @@ class ActivityHardButtonsPage(QWizardPage):
         self.devices = devices
         layout = QVBoxLayout(self)
 
+        top = QHBoxLayout()
+        top.addStretch()
+        self.view_choice = KeysViewChoice()
+        top.addWidget(self.view_choice)
+        layout.addLayout(top)
+
+        # The picture: the remote, the keys this activity changes tinted, and those
+        # keys listed beside it.
+        self.picture = QWidget()
+        picture = QHBoxLayout(self.picture)
+        picture.setContentsMargins(0, 0, 0, 0)
+        self.keys_view = RemoteKeys(remote)
+        self.keys_view.key_clicked.connect(self._edit_slot)
+        picture.addWidget(self.keys_view, 3)
+        side = QVBoxLayout()
+        side.addWidget(QLabel("<b>Changed in this activity</b>"))
+        self.changed_list = QListWidget()
+        self.changed_list.itemDoubleClicked.connect(
+            lambda item: self._edit_slot(item.data(Qt.ItemDataRole.UserRole)))
+        side.addWidget(self.changed_list, 1)
+        back = QPushButton("Back to default")
+        back.clicked.connect(self._reset_listed)
+        side.addWidget(back)
+        hint = QLabel("Click a key to change what it does. Hover over a key to see "
+                      "what it sends.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: gray;")
+        side.addWidget(hint)
+        side.addWidget(legend([(CHANGED, "Its own action"), (FREE, "Default")]))
+        picture.addLayout(side, 2)
+        layout.addWidget(self.picture, 1)
+
         self.table = QTableWidget(0, 2)
         self.table.setHorizontalHeaderLabels(["Button", "Does"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -357,11 +390,14 @@ class ActivityHardButtonsPage(QWizardPage):
         self.macros = existing.get("hard_macros", {})
         self.slots = list(vocabulary.hard_keys(remote))
         self.slots += [key for key in self.macros if key not in self.slots]
+        # As they sit on the remote, top to bottom, when it has been drawn.
+        drawn = self.keys_view.keys()
+        self.slots.sort(key=lambda k: drawn.index(k) if k in drawn else len(drawn))
         
         for slot in self.slots:
             r = self.table.rowCount()
             self.table.insertRow(r)
-            self.table.setItem(r, 0, QTableWidgetItem(slot))
+            self.table.setItem(r, 0, self._key_item(slot))
             macro = self.macros.get(slot, [])
             self.table.setItem(r, 1, QTableWidgetItem(_does(macro, devices)))
             
@@ -372,11 +408,70 @@ class ActivityHardButtonsPage(QWizardPage):
         clear_btn = QPushButton("Back to default")
         clear_btn.clicked.connect(self._clear_btn_clicked)
         
-        row = QHBoxLayout()
+        self.table_buttons = QWidget()
+        row = QHBoxLayout(self.table_buttons)
+        row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(edit_btn)
         row.addWidget(clear_btn)
         row.addStretch()
-        layout.addLayout(row)
+        layout.addWidget(self.table_buttons)
+        self.view_choice.changed.connect(self._show_picture)
+        self._show_picture(self.view_choice.is_picture())
+
+    def _key_item(self, slot):
+        """A key's row: its name as people say it, its configuration name behind."""
+        item = QTableWidgetItem(self.keys_view.label(slot))
+        item.setData(Qt.ItemDataRole.UserRole, slot)
+        return item
+
+    def _slot(self, row):
+        return self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+
+    def _show_picture(self, picture):
+        self.picture.setVisible(picture)
+        self.table.setVisible(not picture)
+        self.table_buttons.setVisible(not picture)
+        if picture:
+            self.refresh_picture()
+
+    def refresh_picture(self):
+        label = self.keys_view.label
+        self.keys_view.set_states({
+            key: ((CHANGED if self.macros.get(key) else FREE),
+                  f"{label(key)}: " + (_does(self.macros[key], self.devices)
+                                if self.macros.get(key)
+                                else "default - follows the activity's devices"))
+            for key in self.keys_view.keys()})
+        self.changed_list.clear()
+        for slot in self.slots:
+            if self.macros.get(slot):
+                item = QListWidgetItem(
+                    f"{label(slot)}: {_does(self.macros[slot], self.devices)}")
+                item.setData(Qt.ItemDataRole.UserRole, slot)
+                self.changed_list.addItem(item)
+
+    def _row_of(self, slot):
+        return self.slots.index(slot)
+
+    def _edit_slot(self, slot):
+        """Change what a key does, from the picture."""
+        if slot not in self.slots:              # a key the profile does not list
+            self.slots.append(slot)
+            r = self.table.rowCount()
+            self.table.insertRow(r)
+            self.table.setItem(r, 0, self._key_item(slot))
+            self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
+        self.keys_view.select(slot)
+        self._edit_macro(self.table.item(self._row_of(slot), 0))
+
+    def _reset_listed(self):
+        item = self.changed_list.currentItem()
+        if item is None:
+            return
+        slot = item.data(Qt.ItemDataRole.UserRole)
+        self.macros.pop(slot, None)
+        self.table.setItem(self._row_of(slot), 1, QTableWidgetItem(DEFAULT_KEY))
+        self.refresh_picture()
 
     def _edit_btn_clicked(self):
         r = self.table.currentRow()
@@ -386,15 +481,16 @@ class ActivityHardButtonsPage(QWizardPage):
     def _clear_btn_clicked(self):
         r = self.table.currentRow()
         if r >= 0:
-            slot = self.table.item(r, 0).text()
+            slot = self._slot(r)
             if slot in self.macros:
                 del self.macros[slot]
             self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
 
     def _edit_macro(self, item):
         r = item.row()
-        slot = self.table.item(r, 0).text()
-        dlg = HardButtonMacroDialog(self.devices, slot, self.macros.get(slot, []), self)
+        slot = self._slot(r)
+        dlg = HardButtonMacroDialog(self.devices, self.keys_view.label(slot),
+                                    self.macros.get(slot, []), self)
         if dlg.exec():
             macro = dlg.macro_edit.get_macro()
             if macro:
@@ -404,6 +500,7 @@ class ActivityHardButtonsPage(QWizardPage):
                 if slot in self.macros:
                     del self.macros[slot]
                 self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
+        self.refresh_picture()
 
     def get_hard_macros(self):
         return self.macros

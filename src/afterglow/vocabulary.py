@@ -6,7 +6,7 @@ its `app-main.swf`, and whatever buttons its case actually has. A remote without
 touchscreen has no screen buttons; one with fewer keys has fewer slots. Holding them as
 constants in the code said, wrongly, that every remote is a Harmony 900.
 
-So they live in `library/remotes/<model>.json` beside the rest of what identifies a
+So they live in `library/remotes/<model>/profile.json` beside the rest of what identifies a
 remote, and this module is the way to ask for them. The identifiers are Logitech's. The
 readable labels are this project's: the firmware has no name table for either set, and the
 friendly names the web configurator showed went away with the service.
