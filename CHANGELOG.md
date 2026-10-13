@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.2] - 2026-10-13
+
+What beta 1's testers ran into, fixed, and the editors made simpler to follow. Adding a
+device or an activity is a couple of steps; editing one lists what people come to change
+first and says which values are best left as they are. The remote's own keys are shown
+on a picture of the remote, things are put in order by dragging them, and a log file is
+there to attach to a bug report. Beta 1's crash on editing an imported One device is
+fixed.
+
 ### Changed
 
 - **The device and activity editors are laid out the same way**: a list of sections on
@@ -60,7 +69,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   would not load on Windows: profiles are read as UTF-8.
 - **Learn from remote** is no longer offered on the Harmony One, where Afterglow cannot
   learn yet and it answered with "unknown error".
-
+- A device card no longer starts with a lone dot when the device has no make or model,
+  an activity card leaves out a role it does not fill instead of showing "?", and only
+  a remote with RF blasters names each device's IR output.
 - **Editing a device imported from a Harmony One could crash** when one of its inputs
   has no command - as Logitech's configurations write an input nothing selects. Such an
   input shows as "(none)", and a new input starts as "(none)" rather than the device's
