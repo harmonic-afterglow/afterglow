@@ -149,8 +149,10 @@ class DeviceInputsPage(QWizardPage):
         mode = DIRECT if direct else CYCLE if cycle else DIRECT if inputs else NONE
         self.modes[mode].setChecked(True)
         self.table.setRowCount(0)
-        for name, selection in (inputs if mode == DIRECT else []):
-            self._append_direct(name, selection)
+        # An input no command selects is its name alone - `["Input 3"]`, as an imported
+        # Harmony One has them - and shows with no command.
+        for entry in (inputs if mode == DIRECT else []):
+            self._append_direct(entry[0], entry[1] if len(entry) > 1 else None)
         self.values.clear()
         for name in cycle.get("values") or ([pair[0] for pair in inputs]
                                               if mode == CYCLE else []):
@@ -191,6 +193,7 @@ class DeviceInputsPage(QWizardPage):
                 current = widget.currentData()
                 widget.blockSignals(True)
                 widget.clear()
+                widget.addItem(NO_COMMAND, None)
                 for name in names:
                     widget.addItem(name, name)
                 self._select(widget, current)
@@ -223,6 +226,8 @@ class DeviceInputsPage(QWizardPage):
             self.table.setItem(row, 1, kept)
             return
         combo = QComboBox()
+        # "(none)" first: an input without a command must not take the first one
+        combo.addItem(NO_COMMAND, None)
         for option in dict.fromkeys(self._commands() or []):
             combo.addItem(option, option)
         self._select(combo, command)
@@ -230,7 +235,7 @@ class DeviceInputsPage(QWizardPage):
         self.table.setCellWidget(row, 1, combo)
 
     def _add_direct(self):
-        self._append_direct(f"Input {self.table.rowCount() + 1}", "")
+        self._append_direct(f"Input {self.table.rowCount() + 1}", None)
         self._touch_inputs()
 
     def _remove_direct(self):

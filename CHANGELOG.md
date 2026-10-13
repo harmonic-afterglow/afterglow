@@ -4,6 +4,15 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Editing a device imported from a Harmony One could crash** when one of its inputs
+  has no command - as Logitech's configurations write an input nothing selects. Such an
+  input shows as "(none)", and a new input starts as "(none)" rather than the device's
+  first command.
+
 ## [0.3.0-beta.1] - 2026-10-13
 
 The **Harmony One and One+**, as an experimental remote: Afterglow builds the
