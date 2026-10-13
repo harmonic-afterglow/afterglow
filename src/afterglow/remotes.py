@@ -134,6 +134,14 @@ def comparable(field: str, value):
     """
     if field == "board" and isinstance(value, str):
         return ".".join(value.split(".")[:2])
+    # The flash chip as manufacturer:device numbers, however the hex is cased or written:
+    # a live One reported `0x1f:0xc8` against the profile's `0x1F:0xC8`, and the same chip
+    # was refused.
+    if field == "flash" and isinstance(value, str):
+        try:
+            return tuple(int(part, 16) for part in value.split(":"))
+        except ValueError:
+            return value
     return value
 
 

@@ -120,6 +120,15 @@ def test_harmony_one_is_experimental_and_not_firmware_allowlisted():
     }, require_all=True)
 
 
+def test_a_flash_chip_is_the_same_chip_however_its_hex_is_written():
+    """A tester's One reported its flash as `0x1f:0xc8`; the profile says `0x1F:0xC8`,
+    and the first write refused the remote it was built for."""
+    profile = remotes.get("harmony-one")
+    for flash in ("0x1f:0xc8", "0x1F:0xC8", "1f:c8"):
+        assert not profile.identity_mismatches({"flash": flash})
+    assert profile.identity_mismatches({"flash": "0x01:0x49"})
+
+
 def test_verified_profiles_have_a_scaffold():
     from afterglow import paths
     for profile in remotes.load_all():
