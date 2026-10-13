@@ -94,6 +94,10 @@ yet, and that is what this beta is for.
 - Editing an activity imported from a Harmony One crashed when one of its steps held a
   command (the import says for how long); the hold is now shown and kept
   ([#7](https://github.com/harmonic-afterglow/afterglow/issues/7)).
+- An activity without a type opened in the editor as the first type in the list ("Listen
+  to the CD Jukebox"), which saving it for any other reason then set. It opens as
+  **Custom / Other**, and a Harmony One activity whose icon has no type - the One+'s
+  Netflix and smart-TV icons - is imported as one.
 
 
 ### Known issues

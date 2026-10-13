@@ -445,3 +445,14 @@ def test_an_imported_activity_with_a_held_command_opens_in_the_editor(qapp_or_sk
     widget = MacroEditorWidget(imported["devices"], [step])
     assert widget.get_macro() == [tuple(step)]
     assert "held" in widget.table.item(0, 2).text()
+
+
+def test_an_activity_without_a_type_opens_as_custom_other(qapp_or_skip):
+    """Not as the first type in the list: saving it for any other reason - a new name -
+    made a typeless activity "Listen to the CD Jukebox"."""
+    from afterglow.gui.activity_wizard import ActivityEditor
+    devices = [{"id": "7", "label": "Box", "commands": [], "signals": {}}]
+    for remote in ("harmony-one", "harmony-900"):
+        editor = ActivityEditor(devices, None, existing={"id": "1", "label": "Watch Netflix"},
+                                remote=remote)
+        assert editor.p0.type_combo.currentData() == "VirtualGeneric", remote

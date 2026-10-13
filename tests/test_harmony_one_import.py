@@ -286,3 +286,23 @@ def test_a_build_s_look_alikes_are_read_in_their_own_font_not_by_other_fonts_cod
     [device] = imported["devices"]
     assert device["label"] == "Xbox One"
     assert set(names) <= set(device["signals"])
+
+
+ONE_PLUS = (Path(__file__).resolve().parents[2] / "new_donors" / "one-plus-earithramir"
+            / "logitech-harmony-one-plus-remote-2.ezhex")
+
+
+@pytest.mark.skipif(not ONE_PLUS.is_file(), reason="needs a Harmony One+ configuration")
+def test_an_activity_whose_icon_has_no_type_comes_in_as_custom_other():
+    """The One+ draws a Netflix logo and a smart TV's apps for some activities; the One
+    has no type for either, so they are Custom / Other - and its music icon is
+    VirtualCdMulti."""
+    import contextlib
+    import io
+    from afterglow import importer
+    with contextlib.redirect_stdout(io.StringIO()):
+        project = importer.import_file(str(ONE_PLUS)).project
+    types = {activity["label"]: activity["type"] for activity in project["activities"]}
+    assert types["Watch Netflix"] == types["Watch You Tube"] == "VirtualGeneric"
+    assert types["Listen Radio"] == "VirtualCdMulti"
+    assert all(types.values())
