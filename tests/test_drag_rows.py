@@ -137,3 +137,18 @@ def test_a_card_is_dragged_by_its_grip(qapp_or_skip):
         QTest.mouseMove(window, start + (end - start) * step / 10)
     QTest.mouseRelease(window, Qt.MouseButton.LeftButton, pos=end)
     assert [d["label"] for d in project["devices"]] == ["Receiver", "Player", "TV"]
+
+
+def test_a_card_says_only_what_is_known(qapp_or_skip):
+    """A device imported from a configuration has no make or model: its line started
+    with a lone dot. An activity without a screen said "Display: ?"."""
+    from afterglow.gui.tabs import ActivityCard, DeviceCard
+    from PyQt6.QtWidgets import QLabel
+    device = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
+                        lambda *_: None, lambda *_: None, project=ONE)
+    line = device.findChildren(QLabel)[-1].text()
+    assert not line.lstrip().startswith("·") and line.startswith("Television")
+    activity = ActivityCard({"id": "1001", "label": "Radio", "control": "1"},
+                            {"1": {"label": "Tuner"}}, lambda *_: None, lambda *_: None)
+    assert "Display" not in activity.findChildren(QLabel)[-1].text()
+    assert "Control: Tuner" in activity.findChildren(QLabel)[-1].text()
