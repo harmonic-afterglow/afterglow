@@ -1302,7 +1302,9 @@ class CommandsPage(QWizardPage):
             slots = self._hard_slots(r)
             hard = slots[0] if len(slots) == 1 else (slots or None)
             if name:
-                cmds.append((name, label, addr, cmd, hard))
+                # A list, as a project read from a file has it: code that renames or
+                # drops a key changes the row in place.
+                cmds.append([name, label, addr, cmd, hard])
         return cmds
 
     def updated_signals(self, commands=None):

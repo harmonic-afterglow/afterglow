@@ -161,6 +161,19 @@ def free_key_assignments(bound: dict, available) -> dict:
     return out
 
 
+def command_rows(device: dict) -> list[list]:
+    """A device's command rows as lists, made so in place, for code that changes them.
+
+    The editor handed rows back as tuples, and a project changed in the window kept them
+    until it was saved and read again - so renaming or dropping a key in one (moving a
+    Harmony 900 project to the One) failed with "'tuple' object does not support item
+    assignment"."""
+    rows = [list(row) for row in device.get("commands") or []]
+    if "commands" in device:
+        device["commands"] = rows
+    return rows
+
+
 def fill_free_keys(project: dict, available) -> int:
     """Bind each device's skip keys to its own equivalent, once per device. Returns how
     many were bound. A device is marked when done, so a key its owner clears later stays
@@ -169,7 +182,7 @@ def fill_free_keys(project: dict, available) -> int:
     for device in project.get("devices") or []:
         if device.get(KEYS_FILLED):
             continue
-        commands = [c for c in device.get("commands") or [] if c]
+        commands = [c for c in command_rows(device) if c]
         bound = {c[0]: (c[4] if len(c) > 4 else None) for c in commands}
         new = free_key_assignments(bound, available)
         for command in commands:
@@ -194,7 +207,7 @@ def rename_hard_keys(project: dict, aliases: dict) -> int:
         return 0
     renamed = 0
     for device in project.get("devices") or []:
-        for command in device.get("commands") or []:
+        for command in command_rows(device):
             if len(command) < 5 or not command[4]:
                 continue
             slots = command[4] if isinstance(command[4], list) else [command[4]]
