@@ -46,9 +46,12 @@ class DeviceCard(QWidget):
 
         info = QVBoxLayout()
         name_lbl = bold(spec.get("label","?"))
-        labels = project_remote(project).device_types
+        profile = project_remote(project)
+        labels = profile.device_types
         kind = labels.get(spec.get("type", ""), spec.get("type", ""))
-        route = rf_label(project or {}, spec.get("id"))
+        # Where its codes go out, only where there is a choice: a remote without RF
+        # blasters says "Remote (front IR)" of every device.
+        route = rf_label(project or {}, spec.get("id")) if profile.can("rf_blaster") else ""
         # Only what is known: a device imported from a configuration has no make or
         # model, and the line started with a lone dot.
         make = " ".join(part for part in (spec.get("mfr"), spec.get("model")) if part)
