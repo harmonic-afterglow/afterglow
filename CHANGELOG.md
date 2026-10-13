@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-## [0.3.0-beta.2] - 2026-10-13
+## [0.3.0-beta.2] - 2026-10-14
 
 What beta 1's testers ran into, fixed, and the editors made simpler to follow. Adding a
 device or an activity is a couple of steps; editing one lists what people come to change
