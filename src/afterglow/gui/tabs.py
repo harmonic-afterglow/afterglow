@@ -49,8 +49,11 @@ class DeviceCard(QWidget):
         labels = project_remote(project).device_types
         kind = labels.get(spec.get("type", ""), spec.get("type", ""))
         route = rf_label(project or {}, spec.get("id"))
-        sub = (f"{spec.get('mfr','')} {spec.get('model','')}  ·  {kind}  ·  "
-               f"{len(spec.get('commands', []))} commands  ·  {route}")
+        # Only what is known: a device imported from a configuration has no make or
+        # model, and the line started with a lone dot.
+        make = " ".join(part for part in (spec.get("mfr"), spec.get("model")) if part)
+        sub = "  ·  ".join(part for part in (
+            make, kind, f"{len(spec.get('commands', []))} commands", route) if part)
         sub_lbl  = QLabel(sub)
         sub_lbl.setStyleSheet("color: gray;")
         info.addWidget(name_lbl)
@@ -192,8 +195,8 @@ class ActivityCard(QWidget):
         layout.setContentsMargins(8, 12, 8, 12)
 
         layout.addWidget(_grip())
-        disp_lbl = devices_by_id.get(spec.get("display",""), {}).get("label","?")
-        ctrl_lbl = devices_by_id.get(spec.get("control",""), {}).get("label","?")
+        disp_lbl = devices_by_id.get(spec.get("display",""), {}).get("label")
+        ctrl_lbl = devices_by_id.get(spec.get("control",""), {}).get("label")
         atype    = spec.get("type","VirtualTelevisionN")
 
         glyph = QLabel()
@@ -204,7 +207,10 @@ class ActivityCard(QWidget):
         info = QVBoxLayout()
         info.addWidget(bold(spec.get("label","?")))
         shown = (type_names or {}).get(atype, atype)
-        sub = QLabel(f"{shown}  ·  Display: {disp_lbl}  ·  Control: {ctrl_lbl}")
+        # A role the activity does not fill is left out, not shown as "?".
+        sub = QLabel("  ·  ".join(part for part in (
+            shown, disp_lbl and f"Display: {disp_lbl}", ctrl_lbl and f"Control: {ctrl_lbl}")
+            if part))
         sub.setStyleSheet("color: gray;")
         info.addWidget(sub)
 
