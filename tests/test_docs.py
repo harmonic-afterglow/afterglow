@@ -33,7 +33,7 @@ def test_every_format_reference_points_at_a_real_document():
     stale is worse than no citation, because it reads as authoritative."""
     broken = []
     for source in PACKAGE.rglob("*.py"):
-        for line in source.read_text().splitlines():
+        for line in source.read_text(encoding="utf-8").splitlines():
             for target in re.findall(r"docs/([\w/.-]+\.md)", line):
                 if not (DOCS / target).is_file():
                     broken.append(f"{source.relative_to(ROOT)} -> docs/{target}")
@@ -55,7 +55,7 @@ def test_the_readme_and_icon_set_are_present():
 
     # The README uses the flat mark from `branding/`, not a rendered PNG: it is the same
     # geometry, it scales, and it is the copy the application already ships.
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     mark = "src/afterglow/branding/afterglow-icon.svg"
     assert mark in readme, "the README does not show the mark"
     assert (ROOT / mark).is_file()
@@ -74,7 +74,7 @@ def test_the_windows_icon_carries_every_size():
 
 
 def test_the_index_links_every_document():
-    index = (DOCS / "README.md").read_text()
+    index = (DOCS / "README.md").read_text(encoding="utf-8")
     unlinked = [name for name in EXPECTED
                 if name != "README.md" and f"]({name})" not in index]
     assert not unlinked, f"not linked from docs/README.md: {unlinked}"
@@ -84,7 +84,7 @@ def test_ci_does_not_skip_a_path_the_suite_reads():
     """`paths-ignore` names files no code build depends on."""
     import re
 
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     ignored = set(re.findall(r'^\s*-\s*"([^"]+)"\s*$', workflow, re.M))
 
     read_by_tests = {"assets", "pyproject.toml",

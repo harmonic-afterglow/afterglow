@@ -44,7 +44,7 @@ def test_nothing_still_reads_the_retired_fields():
     package = Path(__file__).resolve().parent.parent / "src" / "afterglow"
     for field in RETIRED_ACTIVITY_FIELDS:
         users = [p.relative_to(package) for p in package.rglob("*.py")
-                 if field in p.read_text() and p.name != "project.py"]
+                 if field in p.read_text(encoding="utf-8") and p.name != "project.py"]
         assert not users, f"{field} is retired but still read by {users}"
 
 

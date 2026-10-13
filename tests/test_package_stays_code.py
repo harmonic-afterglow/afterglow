@@ -40,7 +40,7 @@ def test_the_package_contains_only_code_and_the_data_it_ships():
 def test_no_file_dialog_defaults_into_the_package(path):
     """`HERE` is the module's own directory. Offering it as the place to read or write
     a user's files is what put them in the package; ROOT is the application folder."""
-    tree = ast.parse(path.read_text())
+    tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
