@@ -148,6 +148,11 @@ def test_a_card_says_only_what_is_known(qapp_or_skip):
                         lambda *_: None, lambda *_: None, project=ONE)
     line = device.findChildren(QLabel)[-1].text()
     assert not line.lstrip().startswith("·") and line.startswith("Television")
+    assert "IR" not in line                     # the One has no blaster to choose
+    nine = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
+                      lambda *_: None, lambda *_: None,
+                      project={"settings": {"remote": "harmony-900"}, "devices": []})
+    assert "front IR" in nine.findChildren(QLabel)[-1].text()
     activity = ActivityCard({"id": "1001", "label": "Radio", "control": "1"},
                             {"1": {"label": "Tuner"}}, lambda *_: None, lambda *_: None)
     assert "Display" not in activity.findChildren(QLabel)[-1].text()
