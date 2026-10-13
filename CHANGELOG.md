@@ -4,15 +4,15 @@ All notable changes to Afterglow will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0-beta.1] - Unreleased
+## [0.3.0-beta.1] - 2026-10-13
 
-The **Harmony One**, as an experimental remote: Afterglow builds its configuration from
-your devices and activities - every screen, button, light and menu generated, nothing
-copied from a previous configuration - and imports the one already on it. Like the
-Harmony 1100, it is written only through **Test write**, which backs the remote up
-first. Builds have booted on testers' remotes, with activities, favourites and the
-Remote Assistant working; a write from inside Afterglow itself has not been reported
-yet, and that is what this beta is for.
+The **Harmony One and One+**, as an experimental remote: Afterglow builds the
+configuration from your devices and activities - every screen, button, light and menu
+generated, nothing copied from a previous configuration - and imports the one already on
+it. Like the Harmony 1100, it is written only through **Test write**, which backs the
+remote up first. Testers' remotes run it with activities, favourites, Help and the Remote
+Assistant working, and it has been written from inside Afterglow; this beta is for
+everyone else's setups.
 
 ### Added
 
@@ -113,6 +113,12 @@ yet, and that is what this beta is for.
   - A letter none of the configurations Afterglow has learned from draws, in that size
     of font, cannot be read: it shows as � and Import Complete lists the names that
     have one.
+  - A step Logitech holds for a while comes in with a hold close to, not exactly, its
+    length.
+  - The One+'s Netflix and smart-TV activity icons have no type on the One, so those
+    activities come in as Custom / Other.
+- **Harmony 1100:** its Help and the wait for a smart TV's apps have not been tried on
+  a remote yet.
 
 ## [0.2.0] - 2026-10-10
 
