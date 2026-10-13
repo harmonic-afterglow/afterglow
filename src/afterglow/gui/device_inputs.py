@@ -63,7 +63,7 @@ class DeviceInputsPage(QWizardPage):
         self.table.setHorizontalHeaderLabels(["Input", "Command", "App"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         # A smart TV's apps (Netflix) answer only a while after it comes on: the remote
-        # waits the Timing page's "Online apps ready after" before the first after
+        # waits the Timing section's "Apps ready after switching on" before the first after
         # power-on. Not an edit of the inputs, so an imported Input state stays as it was.
         self.table.horizontalHeaderItem(2).setToolTip(
             "One of the TV's own apps, such as Netflix: after the TV comes on, the remote "
@@ -139,6 +139,25 @@ class DeviceInputsPage(QWizardPage):
         self.load(existing or {})
 
     # filling the page from a device or a catalogue entry
+    def take_power(self, power: QWidget):
+        """Show the device's power commands at the top: switching a device on and
+        choosing its input are what an activity does with it, so they sit together."""
+        self.setTitle("Power & inputs")
+        self.setSubTitle("How this device is switched on and off, how it is switched "
+                         "to an input, and how it takes channel numbers.")
+        box = QGroupBox("Power")
+        layout = QVBoxLayout(box)
+        layout.addWidget(power)
+        explain = QLabel("Separate on and off commands let an activity switch the "
+                         "device on without switching an already-on one off. A device "
+                         "with one power button has only a toggle.")
+        explain.setWordWrap(True)
+        explain.setStyleSheet("color: gray;")
+        layout.addWidget(explain)
+        self.layout().insertWidget(0, box)
+        heading = QLabel("<b>Inputs</b>")
+        self.layout().insertWidget(1, heading)
+
     def load(self, device: dict) -> None:
         self._loading = True
         self.refresh_commands()

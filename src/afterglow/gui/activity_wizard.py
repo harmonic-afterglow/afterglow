@@ -5,7 +5,7 @@ import copy
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
     QTableWidget, QTableWidgetItem,
-    QSplitter, QAbstractItemView, QHeaderView, QWizard, QWizardPage
+    QSplitter, QAbstractItemView, QHeaderView, QWizardPage
 )
 from PyQt6.QtCore import Qt, QSize
 
@@ -18,25 +18,36 @@ from .. import vocabulary
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
+from .sections import SectionDialog, StepWizard
 from .widgets import _new_act_id
 
 
-def _steps(macro) -> str:
-    return f"{len(macro)} step" + ("" if len(macro) == 1 else "s")
+DEFAULT_KEY = "Default"
+
+
+def _does(macro, devices) -> str:
+    """What a key does, as the Physical buttons page lists it. A key that sends one
+    command says which - it is an ordinary assignment, and calling it a one-step macro
+    left people asking what a step was."""
+    if not macro:
+        return DEFAULT_KEY
+    names = {str(d["id"]): d.get("label", "?") for d in devices or []}
+    if len(macro) == 1 and macro[0][0] == "command" and len(macro[0]) >= 3:
+        step = macro[0]
+        held = f"  (held {step[4]} ms)" if len(step) > 4 and step[4] else ""
+        return f"{names.get(str(step[1]), step[1])} · {step[2]}{held}"
+    return f"{len(macro)} steps"
 
 
 # "Custom / Other": what an activity without a type is shown as.
 GENERIC_TYPE = "VirtualGeneric"
 
 
-class ActivityWizard(QWizard):
+class ActivityWizard(StepWizard):
     def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None):
-        super().__init__(parent)
+        super().__init__("Add Activity" if not existing else "Edit Activity", parent)
         profile = vocabulary.for_remote(remote)
         self._taken_ids = list(taken_ids or [])
-        self.setWindowTitle("Add Activity" if not existing else "Edit Activity")
-        self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
-        self.resize(580, 400)
         self.devices = devices
         self.result_spec = None
         e = self._existing = existing or {}
@@ -50,14 +61,18 @@ class ActivityWizard(QWizard):
         self.power_page = ActivityPowerPage(devices, e)
         self.advanced = PropertiesPage("activity", e.get("properties"),
                                        kind=e.get("type"), remote=profile)
-        # Only the pages this remote's profile lists. The others are still built, from
-        # the activity as it is, so collecting from them hands back what was there.
-        pages = {"identity": self.identity, "roles": self.roles,
-                 "favourites": self.favourites, "screen_buttons": self.screen_buttons,
-                 "hard_buttons": self.hard_buttons, "startup": self.startup,
-                 "power": self.power_page, "advanced": self.advanced}
+        # Naming it, its devices and their inputs - of the pages this remote's profile
+        # lists - and nothing more: the keys follow the devices, power follows them too,
+        # and buttons and favourites are for Edit once the activity works. The other
+        # pages are still built, from the activity as it is, so collecting from them
+        # hands back what was there.
+        pages = {"identity": ("Name it", self.identity), "roles": ("Its devices", self.roles),
+                 "startup": ("Inputs", self.startup)}
         for name in profile.activity_pages:
-            self.addPage(pages[name])
+            if name in pages:
+                self.add_step(*pages[name])
+        # What happens when the activity ends is for Edit: a new one needs its inputs.
+        self.startup.for_adding()
 
     def initializePage(self, page_id):
         """Before a page is shown, tell it which devices this activity uses.
@@ -117,13 +132,13 @@ class ActivityWizard(QWizard):
 class ActivityIdentityPage(QWizardPage):
     def __init__(self, existing, parent=None, remote=None):
         super().__init__(parent)
-        self.setTitle("Activity Name & Icon")
-        self.setSubTitle("Give the activity a name and choose the icon that will "
-                         "appear on the remote's screen.")
+        self.setTitle("Activity")
+        self.setSubTitle("The name the remote shows for this activity, and its icon.")
         layout = QFormLayout(self)
 
         self.label_edit = QLineEdit(existing.get("label",""))
-        layout.addRow("Activity name:", self.label_edit)
+        self.label_edit.setPlaceholderText("e.g. Watch TV")
+        layout.addRow("Name:", self.label_edit)
 
         self.type_combo = QComboBox()
         self.type_combo.setIconSize(QSize(20, 20))
@@ -139,7 +154,7 @@ class ActivityIdentityPage(QWizardPage):
         for i in range(self.type_combo.count()):
             if self.type_combo.itemData(i) == wanted:
                 self.type_combo.setCurrentIndex(i); break
-        layout.addRow("Activity type (icon):", self.type_combo)
+        layout.addRow("Type:", self.type_combo)
 
         self.id_edit = QLineEdit(existing.get("id", ""))
         self.id_edit.setReadOnly(True)
@@ -148,6 +163,7 @@ class ActivityIdentityPage(QWizardPage):
         # Internal identity: activities and devices reference each other by id, and
         # editing one silently breaks every reference to it. Shown, never editable.
         layout.addRow("Activity ID:", self.id_edit)
+        layout.setRowVisible(self.id_edit, False)    # nobody needs to see it
 
 # Which device types plausibly fill which role. A hint for ordering the lists, not a
 # restriction: every device stays selectable, because somebody's setup will not match.
@@ -176,9 +192,10 @@ def suits_control(device) -> bool:
 class ActivityRolesPage(QWizardPage):
     def __init__(self, devices, existing, parent=None):
         super().__init__(parent)
-        self.setTitle("Device Roles")
-        self.setSubTitle("Which device is the screen (Display)? "
-                         "Which one handles channel/transport buttons (Control)?")
+        self.setTitle("Devices")
+        self.setSubTitle("Which device shows the picture, which one the volume keys "
+                         "turn, and which one the play, channel and menu keys drive. "
+                         "These decide what the remote's keys do in this activity.")
         layout = QFormLayout(self)
         dev_ids = [d["id"] for d in devices]
 
@@ -213,9 +230,11 @@ class ActivityRolesPage(QWizardPage):
         self.ctrl_combo = make_combo("control", suits_control)
         self.vol_combo  = make_combo("volume", suits_volume)
 
-        layout.addRow("Display / Video output:", self.disp_combo)
-        layout.addRow("Control (channels/transport):", self.ctrl_combo)
-        layout.addRow("Volume (defaults to Display):", self.vol_combo)
+        layout.addRow("You watch on:", self.disp_combo)
+        layout.addRow("Volume goes to:", self.vol_combo)
+        layout.addRow("Play, channels and menus go to:", self.ctrl_combo)
+        self.vol_combo.setToolTip("Left at (none), the volume keys go to the device "
+                                  "you watch on.")
         
         layout.addRow(QLabel(""))
         layout.addRow(QLabel("<b>Other devices this activity uses</b>"))
@@ -304,7 +323,7 @@ class ActivityRolesPage(QWizardPage):
 class HardButtonMacroDialog(QDialog):
     def __init__(self, devices, slot_name, existing_macro, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Macro for '{slot_name}' button")
+        self.setWindowTitle(f"What '{slot_name}' does")
         self.resize(500, 400)
         layout = QVBoxLayout(self)
         self.macro_edit = MacroEditorWidget(devices, existing_macro, self)
@@ -317,13 +336,15 @@ class ActivityHardButtonsPage(QWizardPage):
     def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.setTitle("Physical buttons")
-        self.setSubTitle("Map device commands onto the remote's own buttons. Left "
-                         "empty, they do whatever your chosen devices already do.")
+        self.setSubTitle("A key left at Default does what the activity's devices "
+                         "suggest: volume and mute go to the volume device, the rest "
+                         "to the one that plays and changes channels. Give a key "
+                         "something else to do only when that is wrong.")
         self.devices = devices
         layout = QVBoxLayout(self)
 
         self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Button", "Macro Steps"])
+        self.table.setHorizontalHeaderLabels(["Button", "Does"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -342,18 +363,19 @@ class ActivityHardButtonsPage(QWizardPage):
             self.table.insertRow(r)
             self.table.setItem(r, 0, QTableWidgetItem(slot))
             macro = self.macros.get(slot, [])
-            self.table.setItem(r, 1, QTableWidgetItem(_steps(macro) if macro else "Default"))
+            self.table.setItem(r, 1, QTableWidgetItem(_does(macro, devices)))
             
         self.table.itemDoubleClicked.connect(self._edit_macro)
         
-        edit_btn = QPushButton("Edit Selected Button Macro")
+        edit_btn = QPushButton("Change…")
         edit_btn.clicked.connect(self._edit_btn_clicked)
-        clear_btn = QPushButton("Clear Override")
+        clear_btn = QPushButton("Back to default")
         clear_btn.clicked.connect(self._clear_btn_clicked)
         
         row = QHBoxLayout()
         row.addWidget(edit_btn)
         row.addWidget(clear_btn)
+        row.addStretch()
         layout.addLayout(row)
 
     def _edit_btn_clicked(self):
@@ -367,7 +389,7 @@ class ActivityHardButtonsPage(QWizardPage):
             slot = self.table.item(r, 0).text()
             if slot in self.macros:
                 del self.macros[slot]
-            self.table.setItem(r, 1, QTableWidgetItem("Default"))
+            self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
 
     def _edit_macro(self, item):
         r = item.row()
@@ -377,21 +399,22 @@ class ActivityHardButtonsPage(QWizardPage):
             macro = dlg.macro_edit.get_macro()
             if macro:
                 self.macros[slot] = macro
-                self.table.setItem(r, 1, QTableWidgetItem(_steps(macro)))
+                self.table.setItem(r, 1, QTableWidgetItem(_does(macro, self.devices)))
             else:
                 if slot in self.macros:
                     del self.macros[slot]
-                self.table.setItem(r, 1, QTableWidgetItem("Default"))
+                self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
 
     def get_hard_macros(self):
         return self.macros
 class ActivityMacrosPage(QWizardPage):
     def __init__(self, devices, existing, parent=None):
         super().__init__(parent)
-        self.setTitle("Startup & Shutdown Macros")
+        self.setTitle("Inputs, startup and shutdown")
         self.setSubTitle(
-            "What happens when this activity starts, and when it ends. Simple is a\n"
-            "list of inputs to switch; Advanced adds commands, waits and channels.")
+            "Which input each device switches to when the activity starts - usually "
+            "all it needs. Switch to Advanced to add commands, waits or a channel, "
+            "or to do something when the activity ends.")
         
         layout = QVBoxLayout(self)
         splitter = QSplitter(Qt.Orientation.Vertical)
@@ -414,7 +437,7 @@ class ActivityMacrosPage(QWizardPage):
         el.addWidget(self.enter_macro)
         splitter.addWidget(enter_w)
         
-        leave_w = QWidget()
+        leave_w = self.leave_box = QWidget()
         ll = QVBoxLayout(leave_w)
         ll.addWidget(QLabel("<b>On Activity Leave:</b>"))
         self.leave_macro = StartupEditor(devices, existing.get("leave", []))
@@ -422,6 +445,14 @@ class ActivityMacrosPage(QWizardPage):
         splitter.addWidget(leave_w)
 
         layout.addWidget(splitter)
+
+    def for_adding(self):
+        """Only the start: which input each device switches to."""
+        self.leave_box.setVisible(False)
+        self.setTitle("Inputs")
+        self.setSubTitle("Which input each device switches to when the activity "
+                         "starts. Commands, waits, a channel and what happens when it "
+                         "ends can be added later with Edit.")
 
     def set_participating(self, ids):
         """Both macro editors offer this activity's own devices first."""
@@ -460,19 +491,22 @@ def _carry_activity(base: dict) -> dict:
     return drop_retired_fields({"activities": [spec]})["activities"][0]
 
 
-class ActivityEditor(QDialog):
+# The editor's sections, in the order they are listed, by the names a profile's
+# `interface.activity_pages` uses; the last ones follow the devices unless changed.
+ACTIVITY_SECTIONS = (
+    ("identity", "Activity", False), ("roles", "Devices", False),
+    ("startup", "Inputs & startup", False), ("screen_buttons", "Screen buttons", False),
+    ("favourites", "Favourites", False), ("hard_buttons", "Physical buttons", True),
+    ("power", "Power", True), ("advanced", "Advanced", True))
+
+
+class ActivityEditor(SectionDialog):
     def __init__(self, devices, parent=None, existing=None, remote=None):
-        super().__init__(parent)
+        super().__init__("Edit Activity", parent)
         profile = vocabulary.for_remote(remote)
-        self.setWindowTitle("Edit Activity")
-        self.resize(660, 600)
         self.result_spec  = None
         e = self._existing = existing or {}
-        
-        layout = QVBoxLayout(self)
-        self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
-        
+
         self.p0 = ActivityIdentityPage(e, remote=profile)
         self.p1 = ActivityRolesPage(devices, e)
         self.p3 = FavouritesPage(devices, e)
@@ -483,22 +517,16 @@ class ActivityEditor(QDialog):
         self.power = ActivityPowerPage(devices, e)
         self.p6 = PropertiesEditor("activity", (existing or {}).get("properties"),
                                    kind=(existing or {}).get("type"), remote=profile)
-        # Only the pages this remote's profile lists; see ActivityWizard.
-        pages = {"identity": (self.p0, "Identity"), "roles": (self.p1, "Roles"),
-                 "favourites": (self.p3, "Favourites"),
-                 "screen_buttons": (self.p3b, "Commands"),
-                 "hard_buttons": (self.p4, "Physical buttons"),
-                 "startup": (self.p5, "Startup / Shutdown"),
-                 "power": (self.power, "Power"), "advanced": (self.p6, "Advanced")}
-        for name in profile.activity_pages:
-            self.tabs.addTab(*pages[name])
-        
-        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
+        # Only the sections this remote's profile lists; see ActivityWizard.
+        pages = {"identity": self.p0, "roles": self.p1, "favourites": self.p3,
+                 "screen_buttons": self.p3b, "hard_buttons": self.p4,
+                 "startup": self.p5, "power": self.power, "advanced": self.p6}
+        for name, label, seldom in ACTIVITY_SECTIONS:
+            if name in profile.activity_pages:
+                self.add_section(name, label, pages[name], seldom=seldom)
+        self._share_participation()
 
-        self.tabs.currentChanged.connect(self._share_participation)
+    def section_shown(self, _name):
         self._share_participation()
 
     def _participating(self):

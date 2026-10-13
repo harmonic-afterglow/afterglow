@@ -82,3 +82,36 @@ def test_force_does_not_bypass_a_remote_that_cannot_be_written(tmp_path):
     with pytest.raises(concord.RemoteError, match="does not support"):
         remote.flash_file(_file(tmp_path), force=True)
     assert remote.applied == []
+
+
+@pytest.mark.parametrize("ok, message", [
+    (True, "The configuration was written and verified."),
+    (False, "The remote stopped answering."),
+])
+def test_flashing_a_file_ends_by_saying_how_it_went(qapp_or_skip, tmp_path, monkeypatch,
+                                                    ok, message):
+    """The progress window closing on its own, with nothing after it, reads as a crash:
+    the end of a write is always a message, success or failure."""
+    from PyQt6.QtWidgets import QMessageBox
+
+    from afterglow.gui import flash_file, remote_ops, usb_driver
+    path = _file(tmp_path)
+    monkeypatch.setattr(flash_file.FlashFileDialog, "exec", lambda self: True)
+    monkeypatch.setattr(flash_file.FlashFileDialog, "chosen", lambda self: (path, False))
+    monkeypatch.setattr(QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
+    monkeypatch.setattr(usb_driver, "offer_before_operation", lambda parent: None)
+
+    def write(worker):
+        worker._on_progress("Writing", 50, 100)
+        worker._on_progress("Writing", 100, 100)
+        worker.done.emit(ok, message)
+    monkeypatch.setattr(remote_ops.RemoteWorker, "_flash", write)
+    said = []
+    monkeypatch.setattr(QMessageBox, "information",
+                        staticmethod(lambda parent, title, text: said.append(("info", text))))
+    monkeypatch.setattr(QMessageBox, "critical",
+                        staticmethod(lambda parent, title, text: said.append(("error", text))))
+
+    flash_file.flash_file_dialog(None, tmp_path)
+    assert said == [("info" if ok else "error", message)]

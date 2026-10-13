@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
     QAbstractItemView, QHeaderView, QDialog, QFormLayout, QComboBox,
     QDialogButtonBox, QLabel, QLineEdit, QSpinBox, QMessageBox,
-    QRadioButton, QStackedWidget
+    QMenu, QRadioButton, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIntValidator
@@ -251,39 +251,37 @@ class MacroEditorWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0,0,0,0)
         
+        # One Add button with a menu of what a step can be: five buttons side by side
+        # with Up, Down and Remove were wider than the editor they sat in.
         btn_row = QHBoxLayout()
-        self.add_input_btn = QPushButton("Set Input")
-        self.add_cmd_btn = QPushButton("Add Command")
-        self.add_state_btn = QPushButton("Set State")
-        self.add_chan_btn = QPushButton("Dial Channel")
-        self.add_del_btn = QPushButton("Add Delay")
+        self.add_btn = QPushButton("Add step")
+        menu = QMenu(self.add_btn)
+        for text, slot in (("Switch an input", self._add_input),
+                           ("Send a command", self._add_cmd),
+                           ("Set a state", self._add_state),
+                           ("Dial a channel", self._add_channel),
+                           ("Wait", self._add_delay)):
+            menu.addAction(text, slot)
+        self.add_btn.setMenu(menu)
         self.up_btn = QPushButton("Up")
         self.dn_btn = QPushButton("Down")
         self.rem_btn = QPushButton("Remove")
-
-        for b in [self.add_input_btn, self.add_cmd_btn, self.add_state_btn,
-                  self.add_chan_btn,
-                  self.add_del_btn, self.up_btn, self.dn_btn, self.rem_btn]:
+        for b in [self.add_btn, self.up_btn, self.dn_btn, self.rem_btn]:
             btn_row.addWidget(b)
         btn_row.addStretch()
         layout.addLayout(btn_row)
-        
+
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Type", "Device", "Value"])
+        self.table.setHorizontalHeaderLabels(["Step", "Device", "Value"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
-        
-        self.add_input_btn.clicked.connect(self._add_input)
-        self.add_cmd_btn.clicked.connect(self._add_cmd)
-        self.add_state_btn.clicked.connect(self._add_state)
-        self.add_chan_btn.clicked.connect(self._add_channel)
-        self.add_del_btn.clicked.connect(self._add_delay)
+
         self.rem_btn.clicked.connect(self._rem)
         self.up_btn.clicked.connect(self._up)
         self.dn_btn.clicked.connect(self._dn)
-        
+
         if existing_macro:
             for m in existing_macro:
                 if len(m) >= 3:

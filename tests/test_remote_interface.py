@@ -120,8 +120,7 @@ def test_the_device_editor_shows_only_the_listed_pages(qapp_or_skip, remote):
     from afterglow.gui.device_wizard import DeviceEditor
     project = remote(_profile(device_pages=["identity", "commands"]))
     editor = DeviceEditor([], existing={"id": "1", "label": "TV"}, project=project)
-    assert [editor.tabs.tabText(i) for i in range(editor.tabs.count())] == \
-        ["Identity", "Commands"]
+    assert editor.section_names() == ["identity", "commands"]
 
 
 def test_a_hidden_page_keeps_what_the_device_had(qapp_or_skip, remote):
@@ -144,8 +143,7 @@ def test_the_activity_editor_shows_only_the_listed_pages(qapp_or_skip, remote):
     profile = _profile(activity_pages=["identity", "roles", "power"])
     remote(profile)
     editor = ActivityEditor([], existing={"id": "1001", "label": "Watch"}, remote=profile)
-    assert [editor.tabs.tabText(i) for i in range(editor.tabs.count())] == \
-        ["Identity", "Roles", "Power"]
+    assert editor.section_names() == ["identity", "roles", "power"]
 
 
 def test_the_activity_wizard_collects_by_page_not_by_position(qapp_or_skip, remote):
@@ -157,7 +155,7 @@ def test_the_activity_wizard_collects_by_page_not_by_position(qapp_or_skip, remo
     existing = {"id": "1001", "label": "Watch", "hard_macros": {"Menu": [["command", "1",
                                                                          "Menu"]]}}
     wizard = ActivityWizard([], existing=existing, remote=profile)
-    assert len(wizard.pageIds()) == 2
+    assert len(wizard.pageIds()) == 2               # identity and roles: no startup listed
     assert wizard._collect()["hard_macros"] == existing["hard_macros"]
 
 

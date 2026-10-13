@@ -6,7 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **The device and activity editors are laid out the same way**: a list of sections on
+  the left, each with its title and a line saying what it is for, which the old tabs
+  dropped. Sections whose values come from the device database or an imported
+  configuration - Timing, Change model, Physical buttons, Power - are listed under
+  **Usually left as they are**.
+- **Adding a device is finding it and naming it.** Its commands, power, inputs and timing
+  come with the model and can be changed under Edit. Adding an activity asks for its
+  name, its devices and their inputs; buttons, favourites and what happens when it ends
+  are for Edit. Both wizards list their steps on the left, the way the editors list
+  their sections, so adding something and editing it look alike.
+- Plainer words: "You watch on", "Volume goes to", "Play, channels and menus go to";
+  Timing fields say when to change them. Power is chosen with the inputs.
+- A key or screen button that sends one command shows that command ("TV · SmartHub")
+  instead of "1 step". The command table's Label column is **On screen as**: a command
+  left blank is not unnamed, it is kept off the screen. Its address and command columns
+  are behind **Show codes**.
+- The startup step editor has one **Add step** menu instead of five buttons.
+
+### Added
+
+- A log file, `Documents/Afterglow/afterglow.log`, with what every remote operation did
+  and any unexpected error; **Help > Show log file** opens it.
+- Writing a remote, including Settings > Flash a Configuration File, shows how far along
+  it is.
+
 ### Fixed
+
+- **Learn from remote** is no longer offered on the Harmony One, where Afterglow cannot
+  learn yet and it answered with "unknown error".
 
 - **Editing a device imported from a Harmony One could crash** when one of its inputs
   has no command - as Logitech's configurations write an input nothing selects. Such an
