@@ -292,7 +292,10 @@ class MacroEditorWidget(QWidget):
     LABELS = {"command": "Command", "state": "Set state", "delay": "Delay",
               "number": "Channel", "input": "Set input"}
 
-    def _add_row(self, mtype, dev, val, extra=None):
+    def _add_row(self, mtype, dev, val, extra=None, duration=None):
+        """One step. A command may carry how long it is held, in ms, after its modifier -
+        `["command", device, name, "Press", 2000]` - as an imported Harmony One's held
+        codes do; it is shown and kept."""
         r = self.table.rowCount()
         self.table.insertRow(r)
         self.table.setItem(r, 0, QTableWidgetItem(self.LABELS.get(mtype, mtype)))
@@ -303,12 +306,16 @@ class MacroEditorWidget(QWidget):
             v_str = f"{val} ms"
         elif mtype == "state":
             v_str = f"{val} = {extra}"                  # state name = value
+        elif mtype == "command" and duration:
+            v_str = f"{val}  (held {duration} ms)"
         elif mtype == "command" and extra and extra != "Press":
             v_str = f"{val}  ({extra.lower()})"
         else:
             v_str = str(val)
         self.table.setItem(r, 2, QTableWidgetItem(v_str))
-        step = (mtype, dev, val) if extra is None else (mtype, dev, val, extra)
+        step = ((mtype, dev, val) if extra is None and duration is None
+                else (mtype, dev, val, extra) if duration is None
+                else (mtype, dev, val, extra, duration))
         self.table.item(r, 0).setData(Qt.ItemDataRole.UserRole, step)
         self.changed.emit()
         
