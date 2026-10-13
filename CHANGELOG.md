@@ -89,6 +89,8 @@ yet, and that is what this beta is for.
   now says "HDMI 1".
 - Reading a Harmony One built here back in could misread a look-alike letter ("Xbox
   One" as "Xbox ane"), skipping that device's buttons.
+- **Test write** refused a Harmony One whose flash chip it reported in lower case
+  (`0x1f:0xc8` against `0x1F:0xC8`): the same chip, now recognised however it is written.
 
 
 ### Known issues
