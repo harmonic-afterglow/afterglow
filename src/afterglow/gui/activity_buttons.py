@@ -451,11 +451,10 @@ class ScreenButtonsPage(QWizardPage):
     def __init__(self, devices, existing, parent=None):
         super().__init__(parent)
         self.devices = devices
-        self.setTitle("Commands")
+        self.setTitle("Screen buttons")
         self.setSubTitle(
-            "The buttons on this activity's touchscreen page - what the remote "
-            "itself calls Commands. Each sends one command or runs a macro, and can "
-            "carry one of the remote's own icons.")
+            "The buttons on this activity's page of the remote's screen. Each sends "
+            "one command or runs a macro, and can carry one of the remote's own icons.")
         layout = QVBoxLayout(self)
 
         self.table = _ButtonTable(["Icon", "Label", "Does"])
@@ -487,8 +486,15 @@ class ScreenButtonsPage(QWizardPage):
         preview.show_glyph(entry.get("icon"))
         self.table.setCellWidget(row, 0, preview)
         self.table.setItem(row, 1, QTableWidgetItem(entry.get("label", "?")))
-        does = ("macro, %d step(s)" % len(entry["macro"]) if entry.get("macro")
-                else f"{self._device_name(entry.get('device'))} · {entry.get('command')}")
+        macro = entry.get("macro")
+        if macro and len(macro) == 1 and macro[0][0] == "command" and len(macro[0]) >= 3:
+            held = macro[0][4] if len(macro[0]) > 4 else None
+            does = (f"{self._device_name(macro[0][1])} · {macro[0][2]}"
+                    + (f"  (held {held} ms)" if held else ""))
+        elif macro:
+            does = f"{len(macro)} steps"
+        else:
+            does = f"{self._device_name(entry.get('device'))} · {entry.get('command')}"
         self.table.setItem(row, 2, QTableWidgetItem(does))
         self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole, entry)
 
@@ -533,7 +539,9 @@ def _describe(kind, payload):
         return f"tunes to {payload}"
     if kind == "command":
         return f"sends {payload[1]}" if isinstance(payload, (list, tuple)) else "sends"
-    return f"macro, {len(payload)} step(s)"
+    if len(payload) == 1 and payload[0][0] == "command" and len(payload[0]) >= 3:
+        return f"sends {payload[0][2]}"
+    return f"{len(payload)} steps"
 
 
 def _find_image(name):

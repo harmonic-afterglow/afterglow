@@ -11,6 +11,8 @@ from pathlib import Path
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from ..applog import LOG
+
 from .. import concord, hao
 
 
@@ -26,6 +28,10 @@ class RemoteWorker(QThread):
         super().__init__(parent)
         self.operation = operation
         self.kwargs = kwargs
+        # Everything an operation says, and how it ended, also goes to the log file.
+        self.log.connect(lambda line: LOG.info("%s: %s", operation, line))
+        self.done.connect(lambda ok, message: (LOG.info if ok else LOG.warning)(
+            "%s %s: %s", operation, "finished" if ok else "failed", message))
 
     def _on_progress(self, stage, current, total):
         self.progress.emit(stage, current, total)
@@ -42,8 +48,10 @@ class RemoteWorker(QThread):
         except concord.NotAvailable as exc:
             self.done.emit(False, str(exc))
         except (concord.RemoteError, hao.NotReachable) as exc:
+            LOG.warning("%s: %r", self.operation, exc, exc_info=True)
             self.done.emit(False, str(exc))
         except Exception as exc:              # a bug here must not kill the interface
+            LOG.exception("%s stopped", self.operation)
             self.done.emit(False, f"{type(exc).__name__}: {exc}")
 
     # the operations
@@ -178,6 +186,16 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
 
     worker = RemoteWorker(operation, parent, **kwargs)
     worker.log.connect(lambda line: dialog.setLabelText(f"{message}\n\n{line}"))
+
+    def progress(stage, current, total):
+        # How far along, as the Flash tab shows it: a busy bar said nothing about
+        # whether a two-minute write was nearly done or stuck.
+        dialog.setLabelText(f"{message}\n\n{stage}"
+                            + (f" - {current * 100 // total}%" if total else ""))
+        dialog.setRange(0, total or 0)
+        if total:
+            dialog.setValue(min(current, total))
+    worker.progress.connect(progress)
     worker.result.connect(lambda value: outcome.update(result=value))
 
     def finished(ok, text):
@@ -191,6 +209,10 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
     loop.exec()
     worker.wait()
     dialog.close()
+    if not outcome["ok"] and not outcome["message"]:
+        # The worker ended without a word: an empty error box reads as a crash.
+        outcome["message"] = ("It stopped without saying why. Help > Show log file has "
+                              "what it did; please attach it to a bug report.")
     return outcome["ok"], outcome["message"], outcome["result"]
 
 

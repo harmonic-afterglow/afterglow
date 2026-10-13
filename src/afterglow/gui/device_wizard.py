@@ -7,7 +7,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
     QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem,
-    QMessageBox, QAbstractItemView, QHeaderView, QWizard, QWizardPage
+    QMessageBox, QAbstractItemView, QHeaderView, QWizardPage
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -18,28 +18,28 @@ from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
 from .device_inputs import DeviceInputsPage
 from .properties_editor import PropertiesEditor, PropertiesPage
+from .sections import SectionDialog, StepWizard
 from .widgets import RemotePickerDialog, _SuggestBox, _new_id, bold, build_repo_index, sep
 
 
-class DeviceWizard(QWizard):
-    """Add a new device - 4 steps:
-       1. Search  (typeahead lookup in repo)
-       2. Identity (label, type, codec, etc.)
-       3. Commands (IR command table)
-       4. Timing   (delays, always-on flag)
+class DeviceWizard(StepWizard):
+    """Add a new device: find it, name it, done.
+
+    Everything else - commands, power, inputs, timing - comes with the model, and is
+    there to change under Edit. The wizard used to walk through every page the editor
+    has, which put nine timing fields in front of someone who had only picked a TV.
+    A device learned from its own remote has no model to bring commands, so for that
+    one the Commands page follows.
     """
 
     def __init__(self, templates, parent=None, existing=None, project=None,
                  taken_ids=None, source_preferences=None):
-        super().__init__(parent)
+        super().__init__("Add Device" if not existing else "Edit Device", parent)
         existing = _portable_if_possible(existing)
         self.project = project
         self._taken_ids = list(
             taken_ids if taken_ids is not None
             else [d.get("id") for d in (project or {}).get("devices", [])])
-        self.setWindowTitle("Add Device" if not existing else "Edit Device")
-        self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
-        self.resize(660, 500)
         self.result_spec  = None
         self._existing    = existing or {}
         self._loaded_tpl  = None          # shared across pages
@@ -57,15 +57,37 @@ class DeviceWizard(QWizard):
         self.page_props    = PropertiesPage("device", self._existing.get("properties"),
                                     kind=self._existing.get("type"), remote=self.profile)
 
-        # Only the pages this remote's profile lists. The others are still built, from
-        # the device as it is, so collecting from them hands back exactly what was there.
-        for name, page in self._pages().items():
+        # Finding and naming it, of the pages this remote's profile lists, and the
+        # commands for a learned device. The others are still built and filled from the
+        # model, so collecting from them hands back exactly what the model said.
+        self._page_ids = {}
+        for name, label in (("search", "Find it"), ("identity", "Name it"),
+                            ("commands", "Learn its commands")):
             if name in self.profile.device_pages:
-                self.addPage(page)
+                self._page_ids[name] = self.add_step(label, self._pages()[name])
+        # On the naming page the model's details are already settled; what it brings is
+        # said in a line instead.
+        self.page_identity.for_adding()
+        self.page_search.search_type.currentIndexChanged.connect(self._learning_step)
+        self._learning_step()
 
         # When a model is chosen on the search page, pre-fill the later pages
         self.page_search.template_selected.connect(self._on_template_selected)
         self.page_cmds.learned.connect(self._on_learned)
+
+    def _learning_step(self, *_):
+        """The commands step is listed only for a device being learned."""
+        if "commands" in self._page_ids and "search" in self._page_ids:
+            self.hide_step(self._page_ids["commands"],
+                           self.page_search.search_type.currentData() != "learn")
+
+    def nextId(self):
+        """After naming the device: done, unless it is being learned."""
+        if (self.currentId() == self._page_ids.get("identity")
+                and self.page_search.search_type.currentData() != "learn"
+                and "search" in self._page_ids):
+            return -1
+        return super().nextId()
 
     def _on_learned(self):
         """Refresh the summary after a portable waveform was learned."""
@@ -93,6 +115,7 @@ class DeviceWizard(QWizard):
         self.page_identity.apply_template(t)
         self.page_cmds.load_template(t)
         self.page_timing.load_template(t)
+        self.page_identity.show_summary(_summary(t))
 
     def rf_token(self):
         """The IR output the user chose, applied by the caller once the id is known."""
@@ -132,21 +155,43 @@ class DeviceWizard(QWizard):
         from .. import project_devices
         project_devices.validate(spec)
         return spec
+def _summary(device: dict) -> str:
+    """What a model brings with it, in a line: so adding a device says what it got
+    without showing every page it came with."""
+    parts = [f"{len(device.get('commands') or [])} commands"]
+    if device.get("power_on_cmd") and device.get("power_off_cmd"):
+        parts.append("power on and off")
+    elif device.get("power_cmd") or device.get("power_on_cmd"):
+        parts.append("a power toggle")
+    inputs = device.get("inputs") or []
+    cycle = (device.get("input_cycle") or {}).get("values") or []
+    if inputs or cycle:
+        parts.append(f"{len(inputs) or len(cycle)} inputs")
+    return ("Comes with " + ", ".join(parts) + ". Any of it can be changed later "
+            "with Edit.")
+
+
 class SearchPage(QWizardPage):
     """Step 1 - search the device database by typing manufacturer then model."""
     template_selected = pyqtSignal(dict)
 
     def __init__(self, templates, existing, parent=None, source_preferences=None,
-                 remote=None):
+                 remote=None, replacing=False):
         super().__init__(parent)
         # Catalogues judge every command against the remote it will run on, so they
         # are opened for the project's remote rather than for whichever is default.
         self._profile = remote if remote is not None else remotes.default()
-        self.setTitle("Find Device")
-        self.setSubTitle(
-            "Type a manufacturer name to search the database, then select a model. "
-            "You can skip this step and fill in details manually on the next page."
-        )
+        if replacing:
+            self.setTitle("Change model")
+            self.setSubTitle(
+                "Only for a device that was added as the wrong model. Picking another "
+                "model replaces this device's commands, power, inputs and timing with "
+                "that model's; its name stays, and activities go on using it.")
+        else:
+            self.setTitle("Find your device")
+            self.setSubTitle(
+                "Type the manufacturer, then pick the model. Its commands, power, "
+                "inputs and timing come with it.")
         self._local_repo_index = build_repo_index(templates)
         self._repo_index = self._local_repo_index
         self._external_repo_indexes = {}
@@ -193,7 +238,8 @@ class SearchPage(QWizardPage):
         # The third answer to "how do I find this device?" is that you cannot - it is
         # not in the library. Learning belongs here, next to the other two ways of
         # identifying a device, rather than as a separate button somewhere else.
-        self.search_type.addItem("Not listed - learn from its own remote", "learn")
+        if self._profile.can("ir_learning"):
+            self.search_type.addItem("Not listed - learn from its own remote", "learn")
         self.search_type.setFixedWidth(390)
         self.search_type.currentIndexChanged.connect(self._on_search_type_changed)
         row.addWidget(self.search_type)
@@ -206,7 +252,7 @@ class SearchPage(QWizardPage):
         chips_layout.setContentsMargins(0, 0, 0, 0)
         chips_layout.setSpacing(6)
         chips_layout.addWidget(
-            QLabel("Active sources (ordered by dominance - duplicates overridden):")
+            QLabel("Searching:")
         )
         for i in range(1, self.search_type.count()):
             data = self.search_type.itemData(i)
@@ -266,7 +312,7 @@ class SearchPage(QWizardPage):
         # Shown instead of the search boxes when the device is not in the library.
         self._learn_note = QLabel(
             "This device will be built from codes captured off its own remote.\n\n"
-            "Click Next, name it on the Details page, then use "
+            "Click Next, name it, then use "
             "\u2018Learn from remote\u2026\u2019 on the Commands page: point the "
             "original remote at the front of the Harmony and press each key you want."
             "\n\nThe remote must be plugged in and connected.")
@@ -645,16 +691,15 @@ class IdentityPage(QWizardPage):
     def __init__(self, existing, parent=None, project=None):
         super().__init__(parent)
         self.project = project
-        self._types = remotes.for_project(project or {}).device_types
-        self.setTitle("Device Details")
-        self.setSubTitle(
-            "Review and adjust the device details. "
-            "These were pre-filled from the database if you selected a model."
-        )
+        profile = remotes.for_project(project or {})
+        self._types = profile.device_types
+        self.setTitle("Device")
+        self.setSubTitle("The name the remote shows for this device, and its icon.")
         form = QFormLayout(self)
+        self._form = form
 
         self.label_edit = QLineEdit(existing.get("label", ""))
-        form.addRow("Display label:", self.label_edit)
+        form.addRow("Name:", self.label_edit)
 
         self.type_combo = QComboBox()
         # Editable, and the device's own type is always present: a type never
@@ -670,7 +715,7 @@ class IdentityPage(QWizardPage):
             index = self.type_combo.findData(existing["type"])
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
-        form.addRow("Device type:", self.type_combo)
+        form.addRow("Type:", self.type_combo)
 
         self.mfr_edit   = QLineEdit(existing.get("mfr", ""))
         self.model_edit = QLineEdit(existing.get("model", ""))
@@ -685,6 +730,7 @@ class IdentityPage(QWizardPage):
         # Internal identity: activities and devices reference each other by id, and
         # editing one silently breaks every reference to it. Shown, never editable.
         form.addRow("Device ID:", self.id_edit)
+        form.setRowVisible(self.id_edit, False)      # nobody needs to see it
 
         # Where this device's commands are transmitted from: the remote's own front IR
         # LED, or a wireless RF blaster base. Set here rather than on the device list,
@@ -694,6 +740,8 @@ class IdentityPage(QWizardPage):
         self.rf_combo = QComboBox()
         self._refresh_rf_options()
         form.addRow("IR output:", self.rf_combo)
+        # Only a remote that drives RF blasters has more than one output to pick.
+        form.setRowVisible(self.rf_combo, profile.can("rf_blaster"))
 
         form.addRow(sep())
 
@@ -704,7 +752,11 @@ class IdentityPage(QWizardPage):
         self.proto_label = QLabel(self._protocol_text())
         self.proto_label.setWordWrap(True)
         self.proto_label.setStyleSheet("color: gray;")
-        form.addRow("IR protocol:", self.proto_label)
+        form.addRow("Codes:", self.proto_label)
+        self.summary = QLabel()
+        self.summary.setWordWrap(True)
+        form.addRow(self.summary)
+        form.setRowVisible(self.summary, False)
 
         # (Power command is now chosen on the Commands page)
 
@@ -726,6 +778,18 @@ class IdentityPage(QWizardPage):
         signals = (self._existing or {}).get("signals") or {}
         return bool(signals) and all(signal.get("kind") == "waveform"
                                      for signal in signals.values())
+
+    def for_adding(self):
+        """Adding: the name and type are the questions; the manufacturer and model came
+        from the search, and an empty "Codes" line before a model is picked says
+        nothing."""
+        for widget in (self.mfr_edit, self.model_edit, self.proto_label):
+            self._form.setRowVisible(widget, False)
+        self.setSubTitle("The name the remote shows for this device, and its icon.")
+
+    def show_summary(self, text):
+        self.summary.setText(text)
+        self._form.setRowVisible(self.summary, bool(text))
 
     def refresh_protocol(self):
         """Called after learning, so the label stops saying there is nothing yet."""
@@ -766,11 +830,12 @@ class CommandsPage(QWizardPage):
         # the stored code and never looks at them - so showing them as editable 00s
         # invited people to type values that could not possibly do anything.
         self._signals = dict((existing or {}).get("signals") or {})
-        self.setTitle("IR Commands")
+        self.setTitle("Commands")
         self.setSubTitle(
-            "Add or import commands. Click a button in the 'Hard Key' column "
-            "to map it to a physical remote button."
-        )
+            "What the device can be told to do. A command shown on screen gets a "
+            "button on the device's page of the remote; one left blank still works on "
+            "keys and in activities. Click a Key to put the command on a physical "
+            "button.")
         layout = QVBoxLayout(self)
 
         # - Power commands ----------------------------------------------
@@ -779,7 +844,11 @@ class CommandsPage(QWizardPage):
         # an already-on one off; a toggle is one code that flips it. Some devices have
         # only one of a pair - a stereo with a dedicated standby key. Collapsing all of
         # this to a single "power command" silently threw the other half away.
-        pwr_row = QHBoxLayout()
+        # Its own widget, so the editor can show it with the inputs, where people look
+        # for how a device is switched on; adding a learned device keeps it here.
+        self.power_box = QWidget()
+        pwr_form = QFormLayout(self.power_box)
+        pwr_form.setContentsMargins(0, 0, 0, 0)
         # Filterable: these list every command the device has, which for a television
         # is sixty-five entries and a popup taller than the screen.
         self.pwr_on_combo = FilterCombo()
@@ -789,11 +858,9 @@ class CommandsPage(QWizardPage):
                              ("Power off:", self.pwr_off_combo),
                              ("Power toggle:", self.pwr_combo)):
             combo.addItem("(none)", None)
-            combo.setMinimumWidth(150)
-            pwr_row.addWidget(QLabel(label))
-            pwr_row.addWidget(combo)
-        pwr_row.addStretch()
-        layout.addLayout(pwr_row)
+            combo.setMinimumWidth(220)
+            pwr_form.addRow(label, combo)
+        layout.addWidget(self.power_box)
 
         # - Toolbar ------------------------------------------------------
         btn_row = QHBoxLayout()
@@ -805,13 +872,25 @@ class CommandsPage(QWizardPage):
             "libconcord and a connected remote.")
         for b in (self.add_btn, self.remove_btn, self.learn_btn):
             btn_row.addWidget(b)
+        # Only where Afterglow can learn on this remote: the button stood on the One,
+        # which has no learning yet, and answered every press with "unknown error".
+        self.learn_btn.setVisible(remote is None or remote.can("ir_learning"))
         btn_row.addStretch()
+        # The address and command bytes mean something only to someone typing in a
+        # code by hand; for everyone else they were two columns of "captured".
+        self.show_codes = QCheckBox("Show codes")
+        self.show_codes.toggled.connect(self._show_code_columns)
+        btn_row.addWidget(self.show_codes)
         layout.addLayout(btn_row)
 
         # - Command table (col 4 = clickable hard-key button) --------------
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
-            ["Name", "Label", "Address (hex)", "Command (hex)", "Hard Key"])
+            ["Name", "On screen as", "Address (hex)", "Command (hex)", "Key"])
+        self.table.horizontalHeaderItem(1).setToolTip(
+            "The text on the command's button on the remote's screen. Leave it empty "
+            "to keep the command off the screen: it still works on a key and in "
+            "activities.")
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -824,6 +903,7 @@ class CommandsPage(QWizardPage):
                                    QAbstractItemView.EditTrigger.SelectedClicked)
         self.table.cellClicked.connect(self._on_cell_clicked)
         layout.addWidget(self.table)
+        self._show_code_columns(False)
 
         # Duplicate warning label
         self._dup_lbl = QLabel()
@@ -841,6 +921,10 @@ class CommandsPage(QWizardPage):
         self.add_btn.clicked.connect(self._add_empty)
         self.remove_btn.clicked.connect(self._remove_selected)
         self.learn_btn.clicked.connect(self._learn_command)
+
+    def _show_code_columns(self, shown):
+        for column in (2, 3):
+            self.table.setColumnHidden(column, not shown)
 
     # - Template loading ---------------------------------------------
     def load_template(self, t):
@@ -1128,70 +1212,83 @@ class CommandsPage(QWizardPage):
         return device_json.update_signal_fields(updated, rows)
 
 
+# Each timing field: its label, and when to change it. The values come from the device
+# database or an imported configuration, so the help says what going wrong looks like
+# rather than what the number is - that is the only reason to touch one.
+TIMING_HELP = {
+    "power_delay": ("Ready after switching on:",
+                    "Raise it if the device misses its input or first command after "
+                    "switching on."),
+    "press_presilence": ("Pause before a command:",
+                         "Raise it if the first command after another device's is "
+                         "missed."),
+    "press_interkey": ("Pause between commands:",
+                       "Raise it if the device misses digits or repeated presses."),
+    "hold_presilence": ("Pause before a held key:",
+                        "Raise it if holding a key does nothing at first."),
+    "hold_interkey": ("Repeat gap while held:",
+                      "Lower it for faster volume while a key is held; raise it if "
+                      "the device skips."),
+    "input_delay": ("Ready after changing input:",
+                    "Raise it if the command after an input switch is missed."),
+    "app_power_delay": ("Apps ready after switching on:",
+                        "For smart TVs: how long after switching on its apps, such as "
+                        "Netflix, answer. Used only for inputs marked App."),
+}
+
+
 class TimingPage(QWizardPage):
     def __init__(self, existing, parent=None, fields=None):
         super().__init__(parent)
-        self.setTitle("Timing & Options")
-        self.setSubTitle("Set IR timing delays and device behaviour in activities.")
+        self.setTitle("Timing")
+        self.setSubTitle(
+            "These come from the device database or your imported configuration and "
+            "are right for most devices. Change one only when the device misses "
+            "commands or is not ready in time.")
         layout = QFormLayout(self)
+        self._help = {}
 
         self.always_on = QCheckBox(
-            "Always On (device is never powered off by activities or PowerOff macro)")
+            "Always on: activities never switch this device off")
         # None is an imported device with no AlwaysOn at all, which the remote treats
         # unlike false; it stays None unless the box is actually changed.
         self._always_on_absent = "always_on" in existing and existing["always_on"] is None
         self.always_on.setChecked(bool(existing.get("always_on", False)))
         self.always_on.toggled.connect(lambda _on: setattr(self, "_always_on_absent", False))
         layout.addRow(self.always_on)
+        self._help["always_on"] = self._explain(
+            layout, "For something that stays on, such as a receiver that is never "
+            "switched off at the wall.")
         layout.addRow(sep())
 
-        self.pwr_delay = QSpinBox()
-        self.pwr_delay.setRange(0, 30000); self.pwr_delay.setSingleStep(500)
-        self.pwr_delay.setSuffix(" ms")
-        self.pwr_delay.setValue(existing.get("power_delay", 1500))
-        layout.addRow("Power-on delay:", self.pwr_delay)
+        def spin(key, top, step, value):
+            box = QSpinBox()
+            box.setRange(0, top)
+            box.setSingleStep(step)
+            box.setSuffix(" ms")
+            box.setValue(value)
+            label, help_text = TIMING_HELP[key]
+            layout.addRow(label, box)
+            self._help[key] = self._explain(layout, help_text)
+            return box
 
-        self.pre_sil = QSpinBox()
-        self.pre_sil.setRange(0, 5000); self.pre_sil.setSingleStep(50)
-        self.pre_sil.setSuffix(" ms")
-        self.pre_sil.setValue(existing.get("press_presilence", 1000))
-        layout.addRow("Input pre-silence:", self.pre_sil)
-
-        self.inter_key = QSpinBox()
-        self.inter_key.setRange(0, 2000); self.inter_key.setSingleStep(50)
-        self.inter_key.setSuffix(" ms")
-        self.inter_key.setValue(existing.get("press_interkey", 500))
-        layout.addRow("Inter-key delay:", self.inter_key)
-
+        self.pwr_delay = spin("power_delay", 30000, 500, existing.get("power_delay", 1500))
+        self.pre_sil = spin("press_presilence", 5000, 50,
+                            existing.get("press_presilence", 1000))
+        self.inter_key = spin("press_interkey", 2000, 50,
+                              existing.get("press_interkey", 500))
         # The press-and-HOLD pair, which governs how fast volume and channel ramp when
         # a key is held down. Every dump agrees on 50/100, but they are per-device
         # values in the format, and they were previously written as constants.
-        self.hold_sil = QSpinBox()
-        self.hold_sil.setRange(0, 2000); self.hold_sil.setSingleStep(10)
-        self.hold_sil.setSuffix(" ms")
-        self.hold_sil.setValue(existing.get("hold_presilence", 50))
-        layout.addRow("Hold pre-silence:", self.hold_sil)
-
-        self.hold_key = QSpinBox()
-        self.hold_key.setRange(0, 2000); self.hold_key.setSingleStep(10)
-        self.hold_key.setSuffix(" ms")
-        self.hold_key.setValue(existing.get("hold_interkey", 100))
-        layout.addRow("Hold repeat gap:", self.hold_key)
-
+        self.hold_sil = spin("hold_presilence", 2000, 10,
+                             existing.get("hold_presilence", 50))
+        self.hold_key = spin("hold_interkey", 2000, 10, existing.get("hold_interkey", 100))
         # How long the device needs after switching inputs before the next command, and
         # after switching on before its online apps (Netflix) answer - Logitech's own
         # figures for a catalogue device; 0 waits for nothing.
-        self.input_delay = QSpinBox()
-        self.input_delay.setRange(0, 30000); self.input_delay.setSingleStep(100)
-        self.input_delay.setSuffix(" ms")
-        self.input_delay.setValue(existing.get("input_delay") or 0)
-        layout.addRow("Input switch delay:", self.input_delay)
-
-        self.app_delay = QSpinBox()
-        self.app_delay.setRange(0, 120000); self.app_delay.setSingleStep(1000)
-        self.app_delay.setSuffix(" ms")
-        self.app_delay.setValue(existing.get("app_power_delay") or 0)
-        layout.addRow("Online apps ready after:", self.app_delay)
+        self.input_delay = spin("input_delay", 30000, 100, existing.get("input_delay") or 0)
+        self.app_delay = spin("app_power_delay", 120000, 1000,
+                              existing.get("app_power_delay") or 0)
 
         # Only the fields this remote's builder uses (its profile's `interface.timing`);
         # the rest keep their values, so collecting hands back what was there.
@@ -1204,6 +1301,15 @@ class TimingPage(QWizardPage):
                                 ("input_delay", self.input_delay),
                                 ("app_power_delay", self.app_delay)):
                 layout.setRowVisible(widget, key in fields)
+                layout.setRowVisible(self._help[key], key in fields)
+
+    @staticmethod
+    def _explain(layout, text):
+        note = QLabel(text)
+        note.setWordWrap(True)
+        note.setStyleSheet("color: gray;")
+        layout.addRow(note)
+        return note
 
     def values(self) -> dict:
         """The timing fields as a project device keeps them."""
@@ -1296,26 +1402,28 @@ def _attach_learned(spec: dict, existing: dict, learned: dict) -> None:
     spec["signals"] = signals
 
 
-class DeviceEditor(QDialog):
+# The editor's sections, in the order they are listed, by the names a profile's
+# `interface.device_pages` uses: the ones people come to change, then the ones whose
+# values come from the database or the imported configuration and are right as they are.
+DEVICE_SECTIONS = (("identity", "Device", False), ("commands", "Commands", False),
+                   ("inputs", "Power & inputs", False), ("timing", "Timing", True),
+                   ("search", "Change model", True), ("advanced", "Advanced", True))
+
+
+class DeviceEditor(SectionDialog):
     def __init__(self, templates, parent=None, existing=None, project=None,
                  source_preferences=None):
-        super().__init__(parent)
+        super().__init__("Edit Device", parent)
         existing = _portable_if_possible(existing)
         self.project = project
-        self.setWindowTitle("Edit Device")
-        self.resize(660, 600)
         self.result_spec  = None
         self._existing    = existing or {}
-        self._loaded_tpl  = None      # a different model picked on the Search tab
+        self._loaded_tpl  = None      # a different model picked under Change model
 
-        layout = QVBoxLayout(self)
-        self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
-        
         self.profile = remotes.for_project(project or {})
         self.page_search = SearchPage(
             templates, self._existing, source_preferences=source_preferences,
-            remote=self.profile)
+            remote=self.profile, replacing=True)
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
@@ -1323,28 +1431,24 @@ class DeviceEditor(QDialog):
                                         fields=self.profile.timing_fields)
         self.page_props    = PropertiesEditor("device", self._existing.get("properties"),
                                       kind=self._existing.get("type"), remote=self.profile)
-        
-        # Only the pages this remote's profile lists; see DeviceWizard.
-        titles = {"search": "Search", "identity": "Identity", "commands": "Commands",
-                  "inputs": "Inputs", "timing": "Timing", "advanced": "Advanced"}
+        # Power is chosen with the inputs, when the remote has an inputs section.
+        if "inputs" in self.profile.device_pages:
+            self.page_inputs.take_power(self.page_cmds.power_box)
+
+        # Only the sections this remote's profile lists; see DeviceWizard.
         pages = {"search": self.page_search, "identity": self.page_identity,
                  "commands": self.page_cmds, "inputs": self.page_inputs,
                  "timing": self.page_timing, "advanced": self.page_props}
-        for name in self.profile.device_pages:
-            self.tabs.addTab(pages[name], titles[name])
-        self.tabs.currentChanged.connect(
-            lambda _i: self.tabs.currentWidget() is self.page_inputs
-            and self.page_inputs.refresh_commands())
-        
-        btns = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save |
-            QDialogButtonBox.StandardButton.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
-        
+        for name, label, seldom in DEVICE_SECTIONS:
+            if name in self.profile.device_pages:
+                self.add_section(name, label, pages[name], seldom=seldom)
+
         self.page_search.template_selected.connect(self._on_template_selected)
         self.page_cmds.learned.connect(self._on_learned)
+
+    def section_shown(self, name):
+        if name == "inputs":
+            self.page_inputs.refresh_commands()
 
     def _on_learned(self):
         """Refresh the summary after a portable waveform was learned."""
@@ -1400,7 +1504,7 @@ class DeviceEditor(QDialog):
     def accept(self):
         problem = self.page_inputs.problem()
         if problem:
-            self.tabs.setCurrentWidget(self.page_inputs)
+            self.show_section("inputs")
             QMessageBox.warning(self, "Inputs", problem)
             return
         spec = self._collect()

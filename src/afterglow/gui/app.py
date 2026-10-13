@@ -132,6 +132,7 @@ class MainWindow(QMainWindow):
 
         help_menu = mb.addMenu("Help")
         help_menu.addAction(_act("Connecting a Remote…", lambda: connection_help(self)))
+        help_menu.addAction(_act("Show log file", self._show_log))
         help_menu.addAction(_act("About", self._about))
 
     def setup_usb_link(self):
@@ -462,6 +463,22 @@ class MainWindow(QMainWindow):
         Path(path).write_text(json.dumps(self.project, indent=2))
         self._mark_clean()
         self.status.showMessage(f"Saved {path}", 5000)
+
+    def _show_log(self):
+        """Open the folder that holds the log, for attaching it to a bug report."""
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+
+        from .. import applog
+        log = applog.path()
+        if not log.exists():
+            QMessageBox.information(self, "Log file",
+                                    f"Nothing has been logged yet. It will be at:\n{log}")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(log.parent)))
+        QMessageBox.information(
+            self, "Log file", f"The log is {log.name} in the folder that opened:\n{log}"
+            "\n\nAttach it when you report a problem.")
 
     def _about(self):
         # Deliberately no list of supported remotes. It is in the README, and the
@@ -802,6 +819,8 @@ def _join_title_bar(window):
 
 
 def main():
+    from .. import applog
+    applog.setup()
     from ..certificates import use_system_store
     use_system_store()
     app = QApplication(sys.argv)
