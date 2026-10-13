@@ -25,7 +25,7 @@ CORE = [p for p in PACKAGE.rglob("*.py")
 
 def imports(path):
     """Every module named by an import in this file, however it is spelled."""
-    tree = ast.parse(path.read_text())
+    tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             yield from (alias.name for alias in node.names)
