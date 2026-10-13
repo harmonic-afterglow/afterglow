@@ -147,3 +147,22 @@ def test_the_review_lists_every_change_by_what_it_happens_to(qapp_or_skip):
                 for i in range(dialog.tree.topLevelItemCount()))
     assert shown == len(report)
     assert dialog.save.text() == "Save as new project…"
+
+
+def test_a_device_saved_in_the_editor_moves_to_a_remote_with_fewer_keys(qapp_or_skip):
+    """Moving a Harmony 900 project to the One failed with "'tuple' object does not
+    support item assignment": a device saved in the editor kept its command rows as
+    tuples, and dropping the colour keys the One has not wrote into them."""
+    from afterglow import ir_signal, migrate, remotes
+    from afterglow.gui.device_wizard import DeviceEditor
+    signal = ir_signal.protocol_signal("nec1", {"address": 1, "command": 1})
+    device = {"schema": "afterglow-project-device/1", "id": "1", "label": "Box",
+              "type": "SetTopBox", "mfr": "T", "model": "M",
+              "commands": [["Red", "Red", "", "", "Red"], ["Menu", "Menu", "", "", "Menu"]],
+              "signals": {"Red": signal, "Menu": signal}}
+    project = {"settings": {"remote": "harmony-900"}, "devices": [device], "activities": []}
+    project["devices"][0] = DeviceEditor([], existing=device, project=project)._collect()
+    moved, report = migrate.migrate(project, remotes.get("harmony-one"))
+    rows = {row[0]: row[4] for row in moved["devices"][0]["commands"]}
+    assert rows == {"Red": None, "Menu": "Menu"}
+    assert any("Red" in row["detail"] for row in report)

@@ -71,7 +71,7 @@ def _keys(project, target, report):
     # smaller keypad loses a dozen keys at once, and a row each buried everything else.
     for device in project.get("devices") or []:
         lost = []
-        for command in device.get("commands") or []:
+        for command in project_devices.command_rows(device):
             if len(command) < 5 or not command[4]:
                 continue
             slots = command[4] if isinstance(command[4], list) else [command[4]]

@@ -47,6 +47,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Moving a Harmony 900 project to the One could fail** with "'tuple' object does not
+  support item assignment" once a device had been edited: the editor kept its commands
+  in a form the move could not change when it took away a key the One lacks.
 - A remote profile with a character outside the platform's encoding - "Volume −" -
   would not load on Windows: profiles are read as UTF-8.
 - **Learn from remote** is no longer offered on the Harmony One, where Afterglow cannot
