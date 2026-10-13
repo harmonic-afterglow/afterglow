@@ -306,3 +306,25 @@ def test_an_activity_whose_icon_has_no_type_comes_in_as_custom_other():
     assert types["Watch Netflix"] == types["Watch You Tube"] == "VirtualGeneric"
     assert types["Listen Radio"] == "VirtualCdMulti"
     assert all(types.values())
+
+
+def test_a_device_whose_icon_is_unknown_comes_in_as_a_home_appliance(
+        built, tmp_path, monkeypatch):
+    """There is no "other" device type: an unknown one showed no icon in the device list
+    and opened in the editor as a type it is not. It is a Home appliance, and the import
+    says so."""
+    from afterglow import importer, ezhex, payloads, remotes
+    from afterglow.backends.harmony_one import importing
+
+    real = importing.read_types
+    monkeypatch.setattr(importing, "read_types", lambda image: {
+        key: value for key, value in real(image).items() if key[0] != "device"})
+    profile = remotes.get("harmony-one")
+    source = tmp_path / "source"
+    payloads.get(profile.payload).unpack(built["image"], str(source))
+    (source / ".ezhex_header").write_bytes(ezhex.header_for_profile(profile))
+    result = importer.import_result(source)
+    assert {device["type"] for device in result.project["devices"]} == {"HomeAppliance"}
+    assert any("Home appliances" in note for note in result.warnings)
+    # an activity's display is still the device it was
+    assert result.project["activities"][0]["display"] == result.project["devices"][0]["id"]
