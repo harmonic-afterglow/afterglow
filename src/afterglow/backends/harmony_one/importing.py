@@ -1037,15 +1037,20 @@ class Activities:
             return None
         if not pictures:
             return None
-        rows = [[(0, 0, 0, 0) if pixel is None else (*pixel, 255) for pixel in row]
-                for row in pictures[-1]["rows"]]
-        if len(pictures) == 1:
-            width, height = len(rows[0]), len(rows)
-            left, top = (width - LOGO_BOX[0]) // 2, (height - LOGO_BOX[1]) // 2
-            if left < 0 or top < 0:
-                return None
-            rows = [row[left:left + LOGO_BOX[0]] for row in rows[top:top + LOGO_BOX[1]]]
-        return rows
+        rows = _rgba(pictures[-1])
+        # Logitech draws the plain button, then the button again with the logo on it.
+        # The button is taken out - against the configuration's own when it is drawn
+        # first, else against this scaffold's - and the logo's box kept: a build puts it
+        # back on the button, and a logo that kept its button had it twice.
+        if len(pictures) > 1:
+            rows = without_frame(rows, _rgba(pictures[0]), OWN_FRAME_TOLERANCE)
+        else:
+            rows = without_frame(rows, _button_frame(position))
+        width, height = len(rows[0]), len(rows)
+        left, top = (width - LOGO_BOX[0]) // 2, (height - LOGO_BOX[1]) // 2
+        if left < 0 or top < 0:
+            return rows if len(pictures) > 1 else None
+        return [row[left:left + LOGO_BOX[0]] for row in rows[top:top + LOGO_BOX[1]]]
 
     def _save_logo(self, name: str, rows: list[list]) -> str | None:
         """Save a logo into the logos folder; the name a project gives it there."""
@@ -1093,6 +1098,120 @@ TYPE_ICONS_FILE = "platform/type-icons.json"
 TYPE_ICONS_SCHEMA = "afterglow-harmony-one-type-icons/1"
 
 
+# How far a pixel of a logo drawn onto its button may be from the button and still be the
+# button: the One dithers a picture's colours, so even the configuration's own button
+# differs from the one under the logo by up to 9 steps; this scaffold's, by more.
+OWN_FRAME_TOLERANCE = 10
+FRAME_TOLERANCE = 24
+# A logo drawn onto the frame is told from a picture of its own by the edge of its box,
+# where a logo seldom reaches: most of that is the frame, or it is not there at all.
+FRAME_EDGE_SHARE = 0.6
+
+
+def without_frame(rows: list[list[tuple]], frame,
+                  tolerance: int = FRAME_TOLERANCE) -> list[list[tuple]]:
+    """A favourite's picture with the button behind its logo taken out.
+
+    Where the picture is the button `frame` - rows of RGBA, the same size - and reached
+    from the picture's edge through more of the button, those pixels become transparent:
+    a blue logo on a blue button keeps the blue inside it, which is near the button's
+    colour but is the logo's. Only when it is that button: most of the edge of the logo's
+    box, where a logo seldom reaches, has to match, so a picture on another button, a
+    theme's or a hand-made one, is left as it is."""
+    from .pictures import LOGO_BOX
+
+    if frame is None or len(frame) != len(rows) or len(frame[0]) != len(rows[0]):
+        return rows
+
+    def same(a, b):
+        return a[3] and b[3] and max(abs(a[i] - b[i]) for i in range(3)) <= tolerance
+
+    width, height = len(rows[0]), len(rows)
+    left, top = (width - LOGO_BOX[0]) // 2, (height - LOGO_BOX[1]) // 2
+    edge = [(x, y) for y in range(top, top + LOGO_BOX[1]) for x in range(left, left + LOGO_BOX[0])
+            if x in (left, left + 1, left + LOGO_BOX[0] - 2, left + LOGO_BOX[0] - 1)
+            or y in (top, top + 1, top + LOGO_BOX[1] - 2, top + LOGO_BOX[1] - 1)]
+    matching = sum(same(rows[y][x], frame[y][x]) for x, y in edge)
+    if matching < FRAME_EDGE_SHARE * len(edge):
+        return rows
+    # a pixel already clear counts as the button: the picture's rounded edge is, and
+    # the way in from the outside starts there
+    button = [[not pixel[3] or same(pixel, under) for pixel, under in zip(row, frame_row)]
+              for row, frame_row in zip(rows, frame)]
+    # the button: what matches it and joins the picture's edge through more that does
+    pending = [(x, y) for y in range(height) for x in range(width)
+               if (x in (0, width - 1) or y in (0, height - 1)) and button[y][x]]
+    reached = set(pending)
+    while pending:
+        x, y = pending.pop()
+        for near in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            nx, ny = near
+            if 0 <= nx < width and 0 <= ny < height and near not in reached \
+                    and button[ny][nx]:
+                reached.add(near)
+                pending.append(near)
+    out = [[(0, 0, 0, 0) if (x, y) in reached else pixel for x, pixel in enumerate(row)]
+           for y, row in enumerate(rows)]
+    # The logo's drop shadow was drawn onto the button too: next to it, pixels that are
+    # the button darkened alike in red, green and blue. Each becomes the shadow it was -
+    # black, as clear as it let the button through - so it falls on any button.
+    # A drop shadow falls below the logo, so it is looked for upward from the button
+    # under it: a blue logo's dark edge at its sides is the logo's.
+    above_button = [(x, y) for y in range(height) for x in range(width)
+                    if (x, y) not in reached and (x, y + 1) in reached]
+    for x, y in sorted(_shadow_reach(above_button, reached, width, height),
+                       key=lambda point: -point[1]):
+        shade = _shade(rows[y][x], frame[y][x])
+        below = out[y + 1][x] if y + 1 < height else (0, 0, 0, 0)
+        # a shadow climbs up from the button without a gap: the logo ends it
+        if shade is not None and (below[3] == 0 or below[:3] == (0, 0, 0)):
+            out[y][x] = (0, 0, 0, shade)
+    return out
+
+
+SHADOW_DEPTH = 6          # how far into the logo a shadow is looked for, in pixels
+
+
+def _shadow_reach(start, reached, width, height):
+    """The pixels up to SHADOW_DEPTH above the button that was taken out, while each is
+    still a shadow - a logo's own colour stops the climb."""
+    seen = set()
+    for x, y in start:
+        for step in range(SHADOW_DEPTH):
+            if y - step < 0 or (x, y - step) in reached:
+                break
+            seen.add((x, y - step))
+    return seen
+
+
+def _shade(pixel, under) -> int | None:
+    """How opaque a black shadow must be to make `under` look like `pixel`; None when
+    `pixel` is not `under` darkened alike in every channel - a colour of the logo's."""
+    if not pixel[3] or not under[3]:
+        return None
+    ratios = [pixel[i] / under[i] for i in range(3) if under[i] >= 24]
+    if not ratios or max(ratios) >= 0.97 or max(ratios) - min(ratios) > 0.12:
+        return None
+    if any(pixel[i] > under[i] + 6 for i in range(3)):
+        return None
+    return round((1 - sum(ratios) / len(ratios)) * 255)
+
+
+@lru_cache(maxsize=None)
+def _button_frame(position: int):
+    """This scaffold's favourite button for a place, as rows of RGBA; None without one."""
+    from ... import imaging, paths
+    from . import assets
+
+    directory = paths.scaffolds("harmony-one")
+    pictures = assets.read_manifest(directory)["pictures"]
+    for role in (f"activity/button-frame/{position}", f"button-frame/{position}"):
+        if role in pictures:
+            data = (directory / pictures[role]["file"]).read_bytes()
+            return tuple(tuple(row) for row in imaging.decode(data)["rows"])
+    return None
+
+
 def _rgba(picture: dict) -> list[list[tuple]]:
     return [[(0, 0, 0, 0) if pixel is None else (*pixel, 255) for pixel in row]
             for row in picture["rows"]]
@@ -1108,7 +1227,14 @@ def fingerprint(rows: list[list[tuple]]) -> str:
 
 def menu_icons(image: Image) -> list[dict]:
     """Every device-menu and Activities-menu row's icon: ``{kind, key, label, icon,
-    frame, at, fingerprint}``, ``key`` the device index or the activity's context."""
+    frame, at, fingerprint}``, ``key`` the device index or the activity's context.
+    Read once per image: the types and the theme are both read from it."""
+    if getattr(image, "_menu_icons", None) is None:
+        image._menu_icons = _menu_icons(image)
+    return image._menu_icons
+
+
+def _menu_icons(image: Image) -> list[dict]:
     pages = {ordinal: device for device, ordinals in command_pages(image).items()
              for ordinal in ordinals}
     out, seen = [], set()
@@ -1192,6 +1318,37 @@ def _own_icons(kind: str) -> dict[str, str]:
         body = _composed(directory, manifest, frame, at, ROW_ICON_SIZE, kind, path.stem)
         out.setdefault(fingerprint(_rgba(bitmap.decode(body, 0))), path.stem)
     return out
+
+
+DEFAULT, CUSTOM = "default", "custom"
+# How much of a menu row's frame has to be this scaffold's for the image to wear
+# Logitech's own look: the One dithers its pictures, so not every pixel matches.
+THEME_MATCH = 0.9
+
+
+def read_theme(image: Image) -> str | None:
+    """Whether the image wears Logitech's own look - the one this scaffold builds - or
+    a theme of someone's: DEFAULT or CUSTOM, by its menu rows' frame; None when it has
+    no menu row to tell by."""
+    from ... import imaging, paths
+    from . import assets
+
+    directory = paths.scaffolds("harmony-one")
+    pictures = assets.read_manifest(directory)["pictures"]
+    for row in menu_icons(image):
+        role = ("activity/row-frame" if row["kind"] == "activity"
+                and "activity/row-frame" in pictures else "row-frame")
+        if role not in pictures:
+            continue
+        ours = imaging.decode((directory / pictures[role]["file"]).read_bytes())["rows"]
+        theirs = row["frame"]
+        if len(ours) != len(theirs) or len(ours[0]) != len(theirs[0]):
+            return CUSTOM
+        pixels = [(a, b) for row_a, row_b in zip(theirs, ours) for a, b in zip(row_a, row_b)]
+        alike = sum(a[3] == b[3] and (not a[3] or max(abs(a[i] - b[i]) for i in range(3))
+                                      <= FRAME_TOLERANCE) for a, b in pixels)
+        return DEFAULT if alike >= THEME_MATCH * len(pixels) else CUSTOM
+    return None
 
 
 def read_types(image: Image) -> dict[tuple[str, int], str]:

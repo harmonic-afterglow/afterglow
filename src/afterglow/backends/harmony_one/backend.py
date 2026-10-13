@@ -87,6 +87,12 @@ def import_project(source, profile, context) -> ImportResult:
     if unread:
         notes.append("these names have characters that could not be read (shown as "
                      f"{labels.UNKNOWN}): " + ", ".join(repr(name) for name in unread))
+    # Logitech's look or a theme: a build wears the default look unless Remote Settings
+    # names a theme, so a configuration in a theme of its own says so.
+    theme = importing.read_theme(image)
+    if theme == importing.CUSTOM:
+        notes.append("this configuration wears a custom theme; Afterglow builds it in the "
+                     "default look unless a theme is chosen in Remote Settings")
     notes += [f"could not read the image's {item}" for item in image.unreadable]
     settings = {"remote": profile.id}
     if context.get("out_file"):
