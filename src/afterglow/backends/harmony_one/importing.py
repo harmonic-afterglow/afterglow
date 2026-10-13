@@ -461,7 +461,9 @@ def _state(states: dict, record: dict, power, image: Image, gates=None):
                        else held + states.get("power", {}).get("delay_ms", 0))
             # Logitech's configurations carry the input delay in the input's own command
             # object, its 0x7C in tenths (Kāt's Hisense: InputDelay 1000, 10 there and on
-            # no other command); ours, as a wait after it. Both are the wait after.
+            # no other command): the code held that long, which keeps the device busy as
+            # long (gspm.md, probe BO). Ours is a wait after the send. Either way the next
+            # command comes that much later, which is what the input delay says.
             sends = [step for step in image.steps(item["operand"]) if step[0] == SEND] \
                 if item["category"] == OBJECT else []
             if len(sends) == 1 and sends[0][2] > 1 and steps and steps[-1][0] == SEND:

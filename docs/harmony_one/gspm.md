@@ -1087,8 +1087,12 @@ variables, and activities set them by writing a device's power and input variabl
 **The input delay and a smart TV's apps.** Logitech keeps a device's input delay (the
 archive's `InputDelay`) in each input's own command object: Kāt's Hisense 50R6 has
 InputDelay 1000 and its ten input sends carry `0x7C` low byte 10, which no other command of
-it does (its power send has 1) - so there the low byte is the wait after, in tenths, as
-arch 12 reads it. Its apps' delay (`ConnectedAppPowerOnDelay`, 45 s) is a variable
+it does (its power send has 1). That byte is how long the code is sent, in tenths, not a
+wait after it: probe BO gave three copies of the Hisense's Volume Up the bytes 1, 10 and 30,
+and each raised the volume one step - and 30 followed at once by 1 was one step too, where
+a 3-second wait would have made two. A send held that long keeps its device busy as long,
+so the input's 1 s is both: the code held, and the next command a second later. An import
+reads it as the device's input delay, which a build writes as a press and a 1 s wait. Its apps' delay (`ConnectedAppPowerOnDelay`, 45 s) is a variable
 `Kate_TV_OnlinePower_2`: power-on starts timer 2 (`1F EB02`), which after 45 s writes it 1;
 power-off writes it 0; the Netflix input loads the byte register with 0 and, behind a test
 of it, waits 45.2 s and writes it 1, then sends. A generated image has `<Label>_Online_2`
