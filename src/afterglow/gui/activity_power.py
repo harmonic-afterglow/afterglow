@@ -17,9 +17,11 @@ from __future__ import annotations
 from copy import deepcopy
 
 from PyQt6.QtWidgets import (
-    QCheckBox, QComboBox, QHBoxLayout, QLabel, QPushButton, QTableWidget,
+    QCheckBox, QComboBox, QLabel, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWizardPage, QAbstractItemView, QHeaderView,
 )
+
+from .drag_rows import RowDragger, moved_list
 
 ON, OFF = "on", "off"
 
@@ -56,19 +58,12 @@ class ActivityPowerPage(QWizardPage):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table, 1)
+        # Only the devices switched on have an order: they are dragged by their grip.
+        self.dragger = RowDragger(self.table, self._dragged, movable=self._orderable)
 
-        order = QHBoxLayout()
-        self.up = QPushButton("Start earlier")
-        self.down = QPushButton("Start later")
-        self.up.clicked.connect(lambda: self._move(-1))
-        self.down.clicked.connect(lambda: self._move(1))
-        order.addWidget(self.up)
-        order.addWidget(self.down)
-        order.addStretch()
-        layout.addLayout(order)
-        note = QLabel("Devices switched on start from the top down. A device marked "
-                      "Always on (on its Timing page) is never switched by the remote, "
-                      "whatever is chosen here.")
+        note = QLabel("Devices switched on start from the top down; drag one by its grip "
+                      "to start it earlier or later. A device marked Always on (in its "
+                      "Timing) is never switched by the remote, whatever is chosen here.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray;")
         layout.addWidget(note)
@@ -118,6 +113,8 @@ class ActivityPowerPage(QWizardPage):
             choice.setCurrentIndex(0 if device_id in on else 1)
             choice.currentIndexChanged.connect(self._regroup)
             self.table.setCellWidget(row, 1, choice)
+        if hasattr(self, "dragger"):
+            self.dragger.refresh_grips()
 
     def _rows(self):
         return [(self.table.item(r, 0).data(256),
@@ -129,26 +126,29 @@ class ActivityPowerPage(QWizardPage):
         self._touched = True
         self._fill([device_id for device_id, state in self._rows() if state == ON])
 
-    def _move(self, step):
+    def _orderable(self, row):
+        """Switched on, and chosen here rather than following the roles."""
+        choice = self.table.cellWidget(row, 1)
+        return (not self.follow.isChecked() and choice is not None
+                and choice.currentData() == ON)
+
+    def _dragged(self, from_row, to_row):
+        """A switched-on device moved among the others switched on."""
         rows = self._rows()
-        row = self.table.currentRow()
-        target = row + step
-        if row < 0 or not 0 <= target < len(rows) or rows[row][1] != ON \
-                or rows[target][1] != ON:
+        on = [device_id for device_id, state in rows if state == ON]
+        if not (from_row < len(on) and to_row < len(on)):
             return
         self._touched = True
-        on = [device_id for device_id, state in rows if state == ON]
-        on[row], on[target] = on[target], on[row]
-        self._fill(on)
-        self.table.selectRow(target)
+        self._fill(moved_list(on, from_row, to_row))
+        self.table.selectRow(to_row)
 
     def _follow_toggled(self, follow):
         if self.sender() is self.follow:
             self._touched = True
         if follow:
             self._fill(self._from_roles())
-        for widget in (self.table, self.up, self.down):
-            widget.setEnabled(not follow)
+        self.table.setEnabled(not follow)
+        self.dragger.refresh_grips()
 
     # the result
     def get_plan(self):

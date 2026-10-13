@@ -37,10 +37,10 @@ def test_taking_control_lets_a_device_be_switched_and_reordered(qapp_or_skip):
     # the subwoofer joins, then starts first
     page.table.cellWidget(3, 1).setCurrentIndex(0)
     assert page.get_plan()[0] == ["1", "2", "4"]
-    page.table.selectRow(2)
-    page._move(-1)
-    page.table.selectRow(1)
-    page._move(-1)
+    assert page._orderable(2) and not page._orderable(3)    # off has no order
+    page._dragged(2, 0)                                    # dragged to the top
+    assert page.get_plan() == (["4", "1", "2"], ["3", "5"])
+    page._dragged(0, 3)                                    # not below what goes off
     assert page.get_plan() == (["4", "1", "2"], ["3", "5"])
 
 

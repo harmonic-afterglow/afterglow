@@ -4,7 +4,8 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
-    QSpinBox, QFileDialog, QMessageBox, QScrollArea, QTextEdit,
+    QSpinBox, QFileDialog, QMessageBox, QTextEdit, QListWidget,
+    QListWidgetItem, QAbstractItemView,
     QProgressBar
 )
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -18,6 +19,7 @@ from .icons import pixmap as type_pixmap
 from .constants import user_files, user_folder
 from .device_wizard import DeviceEditor, DeviceWizard
 from .rf_routing import rf_label, rf_set
+from .drag_rows import RowDragger, grip_pixmap, moved_list
 from .widgets import bold, sep
 
 
@@ -34,7 +36,8 @@ class DeviceCard(QWidget):
         self.spec = spec
         self.project = project
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setContentsMargins(8, 12, 8, 12)
+        layout.addWidget(_grip())
 
         glyph = QLabel()
         glyph.setPixmap(type_pixmap(spec.get("type", ""), 34))
@@ -64,6 +67,52 @@ class DeviceCard(QWidget):
         layout.addWidget(edit_btn)
         layout.addWidget(delete_btn)
 
+def _grip() -> QLabel:
+    """Where a card is picked up to move it."""
+    grip = QLabel()
+    grip.setPixmap(grip_pixmap(18))
+    grip.setFixedWidth(20)
+    grip.setCursor(Qt.CursorShape.OpenHandCursor)
+    grip.setToolTip("Drag to move it: the remote lists them in this order.")
+    return grip
+
+
+class CardList(QListWidget):
+    """Cards one under another, put in order by dragging (drag_rows)."""
+
+    def __init__(self, moved, parent=None):
+        super().__init__(parent)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setStyleSheet("QListWidget::item { border-bottom: 1px solid palette(midlight); }")
+        self._empty = QLabel(self.viewport())
+        self._empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty.setStyleSheet("color: gray; padding: 20px;")
+        self.dragger = RowDragger(self, moved)
+
+    def fill(self, cards, empty_text):
+        self.clear()
+        for card in cards:
+            item = QListWidgetItem()
+            item.setSizeHint(card.sizeHint())
+            self.addItem(item)
+            self.setItemWidget(item, card)
+        self._empty.setText(empty_text)
+        self._empty.setVisible(not cards)
+        self._place_empty()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._place_empty()
+
+    def _place_empty(self):
+        self._empty.setGeometry(0, 0, self.viewport().width(), 80)
+
+    def card(self, row):
+        return self.itemWidget(self.item(row))
+
+
 class DevicesTab(QWidget):
     changed = pyqtSignal()
 
@@ -83,36 +132,25 @@ class DevicesTab(QWidget):
         layout.addLayout(top)
         layout.addWidget(sep())
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.list_widget = QWidget()
-        self.list_layout = QVBoxLayout(self.list_widget)
-        self.list_layout.addStretch()
-        self.scroll_area.setWidget(self.list_widget)
-        layout.addWidget(self.scroll_area)
+        self.cards = CardList(self._moved)
+        layout.addWidget(self.cards)
 
         self.refresh()
 
     def refresh(self):
-        # Clear existing rows
-        while self.list_layout.count() > 1:  # keep the trailing stretch
-            item = self.list_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self.cards.fill([
+            DeviceCard(spec,
+                       on_edit   = lambda _, idx=i: self.edit_device(idx),
+                       on_delete = lambda _, idx=i: self.delete_device(idx),
+                       project   = self.project)
+            for i, spec in enumerate(self.project["devices"])],
+            "No devices yet. Click '+ Add Device' to get started.")
 
-        for i, spec in enumerate(self.project["devices"]):
-            card = DeviceCard(spec,
-                              on_edit   = lambda _, idx=i: self.edit_device(idx),
-                              on_delete = lambda _, idx=i: self.delete_device(idx),
-                              project   = self.project)
-            self.list_layout.insertWidget(self.list_layout.count()-1, card)
-            self.list_layout.insertWidget(self.list_layout.count()-1, sep())
-
-        if not self.project["devices"]:
-            empty = QLabel("No devices yet. Click '+ Add Device' to get started.")
-            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty.setStyleSheet("color: gray; padding: 20px;")
-            self.list_layout.insertWidget(0, empty)
+    def _moved(self, from_row, to_row):
+        """In the order the remote lists them."""
+        self.project["devices"] = moved_list(self.project["devices"], from_row, to_row)
+        self.refresh()
+        self.changed.emit()
 
     def add_device(self):
         wiz = DeviceWizard(
@@ -151,8 +189,9 @@ class ActivityCard(QWidget):
         super().__init__(parent)
         self.spec = spec
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setContentsMargins(8, 12, 8, 12)
 
+        layout.addWidget(_grip())
         disp_lbl = devices_by_id.get(spec.get("display",""), {}).get("label","?")
         ctrl_lbl = devices_by_id.get(spec.get("control",""), {}).get("label","?")
         atype    = spec.get("type","VirtualTelevisionN")
@@ -201,25 +240,22 @@ class ActivitiesTab(QWidget):
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint)
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.list_widget = QWidget()
-        self.list_layout = QVBoxLayout(self.list_widget)
-        self.list_layout.addStretch()
-        self.scroll_area.setWidget(self.list_widget)
-        layout.addWidget(self.scroll_area)
+        self.cards = CardList(self._moved)
+        layout.addWidget(self.cards)
 
         self.refresh()
+
+    def _moved(self, from_row, to_row):
+        """In the order the remote lists them."""
+        self.project["activities"] = moved_list(self.project["activities"], from_row,
+                                                to_row)
+        self.refresh()
+        self.changed.emit()
 
     def _by_id(self):
         return {d["id"]: d for d in self.project["devices"]}
 
     def refresh(self):
-        while self.list_layout.count() > 1:
-            item = self.list_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
         by_id = self._by_id()
         try:
             from .. import vocabulary
@@ -227,19 +263,13 @@ class ActivitiesTab(QWidget):
                 project_remote(self.project))}
         except LookupError:
             names = {}
-        for i, spec in enumerate(self.project["activities"]):
-            card = ActivityCard(spec, by_id,
-                                on_edit   = lambda _, idx=i: self.edit_activity(idx),
-                                on_delete = lambda _, idx=i: self.delete_activity(idx),
-                                type_names=names)
-            self.list_layout.insertWidget(self.list_layout.count()-1, card)
-            self.list_layout.insertWidget(self.list_layout.count()-1, sep())
-
-        if not self.project["activities"]:
-            empty = QLabel("No activities yet. Click '+ Add Activity' to create one.")
-            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty.setStyleSheet("color: gray; padding: 20px;")
-            self.list_layout.insertWidget(0, empty)
+        self.cards.fill([
+            ActivityCard(spec, by_id,
+                         on_edit   = lambda _, idx=i: self.edit_activity(idx),
+                         on_delete = lambda _, idx=i: self.delete_activity(idx),
+                         type_names=names)
+            for i, spec in enumerate(self.project["activities"])],
+            "No activities yet. Click '+ Add Activity' to create one.")
 
     def add_activity(self):
         devs = self.project["devices"]
