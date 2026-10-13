@@ -1,0 +1,53 @@
+{
+  "_comment": "The remote as its user guide draws it (page 6, tools/remote_art.py). `view` is the part shown - the keys, from Activities down, edge to edge; `keys` where each key sits, x, y, width, height in the drawing's points, each lit by the outline drawn around it (the rockers, the d-pad and Play/Pause share one outline, cut here into their keys); `unassignable` keys the remote keeps for itself, shown dark.",
+  "svg": "art.svg",
+  "view": [96.6, 398.0, 106.0, 278.6],
+  "keys": {
+    "UpArrow": [141.9, 419.1, 14.9, 13.9],
+    "Menu": [106.1, 419.7, 27.6, 9.7],
+    "Info": [164.5, 420.5, 27.6, 9.7],
+    "DownArrow": [141.9, 433.0, 14.9, 13.9],
+    "Exit": [106.1, 436.3, 27.6, 9.7],
+    "Guide": [164.5, 437.1, 27.6, 9.7],
+    "VolumeUp": [109.1, 455.4, 16.9, 21.7],
+    "ChannelUp": [172.5, 455.4, 16.9, 21.7],
+    "DirectionUp": [141.7, 457.3, 14.6, 13.4],
+    "DirectionLeft": [128.4, 470.7, 13.3, 14.0],
+    "Select": [141.7, 470.7, 14.6, 14.0],
+    "DirectionRight": [156.3, 470.7, 13.2, 14.0],
+    "VolumeDown": [109.1, 477.1, 16.9, 21.7],
+    "ChannelDown": [172.5, 477.1, 16.9, 21.7],
+    "DirectionDown": [141.7, 484.7, 14.6, 13.4],
+    "VolumeMute": [128.0, 504.9, 12.7, 11.5],
+    "PrevChannel": [157.4, 504.9, 12.7, 11.5],
+    "Play": [139.0, 522.4, 20.4, 22.8],
+    "Rewind": [108.9, 522.7, 21.1, 6.8],
+    "FastForward": [166.9, 522.7, 21.1, 6.8],
+    "SkipBack": [109.7, 539.2, 22.6, 6.8],
+    "SkipForward": [165.8, 539.2, 22.4, 6.8],
+    "Pause": [139.0, 545.2, 20.4, 21.3],
+    "Record": [112.5, 556.4, 22.6, 6.8],
+    "Stop": [164.0, 556.4, 22.4, 6.8],
+    "Number1": [115.6, 571.7, 14.6, 14.0],
+    "Number3": [167.8, 571.7, 14.6, 14.0],
+    "Number2": [142.5, 574.2, 14.6, 14.0],
+    "Number4": [116.5, 592.2, 14.6, 14.0],
+    "Number6": [166.7, 592.2, 14.6, 14.0],
+    "Number5": [142.5, 594.3, 14.6, 14.0],
+    "Number7": [116.5, 611.9, 14.6, 14.0],
+    "Number9": [166.7, 611.9, 14.6, 14.0],
+    "Number8": [142.5, 613.9, 14.6, 14.0],
+    "NumberPlus": [120.8, 633.6, 10.3, 9.9],
+    "NumberEnter": [166.3, 633.6, 10.3, 9.9],
+    "Number0": [142.5, 634.3, 14.6, 14.0]
+  },
+  "unassignable": {
+    "Activities": [109.2, 402.6, 37.6, 9.3],
+    "Help": [151.5, 402.6, 37.7, 9.3]
+  },
+  "source": {
+    "guide": "harmonyone-user-guide.pdf",
+    "page": 6,
+    "region": [96, 267, 107, 410]
+  }
+}

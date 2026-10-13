@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 
+import pytest
+
 ONE = {"settings": {"remote": "harmony-one"}, "devices": [], "activities": []}
 TV = {"id": "1", "label": "TV", "type": "Television"}
 
@@ -123,3 +125,148 @@ def test_the_wizards_list_their_steps_like_the_editors_list_sections(qapp_or_ski
     activity = ActivityWizard([TV], remote=remotes.get("harmony-one"))
     assert activity.step_labels() == ["1. Name it", "2. Its devices", "3. Inputs"]
     assert activity.startup.leave_box.isHidden()      # what happens at the end is for Edit
+
+
+# The remote as a picture
+def _with_commands():
+    from afterglow import ir_signal
+    signal = ir_signal.protocol_signal("nec1", {"address": 1, "command": 1})
+    return {**TV, "schema": "afterglow-project-device/1", "mfr": "T", "model": "M",
+            "commands": [["VolumeUp", "", "", "", "VolumeUp"], ["Netflix", "", "", "", None]],
+            "signals": {"VolumeUp": signal, "Netflix": signal}}
+
+
+@pytest.mark.parametrize("model", ["harmony-one", "harmony-900", "harmony-1100"])
+def test_every_key_is_on_the_drawing(model):
+    from afterglow import remotes
+    profile = remotes.get(model)
+    art = profile.hard_key_art
+    assert art["svg"].is_file()
+    assert set(art["keys"]) == set(profile.hard_keys)
+    assert set(profile.vocabulary["hard_key_labels"]) == set(profile.hard_keys)
+    # all of it the remote's own: in its folder, none in the profile
+    assert art["svg"].parent == profile.folder
+    assert "hard_key_art" not in profile.vocabulary
+
+
+def test_the_picture_shows_which_keys_send_and_which_commands_have_none(qapp_or_skip):
+    from afterglow.gui.device_wizard import DeviceEditor
+    from afterglow.gui.keys_view import ASSIGNED, FREE
+    commands = DeviceEditor([], existing=_with_commands(), project=ONE).page_cmds
+    commands.refresh_picture()
+    states = commands.keys_view._states
+    assert states["VolumeUp"] == (ASSIGNED, "Volume +: sends VolumeUp")
+    assert states["Menu"][0] == FREE
+    assert [commands.unplaced.item(i).text() for i in range(commands.unplaced.count())] \
+        == ["Netflix"]
+
+
+def test_picking_a_command_and_clicking_a_key_puts_it_there(qapp_or_skip):
+    from afterglow.gui.device_wizard import DeviceEditor
+    commands = DeviceEditor([], existing=_with_commands(), project=ONE).page_cmds
+    commands.refresh_picture()
+    commands.unplaced.setCurrentRow(0)                   # Netflix
+    commands._key_clicked("VolumeUp")                   # the key VolumeUp was on
+    rows = {row[0]: row[4] for row in commands.get_commands()}
+    assert rows == {"VolumeUp": None, "Netflix": "VolumeUp"}
+    commands._place("VolumeUp", None)                   # "Nothing"
+    assert all(row[4] is None for row in commands.get_commands())
+
+
+def test_the_activity_picture_lists_the_keys_it_changes(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.activity_wizard import ActivityEditor
+    from afterglow.gui.keys_view import CHANGED, FREE
+    editor = ActivityEditor([TV], existing={"id": "1001", "label": "Watch", "hard_macros": {
+        "Menu": [["command", "1", "SmartHub"]]}}, remote=remotes.get("harmony-one"))
+    keys = editor.p4
+    keys.refresh_picture()
+    assert keys.keys_view._states["Menu"] == (CHANGED, "Menu: TV · SmartHub")
+    assert keys.keys_view._states["Exit"][0] == FREE
+    keys.changed_list.setCurrentRow(0)
+    keys._reset_listed()
+    assert keys.get_hard_macros() == {}
+    assert keys.changed_list.count() == 0
+
+
+def test_a_remote_without_a_drawing_gets_its_keys_as_a_grid(qapp_or_skip):
+    from dataclasses import replace
+
+    from afterglow import remotes
+    from afterglow.gui.keys_view import RemoteKeys
+    nine = remotes.get("harmony-900")
+    undrawn = RemoteKeys(replace(nine, art=None))           # no art.json in its folder
+    assert not undrawn.has_picture()
+    assert set(undrawn.keys()) == {cell["key"] for cell in nine.hard_key_layout
+                                   if cell["key"]}
+
+
+def test_the_1100_ring_lights_by_quarter_around_its_ok(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.keys_view import RemoteKeys
+    view = RemoteKeys(remotes.get("harmony-1100"))
+    ok = view._keys["Select"]
+    for direction in ("DirectionUp", "DirectionDown", "DirectionLeft", "DirectionRight"):
+        overlap = view._keys[direction].intersected(ok).boundingRect()
+        assert overlap.width() * overlap.height() < 1, direction
+    assert set(view._fixed) == {"Off", "Activities"}
+
+
+def test_a_key_lights_its_own_part_of_the_drawn_button(qapp_or_skip):
+    """The volume rocker is one outline in the drawing; each half is its own key."""
+    from afterglow import remotes
+    from afterglow.gui.keys_view import RemoteKeys
+    view = RemoteKeys(remotes.get("harmony-one"))
+    up, down = view._keys["VolumeUp"], view._keys["VolumeDown"]
+    assert up.boundingRect().bottom() <= down.boundingRect().top() + 0.5
+    assert not up.intersected(down).boundingRect().height() > 0.5
+    # the d-pad's up arm, not the whole cross
+    arm = view._keys["DirectionUp"].boundingRect()
+    assert arm.width() < 20 and arm.height() < 20
+    assert set(view._fixed) == {"Activities", "Help"}
+
+
+def test_keys_are_named_as_people_say_them():
+    from afterglow import remotes
+    one = remotes.get("harmony-one")
+    assert [one.key_label(k) for k in ("VolumeUp", "Select", "UpArrow", "SkipBack")] == \
+        ["Volume +", "OK", "Page up", "Replay"]
+    assert remotes.get("harmony-1100").key_label("UpArrow") == "Left smart button"
+    assert one.key_label("InputHdmi1") == "Input Hdmi 1"      # one no profile names
+
+
+def test_the_physical_buttons_list_reads_top_to_bottom_in_plain_names(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.activity_wizard import ActivityEditor
+    editor = ActivityEditor([TV], existing={"id": "1001", "label": "Watch"},
+                            remote=remotes.get("harmony-one"))
+    keys = editor.p4
+    assert keys.table.item(0, 0).text() == "Page up"
+    assert keys._slot(0) == "UpArrow"
+    assert keys.slots[-1] == "NumberEnter" or keys.slots[-2:] == ["Number0", "NumberEnter"]
+
+
+def test_the_900_colour_keys_show_their_colours():
+    """Drawn black in the guide, so nobody could tell which was which."""
+    import xml.etree.ElementTree as ET
+
+    from afterglow import remotes
+    svg = ET.parse(remotes.get("harmony-900").hard_key_art["svg"]).getroot()
+    marks = next(g for g in svg.iter() if g.get("id") == "afterglow-marks")
+    fills = [path.get("fill") for path in marks]
+    assert fills == ["#e0302b", "#2fa84f", "#f2c230", "#2f6fd6"]      # red green yellow blue
+
+
+def test_the_list_views_key_picker_is_the_remote_drawing(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.keys_view import ASSIGNED, CHANGED, FREE
+    from afterglow.gui.widgets import RemotePickerDialog
+    picker = RemotePickerDialog("VolumeUp", {"Menu": "Menu"}, remote=remotes.get("harmony-one"),
+                                command="Louder")
+    assert picker.keys.has_picture()
+    states = picker.keys._states
+    assert states["VolumeUp"] == (ASSIGNED, "Volume +: Louder")
+    assert states["Menu"] == (CHANGED, "Menu: Menu")
+    assert states["Exit"][0] == FREE
+    picker._pick(None)                                    # "No key"
+    assert picker.chosen is None

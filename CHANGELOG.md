@@ -25,6 +25,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   left blank is not unnamed, it is kept off the screen. Its address and command columns
   are behind **Show codes**.
 - The startup step editor has one **Add step** menu instead of five buttons.
+- **The remote's keys as a picture of the remote.** A device's Commands and an
+  activity's Physical buttons show the remote as its user guide draws it, each key lit
+  in its own outline by what it does; hovering says what it sends, clicking changes it.
+  Beside it: the commands on no key, or the keys the activity changes. Picture or List,
+  remembered. Keys go by the names people use ("Volume +", "OK", "Page up"), and the
+  keys the remote keeps for itself are dark. The Harmony One, 900 and 1100 are drawn: the
+  900's colour keys in their colours, the 1100 with the printing its guide leaves off.
+  The list's Key column picks a key on the same drawing, and a key another command was
+  on moves to the one picked.
+- **Each remote is a folder** in `library/remotes/`: `profile.json`, and beside it what is
+  that remote's alone - its drawing, `art.svg`, and `art.json` with where its keys sit
+  and how the drawing is cut from its guide. Removing the folder removes the remote.
 
 ### Added
 
@@ -35,6 +47,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A remote profile with a character outside the platform's encoding - "Volume −" -
+  would not load on Windows: profiles are read as UTF-8.
 - **Learn from remote** is no longer offered on the Harmony One, where Afterglow cannot
   learn yet and it answered with "unknown error".
 

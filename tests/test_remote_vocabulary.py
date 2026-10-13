@@ -61,7 +61,7 @@ def test_a_profile_that_has_not_been_worked_out_answers_empty():
 # the part that proves it is per-remote and not just relocated
 def other_remote(tmp_path, **vocab):
     """A second model on disk, with a deliberately smaller vocabulary."""
-    profile = json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    profile = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     profile.update(id="test-model", model="Test Model",
                    identity={"arch": 15, "skin": 99}, status="untested")
     profile["vocabulary"] = {
@@ -71,7 +71,7 @@ def other_remote(tmp_path, **vocab):
         **vocab,
     }
     (tmp_path / "harmony-900.json").write_text(
-        (remotes.LIBRARY / "harmony-900.json").read_text())
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     (tmp_path / "test-model.json").write_text(json.dumps(profile))
     return tmp_path
 
@@ -107,7 +107,8 @@ def test_an_activity_can_remap_every_key_its_remote_has(qapp_or_skip, tmp_path):
     from afterglow.gui.activity_wizard import ActivityHardButtonsPage
     page = ActivityHardButtonsPage([], {"hard_macros": {"Mystery": []}},
                                    remote=remotes.get("harmony-900"))
-    assert page.slots[:-1] == remotes.get("harmony-900").hard_keys
+    # every key, in the order they sit on the remote
+    assert sorted(page.slots[:-1]) == sorted(remotes.get("harmony-900").hard_keys)
     assert "Guide" in page.slots and page.slots[-1] == "Mystery"
     small = remotes.get("test-model", other_remote(tmp_path))
     assert ActivityHardButtonsPage([], {}, remote=small).slots == ["VolumeUp"]
@@ -124,12 +125,12 @@ def test_the_vocabulary_survives_a_round_trip_through_json():
 # the Advanced tab's options are the remote's own
 def library_with(tmp_path, device_props):
     """A second model declaring a different set of device properties."""
-    profile = json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    profile = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     profile.update(id="test-model", model="Test Model",
                    identity={"arch": 15, "skin": 99}, status="untested")
     profile["properties"] = {"device": device_props, "activity": {}}
     (tmp_path / "harmony-900.json").write_text(
-        (remotes.LIBRARY / "harmony-900.json").read_text())
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     (tmp_path / "test-model.json").write_text(json.dumps(profile))
     return remotes.get("test-model", tmp_path)
 
@@ -200,10 +201,10 @@ def test_scart_is_offered_even_though_no_configuration_has_ever_had_it(qapp_or_s
 # which remote a project is for
 def two_verified(tmp_path):
     """A library where a second model has also been verified."""
-    profile = json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    profile = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     profile.update(id="test-model", model="Test Model", identity={"arch": 15, "skin": 99})
     (tmp_path / "harmony-900.json").write_text(
-        (remotes.LIBRARY / "harmony-900.json").read_text())
+        remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     (tmp_path / "test-model.json").write_text(json.dumps(profile))
     return tmp_path
 

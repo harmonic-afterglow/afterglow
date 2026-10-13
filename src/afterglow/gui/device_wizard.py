@@ -5,11 +5,12 @@ from collections import Counter
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
-    QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem,
-    QMessageBox, QAbstractItemView, QHeaderView, QWizardPage
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
+    QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
+    QMenu, QMessageBox, QAbstractItemView, QHeaderView, QWizardPage
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QCursor
 
 from .ui_helpers import FilterCombo
 
@@ -18,6 +19,7 @@ from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
 from .device_inputs import DeviceInputsPage
 from .properties_editor import PropertiesEditor, PropertiesPage
+from .keys_view import ASSIGNED, FREE, KeysViewChoice, RemoteKeys, legend
 from .sections import SectionDialog, StepWizard
 from .widgets import RemotePickerDialog, _SuggestBox, _new_id, bold, build_repo_index, sep
 
@@ -834,8 +836,8 @@ class CommandsPage(QWizardPage):
         self.setSubTitle(
             "What the device can be told to do. A command shown on screen gets a "
             "button on the device's page of the remote; one left blank still works on "
-            "keys and in activities. Click a Key to put the command on a physical "
-            "button.")
+            "keys and in activities. Put a command on one of the remote's own keys "
+            "in the picture, or in the Key column of the list.")
         layout = QVBoxLayout(self)
 
         # - Power commands ----------------------------------------------
@@ -881,7 +883,32 @@ class CommandsPage(QWizardPage):
         self.show_codes = QCheckBox("Show codes")
         self.show_codes.toggled.connect(self._show_code_columns)
         btn_row.addWidget(self.show_codes)
+        self.view_choice = KeysViewChoice()
+        btn_row.addWidget(self.view_choice)
         layout.addLayout(btn_row)
+
+        # The picture: the remote, its keys tinted by whether a command is on them,
+        # and the commands on no key beside it.
+        self.picture = QWidget()
+        picture = QHBoxLayout(self.picture)
+        picture.setContentsMargins(0, 0, 0, 0)
+        self.keys_view = RemoteKeys(remote)
+        self.keys_view.key_clicked.connect(self._key_clicked)
+        picture.addWidget(self.keys_view, 3)
+        side = QVBoxLayout()
+        side.addWidget(QLabel("<b>On no key</b>"))
+        self.unplaced = QListWidget()
+        self.unplaced.setToolTip("Pick one, then click a key to put it there.")
+        side.addWidget(self.unplaced, 1)
+        hint = QLabel("Pick a command here, then click a key to put it there. Click a "
+                      "key on its own to change or clear it. Hover over a key to see "
+                      "what it sends.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: gray;")
+        side.addWidget(hint)
+        side.addWidget(legend([(ASSIGNED, "Sends a command"), (FREE, "Nothing")]))
+        picture.addLayout(side, 2)
+        layout.addWidget(self.picture, 1)
 
         # - Command table (col 4 = clickable hard-key button) --------------
         self.table = QTableWidget(0, 5)
@@ -904,6 +931,7 @@ class CommandsPage(QWizardPage):
         self.table.cellClicked.connect(self._on_cell_clicked)
         layout.addWidget(self.table)
         self._show_code_columns(False)
+        self.view_choice.changed.connect(self._show_picture)
 
         # Duplicate warning label
         self._dup_lbl = QLabel()
@@ -921,6 +949,82 @@ class CommandsPage(QWizardPage):
         self.add_btn.clicked.connect(self._add_empty)
         self.remove_btn.clicked.connect(self._remove_selected)
         self.learn_btn.clicked.connect(self._learn_command)
+        self._show_picture(self.view_choice.is_picture())
+
+    # - The picture --------------------------------------------------
+    def _show_picture(self, picture):
+        """The picture or the table. Adding, removing and the codes are the table's."""
+        self.picture.setVisible(picture)
+        for widget in (self.table, self.add_btn, self.remove_btn, self.show_codes):
+            widget.setVisible(not picture)
+        if picture:
+            self.refresh_picture()
+
+    def _key_owners(self) -> dict:
+        """{key: row of the command on it}."""
+        owners = {}
+        for row in range(self.table.rowCount()):
+            for key in self._hard_slots(row):
+                owners.setdefault(key, row)
+        return owners
+
+    def _row_name(self, row):
+        return (self.table.item(row, 0) or QTableWidgetItem("")).text().strip()
+
+    def refresh_picture(self):
+        owners = self._key_owners()
+        label = self.keys_view.label
+        self.keys_view.set_states({
+            key: ((ASSIGNED, f"{label(key)}: sends {self._row_name(owners[key])}")
+                  if key in owners else (FREE, f"{label(key)}: nothing"))
+            for key in self.keys_view.keys()})
+        self.unplaced.clear()
+        for row in range(self.table.rowCount()):
+            name = self._row_name(row)
+            if name and not self._hard_slots(row):
+                item = QListWidgetItem(name)
+                item.setData(Qt.ItemDataRole.UserRole, row)
+                self.unplaced.addItem(item)
+
+    def _key_clicked(self, key):
+        """Put the command picked beside the picture on the key, or ask what goes
+        there."""
+        picked = self.unplaced.currentItem()
+        if picked is not None and picked.isSelected():
+            self._place(key, picked.data(Qt.ItemDataRole.UserRole))
+            return
+        owners = self._key_owners()
+        menu = QMenu(self)
+        menu.addSection(self.keys_view.label(key))
+        clear = menu.addAction("Nothing")
+        clear.setEnabled(key in owners)
+        menu.addSeparator()
+        rows = {}
+        for row in range(self.table.rowCount()):
+            name = self._row_name(row)
+            if name:
+                action = menu.addAction(name)
+                action.setCheckable(True)
+                action.setChecked(owners.get(key) == row)
+                rows[action] = row
+        chosen = menu.exec(QCursor.pos())
+        if chosen is clear:
+            self._place(key, None)
+        elif chosen in rows:
+            self._place(key, rows[chosen])
+
+    def _place(self, key, row):
+        """Put a key on a command's row - or on none - taking it off any other."""
+        for other in range(self.table.rowCount()):
+            slots = self._hard_slots(other)
+            if key in slots and other != row:
+                self._set_hard_key_btn(other, [s for s in slots if s != key] or None,
+                                       keep_extra=False)
+        if row is not None and key not in self._hard_slots(row):
+            self._set_hard_key_btn(row, self._hard_slots(row) + [key], keep_extra=False)
+        self._check_duplicates()
+        self.keys_view.select(key)
+        self.refresh_picture()
 
     def _show_code_columns(self, shown):
         for column in (2, 3):
@@ -999,12 +1103,13 @@ class CommandsPage(QWizardPage):
             if slots and len(previous) > 1:
                 slots = slots[:1] + [s for s in previous[1:] if s not in slots]
         primary = slots[0] if slots else None
-        label = primary if primary else "(none)"
+        label = self.keys_view.label(primary) if primary else "(none)"
         if len(slots) > 1:
             label += f"  +{len(slots) - 1}"
         btn = QPushButton(label)
         if len(slots) > 1:
-            btn.setToolTip("Also on: " + ", ".join(slots[1:]))
+            btn.setToolTip("Also on: " + ", ".join(self.keys_view.label(s)
+                                                   for s in slots[1:]))
         btn.setProperty("hardslots", slots)
         btn.setProperty("hardslot", primary)
         btn.setFlat(False)
@@ -1037,15 +1142,25 @@ class CommandsPage(QWizardPage):
     def _open_picker(self, row):
         btn = self.table.cellWidget(row, 4)
         current = btn.property("hardslot") if btn else None
-        # Collect all slots in use by OTHER rows
-        used = set()
+        # The keys other rows hold, and which command holds each
+        used = {}
         for r in range(self.table.rowCount()):
-            if r == row: continue
-            used.update(self._hard_slots(r))
-        dlg = RemotePickerDialog(current, used, self, remote=self._remote)
+            if r != row:
+                for slot in self._hard_slots(r):
+                    used.setdefault(slot, self._row_name(r))
+        dlg = RemotePickerDialog(current, used, self, remote=self._remote,
+                                 command=self._row_name(row))
         if dlg.exec():
+            # A key holds one command: taken from the row that had it.
+            for other in range(self.table.rowCount()):
+                slots = self._hard_slots(other)
+                if other != row and dlg.chosen in slots:
+                    self._set_hard_key_btn(
+                        other, [s for s in slots if s != dlg.chosen] or None,
+                        keep_extra=False)
             self._set_hard_key_btn(row, dlg.chosen)
             self._check_duplicates()
+            self.refresh_picture()
 
     # - Duplicate detection -------------------------------------------
     def _check_duplicates(self):

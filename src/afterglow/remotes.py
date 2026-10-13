@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from . import paths
@@ -183,6 +183,13 @@ class RemoteProfile:
     # Matched like `board`.
     other_boards: tuple = ()
     notes: str = ""
+    # The remote's own folder (`<id>/profile.json`), which holds what belongs to this
+    # remote alone - its drawing. None for a profile that is a bare JSON file.
+    folder: Path | None = None
+    # The folder's `art.json`: the drawing, where each key sits on it, and how it was cut
+    # from the user guide (tools/remote_art.py). Kept out of the profile, which says what
+    # the remote is rather than how it looks.
+    art: dict | None = None
 
     @property
     def skins(self) -> tuple:
@@ -329,6 +336,34 @@ class RemoteProfile:
             for row, column, rows, columns, key, label
             in self.vocabulary.get("hard_key_layout") or []
         ]
+
+    @property
+    def hard_key_art(self) -> dict | None:
+        """The remote's own picture and where each key sits on it, for the keys view:
+        {"svg": path, "view": (x, y, w, h) shown, "keys": {key: (x, y, w, h)},
+        "unassignable": {name: (x, y, w, h)}} in the drawing's units - a key cut from a
+        ring is the corners of its wedge instead - or None for a remote nobody has drawn
+        yet (the grid of `hard_key_layout` then)."""
+        art = self.art
+        if not art or self.folder is None:
+            return None
+        return {"svg": self.folder / art["svg"],
+                "view": tuple(art["view"]) if art.get("view") else None,
+                "keys": {key: tuple(box) for key, box in art["keys"].items()},
+                "unassignable": {name: tuple(box) for name, box
+                                 in (art.get("unassignable") or {}).items()}}
+
+    def key_label(self, key: str) -> str:
+        """A key as people call it - "Volume +", "OK" - rather than as a configuration
+        does: the profile's `hard_key_labels`, else the label its grid prints, else the
+        name with its words apart."""
+        labels = self.vocabulary.get("hard_key_labels") or {}
+        if key in labels:
+            return labels[key]
+        for cell in self.hard_key_layout:
+            if cell["key"] == key and cell["label"]:
+                return cell["label"]
+        return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", key)
 
     def require_writable(self) -> None:
         if not self.verified:
@@ -502,18 +537,43 @@ def _from_json(data: dict) -> RemoteProfile:
     )
 
 
+PROFILE = "profile.json"
+ART = "art.json"
+
+
 def load_all(library: Path | str = LIBRARY) -> list[RemoteProfile]:
-    """Every profile in the library, verified ones first."""
+    """Every profile in the library, verified ones first.
+
+    A remote is a folder - `<id>/profile.json`, with whatever else is the remote's own
+    beside it, so removing the folder removes all of it. A bare `<id>.json` is read too,
+    for a profile that has nothing else."""
     library = Path(library)
+    found = [(path / PROFILE, path) for path in sorted(library.iterdir())
+             if (path / PROFILE).is_file()] if library.is_dir() else []
+    found += [(path, None) for path in sorted(library.glob("*.json"))
+              if path.name != "models.json"]
     profiles = []
-    for path in sorted(library.glob("*.json")):
-        if path.name == "models.json":
-            continue
+    for path, folder in found:
         try:
-            profiles.append(_from_json(json.loads(path.read_text())))
+            profile = _from_json(json.loads(path.read_text(encoding="utf-8")))
         except (ValueError, KeyError, json.JSONDecodeError) as exc:
-            print(f"[warn] ignoring remote profile {path.name}: {exc}")
+            print(f"[warn] ignoring remote profile {path}: {exc}")
+            continue
+        art = folder / ART if folder is not None else None
+        try:
+            drawn = json.loads(art.read_text(encoding="utf-8")) if art and art.is_file() \
+                else None
+        except json.JSONDecodeError as exc:            # the keys then show as a grid
+            print(f"[warn] ignoring remote drawing {art}: {exc}")
+            drawn = None
+        profiles.append(replace(profile, folder=folder, art=drawn))
     return sorted(profiles, key=lambda p: (not p.verified, p.model))
+
+
+def profile_path(profile_id: str, library: Path | str = LIBRARY) -> Path:
+    """Where a profile's JSON is."""
+    folder = Path(library) / profile_id / PROFILE
+    return folder if folder.is_file() else Path(library) / f"{profile_id}.json"
 
 
 def get(profile_id: str, library: Path | str = LIBRARY) -> RemoteProfile:
@@ -547,7 +607,7 @@ def for_project(project: dict, library: Path | str = LIBRARY) -> RemoteProfile:
 def models(library: Path | str = LIBRARY) -> dict:
     """skin id -> {model, manufacturer} for every remote the format knows about."""
     path = Path(library) / "models.json"
-    return json.loads(path.read_text())["models"] if path.is_file() else {}
+    return json.loads(path.read_text(encoding="utf-8"))["models"] if path.is_file() else {}
 
 
 # identifying a remote from a configuration

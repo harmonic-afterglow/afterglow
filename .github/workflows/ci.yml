@@ -118,7 +118,8 @@ jobs:
           wheel = sorted(glob.glob("dist/*.whl"))[-1]
           names = zipfile.ZipFile(wheel).namelist()
           required = (
-              "afterglow/library/remotes/harmony-900.json",
+              "afterglow/library/remotes/harmony-900/profile.json",
+              "afterglow/library/remotes/harmony-900/art.svg",
               "afterglow/linux/harmony_net.sh",
               "afterglow/backends/harmony_pk/native_registry.py",
               "afterglow/scaffolds/harmony-900/.ezhex_order",

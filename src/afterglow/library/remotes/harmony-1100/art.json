@@ -1,0 +1,101 @@
+{
+  "_comment": "The remote as its user guide draws it (page 6, tools/remote_art.py): the callouts left out, the mock-up screen emptied, and the keys' printing added (tools/remote_art_marks/harmony-1100.json). UpArrow and DownArrow are the two smart buttons under the d-pad - the only keys left for the two names the configuration binds; which is which is not yet checked on a remote. The d-pad's directions are wedges of its ring, as six numbers: their corners.",
+  "svg": "art.svg",
+  "view": [136.9, 206.2, 245.9, 180.5],
+  "keys": {
+    "VolumeUp": [321.3, 215.9, 11.6, 16.2],
+    "ChannelUp": [351.0, 215.9, 11.6, 16.2],
+    "VolumeDown": [321.3, 232.2, 11.6, 16.2],
+    "ChannelDown": [351.0, 232.2, 11.6, 16.2],
+    "VolumeMute": [321.6, 255.5, 10.2, 10.1],
+    "PrevChannel": [351.2, 255.5, 10.2, 10.1],
+    "DirectionUp": [341.65, 289.55, 322.05, 269.95, 361.25, 269.95],
+    "DirectionLeft": [341.65, 289.55, 322.05, 309.15, 322.05, 269.95],
+    "Select": [331.7, 279.8, 19.9, 19.7],
+    "DirectionRight": [341.65, 289.55, 361.25, 269.95, 361.25, 309.15],
+    "DirectionDown": [341.65, 289.55, 361.25, 309.15, 322.05, 309.15],
+    "UpArrow": [321.6, 313.5, 10.2, 10.1],
+    "DownArrow": [351.2, 313.5, 10.2, 10.1]
+  },
+  "unassignable": {
+    "Off": [145.0, 212.7, 9.8, 9.7],
+    "Activities": [205.0, 334.5, 37.2, 11.5]
+  },
+  "source": {
+    "guide": "harmony1100-user-guide.pdf",
+    "page": 6,
+    "region": [136.9, 206.2, 245.9, 180.5],
+    "drop": [
+      "#078888"
+    ],
+    "recolour": {
+      "#bcbec0": "#ffffff",
+      "#e3e4e5": "#ffffff"
+    },
+    "screen": [160.6, 228.6, 125.6, 94.3],
+    "marks": [
+      {
+        "d": "M 151.39 215.47 A 2.6 2.6 0 1 1 148.41 215.47 M 149.9 214.0 L 149.9 217.4",
+        "stroke": 0.7
+      },
+      {
+        "d": "M 325.4 221.5 H 328.9 M 327.15 219.75 V 223.25 M 325.4 242.8 H 328.9",
+        "stroke": 0.8
+      },
+      {
+        "text": "Vol",
+        "x": 327.15,
+        "y": 232.2,
+        "size": 2.6
+      },
+      {
+        "d": "M 355.05 221.5 H 358.55 M 356.8 219.75 V 223.25 M 355.05 242.8 H 358.55",
+        "stroke": 0.8
+      },
+      {
+        "text": "Ch",
+        "x": 356.8,
+        "y": 232.2,
+        "size": 2.6
+      },
+      {
+        "d": "M 324.2 259.6 H 325.4 L 327.0 258.2 V 263.0 L 325.4 261.6 H 324.2 Z"
+      },
+      {
+        "d": "M 328.0 259.4 L 329.6 261.8 M 329.6 259.4 L 328.0 261.8",
+        "stroke": 0.5
+      },
+      {
+        "d": "M 354.4 259.0 H 357.8 A 1.6 1.6 0 0 1 357.8 262.2 H 355.2",
+        "stroke": 0.6
+      },
+      {
+        "d": "M 353.2 259.0 L 354.7 257.9 L 354.7 260.1 Z"
+      },
+      {
+        "d": "M 341.65 273.6 L 343.25 276.2 L 340.05 276.2 Z"
+      },
+      {
+        "d": "M 341.65 305.5 L 343.25 302.9 L 340.05 302.9 Z"
+      },
+      {
+        "d": "M 325.7 289.55 L 328.3 287.95 L 328.3 291.15 Z"
+      },
+      {
+        "d": "M 357.6 289.55 L 355.0 287.95 L 355.0 291.15 Z"
+      },
+      {
+        "text": "OK",
+        "x": 341.65,
+        "y": 289.55,
+        "size": 3.4
+      },
+      {
+        "text": "Activities",
+        "x": 223.6,
+        "y": 340.25,
+        "size": 4.0
+      }
+    ]
+  }
+}

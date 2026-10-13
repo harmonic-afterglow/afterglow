@@ -61,6 +61,8 @@ architecture and nothing in these documents applies to them.
 
 ## Adding a remote
 
-A profile is data, not code: a JSON file in `library/remotes/`. What is genuinely
+A profile is data, not code: a folder in `library/remotes/` - `<id>/profile.json`, and
+beside it whatever else is that remote's alone, such as its drawing (`art.svg`,
+`art.json`). What is genuinely
 required before marking one verified is a real flash and boot, not a clean build - a
 configuration that assembles proves nothing about whether the remote will accept it.

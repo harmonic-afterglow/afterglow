@@ -16,7 +16,7 @@ from afterglow import ir_signal, migrate, remotes
 
 
 def _small_remote(**changes):
-    data = json.loads((remotes.LIBRARY / "harmony-900.json").read_text())
+    data = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
     data.update(id="small", model="Small Remote", status="experimental",
                 identity={"arch": 15, "skin": 99})
     data["capabilities"] = {"hard_keys": True}
