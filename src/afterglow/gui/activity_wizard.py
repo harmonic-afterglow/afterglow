@@ -25,6 +25,10 @@ def _steps(macro) -> str:
     return f"{len(macro)} step" + ("" if len(macro) == 1 else "s")
 
 
+# "Custom / Other": what an activity without a type is shown as.
+GENERIC_TYPE = "VirtualGeneric"
+
+
 class ActivityWizard(QWizard):
     def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None):
         super().__init__(parent)
@@ -129,10 +133,12 @@ class ActivityIdentityPage(QWizardPage):
             types.insert(0, (f"{current} (from the imported config)", current))
         for label, atype in types:
             self.type_combo.addItem(type_icon(atype, 20), label, atype)
-        if existing.get("type"):
-            for i in range(self.type_combo.count()):
-                if self.type_combo.itemData(i) == existing["type"]:
-                    self.type_combo.setCurrentIndex(i); break
+        # An activity without a type opens as "Custom / Other", never as whatever the
+        # list happens to start with - saving it for any other reason would set that.
+        wanted = existing.get("type") or GENERIC_TYPE
+        for i in range(self.type_combo.count()):
+            if self.type_combo.itemData(i) == wanted:
+                self.type_combo.setCurrentIndex(i); break
         layout.addRow("Activity type (icon):", self.type_combo)
 
         self.id_edit = QLineEdit(existing.get("id", ""))

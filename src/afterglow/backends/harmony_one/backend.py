@@ -20,6 +20,10 @@ from ..contracts import BuildResult, ImportResult
 from . import command_index, gspm, importing, inventory, labels
 
 
+# The type an activity gets when none is recognised: "Custom / Other".
+GENERIC_ACTIVITY = "VirtualGeneric"
+
+
 def validate_payload(payload: bytes, _profile=None) -> dict:
     return gspm.validate(payload)
 
@@ -51,13 +55,21 @@ def import_project(source, profile, context) -> ImportResult:
     activities, off = importing.Activities(image, devices, naming, notes, logos).read()
     unknown = [device["label"] for index, device in enumerate(devices)
                if ("device", index) not in types]
-    for activity in activities:
-        activity["type"] = types.get(("activity", int(activity["id"])))
-        if activity["type"] is None:
-            unknown.append(activity["label"])
     if unknown:
         notes.append("no type was recognised for " + ", ".join(repr(name) for name in unknown)
                      + "; their icons are the default ones")
+    # An activity whose icon is none the One has a type for - the One+'s Netflix and
+    # smart-TV icons - is "Custom / Other", as an editor would otherwise offer the first
+    # type in its list. On the One a type is only the row's icon.
+    generic = []
+    for activity in activities:
+        activity["type"] = types.get(("activity", int(activity["id"])))
+        if activity["type"] is None:
+            activity["type"] = GENERIC_ACTIVITY
+            generic.append(activity["label"])
+    if generic:
+        notes.append("no type was recognised for " + ", ".join(repr(name) for name in generic)
+                     + "; they are Custom / Other")
     # a name with a character the text reader does not know is said, to be put right
     unread = [label for label in (
         [device["label"] for device in devices]
