@@ -328,3 +328,27 @@ def test_a_device_whose_icon_is_unknown_comes_in_as_a_home_appliance(
     assert any("Home appliances" in note for note in result.warnings)
     # an activity's display is still the device it was
     assert result.project["activities"][0]["display"] == result.project["devices"][0]["id"]
+
+
+def test_a_favourites_logo_is_imported_without_the_button_behind_it():
+    """Logitech draws the plain button, then the button again with the logo on it, and
+    the import kept the button: a build then put the logo, button and all, on a button."""
+    from afterglow.backends.harmony_one.importing import without_frame
+    from afterglow.backends.harmony_one.pictures import LOGO_BOX
+    width, height = LOGO_BOX[0] + 8, LOGO_BOX[1] + 8
+    frame = [[(10, 120 + y, 160, 255)] * width for y in range(height)]
+    red = (220, 30, 30, 255)
+    # the logo in the middle, the button dithered a little everywhere else
+    drawn = [[red if 30 <= x < 50 and 20 <= y < 30 else (12, 122 + y, 158, 255)
+              for x in range(width)] for y in range(height)]
+    # a blue-on-blue logo: inside its red ring a pixel the colour of the button
+    drawn[25][40] = frame[25][40]
+    drawn[0][0] = (0, 0, 0, 0)                          # the button's rounded corner
+    clean = without_frame(drawn, frame)
+    assert clean[24][40] == red
+    assert clean[25][40] == frame[25][40]               # enclosed by the logo: kept
+    assert clean[5][5] == (0, 0, 0, 0) and clean[40][70] == (0, 0, 0, 0)
+    # on another button it is not ours to take out
+    other = [[(200, 200, 200, 255)] * width for _ in range(height)]
+    assert without_frame(drawn, other) == drawn
+    assert without_frame(drawn, None) == drawn

@@ -54,6 +54,13 @@ fixed.
 
 ### Added
 
+- **Favourites' logos come in without their button.** Logitech draws the logo onto the
+  button, and the import kept the button with it. The button is taken out - against the
+  configuration's own, so a blue logo keeps its blue - and the logo's drop shadow
+  becomes a real shadow. A logo on a button Afterglow does not know keeps it, and
+  covers the button when built.
+- Importing a Harmony One says when the configuration wears a custom theme, which a
+  build replaces with the default look unless a theme is chosen.
 - A log file, `Documents/Afterglow/afterglow.log`, with what every remote operation did
   and any unexpected error; **Help > Show log file** opens it.
 - Writing a remote, including Settings > Flash a Configuration File, shows how far along
@@ -61,6 +68,8 @@ fixed.
 
 ### Fixed
 
+- Importing a Harmony One takes under a second rather than two or three: its checksum
+  was worked out a byte at a time, forty times over.
 - Editing a favourite or a screen button moved it to the end of the list.
 - **Moving a Harmony 900 project to the One could fail** with "'tuple' object does not
   support item assignment" once a device had been edited: the editor kept its commands
