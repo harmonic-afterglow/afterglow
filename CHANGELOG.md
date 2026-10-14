@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.2.1] - 2026-10-14
+
+A fix for beta 2: Test write on the Harmony One stopped after its backup.
+
 ### Fixed
 
 - **Test write on the Harmony One stopped after its backup** with "backend 'harmony-one'
