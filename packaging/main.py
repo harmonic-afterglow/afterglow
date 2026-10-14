@@ -8,10 +8,32 @@ package's name shadows the package: `import afterglow` finds the launcher, and
 `afterglow.py` warns about exactly this shadowing for the source tree; a frozen build
 walks into it from the other direction, and the only fix is a different filename.
 """
+import os
 import sys
 
 
+def _usable(stream) -> bool:
+    try:
+        os.fstat(stream.fileno())
+        stream.flush()
+    except (AttributeError, OSError, ValueError):
+        return False
+    return True
+
+
+def _quiet_missing_console() -> None:
+    """A windowed executable has no console, yet its `sys.stdout` can still be a stream
+    on a handle that does not exist. Every `print()` then lands in a buffer, and the
+    first time the buffer fills, the flush fails with "[Errno 9] Bad file descriptor" -
+    in the middle of whatever was printing, such as a build. Output with nowhere to go
+    is dropped instead; the log file keeps what matters."""
+    for name in ("stdout", "stderr"):
+        if not _usable(getattr(sys, name)):
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+
+
 def main() -> int:
+    _quiet_missing_console()
     if "--version" in sys.argv[1:]:
         # Answering this must not need Qt: it is what someone runs to report a bug.
         from afterglow import __version__

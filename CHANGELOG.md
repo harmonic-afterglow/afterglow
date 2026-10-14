@@ -15,6 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   that every file written is on the remote unchanged, and lists the files the remote
   keeps itself. If yours stopped here, open **Resume test write…** and press **Read back
   and verify** again.
+- **Build config failed on Windows with "[Errno 9] Bad file descriptor"** once a build
+  had printed enough progress: the Windows application has no console to print to. That
+  output is now dropped, and a failed build writes its details to the log file.
 - **A finished build looked like it had stopped** at "Packing -> ...". The log now says
   when the configuration is built and ready to write.
 
