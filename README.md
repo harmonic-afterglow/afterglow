@@ -33,12 +33,12 @@ Nothing is sent anywhere.
 ## Which remotes are supported?
 
 - Harmony 900
-- Harmony 1100 - experimental: configurations are read, imported and built, and
-  written only through **Test write**, which backs the remote up first and checks
-  the result.
+- Harmony 1100 - experimental: configurations are read, imported, built and written.
+  Before writing, Afterglow saves what is on the remote to the `Dumps` folder, so it
+  can be put back with **Settings › Flash a Configuration File**.
 - Harmony One - experimental, the same way: its configuration is built from scratch
-  from your devices and activities, the one already on it can be imported, and it is
-  written only through **Test write**. Its screens can be restyled with a
+  from your devices and activities, the one already on it can be imported, and the
+  remote is backed up before each write. Its screens can be restyled with a
   [theme](#themes).
 
 ## Before you start
@@ -96,8 +96,8 @@ Importing takes your devices and activities and leaves the other remote's state 
 | Folder | What is in it |
 |---|---|
 | `Projects` | your projects, and shareable projects you open |
-| `Dumps` | configurations read from a remote, and ones you import |
-| `Generated` | configurations Afterglow builds - what **Test write** and **Flash** write |
+| `Dumps` | configurations read from a remote, ones you import, and the backup taken before writing an experimental remote |
+| `Generated` | configurations Afterglow builds - what **Flash** writes |
 | `Themes` | themes, a folder per remote that takes them (see [Themes](#themes)) |
 | `Library` | your own devices, and what you learn from the original remote |
 | `Logos` | favourite-channel logos; an import keeps the pictures it brings in `Logos/Imported` |

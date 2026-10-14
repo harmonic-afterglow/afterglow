@@ -136,7 +136,7 @@ def test_the_remote_is_shown_above_the_tabs_and_not_set_on_one(qapp_or_skip):
     bar.set_profile(remotes.get("harmony-900"))
     assert "Harmony 900" in bar.name.text() and "verified" in bar.status.text()
     bar.set_profile(_small_remote())
-    assert "experimental" in bar.status.text() and "test write" in bar.note.text()
+    assert "experimental" in bar.status.text() and "saves what is on" in bar.note.text()
 
 
 def test_the_review_lists_every_change_by_what_it_happens_to(qapp_or_skip):

@@ -940,3 +940,59 @@ def test_every_library_call_runs_on_one_thread_that_stays():
     # a thread the interpreter joins at exit is gone by then.
     [thread] = [t for t in threading.enumerate() if t.name == concord._LibraryThread.NAME]
     assert thread.daemon
+
+
+def _writing_remote(monkeypatch, saved, wrote, backup_bytes):
+    from afterglow.gui import remote_ops
+
+    class Remote:
+        last_restart_error = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def identity(self, *_a):
+            return {"model": "Harmony 1100"}
+
+        def save_config(self, path, *_a):
+            saved.append(path)
+            Path(path).write_bytes(backup_bytes)
+
+        def write_config(self, path, *_a):
+            wrote.append(path)
+
+    monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
+    return remote_ops
+
+
+def test_an_experimental_write_saves_the_remote_first(tmp_path, monkeypatch):
+    """The backup is taken on the same connection, before anything is written."""
+    from afterglow import ezhex
+    payload = b"PK-not-really-a-zip"
+    header = (b"<INFORMATION><BINARYDATASIZE>%d</BINARYDATASIZE><CHECKSUM>%d</CHECKSUM>"
+              b"</INFORMATION>\r\n" % (len(payload), ezhex.checksum(payload)))
+    saved, wrote = [], []
+    remote_ops = _writing_remote(monkeypatch, saved, wrote, header + payload)
+    backup = tmp_path / "before.ezhex"
+    worker = remote_ops.RemoteWorker("write", None, path="new.ezhex", backup=str(backup))
+    said = {}
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.run()
+    assert said["ok"] is True
+    assert saved == [backup] and wrote and backup.read_bytes().endswith(payload)
+
+
+def test_no_write_without_a_whole_backup(tmp_path, monkeypatch):
+    saved, wrote = [], []
+    truncated = b"<INFORMATION><BINARYDATASIZE>99</BINARYDATASIZE></INFORMATION>\r\nPK"
+    remote_ops = _writing_remote(monkeypatch, saved, wrote, truncated)
+    worker = remote_ops.RemoteWorker("write", None, path="new.ezhex",
+                                     backup=str(tmp_path / "before.ezhex"))
+    said = {}
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.run()
+    assert said["ok"] is False and "nothing was written" in said["text"]
+    assert wrote == []

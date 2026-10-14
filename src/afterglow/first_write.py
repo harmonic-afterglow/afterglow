@@ -1,6 +1,7 @@
 """Recovery-backed first hardware write for an experimental remote profile.
 
-This is deliberately separate from the GUI's verified-only write path:
+A developer's tool, separate from the application's write (which backs the remote up
+and writes, for experimental remotes too):
 
     afterglow-first-write prepare candidate.ezhex --recovery recovery.ezhex \
         --report first-write.json
@@ -280,8 +281,8 @@ RESTORABLE = {"write-started", "write-outcome-unknown", "written-awaiting-readba
 def restore(report, *, ask=input, remote_factory=concord.Remote) -> dict:
     """Write the recovery captured at preparation back onto the same remote.
 
-    The normal write path refuses an experimental profile, so without this a tester whose
-    remote misbehaves after a test write would hold a backup they could not put back.
+    This tool's own way back; in the application a backup is put back with Flash a
+    Configuration File.
     Only the recovery recorded in the report can be written, after its digest and the
     attached remote's identity are checked again. Unlike `apply`, an uncertain restore
     may be repeated: putting the remote's own configuration back is the recovery itself.

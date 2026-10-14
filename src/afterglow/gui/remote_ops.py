@@ -16,6 +16,17 @@ from ..applog import LOG
 from .. import concord, hao
 
 
+def _check_backup(path: Path) -> None:
+    """A backup that could not be put back is no backup: whole, and checksummed."""
+    from .. import ezhex
+    raw = path.read_bytes()
+    _header, start, size, checksum = ezhex._split(raw)
+    payload = raw[start:start + size]
+    if not payload or len(payload) != size or (
+            checksum is not None and ezhex.checksum(payload) != checksum):
+        raise ValueError(f"{path.name} came back incomplete")
+
+
 class RemoteWorker(QThread):
     """One remote operation. `log` for the transcript, `done` for the outcome."""
 
@@ -83,8 +94,20 @@ class RemoteWorker(QThread):
 
     def _write(self):
         path = Path(self.kwargs["path"])
+        backup = self.kwargs.get("backup")
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            if backup:
+                # Same connection, before anything is changed. No backup, no write.
+                self.log.emit(f"Saving what is on the {identity['model']} now...")
+                try:
+                    remote.save_config(Path(backup), self._on_progress)
+                    _check_backup(Path(backup))
+                except (concord.RemoteError, OSError, ValueError) as exc:
+                    raise concord.RemoteError(
+                        f"The remote could not be backed up, so nothing was written: "
+                        f"{exc}") from exc
+                self.log.emit(f"Backed up to {backup}")
             self.log.emit(f"Writing {path.name} to {identity['model']}...")
             remote.write_config(path, self._on_progress)
             # The write succeeded or write_config would have raised. Only the restart

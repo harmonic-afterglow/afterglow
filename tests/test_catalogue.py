@@ -36,19 +36,18 @@ def test_every_config_is_identified(configs):
         assert remotes.identify(header).skin is not None
 
 
-def test_no_untested_remote_can_be_written_or_offered_for_building():
-    """See docs/harmony_pk/remote-identities.md. A wrong config on a remote nobody has
-    tried cannot be recovered from a vendor server any more: a profile that is not
-    verified refuses the normal write, and one that has only been read is not even a
-    build target."""
+def test_a_remote_only_read_is_neither_written_nor_offered_for_building():
+    """See docs/harmony_pk/remote-identities.md. A profile that has only been read is not
+    a build target and refuses a write; an experimental one is written like a verified
+    one, the interface backing the remote up first."""
     for profile in remotes.load_all():
-        if profile.verified:
-            continue
-        with pytest.raises(remotes.NotWritable):
-            profile.require_writable()
         if profile.status == remotes.READ_ONLY:
+            with pytest.raises(remotes.NotWritable):
+                profile.require_writable()
             with pytest.raises(remotes.NotBuildable):
                 profile.require_buildable()
+        else:
+            profile.require_writable()
 
 
 def test_read_only_profile_refuses_to_build_or_write():
@@ -59,12 +58,11 @@ def test_read_only_profile_refuses_to_build_or_write():
         profile.require_writable()
 
 
-def test_experimental_profile_can_build_but_not_write():
+def test_experimental_profile_can_build_and_write():
     profile = remotes.RemoteProfile(
         id="x", model="In controlled testing", status=remotes.EXPERIMENTAL)
     profile.require_buildable()
-    with pytest.raises(remotes.NotWritable):
-        profile.require_writable()
+    profile.require_writable()
 
 
 def test_legacy_untested_status_migrates_to_read_only():
@@ -98,14 +96,11 @@ def test_an_unshipped_remote_is_still_named_on_import():
 
 
 def test_harmony_one_is_experimental_and_not_firmware_allowlisted():
-    # It builds from a project, but the normal write stays shut until a write through the
-    # first-write process has been verified.
     profile = remotes.get("harmony-one")
 
     assert profile.status == remotes.EXPERIMENTAL
     profile.require_buildable()
-    with pytest.raises(remotes.NotWritable):
-        profile.require_writable()
+    profile.require_writable()
     assert profile.payload == "blob"
     assert profile.backend == "harmony-one"
     assert profile.firmware_min is None

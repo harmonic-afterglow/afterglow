@@ -21,7 +21,7 @@
     "waveform": "carrier-period",
     "notes": "Every command is lowered to the One's own press, hold and release waveform records (ir_lowering.py); a held sequence step gets a record of its own."
   },
-  "notes": "Configurations are generated from the project alone (backends/harmony_one/generate.py): the hub, device and activity screens, Options, key lights and handlers, onto the scaffold or a theme folder. Generated images have booted and run activities on testers' remotes; normal writes stay blocked until a write through the first-write process is verified. Learning is off: the One can learn, but Afterglow does not drive it yet.",
+  "notes": "Configurations are generated from the project alone (backends/harmony_one/generate.py): the hub, device and activity screens, Options, key lights and handlers, onto the scaffold or a theme folder. Generated images have booted and run activities on testers' remotes; writing one backs the remote up first. Learning is off: the One can learn, but Afterglow does not drive it yet.",
   "schema": "afterglow-remote/1",
   "vocabulary": {
     "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; the scaffold carries an icon for each activity type. The keys are the One's 37 command keys - Activities, Off and Help belong to the remote's own flow.",

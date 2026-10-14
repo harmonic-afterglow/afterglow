@@ -58,8 +58,8 @@ class RemoteBar(QFrame):
         self.status.setText(f"<span style='color:{colour}'>· {profile.status}</span>")
         self.note.setText(
             "" if profile.verified else
-            "Configurations are written through a test write that backs the remote up "
-            "first and checks the result.")
+            "Experimental: writing saves what is on the remote first, so it can be put "
+            "back.")
 
 
 class ChooseRemoteDialog(QDialog):
