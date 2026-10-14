@@ -282,9 +282,11 @@ def _gen_device(spec):
         # "Number0".."Number9" emits an empty block and loses the number pad.
         ncfg = nspec if isinstance(nspec, dict) else {}
         digs = ""
+        found = 0
         for digit in range(10):
             name = digit_command(spec, digit)
             if name:
+                found += 1
                 # <Digit value="N"> - an attribute, as every real config writes it.
                 digs += (f'<Digit value="{digit}">'
                          + _a_send(did, name, "Press") + "</Digit>")
@@ -300,10 +302,12 @@ def _gen_device(spec):
             steps = ncfg.get(key)
             if steps:
                 extra_xml += f"<{tag}>{_input_steps(steps)}</{tag}>"
-        # No digit commands, no number pad. `Numeric.lua` walks every `<FirstDigit>`'s
+        # All ten digits, or no number pad. `Numeric.lua` walks every `<FirstDigit>`'s
         # digits without checking there are any, so an empty one stopped an 1100 loading
-        # its configuration (a Roku, marked numeric, has no digit buttons).
-        if digs:
+        # its configuration (a Roku, marked numeric, has no digit buttons); and it looks
+        # each digit of a channel up without checking it is there, so an amplifier with
+        # buttons 1-4 threw on channel 7.
+        if found == 10:
             numeric_xml = (f"<Numeric><FixedDigits>{ncfg.get('fixed', 0)}</FixedDigits>"
                            f"{extra_xml}<FirstDigit>{digs}</FirstDigit>{fin_xml}</Numeric>")
 

@@ -312,13 +312,14 @@ def test_the_favourite_confirm_key_survives_a_round_trip():
     assert commands == ["1", "0", "1", "Select"]
 
 
-def test_a_numeric_device_with_no_digit_keys_gets_no_number_pad(build):
+@pytest.mark.parametrize("names", [["Home", "Select"], ["1", "2", "3", "4", "Select"]])
+def test_a_numeric_device_without_all_ten_digit_keys_gets_no_number_pad(build, names):
     """A Roku is marked numeric and has no digit buttons. Its `<Numeric>` came out with
     an empty `<FirstDigit/>`, which `Numeric.lua` (the 900's and the 1100's) walks
     without checking: an 1100 could not load the configuration, and froze on starting
-    an activity."""
+    an activity. It looks each digit of a channel up unchecked too, so buttons 1-4 alone
+    threw on channel 7."""
     from afterglow import ir_signal
-    names = ["Home", "Select"]
     roku = {"schema": "afterglow-project-device/1", "id": "3", "label": "Roku",
             "type": "DvdCd", "mfr": "Roku", "model": "Ultra", "numeric": True,
             "commands": [[name, name, "", "", None] for name in names],
