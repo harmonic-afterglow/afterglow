@@ -18,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Build config failed on Windows with "[Errno 9] Bad file descriptor"** once a build
   had printed enough progress: the Windows application has no console to print to. That
   output is now dropped, and a failed build writes its details to the log file.
+- **A Harmony 1100 froze when an activity started** if a device was set to dial numbers
+  but had no number buttons, like a Roku. The configuration carried an empty number pad,
+  which the remote's own scripts cannot read, so it never loaded. A device with no digit
+  buttons no longer gets one; this affected the Harmony 900 too.
 - **Saving did nothing but say "File not found" when Windows Security blocked it.**
   Windows' ransomware protection (Controlled folder access) can stop programs it does
   not know from saving in Documents, where Afterglow keeps its files. Afterglow now

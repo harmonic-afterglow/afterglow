@@ -312,6 +312,25 @@ def test_the_favourite_confirm_key_survives_a_round_trip():
     assert commands == ["1", "0", "1", "Select"]
 
 
+def test_a_numeric_device_with_no_digit_keys_gets_no_number_pad(build):
+    """A Roku is marked numeric and has no digit buttons. Its `<Numeric>` came out with
+    an empty `<FirstDigit/>`, which `Numeric.lua` (the 900's and the 1100's) walks
+    without checking: an 1100 could not load the configuration, and froze on starting
+    an activity."""
+    from afterglow import ir_signal
+    names = ["Home", "Select"]
+    roku = {"schema": "afterglow-project-device/1", "id": "3", "label": "Roku",
+            "type": "DvdCd", "mfr": "Roku", "model": "Ultra", "numeric": True,
+            "commands": [[name, name, "", "", None] for name in names],
+            "signals": {name: ir_signal.protocol_signal(
+                "nec1", {"address": 7, "command": n}) for n, name in enumerate(names)}}
+    config = build({"settings": {}, "activities": [], "devices": [roku]})
+    xml = ET.fromstring(entries_of(config).read("userconfig/UserConfiguration.xml"))
+    device = next(d for d in xml.iter("Device") if d.findtext("Id") == "3")
+    assert device.find("Numeric") is None
+    assert all(len(block) for block in xml.iter("FirstDigit"))
+
+
 # parts of the format nothing here models
 def test_a_numeric_range_state_survives():
     """A state may be a numeric RANGE rather than a list of values - `MinValue` /
