@@ -183,8 +183,18 @@ class TestWriteDialog(QDialog):
                   self._verified)
 
     def _verified(self, data):
+        comparison = data.get("readback_comparison")
+        if comparison is None:
+            self.log.append(
+                "Verified: the remote holds exactly the configuration that was written.")
+        else:
+            self.log.append(
+                f"Verified: all {comparison['same']} files that were written are on the "
+                "remote, unchanged.")
+            if comparison["kept_by_remote"]:
+                self.log.append("The remote also kept its own: "
+                                + ", ".join(comparison["kept_by_remote"]))
         self.log.append(
-            "Verified: the remote holds exactly the configuration that was written.\n"
             "Now check it on the remote itself - does it start, do the screens and "
             "buttons work? Please report what you find. If anything is wrong, press "
             "Restore my backup.")

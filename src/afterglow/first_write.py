@@ -244,12 +244,28 @@ def readback(report, out, *, remote_factory=concord.Remote) -> dict:
         if problems:
             raise FirstWriteError("readback remote differs: " + "; ".join(problems))
         remote.save_config(output)
-    readback_info, _payload = _artifact(output, profile)
+    readback_info, payload = _artifact(output, profile)
+    comparison = None
     if readback_info["payload_sha256"] != data["artifact"]["payload_sha256"]:
-        raise FirstWriteError(
-            "readback payload differs from the artifact; preserve all files and do not retry")
+        # A remote that unpacks what it is sent and packs it up again when read (the
+        # 900 and 1100) never hands the same bytes back; its backend says whether
+        # everything written is there.
+        comparer = getattr(backends.for_profile(profile), "compare_readback", None)
+        if callable(comparer):
+            _written_info, written = _artifact(Path(data["artifact"]["path"]), profile)
+            comparison = comparer(written, payload, profile)
+        if comparison is None or not comparison["matches"]:
+            data["readback_mismatch"] = {"path": str(output), "comparison": comparison}
+            _write_json(report_path, data)
+            details = "" if comparison is None else "".join(
+                f"; {key}: {', '.join(comparison[key])}"
+                for key in ("missing", "different") if comparison[key])
+            raise FirstWriteError(
+                "readback payload differs from the artifact" + details
+                + "; preserve all files and do not retry")
     data["status"] = "readback-verified"
     data["readback"] = readback_info
+    data["readback_comparison"] = comparison
     data["readback_at"] = datetime.now(timezone.utc).isoformat()
     _write_json(report_path, data)
     return data

@@ -628,17 +628,18 @@ def validate_payload(payload: bytes, profile) -> dict:
     }
 
 
+def _entries(payload: bytes) -> dict[str, str]:
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        return {
+            name: hashlib.sha256(archive.read(name)).hexdigest()
+            for name in archive.namelist()
+            if not name.endswith("/")
+        }
+
+
 def compare_payloads(recovery: bytes, candidate: bytes, _profile) -> dict:
     """File-level change report for review before a first hardware write."""
-    def entries(payload):
-        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-            return {
-                name: hashlib.sha256(archive.read(name)).hexdigest()
-                for name in archive.namelist()
-                if not name.endswith("/")
-            }
-
-    before, after = entries(recovery), entries(candidate)
+    before, after = _entries(recovery), _entries(candidate)
     return {
         "kind": "pk-entry-sha256",
         "added": sorted(after.keys() - before.keys()),
@@ -647,4 +648,27 @@ def compare_payloads(recovery: bytes, candidate: bytes, _profile) -> dict:
             name for name in before.keys() & after.keys() if before[name] != after[name]),
         "unchanged": sum(
             before[name] == after[name] for name in before.keys() & after.keys()),
+    }
+
+
+def compare_readback(written: bytes, readback: bytes, _profile) -> dict:
+    """Whether a remote read back after a write holds every file that was written.
+
+    The remote is never read back byte for byte. It unpacks the configuration into its
+    own filesystem (`.preinstall` clears only `userconfig/`) and a read zips that
+    filesystem up again: a new archive, holding the files written plus those the remote
+    keeps itself - preferences under `platformconfig/` that the build left out, and
+    `userconfig/RamInitialise.bin`. Those extra files are listed, not failed; a written
+    file that is missing or different is a failed write.
+    """
+    sent, held = _entries(written), _entries(readback)
+    missing = sorted(sent.keys() - held.keys())
+    different = sorted(name for name in sent.keys() & held.keys() if sent[name] != held[name])
+    return {
+        "kind": "pk-entry-sha256",
+        "matches": not missing and not different,
+        "missing": missing,
+        "different": different,
+        "kept_by_remote": sorted(held.keys() - sent.keys()),
+        "same": len(sent) - len(missing) - len(different),
     }
