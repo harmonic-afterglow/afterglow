@@ -18,6 +18,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Build config failed on Windows with "[Errno 9] Bad file descriptor"** once a build
   had printed enough progress: the Windows application has no console to print to. That
   output is now dropped, and a failed build writes its details to the log file.
+- **Saving did nothing but say "File not found" when Windows Security blocked it.**
+  Windows' ransomware protection (Controlled folder access) can stop programs it does
+  not know from saving in Documents, where Afterglow keeps its files. Afterglow now
+  checks when it starts, says so, and shows how to allow it, with a button that opens
+  the Windows Security page.
 - **A finished build looked like it had stopped** at "Packing -> ...". The log now says
   when the configuration is built and ready to write.
 
