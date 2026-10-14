@@ -507,6 +507,42 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         event.accept()
+def _folder_access_check(parent) -> None:
+    """Say why nothing can be saved, when Windows Security is the reason.
+
+    Checked on every start, not once: the block comes and goes with a setting outside
+    Afterglow, and while it is on, every save fails with a message that names a missing
+    file rather than the protection.
+    """
+    from .. import folder_access
+    folder = folder_access.blocked_folder()
+    while folder is not None:
+        box = QMessageBox(parent)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Afterglow cannot save its files")
+        box.setText(f"Windows is not letting Afterglow save in\n{folder}")
+        box.setInformativeText(
+            "This is usually Windows Security's ransomware protection (Controlled "
+            "folder access), which guards Documents from programs it does not know. "
+            "Until Afterglow is allowed, saving a project, a backup or a built "
+            "configuration there fails - sometimes as \"File not found\".\n\n"
+            "To allow it: Open Windows Security, choose \"Allow an app through "
+            "Controlled folder access\", then Add an allowed app and pick "
+            f"{Path(sys.executable).name} in\n{Path(sys.executable).parent}\n\n"
+            "Or click Allow on the Windows Security notice when it appears. Then press "
+            "Try again.")
+        open_settings = box.addButton(
+            "Open Windows Security", QMessageBox.ButtonRole.ActionRole)
+        retry = box.addButton("Try again", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(QMessageBox.StandardButton.Close)
+        box.exec()
+        if box.clickedButton() is open_settings:
+            QDesktopServices.openUrl(QUrl(folder_access.RANSOMWARE_PROTECTION))
+        elif box.clickedButton() is not retry:
+            return
+        folder = folder_access.blocked_folder()
+
+
 def _driver_reminder(parent) -> None:
     """Say once, where the platform needs it, that a driver must be installed first.
 
@@ -838,6 +874,7 @@ def main():
     win = MainWindow()
     win.show()
     _join_title_bar(win)
+    _folder_access_check(win)
     _driver_reminder(win)
     _usb_link_offer(win)
     from .default_remote import ask_at_first_start
