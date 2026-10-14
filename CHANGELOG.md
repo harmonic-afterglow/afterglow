@@ -22,6 +22,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   but had no number buttons, like a Roku. The configuration carried an empty number pad,
   which the remote's own scripts cannot read, so it never loaded. A device with no digit
   buttons no longer gets one; this affected the Harmony 900 too.
+- **Devices from the Logitech database came in as the wrong kind.** Tape decks were
+  added as amplifiers, cable boxes as game consoles, set-top boxes as PVRs and monitors
+  as computers, and every amplifier, satellite receiver, projector and AV switch as a
+  home appliance. They now take the type Logitech gave them; on a Harmony 900 or 1100
+  that decides how the remote treats the device. Devices already in a project keep the
+  type they have.
 - **Saving did nothing but say "File not found" when Windows Security blocked it.**
   Windows' ransomware protection (Controlled folder access) can stop programs it does
   not know from saving in Documents, where Afterglow keeps its files. Afterglow now
