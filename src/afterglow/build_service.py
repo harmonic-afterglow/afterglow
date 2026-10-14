@@ -57,4 +57,8 @@ class ConfigBuildService:
             find_scaffold=find_scaffold,
             find_theme=themes.path,
         )
-        return backend.build_project(project, profile, context)
+        result = backend.build_project(project, profile, context)
+        # Packing is the last step a backend reports; without this the log stops at
+        # "Packing -> ..." and a finished build reads as one that hung.
+        self.log(f"Built {Path(result.artifact).name}. It is ready to write.")
+        return result

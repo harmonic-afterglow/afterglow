@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **Test write on the Harmony 1100 failed its read-back** with "readback payload differs
+  from the artifact" after a good write. The 1100 unpacks a configuration onto its own
+  storage and packs it up again when it is read, keeping its own volume and other
+  preferences alongside, so it never hands back the same bytes. Read back now checks
+  that every file written is on the remote unchanged, and lists the files the remote
+  keeps itself. If yours stopped here, open **Resume test write…** and press **Read back
+  and verify** again.
+- **A finished build looked like it had stopped** at "Packing -> ...". The log now says
+  when the configuration is built and ready to write.
+
 ## [0.3.0-beta.2.1] - 2026-10-14
 
 A fix for beta 2: Test write on the Harmony One stopped after its backup.

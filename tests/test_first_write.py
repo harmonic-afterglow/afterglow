@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import io
 import json
 from pathlib import Path
+import re
 import shutil
+import zipfile
 
 import pytest
 
@@ -137,6 +140,71 @@ def test_apply_then_readback_closes_the_report(tmp_path, build, monkeypatch):
     assert verified["status"] == "readback-verified"
     assert (verified["readback"]["payload_sha256"]
             == verified["artifact"]["payload_sha256"])
+
+
+def _repacked(artifact, target, *, add=(), change=()):
+    """`artifact` as a 900 or 1100 hands it back: unpacked onto its filesystem, then
+    zipped up again - new bytes, with files it keeps itself (`add`) alongside."""
+    raw = Path(artifact).read_bytes()
+    header, start, size, _checksum = ezhex._split(raw)
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(raw[start:start + size])) as source, \
+            zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as remote:
+        for name in reversed(source.namelist()):
+            data = source.read(name)
+            remote.writestr(name, data + b"<!-- -->" if name in change else data)
+        for name in add:
+            remote.writestr(name, b"\x01")
+    payload = out.getvalue()
+    header = re.sub(rb"<BINARYDATASIZE>\d+", b"<BINARYDATASIZE>%d" % len(payload), header)
+    header = re.sub(rb"<CHECKSUM>\d+", b"<CHECKSUM>%d" % ezhex.checksum(payload), header)
+    Path(target).write_bytes(header + payload)
+    return target
+
+
+def _read_back_from(tmp_path, prepared, writes, repacked):
+    identity = {field: prepared["identity"].get(field)
+                for field in first_write.IDENTITY_FIELDS}
+    identity.update(model="Harmony 900", can_read=True, can_write=True)
+    return lambda: FakeRemote(repacked, identity, writes)
+
+
+KEPT = ("platformconfig/system_volume.dat", "userconfig/RamInitialise.bin")
+
+
+def test_a_remote_that_packs_its_files_again_is_verified_by_what_it_holds(
+        tmp_path, build, monkeypatch):
+    artifact, _profile, _identity_data, writes, factory, report, prepared = \
+        _prepared(tmp_path, build, monkeypatch)
+    first_write.apply(report, ask=lambda _p: prepared["confirmation"], remote_factory=factory)
+    repacked = _repacked(artifact, tmp_path / "remote.ezhex", add=KEPT)
+
+    verified = first_write.readback(
+        report, tmp_path / "readback.ezhex",
+        remote_factory=_read_back_from(tmp_path, prepared, writes, repacked))
+
+    assert verified["status"] == "readback-verified"
+    assert verified["readback"]["payload_sha256"] != verified["artifact"]["payload_sha256"]
+    assert verified["readback_comparison"]["matches"] is True
+    assert verified["readback_comparison"]["kept_by_remote"] == list(KEPT)
+
+
+def test_a_written_file_the_remote_does_not_hold_fails_the_readback(
+        tmp_path, build, monkeypatch):
+    artifact, _profile, _identity_data, writes, factory, report, prepared = \
+        _prepared(tmp_path, build, monkeypatch)
+    first_write.apply(report, ask=lambda _p: prepared["confirmation"], remote_factory=factory)
+    repacked = _repacked(artifact, tmp_path / "remote.ezhex", add=KEPT,
+                         change=("userconfig/UserConfiguration.xml",))
+
+    with pytest.raises(first_write.FirstWriteError,
+                       match="different: userconfig/UserConfiguration.xml"):
+        first_write.readback(
+            report, tmp_path / "readback.ezhex",
+            remote_factory=_read_back_from(tmp_path, prepared, writes, repacked))
+    data = json.loads(report.read_text())
+    assert data["status"] == "written-awaiting-readback"
+    assert data["readback_mismatch"]["comparison"]["matches"] is False
 
 
 def test_uncertain_write_is_never_automatically_retried(tmp_path, build, monkeypatch):
