@@ -33,6 +33,16 @@ def _row_command(selection) -> str | None:
     return selection if isinstance(selection, str) else None
 
 
+
+def _first_command(steps) -> str | None:
+    """The command a step list sends first: a name, or a held `{"command": ...}`."""
+    for step in steps or []:
+        if isinstance(step, str):
+            return step
+        if isinstance(step, dict) and isinstance(step.get("command"), str):
+            return step["command"]
+    return None
+
 class DeviceInputsPage(QWizardPage):
     def __init__(self, existing: dict, commands, parent=None):
         """`commands` returns the device's command names as they are right now."""
@@ -176,8 +186,14 @@ class DeviceInputsPage(QWizardPage):
         for name in cycle.get("values") or ([pair[0] for pair in inputs]
                                               if mode == CYCLE else []):
             self._append_value(name)
-        self._select(self.next_combo, (cycle.get("next") or [None])[0])
-        self._select(self.prev_combo, (cycle.get("previous") or [None])[0])
+        # A step may be more than a command: the archive starts a Panasonic TV's with a
+        # one-second wait (`[{"delay_ms": 1000}, "TvVideo"]`), and putting that dict in
+        # the list crashed Add Device. The list shows the command; the steps are kept
+        # as they came unless another command is chosen.
+        self._cycle_steps = {key: list(cycle.get(key) or [])
+                             for key in ("next", "previous")}
+        self._select(self.next_combo, _first_command(self._cycle_steps["next"]))
+        self._select(self.prev_combo, _first_command(self._cycle_steps["previous"]))
         self.cycle_delay.setValue(int(cycle.get("delay_ms") or 0))
 
         numeric = device.get("numeric")
@@ -331,10 +347,12 @@ class DeviceInputsPage(QWizardPage):
         out = {"values": [self.values.item(i).text().strip()
                           for i in range(self.values.count())
                           if self.values.item(i).text().strip()]}
-        if self.next_combo.currentData():
-            out["next"] = [self.next_combo.currentData()]
-        if self.prev_combo.currentData():
-            out["previous"] = [self.prev_combo.currentData()]
+        steps = getattr(self, "_cycle_steps", {})
+        for key, combo in (("next", self.next_combo), ("previous", self.prev_combo)):
+            command = combo.currentData()
+            if command:
+                kept = steps.get(key) or []
+                out[key] = kept if _first_command(kept) == command else [command]
         if self.cycle_delay.value():
             out["delay_ms"] = self.cycle_delay.value()
         return out
