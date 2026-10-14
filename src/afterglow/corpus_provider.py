@@ -61,27 +61,60 @@ class Model:
         return self.name
 
 
-# The archive documents only numeric ids. These are the stable, common categories needed
-# for initial authoring; an unknown category stays editable on the wizard's Identity page.
+# Logitech's device-type numbers, by the name its own service gave each one
+# (`DeviceTypeDisplayName`, beside `DeviceType` in every record of the raw device-feature
+# capture), onto the 900/1100's types. This table was once filled in from the numbers'
+# order and was wrong on seven of them: tape decks came in as amplifiers, cable boxes as
+# game consoles, set-top boxes as PVRs, monitors as computers - and every amplifier,
+# satellite receiver, projector and AV switch as a home appliance, with the remote
+# treating each as what it was called.
+#
+# The newer kinds have no type of their own on these remotes, so they take the one
+# Logitech wrote for them in real configurations: a Roku is `DvdCd`, an Apple TV
+# `Computer`. Anything else unknown stays editable on the wizard's naming page.
 DEVICE_TYPES = {
-    1: "Television",
-    2: "Vcr",
-    3: "Cd",
-    4: "DvdCd",
-    5: "Receiver",
-    6: "Amplifier",
-    8: "Laserdisc",
-    9: "Minidisc",
-    12: "Pvr",
-    13: "Computer",
-    14: "GameConsole",
-    18: "MediaCenterPC",
-    35: "MediaCenterPC",
-    # 10,644 catalogue devices are air conditioners and heat pumps, and the remote has a
-    # `ClimateControl` type for exactly that. They were arriving as `HomeAppliance`, the
-    # fallback for a type nobody had mapped, which is what the remote uses to decide how
-    # the device is presented.
-    45: "ClimateControl",
+    1: "Television",            # Television
+    2: "Vcr",                   # VCR
+    3: "Cd",                    # CDPlayer
+    4: "DvdCd",                 # DVD
+    5: "Receiver",              # StereoReceiver
+    6: "Cassette",              # TapeDeck
+    7: "Projector",             # Projector
+    8: "Computer",              # Computer
+    9: "GameConsole",           # GameConsole
+    10: "Laptop",               # Laptop
+    11: "CdJukebox",            # CDJukebox
+    12: "SetTopBox",            # DigitalSetTopBox
+    13: "Monitor",              # Monitor
+    14: "CableBox",             # CableBox
+    15: "TvVcr",                # TVVCR
+    16: "Satellite",            # Satellite
+    18: "Pvr",                  # PVR
+    19: "Amplifier",            # Amplifier
+    20: "Dat",                  # DAT
+    21: "CdRadioCassette",      # MiniSystemCDRadioCassette
+    22: "DvdCdRadio",           # MiniSystemDvdCDRadio
+    23: "DvdCdGame",            # GameConsoleWithDvd
+    24: "Light",                # LightController
+    25: "DvdVcr",               # DVDVCR
+    28: "Laserdisc",            # LaserdiscPlayer
+    29: "Minidisc",             # MinidiscPlayer
+    30: "AudioVideoSwitch",     # AudioVideoSwitch
+    32: "DvdVcrReceiver",       # MiniSystemDvdVcrRadio
+    33: "MusicServer",          # DigitalMusicServer
+    34: "DvdRecorder",          # DVDRecorder
+    35: "MediaCenterPC",        # MediaCenterPC
+    36: "RadioTuner",           # RadioTuner
+    37: "TvDvd",                # TVDVD
+    38: "TvDvdVcr",             # TVDVDVCR
+    44: "HomeAppliance",        # HomeAppliance
+    45: "ClimateControl",       # ClimateControl - 10,644 air conditioners and heat pumps
+    47: "DvdrVcr",              # DVDRVCR
+    48: "TvHdd",                # TVHDD
+    51: "Computer",             # AppleTV, as Logitech wrote an Apple TV
+    52: "DvdCd",                # Roku, as Logitech wrote a Roku 2 XS
+    59: "ClimateControl",       # Thermostat
+    63: "DvdCd",                # MediaPlayer, as a Roku
 }
 
 

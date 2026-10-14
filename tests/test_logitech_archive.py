@@ -1296,3 +1296,18 @@ def test_all_sources_merges_offline_catalogues_and_prefers_the_local_one(tmp_pat
     sony = [entry["model"] for entry in merged["Sony"]]
     assert sony == ["KDL-40W2000", "STR-DA5400ES"], sony
     assert merged["Sony"][0] is local[0], "the local template wins the collision"
+
+
+def test_a_catalogue_device_is_the_kind_logitech_says_it_is():
+    """The archive's device-type numbers are Logitech's (`DeviceTypeDisplayName` names
+    them in the raw capture). Filled in by guesswork, tape decks arrived as amplifiers,
+    cable boxes as game consoles and every amplifier as a home appliance - and on a 900
+    or 1100 the type is what the remote treats a device as."""
+    from afterglow import corpus_provider, remotes
+    named = {6: "Cassette", 8: "Computer", 9: "GameConsole", 12: "SetTopBox",
+             13: "Monitor", 14: "CableBox", 16: "Satellite", 18: "Pvr", 19: "Amplifier",
+             52: "DvdCd"}
+    assert {k: corpus_provider.DEVICE_TYPES[k] for k in named} == named
+    for remote in ("harmony-900", "harmony-1100"):
+        assert set(corpus_provider.DEVICE_TYPES.values()) <= set(
+            remotes.get(remote).device_types)
