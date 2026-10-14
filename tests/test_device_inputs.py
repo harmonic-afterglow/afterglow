@@ -88,6 +88,22 @@ def test_a_device_that_steps_through_its_inputs_builds_with_them(qapp_or_skip, b
             "<Delay>800</Delay><RelativeActions><NextAction>") in input_state
 
 
+def test_a_step_that_waits_before_its_command_opens_and_keeps_its_wait(qapp_or_skip):
+    """The archive starts a Panasonic CT27SF22's input step with a one-second wait,
+    `[{"delay_ms": 1000}, "Input"]`; listing that dict as a command crashed Add Device.
+    The command is shown, and the wait kept unless another command is picked."""
+    cycle = {"values": ["TV", "Video 1"], "next": [{"delay_ms": 1000}, "Input"]}
+    page = _page(_device(input_cycle=cycle))
+    assert page.next_combo.currentData() == "Input"
+    page.inputs_touched = True
+    device = _device(input_cycle=cycle)
+    page.apply(device)
+    assert device["input_cycle"]["next"] == [{"delay_ms": 1000}, "Input"]
+    page._select(page.next_combo, "Enter")
+    page.apply(device)
+    assert device["input_cycle"]["next"] == ["Enter"]
+
+
 def test_a_step_command_without_its_inputs_is_refused(qapp_or_skip):
     from afterglow.gui.device_inputs import CYCLE
     page = _page(_device())

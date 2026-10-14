@@ -25,6 +25,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   which the remote's own scripts cannot read, so it never loaded; with only some digit
   buttons, dialling a channel needing a missing one failed. A device gets a number pad
   only when it has all ten digit buttons; this affected the Harmony 900 too.
+- **Adding some devices from the Logitech database crashed Add Device**, among them a
+  Panasonic CT27SF22 TV: a device that steps through its inputs with a wait before the
+  step. The step's command is shown and its wait kept.
 - **Devices from the Logitech database came in as the wrong kind.** Tape decks were
   added as amplifiers, cable boxes as game consoles, set-top boxes as PVRs and monitors
   as computers, and every amplifier, satellite receiver, projector and AV switch as a
