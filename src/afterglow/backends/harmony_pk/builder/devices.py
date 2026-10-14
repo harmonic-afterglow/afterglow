@@ -300,8 +300,12 @@ def _gen_device(spec):
             steps = ncfg.get(key)
             if steps:
                 extra_xml += f"<{tag}>{_input_steps(steps)}</{tag}>"
-        numeric_xml = (f"<Numeric><FixedDigits>{ncfg.get('fixed', 0)}</FixedDigits>"
-                       f"{extra_xml}<FirstDigit>{digs}</FirstDigit>{fin_xml}</Numeric>")
+        # No digit commands, no number pad. `Numeric.lua` walks every `<FirstDigit>`'s
+        # digits without checking there are any, so an empty one stopped an 1100 loading
+        # its configuration (a Roku, marked numeric, has no digit buttons).
+        if digs:
+            numeric_xml = (f"<Numeric><FixedDigits>{ncfg.get('fixed', 0)}</FixedDigits>"
+                           f"{extra_xml}<FirstDigit>{digs}</FirstDigit>{fin_xml}</Numeric>")
 
     # AlwaysOn has three states on the remote: true (never powered by an activity), false
     # (powered by them) and absent (never touched, which `Activity.lua` treats unlike
