@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **Test write on the Harmony One stopped after its backup** with "backend 'harmony-one'
+  cannot produce a change report", so Write was never offered. It now says which parts of
+  the configuration the write changes, and goes on to Write and Verify.
+
 ## [0.3.0-beta.2] - 2026-10-14
 
 What beta 1's testers ran into, fixed, and the editors made simpler to follow. Adding a

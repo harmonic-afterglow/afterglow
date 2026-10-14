@@ -30,6 +30,27 @@ def validate_payload(payload: bytes, _profile=None) -> dict:
     return gspm.validate(payload)
 
 
+def compare_payloads(recovery: bytes, candidate: bytes, _profile) -> dict:
+    """What a write changes, section by section, for review before Test write writes it
+    (first_write.py). Test write asked every backend for this and the One had none, so
+    its backup step ended in "cannot produce a change report" and never offered Write."""
+    def sections(payload):
+        return {f"section {index}": hashlib.sha256(payload[start:end]).hexdigest()
+                for index, (start, end) in gspm.section_ranges(payload).items()}
+
+    before, after = sections(recovery), sections(candidate)
+    return {
+        "kind": "gspm-section-sha256",
+        "size before": len(recovery),
+        "size after": len(candidate),
+        "added": sorted(after.keys() - before.keys()),
+        "removed": sorted(before.keys() - after.keys()),
+        "changed": sorted(name for name in before.keys() & after.keys()
+                          if before[name] != after[name]),
+        "unchanged": sum(before[name] == after[name] for name in before.keys() & after.keys()),
+    }
+
+
 def import_project(source, profile, context) -> ImportResult:
     """Read an image back as a project (importing.py): its devices with their commands,
     names, power, inputs and keys, and its activities. The image itself is kept as

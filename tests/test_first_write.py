@@ -228,3 +228,59 @@ def test_a_tampered_recovery_is_not_written(tmp_path, build, monkeypatch):
         first_write.restore(report, ask=lambda _p: pytest.fail("must not prompt"),
                             remote_factory=factory)
     assert writes == [Path(prepared["artifact"]["path"]).resolve()]
+
+
+def _one_build(tmp_path, label, name):
+    """A Harmony One configuration built from one synthetic device named `label`."""
+    import contextlib
+    import io
+
+    from afterglow.build_service import ConfigBuildService
+    project = _project()
+    project["devices"][0]["label"] = label
+    out = tmp_path / name
+    project["settings"] = {"remote": "harmony-one", "out_file": str(out)}
+    with contextlib.redirect_stdout(io.StringIO()):
+        ConfigBuildService(Path(__file__).resolve().parents[1], lambda _m: None).build(
+            project)
+    return out
+
+
+class OneRemote(FakeRemote):
+    """Reads back what was last written to it, as a remote does."""
+
+    def save_config(self, target):
+        shutil.copyfile(self.writes[-1] if self.writes else self.source, target)
+
+
+def test_test_write_runs_through_on_the_harmony_one(tmp_path):
+    """Its backup step ended in "backend 'harmony-one' cannot produce a change report":
+    the One had nothing to say what a write changes, so Write was never offered."""
+    on_remote = _one_build(tmp_path, "Old receiver", "on-remote.ezhex")
+    artifact = _one_build(tmp_path, "New receiver", "new.ezhex")
+    header, *_rest = ezhex._split(Path(artifact).read_bytes())
+    identity = {**remotes.identity_of(header), "model": "Harmony One",
+                "can_read": True, "can_write": True}
+    writes = []
+    factory = lambda: OneRemote(on_remote, identity, writes)
+    report = tmp_path / "first-write.json"
+
+    prepared = first_write.prepare(artifact, tmp_path / "backup.ezhex", report,
+                                   remote_factory=factory)
+    changes = prepared["changes"]
+    assert changes["kind"] == "gspm-section-sha256"
+    assert changes["changed"]                       # the device's name is in it somewhere
+    written = first_write.apply(report, ask=lambda _p: prepared["confirmation"],
+                                remote_factory=factory)
+    assert written["status"] == "written-awaiting-readback"
+    verified = first_write.readback(report, tmp_path / "readback.ezhex",
+                                    remote_factory=factory)
+    assert verified["status"] == "readback-verified"
+
+
+def test_every_remote_written_by_test_write_can_say_what_a_write_changes():
+    from afterglow import backends
+    for profile in remotes.load_all():
+        if profile.status == remotes.EXPERIMENTAL:
+            assert callable(getattr(backends.for_profile(profile), "compare_payloads",
+                                    None)), profile.id
