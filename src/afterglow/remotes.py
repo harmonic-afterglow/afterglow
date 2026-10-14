@@ -366,12 +366,14 @@ class RemoteProfile:
         return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", key)
 
     def require_writable(self) -> None:
-        if not self.verified:
+        """Whatever can be built can be written. An experimental remote is written the
+        same way as a verified one, after a warning and a backup the interface takes
+        first (UpdateTab.flash): a separate test-write flow with typed phrases and
+        byte-exact read-back checks only failed good writes, and stopped no one."""
+        if not self.buildable:
             raise NotWritable(
-                f"{self.model} (skin {self.skin}) is {self.status}: no config has ever been "
-                f"flashed to one, so Afterglow will not write for it. Reading and inspecting "
-                f"work. To change this, flash a config built for it by hand, confirm the "
-                f"remote boots, then set \"status\": \"verified\" in its profile."
+                f"{self.model} (skin {self.skin}) is {self.status}: its configurations "
+                "can be read and inspected, but Afterglow does not build or write them."
             )
 
     def require_buildable(self) -> None:

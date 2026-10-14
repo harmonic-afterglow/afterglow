@@ -6,15 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **The Harmony 1100 and One are written like the 900.** Test write is gone: its
+  typed phrases and read-back checks failed writes that had worked - a remote changes
+  its own settings files after a write - and protected no one. **Flash to Remote** now
+  says the remote's support is experimental, saves what is on the remote to the
+  `Dumps` folder, and only then writes; if the backup cannot be saved, nothing is
+  written. Put a backup back with **Settings › Flash a Configuration File**.
+
 ### Fixed
 
-- **Test write on the Harmony 1100 failed its read-back** with "readback payload differs
-  from the artifact" after a good write. The 1100 unpacks a configuration onto its own
-  storage and packs it up again when it is read, keeping its own volume and other
-  preferences alongside, so it never hands back the same bytes. Read back now checks
-  that every file written is on the remote unchanged, and lists the files the remote
-  keeps itself. If yours stopped here, open **Resume test write…** and press **Read back
-  and verify** again.
 - **Build config failed on Windows with "[Errno 9] Bad file descriptor"** once a build
   had printed enough progress: the Windows application has no console to print to. That
   output is now dropped, and a failed build writes its details to the log file.

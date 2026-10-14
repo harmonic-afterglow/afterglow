@@ -16,7 +16,7 @@ from .project import (mark_device_new, new_device_ids)
 
 from .activity_wizard import ActivityEditor, ActivityWizard
 from .icons import pixmap as type_pixmap
-from .constants import user_files, user_folder
+from .constants import user_folder
 from .device_wizard import DeviceEditor, DeviceWizard
 from .rf_routing import rf_label, rf_set
 from .drag_rows import RowDragger, grip_pixmap, moved_list
@@ -336,7 +336,7 @@ def remote_profiles():
 
     A read-only profile is left out - its identity is known but nothing can be built
     for it. An experimental one is offered, labelled, because building is how it gets
-    tested; writing it goes through the Flash tab's test write rather than a plain flash.
+    tested; writing one backs the remote up first.
     """
     from ..remotes import load_all
     return [p for p in load_all() if p.buildable]
@@ -627,10 +627,6 @@ class UpdateTab(QWidget):
         self.flash_btn = QPushButton("Flash to Remote")
         self.read_btn = QPushButton("Read from Remote")
         self.check_btn = QPushButton("Check Connection")
-        self.resume_btn = QPushButton("Resume test write…")
-        self.resume_btn.setToolTip(
-            "Open an earlier test write - to read it back, or to restore its backup")
-        self.resume_btn.clicked.connect(self.resume_test_write)
         self.flash_btn.setEnabled(False)
         self.build_btn.clicked.connect(self.build)
         self.flash_btn.clicked.connect(self.flash)
@@ -639,14 +635,13 @@ class UpdateTab(QWidget):
         for button in (self.build_btn, self.flash_btn, self.read_btn, self.check_btn):
             btn_row.addWidget(button)
         btn_row.addStretch()
-        btn_row.addWidget(self.resume_btn)
         layout.addLayout(btn_row)
 
         # Everything that touches the remote needs libconcord. Say so once, here,
         # rather than failing at the moment the user presses a button.
         from .. import concord
         if not concord.available():
-            for button in (self.flash_btn, self.read_btn, self.check_btn, self.resume_btn):
+            for button in (self.flash_btn, self.read_btn, self.check_btn):
                 button.setEnabled(False)
                 button.setToolTip("libconcord is not installed - see the README")
             note = QLabel("libconcord was not found, so the remote cannot be reached. "
@@ -686,13 +681,11 @@ class UpdateTab(QWidget):
         return project_remote(self.project)
 
     def _name_the_write(self):
-        """An experimental remote is written through a test write, and the button says so."""
+        """An experimental remote is written the same way, backed up first."""
         verified = self._profile().verified
-        self.flash_btn.setText("Flash to Remote" if verified else "Test Write…")
         self.flash_btn.setToolTip(
-            "" if verified else "This remote's support is experimental: back it up, "
-            "write, read back and verify, with a way to restore the backup")
-        self.resume_btn.setVisible(not verified)
+            "" if verified else "This remote's support is experimental: what is on it is "
+            "saved to the Dumps folder before anything is written")
 
     def refresh(self):
         """The project's remote changed: a file built for the previous one is not this
@@ -855,8 +848,7 @@ class UpdateTab(QWidget):
             return
         profile = self._profile()
         if not profile.verified:
-            from .test_write import TestWriteDialog, new_attempt
-            TestWriteDialog(new_attempt(user_files(), profile.id), out_path, self).exec()
+            self._flash_experimental(profile, out_path)
             return
         answer = QMessageBox.question(
             self, "Flash to Remote",
@@ -871,15 +863,30 @@ class UpdateTab(QWidget):
         self.log_box.clear()
         self._run("write", path=str(out_path)).start()
 
-    def resume_test_write(self):
-        from .test_write import REPORT, TestWriteDialog
-        start = user_files() / "test-writes"
-        folder = QFileDialog.getExistingDirectory(
-            self, "Open a test write", str(start if start.is_dir() else user_files()))
-        if not folder:
+    def _flash_experimental(self, profile, out_path):
+        """Warn, then write - always backing the remote up first.
+
+        A remote's own safe mode recovers it from a configuration that does not work, and
+        the backup puts it back as it was. Asking for more than one confirmation, or
+        checking a read-back byte for byte, stopped no one and failed good writes."""
+        from datetime import datetime
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = user_folder("dumps") / f"{profile.id}-before-write-{stamp}.ezhex"
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Flash to Remote")
+        box.setText(f"Write {out_path.name} to the {profile.model}?")
+        box.setInformativeText(
+            f"Support for the {profile.model} is experimental: configurations built "
+            "for it have been tried on only a few remotes, so something may not work.\n\n"
+            "Before writing, Afterglow saves what is on the remote now to\n"
+            f"{backup}\n\n"
+            "If the remote does not work afterwards, put that file back with Settings › "
+            "Flash a Configuration File, and please tell us what happened.")
+        write = box.addButton("Back up and write", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        box.exec()
+        if box.clickedButton() is not write:
             return
-        if not (Path(folder) / REPORT).is_file():
-            QMessageBox.warning(self, "Not a test write",
-                                f"{folder} has no {REPORT} in it.")
-            return
-        TestWriteDialog(Path(folder), None, self).exec()
+        self.log_box.clear()
+        self._run("write", path=str(out_path), backup=str(backup)).start()

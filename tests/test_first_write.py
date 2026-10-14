@@ -231,15 +231,18 @@ def test_uncertain_write_is_never_automatically_retried(tmp_path, build, monkeyp
             remote_factory=factory)
 
 
-def test_normal_write_guard_still_refuses_an_experimental_profile(
+def test_the_normal_write_takes_an_experimental_profile_and_refuses_a_read_only_one(
         tmp_path, build, monkeypatch):
     from afterglow import concord
 
     artifact = build(_project())
     profile = replace(remotes.get("harmony-900"), status=remotes.EXPERIMENTAL)
     monkeypatch.setattr(remotes, "identify", lambda _header: profile)
+    concord.Remote._verify_intended_for(artifact, _identity(artifact))
 
-    with pytest.raises(concord.RemoteError, match="experimental"):
+    profile = replace(profile, status=remotes.READ_ONLY)
+    monkeypatch.setattr(remotes, "identify", lambda _header: profile)
+    with pytest.raises(concord.RemoteError, match="read-only"):
         concord.Remote._verify_intended_for(artifact, _identity(artifact))
 
 

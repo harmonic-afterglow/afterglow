@@ -54,12 +54,11 @@ def test_both_skin_numbers_are_the_harmony_1100():
     assert not remotes.get("harmony-900").matches({"arch": 11, "skin": 62})
 
 
-def test_it_builds_but_is_written_only_through_the_test_write_flow():
-    """Experimental until a build has been flashed to one and booted."""
+def test_it_is_experimental_and_builds_and_writes():
     profile = remotes.get("harmony-1100")
+    assert profile.status == remotes.EXPERIMENTAL
     profile.require_buildable()
-    with pytest.raises(remotes.NotWritable):
-        profile.require_writable()
+    profile.require_writable()
 
 
 def test_its_interface_has_no_rf_and_its_own_settings():

@@ -1,11 +1,11 @@
 # Controlled first write
 
-An experimental profile may build configurations, but the normal flash and
-`Remote.write_config()` remain verified-only. A remote under test is written through this
-separate workflow instead - from the command line below, or from the Flash tab, where an
-experimental remote's button reads **Test Write…** and walks the same four steps (back up,
-write, read back, restore). Each attempt keeps its files and report in its own folder under
-`test-writes/`, and **Resume test write…** reopens one.
+A developer's tool, from the command line only. The application writes an experimental
+remote the way it writes a verified one: Flash to Remote warns that support is
+experimental, saves what is on the remote to `Dumps/` and only then writes. This stricter
+workflow - back up, write, read back and compare, restore - is kept for studying a new
+remote, not for testers: its typed phrases and read-back comparisons failed good writes
+(a remote rewrites its own `platformconfig/` files after a write) and stopped no one.
 
 ```bash
 afterglow-first-write prepare candidate.ezhex \
