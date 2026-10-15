@@ -34,10 +34,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   tab - "Top left: Transport" and so on - drawn at the remote's own 4:3 shape, scaling
   with the window. The fixed buttons are marked as the remote's own pictures; your side
   buttons can be dragged between places by their handles; the top-right corner is one
-  choice of Favourites, Game controller or Discs, as the remote shows only one.
+  choice of Favourites, Game controller or Discs, as the remote shows only one. A side
+  button is drawn as the remote draws it, its label over its icon, and offers only the
+  icons a side bar can show.
+- **Favourites as the remote shows them.** The Favourites page draws its pages beside the
+  list - your logos, or the label where there is none, six a page in each remote's own
+  grid. On the Harmony 1100 favourites are one of the activity's screens, so they are
+  edited there, in the top-right corner, rather than in a section of their own.
 
 ### Fixed
 
+- **Two favourites with the same name did the same thing.** The remote finds a
+  favourite by its number, and a favourite that sends a command or runs a macro used its
+  name as that number - so the second of two alike ran the first's. Each now gets a
+  number of its own.
+- **A Harmony 1100 activity's favourites were never shown** unless it was a PVR
+  activity: the remote shows them only on the top-right screen, which other types gave
+  to Discs or the game pad. An activity with favourites now shows them there, unless
+  that corner was chosen otherwise, and the editor says when they will not show.
 - **Importing a configuration put every command on each device's page.** Logitech's
   configurations show a chosen few - an imported Harmony 900 or 1100 now keeps exactly
   the page it had: the same buttons, in the same places, under the same names, with the

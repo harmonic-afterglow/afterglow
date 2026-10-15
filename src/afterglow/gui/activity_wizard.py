@@ -64,7 +64,7 @@ class ActivityWizard(StepWizard):
 
         self.identity = ActivityIdentityPage(e, remote=profile)
         self.roles = ActivityRolesPage(devices, e)
-        self.favourites = FavouritesPage(devices, e)
+        self.favourites = FavouritesPage(devices, e, remote=profile)
         self.screen_buttons = screen_page(devices, e, profile)
         self.hard_buttons = ActivityHardButtonsPage(devices, e, remote=profile)
         self.startup = ActivityMacrosPage(devices, e)
@@ -112,6 +112,9 @@ class ActivityWizard(StepWizard):
 
     def _collect(self):
         p0, p1, p3, p4 = self.identity, self.roles, self.favourites, self.screen_buttons
+        # a remote whose favourites are one of its activity screens edits them there
+        if getattr(p4, "favourites", None) is not None:
+            p3 = p4.favourites
         p5, p6, p7 = self.hard_buttons, self.startup, self.advanced
         # Everything the activity already said, including the parts no page here shows.
         spec = _carry_activity(self._existing)
@@ -619,7 +622,7 @@ class ActivityEditor(SectionDialog):
 
         self.p0 = ActivityIdentityPage(e, remote=profile)
         self.p1 = ActivityRolesPage(devices, e)
-        self.p3 = FavouritesPage(devices, e)
+        self.p3 = FavouritesPage(devices, e, remote=profile)
         self.p3b = screen_page(devices, e, profile)
         self.p4 = ActivityHardButtonsPage(devices, e, remote=profile)
         self.p5 = ActivityMacrosPage(devices, e)
@@ -663,6 +666,9 @@ class ActivityEditor(SectionDialog):
     def _collect(self):
         p0, p1, p3 = self.p0, self.p1, self.p3
         screen, p4, p5, p6 = self.p3b, self.p4, self.p5, self.p6
+        # a remote whose favourites are one of its activity screens edits them there
+        if getattr(screen, "favourites", None) is not None:
+            p3 = screen.favourites
         # As above: editing an activity must not cost it what this dialog cannot show.
         spec = _carry_activity(self._existing)
         spec.update({

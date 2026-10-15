@@ -217,6 +217,31 @@ def _screen_groups_xml(act, screen_groups):
     return "".join(groups), action_lists
 
 
+def _favourite_numbers(favourites) -> list[str]:
+    """Each favourite's <Number>, one per favourite and no two alike.
+
+    A tap sends the remote only the number (SendChannel), and the remote keeps an
+    activity's favourites in a table by number (Activity.lua), so two alike are one
+    favourite: both run whichever came last. A channel is its own number; a command or
+    a macro has none, so it goes by its label - " 2", " 3" added where that is taken,
+    by another favourite or by a channel of that number. The remote shows the logo or
+    the label, never this.
+    """
+    taken = {str(payload) for _label, kind, payload, _image in favourites
+             if kind == "channel"}
+    out = []
+    for label, kind, payload, _image in favourites:
+        if kind == "channel":
+            out.append(str(payload))
+            continue
+        number, n = str(label), 2
+        while number in taken:
+            number, n = f"{label} {n}", n + 1
+        taken.add(number)
+        out.append(number)
+    return out
+
+
 def _gen_activity(act, by_id, remote=None):
     """An activity = a scene. `act` keys:
         id, label, type?,
@@ -337,13 +362,13 @@ def _gen_activity(act, by_id, remote=None):
     chan_xml = "<ChannelList />"
     if image_buttons:
         entries = []
+        numbers = _favourite_numbers(image_buttons)
         for slot, (label, atype, payload, image) in enumerate(image_buttons):
             # Slot is 1-BASED + contiguous: convertChannelList gap-fills missing slots with blank
             # channels seeding "previous"=0, so slot+1 avoids 7 ghost favorites being prepended.
-            # We use 'label' as both Station and Number text if there's no explicit number
-            number_txt = str(payload) if atype == "channel" else label
+            number_txt = numbers[slot]
             head = (f'<Channel><Station>{esc(label)}</Station><Number>{esc(number_txt)}</Number>'
-                    f'<Slot>{slot + 1}</Slot><Image>{esc(image)}</Image>')
+                    f'<Slot>{slot + 1}</Slot><Image>{esc(image or "")}</Image>')
             
             if atype == "channel":
                 if via_numeric:

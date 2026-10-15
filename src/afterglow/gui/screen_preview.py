@@ -8,7 +8,7 @@ buttons and arrows to turn the page.
 from __future__ import annotations
 
 from ..qt.QtCore import QSize, Qt, pyqtSignal
-from ..qt.QtGui import QIcon
+from ..qt.QtGui import QIcon, QPixmap
 from ..qt.QtWidgets import (QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton,
                              QSizePolicy, QToolButton, QVBoxLayout)
 
@@ -18,8 +18,10 @@ ICON = 32
 
 
 class ScreenPreview(QGroupBox):
-    """Shows `buttons` - each `(text, icon name or None)`, or None for a gap - on pages of
-    `columns` x `rows`. `picked(index)` says which button was clicked."""
+    """Shows `buttons` - each `(text, icon name or None)`, or `(text, None, picture
+    file)` for a picture of the owner's own such as a favourite's logo, or None for a
+    gap - on pages of `columns` x `rows`. `picked(index)` says which button was
+    clicked. A picture is drawn instead of the text, as the remotes draw a logo."""
 
     picked = pyqtSignal(int)
 
@@ -70,6 +72,10 @@ class ScreenPreview(QGroupBox):
             cell.setMaximumSize(QSize(16777215, 16777215))
             cell.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._show()          # a picture fills its cell, whatever size that now is
+
     @property
     def per_page(self) -> int:
         return self.columns * self.rows
@@ -101,11 +107,18 @@ class ScreenPreview(QGroupBox):
             cell.setFlat(index >= len(self.buttons))
             cell.setEnabled(button is not None)
             cell.setChecked(index == self.selected)
-            text, icon = button if button is not None else ("", None)
-            glyph = glyph_pixmap(icon, ICON) if icon else None
-            cell.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull()
-                         else QIcon())
-            cell.setText(text or "")
+            text, icon, *picture = button if button is not None else ("", None)
+            picture = QPixmap(str(picture[0])) if picture and picture[0] else None
+            if picture is not None and not picture.isNull():
+                cell.setIcon(QIcon(picture))
+                cell.setIconSize(cell.size() * 0.9)
+                cell.setText("")
+            else:
+                glyph = glyph_pixmap(icon, ICON) if icon else None
+                cell.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull()
+                             else QIcon())
+                cell.setIconSize(QSize(ICON, ICON))
+                cell.setText(text or "")
             cell.setToolTip("An empty place" if button is None else (text or icon or ""))
         self.count.setText(f"{self.page + 1}/{self.pages()}")
         self.back.setEnabled(self.pages() > 1)

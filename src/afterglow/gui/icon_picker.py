@@ -27,7 +27,7 @@ def available() -> list[str]:
 class IconPicker(QDialog):
     """Pick a button glyph, or clear the current one."""
 
-    def __init__(self, current: str | None = None, parent=None):
+    def __init__(self, current: str | None = None, parent=None, only=None):
         super().__init__(parent)
         self.setWindowTitle("Button icon")
         self.setModal(True)
@@ -36,6 +36,10 @@ class IconPicker(QDialog):
 
         layout = QVBoxLayout(self)
         names = available()
+        if only is not None:
+            # a place that draws from a smaller set than the whole: the 1100's side bars
+            wanted = {name.lower() for name in only}
+            names = [name for name in names if name.lower() in wanted]
         if not names:
             layout.addWidget(QLabel(
                 "No button artwork available.\n\n" + icons.EXTRACT_HINT))
@@ -95,9 +99,11 @@ class IconPicker(QDialog):
         super().accept()
 
 
-def choose(current: str | None = None, parent=None) -> tuple[bool, str | None]:
-    """(the user confirmed, the chosen name or None)."""
-    dialog = IconPicker(current, parent)
+def choose(current: str | None = None, parent=None,
+           only=None) -> tuple[bool, str | None]:
+    """(the user confirmed, the chosen name or None) - of the names in `only`, where a
+    place can draw only some of them."""
+    dialog = IconPicker(current, parent, only=only)
     if dialog.exec():
         return True, dialog.chosen
     return False, current

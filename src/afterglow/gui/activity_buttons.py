@@ -243,9 +243,10 @@ class ScreenButtonDialog(QDialog):
     is asked only what it does."""
 
     def __init__(self, devices, parent=None, participating=None, existing=None,
-                 shows=("label", "icon")):
+                 shows=("label", "icon"), icons=None):
         super().__init__(parent)
         self.setWindowTitle("Command")
+        self.icons = icons              # the icons this place can draw, if not all
         self.resize(520, 460 if "icon" in shows else 360)
         self.result_data = None
         self.shows = tuple(shows)
@@ -299,7 +300,7 @@ class ScreenButtonDialog(QDialog):
         layout.addRow(buttons)
 
     def _choose_icon(self):
-        ok, name = choose_icon(self.icon_name, self)
+        ok, name = choose_icon(self.icon_name, self, only=self.icons)
         if not ok:
             return
         self.icon_name = name or None
@@ -340,9 +341,12 @@ class _ButtonTable(QTableWidget):
 
 
 class FavouritesPage(QWizardPage):
-    """Favourites: logos that tune to something."""
+    """Favourites: logos that tune to something, with their pages drawn as the remote
+    shows them - six a page, in the grid of the activity's own buttons on every remote
+    that has favourites (the 900's app-main.swf, the One's generator, the 1100's
+    favorite-group-1.swf), filled in order with no gaps."""
 
-    def __init__(self, devices, existing, parent=None):
+    def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.devices = devices
         self.setTitle("Favourites")
@@ -352,7 +356,16 @@ class FavouritesPage(QWizardPage):
         layout = QVBoxLayout(self)
 
         self.table = _ButtonTable(["Logo", "Label", "Does"])
-        layout.addWidget(self.table, 1)
+        body = QHBoxLayout()
+        body.addWidget(self.table, 1)
+        grid = remote.screen_grid("activity") if remote is not None else None
+        self.preview = ScreenPreview(*(grid or (2, 3)),
+                                     title=(existing or {}).get("label") or "")
+        self.preview.setVisible(grid is not None)
+        self.preview.picked.connect(self.table.selectRow)
+        self.table.currentCellChanged.connect(lambda row, *_rest: self.preview.select(row))
+        body.addWidget(self.preview, 0, Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(body, 1)
         self.dragger = RowDragger(self.table, self._moved)
 
         row = QHBoxLayout()
@@ -384,6 +397,15 @@ class FavouritesPage(QWizardPage):
             self._add_row(*entry)
         for station, number, image in existing.get("channels", []):
             self._add_row(station, "channel", number, image)
+        for signal in (self.table.model().rowsInserted, self.table.model().rowsRemoved):
+            signal.connect(lambda *_: self._show())
+        self._show()
+
+    def _show(self):
+        """Draw the pages as the list has them: each logo, or its label without one."""
+        self.preview.set_buttons([
+            (label, None, _find_image(image) if image else None)
+            for label, _kind, _payload, image in self.get_buttons()])
 
     def _load_confirm_choices(self, current):
         names = {c[0] for d in self.devices for c in d.get("commands", [])}
@@ -409,6 +431,8 @@ class FavouritesPage(QWizardPage):
         self.table.setItem(row, 2, QTableWidgetItem(_describe(kind, payload)))
         self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole,
                                         (label, kind, payload, image))
+        if hasattr(self, "preview"):
+            self._show()
 
     def set_participating(self, ids):
         self._participating = list(ids or [])
@@ -465,7 +489,8 @@ class FavouritesPage(QWizardPage):
 
     def get_buttons(self):
         return [self.table.item(r, 1).data(Qt.ItemDataRole.UserRole)
-                for r in range(self.table.rowCount())]
+                for r in range(self.table.rowCount())
+                if self.table.item(r, 1) is not None]
 
     def get_confirm(self):
         return self.confirm.currentData()
