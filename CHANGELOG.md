@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **Flash to Remote builds the project itself.** There is no Build Config step to
+  remember: it builds the project as it is on screen, unsaved changes included, and
+  writes it. To keep the built file without writing it, use **File › Export .ezhex**.
+  The output file name on Remote Settings is optional now; left empty, the file is
+  named after the remote.
 - **The Harmony 1100 and One are written like the 900.** Test write is gone: its
   typed phrases and read-back checks failed writes that had worked - a remote changes
   its own settings files after a write - and protected no one. **Flash to Remote** now

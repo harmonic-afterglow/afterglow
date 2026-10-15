@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(_act("Save Project",      self.save_project,    "Ctrl+S"))
         file_menu.addAction(_act("Save Project As…",  self.save_project_as))
         file_menu.addAction(_act("Export Shareable Project…", self.export_bundle))
+        file_menu.addAction(_act("Export .ezhex…", self.export_ezhex))
         file_menu.addSeparator()
         file_menu.addAction(_act("Exit", self.close))
 
@@ -385,6 +386,21 @@ class MainWindow(QMainWindow):
             "protocol its devices use, so it builds on any computer with Afterglow."
             + (f"\n\n{len(notes)} thing(s) were added or left out to make that so." if notes
                else ""))
+
+    def export_ezhex(self):
+        """Build the project to a file of the user's choosing, without writing it.
+
+        Flash builds on its own; this is for keeping or sharing the file itself. The
+        build is shown on the Flash tab, where its log is."""
+        suggested = self.update_tab.out_path()
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export .ezhex", str(suggested), "Harmony Config (*.ezhex)")
+        if not path:
+            return
+        if not path.lower().endswith(".ezhex"):
+            path += ".ezhex"
+        self.tabs.setCurrentWidget(self.update_tab)
+        self.update_tab.export_to(Path(path))
 
     def import_ezhex(self):
         """Import an existing .ezhex: its devices and activities, and on a remote that has

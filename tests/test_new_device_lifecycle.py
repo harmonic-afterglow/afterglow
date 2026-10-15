@@ -85,7 +85,47 @@ def test_only_a_successful_write_emits_the_built_new_device_snapshot(qapp_or_ski
     assert emitted == []
     tab._on_remote_done(True, "written")
     assert emitted == [("40009001",)]
-    assert not tab.flash_btn.isEnabled(), "the still-flagged artifact can be reflashed"
+
+
+def test_flash_builds_the_project_on_screen_then_writes_it(qapp_or_skip, monkeypatch):
+    """No separate Build step to forget: Flash builds the project as it stands, unsaved
+    changes included, and writes only once that build has succeeded."""
+    from afterglow.gui import tabs
+
+    class Settings:
+        def save(self):
+            pass
+
+        def missing(self):
+            return []
+
+    events = []
+
+    class Worker:
+        def __init__(self, _root, project):
+            events.append(("build", project["settings"]["out_file"]))
+            self.log = self.success = self.failure = self
+            self._ok = []
+
+        def connect(self, slot):
+            self._ok.append(slot)
+
+        def start(self):
+            self._ok[1]()                        # log, success, failure: call success
+
+    monkeypatch.setattr(tabs, "ConfigBuildWorker", Worker)
+    monkeypatch.setattr(tabs.QMessageBox, "question",
+                        lambda *a, **k: tabs.QMessageBox.StandardButton.Yes)
+    project = {"devices": [], "activities": [], "settings": {"remote": "harmony-900"}}
+    tab = tabs.UpdateTab(project, Settings())
+    monkeypatch.setattr(tab, "_run", lambda op, **kw: events.append((op, kw["path"])) or
+                        SimpleNamespace(start=lambda: None))
+    tab.flash()
+
+    built = str(tab.out_path())
+    assert built.endswith("harmony-900.ezhex")
+    assert events == [("build", built), ("write", built)]
+    assert "out_file" not in project["settings"], "the project itself is not changed"
 
 
 def test_flash_retirement_is_saved_when_the_project_has_a_path():
