@@ -45,6 +45,12 @@ hiddenimports = [
     *collect_submodules("afterglow.backends"),
     *collect_submodules("afterglow.payloads"),
 ]
+# Empty when `afterglow` resolves to something other than the package - the launcher
+# script, if the checkout is first on sys.path - and the bundle then starts and can open
+# nothing. Stop here rather than at the self-check.
+if not any(name.startswith("afterglow.backends.") for name in hiddenimports) or not any(
+        name.startswith("afterglow.payloads.") for name in hiddenimports):
+    raise SystemExit("no backends or payloads found to bundle; is `afterglow` the package?")
 
 datas = [
     (str(PACKAGE / "library"), "afterglow/library"),
@@ -105,6 +111,16 @@ if _ucrt:
     if not any(dll.name.lower() == "ucrtbase.dll" for dll in found):
         raise SystemExit(f"AFTERGLOW_BUNDLE_UCRT holds no ucrtbase.dll: {_ucrt}")
     binaries += [(str(dll), ".") for dll in found]
+
+# The Windows 7 direct-access installer, in both architectures (see
+# packaging/windows/afterglow-winusb.c). The legacy Windows build sets
+# `AFTERGLOW_BUNDLE_HELPERS` to the folder the cross-build left them in.
+_helpers = os.environ.get("AFTERGLOW_BUNDLE_HELPERS")
+if _helpers:
+    found = sorted(Path(_helpers).glob("afterglow-winusb-*.exe"))
+    if len(found) != 2:
+        raise SystemExit(f"AFTERGLOW_BUNDLE_HELPERS should hold both helpers: {found}")
+    binaries += [(str(helper), ".") for helper in found]
 
 analysis = Analysis(                      # noqa: F821
     # NOT `afterglow.py`: PyInstaller puts the entry script in the extraction

@@ -17,6 +17,17 @@ WHY_DIRECT = (
     "by many current PCs.")
 
 
+WINDOWS_7_NOTE = (
+    "On Windows 7, Windows then says it cannot verify the driver's publisher: choose "
+    "\"Install this driver software anyway\". The driver is Windows' own WinUSB; the "
+    "only part from Afterglow is the file that points the remote at it, and it is "
+    "not signed.")
+
+
+def _windows_7_note() -> str:
+    return f"\n\n{WINDOWS_7_NOTE}" if windows_driver.needs_own_inf() else ""
+
+
 def _relevant() -> bool:
     return windows_driver.applicable() and concord.has_usb_link()
 
@@ -90,7 +101,7 @@ def offer_before_operation(parent) -> None:
         f"{WHY_DIRECT}\n\nTurning it on asks for administrator permission once. "
         "Settings \u2192 Remote connection switches back at any time. If the remote is "
         "later plugged into a different USB port, Windows sees a new device and "
-        "Afterglow asks again.")
+        f"Afterglow asks again.{_windows_7_note()}")
     switch = box.addButton("Turn on direct access", QMessageBox.ButtonRole.AcceptRole)
     box.addButton("Not now", QMessageBox.ButtonRole.RejectRole)
     never = QCheckBox("Don't ask again")
@@ -111,7 +122,8 @@ def driver_dialog(parent) -> None:
     state = QLabel()
     state.setWordWrap(True)
     layout.addWidget(state)
-    explain = QLabel(f"{WHY_DIRECT} Either change asks for administrator permission.")
+    explain = QLabel(f"{WHY_DIRECT} Either change asks for administrator permission."
+                     f"{_windows_7_note()}")
     explain.setWordWrap(True)
     explain.setStyleSheet("color: gray;")
     layout.addWidget(explain)

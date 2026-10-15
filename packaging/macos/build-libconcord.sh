@@ -94,9 +94,11 @@ git -C "$WORK/concordance" rev-parse HEAD > "$OUT/libconcord-commit"
 cd "$WORK/concordance/libconcord"
 mkdir -p m4
 autoreconf --install --force > /dev/null 2>&1
-# The system curl has no .pc file to find, so it is named directly. The static
-# libraries' frameworks go in LIBS, since a non-static pkg-config query leaves them out.
-CURL_CFLAGS="" CURL_LIBS="-lcurl" \
+# The system curl has no .pc file to find, so it is named directly - and CURL_CFLAGS
+# must not be empty, or configure takes it as unset and asks pkg-config anyway. The
+# static libraries' frameworks go in LIBS, since a non-static pkg-config query leaves
+# them out.
+CURL_CFLAGS="-DAFTERGLOW_SYSTEM_CURL" CURL_LIBS="-lcurl" \
 LIBS="-lz -framework IOKit -framework CoreFoundation -framework Security -framework AppKit" \
   ./configure --prefix="$WORK/libconcord-install" --disable-static --enable-shared \
   --disable-mime-update --with-usbnet-link=yes | tee "$WORK/configure.log" > /dev/null

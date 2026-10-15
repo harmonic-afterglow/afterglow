@@ -286,7 +286,8 @@ jobs:
   # not start there. Optional: it does not hold a release back.
   #
   # libconcord cannot come from MSYS2 here - it dropped Windows 7 and 32-bit - so it is
-  # cross-compiled on Linux, every dependency linked in statically for Windows 7.
+  # cross-compiled on Linux, every dependency linked in statically for Windows 7. So is
+  # afterglow-winusb.exe, which turns direct access on there.
   windows-legacy-libconcord:
     runs-on: ubuntu-latest
     container: ubuntu:22.04
@@ -305,11 +306,15 @@ jobs:
         shell: bash
         run: |
           apt-get install -y -qq --no-install-recommends python3 > /dev/null
-          python3 packaging/windows/win7check.py /tmp/libconcord-out/libconcord-6.dll
+          python3 packaging/windows/win7check.py /tmp/libconcord-out/libconcord-6.dll \
+            /tmp/libconcord-out/afterglow-winusb-x86.exe \
+            /tmp/libconcord-out/afterglow-winusb-x64.exe
       - uses: actions/upload-artifact@v7
         with:
           name: libconcord-windows-x86-legacy
-          path: /tmp/libconcord-out/libconcord-6.dll
+          path: |
+            /tmp/libconcord-out/libconcord-6.dll
+            /tmp/libconcord-out/afterglow-winusb-*.exe
           if-no-files-found: error
 
   windows-legacy:
@@ -368,8 +373,12 @@ jobs:
           if (-not $redist) { throw "no Universal CRT redistributable on this runner" }
           $env:AFTERGLOW_BUNDLE_UCRT = "$($redist.FullName)\ucrt\DLLs\x86"
           $env:AFTERGLOW_BUNDLE_LIBCONCORD = Resolve-Path libconcord/libconcord-6.dll
+          # The Windows 7 direct-access installer, 32- and 64-bit.
+          $env:AFTERGLOW_BUNDLE_HELPERS = Resolve-Path libconcord
           $env:AFTERGLOW_BINARIES_LIST = "$env:RUNNER_TEMP\binaries.txt"
-          & $env:PYTHON_WIN7_EXE -m PyInstaller --noconfirm packaging/afterglow.spec
+          # -P: `python -m` would put the checkout first on sys.path, where the
+          # `afterglow.py` launcher shadows the package and PyInstaller finds no backends.
+          & $env:PYTHON_WIN7_EXE -P -m PyInstaller --noconfirm packaging/afterglow.spec
 
       - name: Check nothing in it is newer than Windows 7
         shell: pwsh

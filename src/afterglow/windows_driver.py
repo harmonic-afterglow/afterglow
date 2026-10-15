@@ -1,7 +1,10 @@
 """Switch the Harmony 900/1000/1100 to Windows' own WinUSB driver, and back.
 
-Selects the "WinUsb Device" model from Windows' winusb.inf, as Device Manager's "Let me
-pick from a list" does - no driver package or certificate of ours. Windows treats each
+On Windows 8 and later, selects the generic WinUSB entry from Windows' winusb.inf, as
+Device Manager's "Let me pick from a list" does - no driver package or certificate of
+ours. Windows 7 has no generic entry, so there Afterglow writes a small INF of its own
+pointing the remote at the same WinUSB driver, and `afterglow-winusb.exe` installs it
+(see packaging/windows/afterglow-winusb.c); the INF is unsigned, so Windows asks once. Windows treats each
 USB port as a new device, so a remote on a new port may need switching again. Needs an
 administrator: Afterglow restarts itself elevated with `--usb-driver install|restore`.
 """
@@ -23,12 +26,154 @@ GENERIC_WINUSB_ID = "USB\\MS_COMP_WINUSB"
 
 
 def applicable() -> bool:
-    # Windows 8 and later only. The "WinUsb Device" model this selects was added to
-    # winusb.inf in Windows 8; on Windows 7 WinUSB needs a driver package of its own, so
-    # the switch could only fail there. Logitech's driver is the way in on 7.
+    # Windows 7 and later. Vista has no build of Afterglow to run in.
     if sys.platform != "win32":
         return False
-    return tuple(sys.getwindowsversion()[:2]) >= (6, 2)
+    return tuple(sys.getwindowsversion()[:2]) >= (6, 1)
+
+
+def needs_own_inf() -> bool:
+    """Windows 7: no generic WinUSB entry in winusb.inf, so Afterglow brings an INF."""
+    return applicable() and tuple(sys.getwindowsversion()[:2]) < (6, 2)
+
+
+# --- Windows 7: Afterglow's own INF -----------------------------------------------------
+
+# The helper deletes only INF files carrying this line, so it must match the one in
+# packaging/windows/afterglow-winusb.c exactly.
+OWN_INF_MARKER = "; Afterglow WinUSB driver for Logitech Harmony remotes"
+# Lets libusb and other WinUSB clients find the remote by interface as well as by device.
+_INTERFACE_GUID = "{52BB9CEE-5061-4595-A3AF-DE6448C3046D}"
+
+
+def own_inf_text() -> str:
+    """An INF that binds the remotes to Windows' WinUSB driver, for Windows 7.
+
+    Nothing of ours is installed but this text: the service, `winusb.sys`, comes from
+    Windows (`Include`/`Needs` reach into its winusb.inf), and so does the framework
+    (KMDF 1.9 is part of Windows 7). `ClassInstall32` creates the "USB devices" class,
+    which Windows 8 introduced and Windows 7 does not have.
+    """
+    models = "\n".join(f"%Remote% = Remote_Install, USB\\{ident}" for ident in REMOTE_IDS)
+    return f"""{OWN_INF_MARKER}
+; Points the Harmony 900, 1000 and 1100 at Windows' own WinUSB driver. Written by
+; Afterglow for Windows 7, which has no generic WinUSB entry to select.
+
+[Version]
+Signature = "$Windows NT$"
+Class = USBDevice
+ClassGuid = {_USB_DEVICE_CLASS}
+Provider = %Provider%
+DriverVer = 10/15/2026,1.0.0.0
+
+[ClassInstall32]
+AddReg = ClassInstall_AddReg
+
+[ClassInstall_AddReg]
+HKR,,,,%ClassName%
+HKR,,NoInstallClass,,1
+HKR,,IconPath,0x10000,"%%SystemRoot%%\\System32\\setupapi.dll,-20"
+HKR,,LowerLogoVersion,,5.2
+
+[Manufacturer]
+%Provider% = Harmony, NTx86, NTamd64
+
+[Harmony.NTx86]
+{models}
+
+[Harmony.NTamd64]
+{models}
+
+[Remote_Install]
+Include = winusb.inf
+Needs = WINUSB.NT
+
+[Remote_Install.Services]
+Include = winusb.inf
+AddService = WinUSB, 0x00000002, WinUSB_ServiceInstall
+
+[WinUSB_ServiceInstall]
+DisplayName = %WinUsbService%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\\WinUSB.sys
+
+[Remote_Install.Wdf]
+KmdfService = WINUSB, WinUSB_Install
+
+[WinUSB_Install]
+KmdfLibraryVersion = 1.9
+
+[Remote_Install.HW]
+AddReg = Remote_AddReg
+
+[Remote_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{_INTERFACE_GUID}"
+
+[Strings]
+Provider = "Afterglow"
+Remote = "Logitech Harmony remote (direct access)"
+ClassName = "Universal Serial Bus devices"
+WinUsbService = "WinUSB"
+"""
+
+
+def _system_is_64bit() -> bool:
+    # A 32-bit process on 64-bit Windows sees x86 in PROCESSOR_ARCHITECTURE; the real
+    # one is in PROCESSOR_ARCHITEW6432.
+    machine = (os.environ.get("PROCESSOR_ARCHITEW6432")
+               or os.environ.get("PROCESSOR_ARCHITECTURE", ""))
+    return machine.upper() in ("AMD64", "ARM64", "IA64")
+
+
+def helper_path() -> str | None:
+    """The `afterglow-winusb` build matching the system, or None when it is missing."""
+    name = f"afterglow-winusb-{'x64' if _system_is_64bit() else 'x86'}.exe"
+    places = [getattr(sys, "_MEIPASS", ""), os.path.dirname(sys.executable)]
+    for place in places:
+        candidate = os.path.join(place, name) if place else ""
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _run_helper(*arguments: str) -> str:
+    import subprocess
+    helper = helper_path()
+    if helper is None:
+        raise DriverError("This copy of Afterglow has no Windows 7 driver installer in it; "
+                          "the Windows 7 download has.")
+    done = subprocess.run([helper, *arguments], capture_output=True, text=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    said = (done.stdout or done.stderr).strip()
+    if done.returncode == 2:
+        raise DriverError("Windows was told not to install the driver. To turn direct "
+                          "access on, choose \"Install this driver software anyway\" "
+                          "when Windows asks.")
+    if done.returncode:
+        raise DriverError(said or f"the driver installer stopped with {done.returncode}")
+    return said
+
+
+def _switch_with_own_inf(action: str) -> bool:
+    """Windows 7. True if something was changed."""
+    found = remotes()
+    if action == INSTALL:
+        if not any(remote["service"].upper() != WINUSB for remote in found):
+            return False
+        folder = tempfile.mkdtemp(prefix="afterglow-winusb-")
+        inf = os.path.join(folder, "afterglow-harmony.inf")
+        with open(inf, "w", encoding="ascii", newline="\r\n") as stream:
+            stream.write(own_inf_text())
+        for ident in REMOTE_IDS:
+            _run_helper("install", inf, f"USB\\{ident}")
+        return True
+    if not any(remote["service"].upper() == WINUSB for remote in found):
+        return False
+    for ident in REMOTE_IDS:
+        _run_helper("remove", f"USB\\{ident}")
+    return True
 
 
 # --- SetupAPI ---------------------------------------------------------------------------
@@ -356,6 +501,13 @@ def switch(action: str) -> str:
     """`install` or `restore` for each remote plugged in. Needs an administrator."""
     if not applicable():
         raise DriverError("Only Windows has a driver to switch.")
+    if needs_own_inf():
+        if not _switch_with_own_inf(action):
+            return ("Nothing needed changing." if remotes()
+                    else "No Harmony 900, 1000 or 1100 is plugged in.")
+        found = _settle(want_winusb=action == INSTALL)
+        now = " and ".join(sorted({describe(r) for r in found})) or "not plugged in"
+        return f"The remote now uses {now}."
     api = _api()
     done = []
     for handle, dev, ident in _each_remote(api):

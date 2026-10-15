@@ -45,7 +45,7 @@ if [ "$(id -u)" = 0 ] && command -v apt-get > /dev/null; then
   apt-get install -y -qq --no-install-recommends \
     ca-certificates curl xz-utils bzip2 git make cmake pkg-config \
     autoconf automake libtool \
-    "gcc-mingw-w64-${ARCH/_/-}" "g++-mingw-w64-${ARCH/_/-}" > /dev/null
+    gcc-mingw-w64-i686 g++-mingw-w64-i686 gcc-mingw-w64-x86-64 > /dev/null
 fi
 
 # Windows 7 feature level for every header, and the GCC runtime linked in statically.
@@ -173,3 +173,14 @@ cp "$WORK/libconcord-install/bin/libconcord-6.dll" "$OUT/"
 "${HOST}-strip" --strip-unneeded "$OUT/libconcord-6.dll"
 echo "built $OUT/libconcord-6.dll from $(cat "$OUT/libconcord-commit")"
 "${HOST}-objdump" -p "$OUT/libconcord-6.dll" | grep "DLL Name" | sort -u
+
+# The WinUSB helper, both architectures whatever ARCH is: a 32-bit Afterglow on 64-bit
+# Windows 7 has to run the 64-bit one, since Windows refuses device installation from
+# a 32-bit process there. See afterglow-winusb.c.
+helper="$(cd "$(dirname "$0")" && pwd)/afterglow-winusb.c"
+for target in i686:x86 x86_64:x64; do
+  "${target%%:*}-w64-mingw32-gcc" -O2 -municode -static -D_WIN32_WINNT=0x0601 \
+    -o "$OUT/afterglow-winusb-${target##*:}.exe" "$helper" -lsetupapi -lnewdev -lcfgmgr32
+  "${target%%:*}-w64-mingw32-strip" "$OUT/afterglow-winusb-${target##*:}.exe"
+done
+ls -l "$OUT"
