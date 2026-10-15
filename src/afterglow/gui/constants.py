@@ -34,7 +34,8 @@ def user_files() -> Path:
     return paths.app_dir()
 def user_folder(kind: str) -> Path:
     """The folder in user_files() for one kind of file - "projects", "dumps",
-    "generated" or "themes" (paths.FOLDERS) - where a dialog for that kind opens."""
+    "generated", "themes" or "backups" (paths.FOLDERS) - where a dialog for that kind
+    opens."""
     return paths.user_folder(kind)
 
 

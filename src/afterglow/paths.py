@@ -214,6 +214,7 @@ FOLDERS = {
     "dumps": "Dumps",
     "generated": "Generated",
     "themes": "Themes",
+    "backups": "Backups",
 }
 
 

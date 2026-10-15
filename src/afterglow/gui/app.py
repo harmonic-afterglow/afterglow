@@ -105,15 +105,20 @@ class MainWindow(QMainWindow):
                 a.setShortcut(shortcut)
             return a
 
-        file_menu.addAction(_act("New Project",       self.new_project))
-        file_menu.addAction(_act("Open Project…",     self.open_project))
-        file_menu.addAction(_act("Import .ezhex…",    self.import_ezhex))
+        # Written out rather than QKeySequence.StandardKey, which is empty for some keys
+        # on some platforms (Quit, on several Linux desktops). Qt shows Ctrl as Cmd on
+        # macOS, so these are the usual keys there too.
+        file_menu.addAction(_act("New Project",       self.new_project,     "Ctrl+N"))
+        file_menu.addAction(_act("Open Project…",     self.open_project,    "Ctrl+O"))
+        file_menu.addAction(_act("Import .ezhex…",    self.import_ezhex,    "Ctrl+I"))
         file_menu.addAction(_act("Save Project",      self.save_project,    "Ctrl+S"))
-        file_menu.addAction(_act("Save Project As…",  self.save_project_as))
-        file_menu.addAction(_act("Export Shareable Project…", self.export_bundle))
-        file_menu.addAction(_act("Export .ezhex…", self.export_ezhex))
+        file_menu.addAction(_act("Save Project As…",  self.save_project_as, "Ctrl+Shift+S"))
+        file_menu.addAction(_act("Export Shareable Project…", self.export_bundle,
+                                 "Ctrl+Shift+E"))
+        file_menu.addAction(_act("Export .ezhex…", self.export_ezhex, "Ctrl+E"))
+        file_menu.addAction(_act("Show Earlier Versions…", self.show_backups))
         file_menu.addSeparator()
-        file_menu.addAction(_act("Exit", self.close))
+        file_menu.addAction(_act("Exit", self.close, "Ctrl+Q"))
 
         settings_menu = mb.addMenu("Settings")
         settings_menu.addAction(_act("Device Sources…", self.configure_sources))
@@ -326,16 +331,85 @@ class MainWindow(QMainWindow):
             self.open_bundle(path)
             return
         try:
-            from .. import project_devices
-            data = project_devices.normalise_project(
-                drop_retired_fields(json.loads(Path(path).read_text())))
-            self.project.clear()
-            self.project.update(data)
-            self._project_path = path
-            self._dirty = False
-            self._reload_tabs()
+            self._load_project_file(path)
         except Exception as e:
             QMessageBox.critical(self, "Open Failed", str(e))
+
+    def _load_project_file(self, path):
+        """Show the project saved at `path`. Raises if it cannot be read; on failure the
+        window is left on an empty project rather than half of a broken one."""
+        from .. import project_devices
+        data = project_devices.normalise_project(
+            drop_retired_fields(json.loads(Path(path).read_text(encoding="utf-8"))))
+        try:
+            self.project.clear()
+            self.project.update(data)
+            self._project_path = str(path)
+            self._dirty = False
+            self._reload_tabs()
+        except Exception:
+            self.project.clear()
+            self.project.update(empty_project())
+            self._project_path = None
+            self._dirty = False
+            self._reload_tabs()
+            raise
+        _remember_project(self._project_path)
+
+    def reopen_last_project(self) -> bool:
+        """Open the project worked on last time. Never raises: a project that was moved,
+        deleted or broken is reported in the status bar and an empty one shown."""
+        path = str(QSettings("Afterglow", "Afterglow").value(LAST_PROJECT_KEY, "") or "")
+        if not path:
+            return False
+        if not Path(path).is_file():
+            _remember_project(None)
+            self.status.showMessage(
+                f"The last project, {path}, is not there any more.", 15000)
+            return False
+        try:
+            self._load_project_file(path)
+        except Exception as exc:                 # noqa: BLE001 - start-up must go on
+            from ..applog import LOG
+            LOG.warning("could not reopen %s: %s", path, exc, exc_info=True)
+            self.status.showMessage(f"Could not reopen {Path(path).name}: {exc}", 15000)
+            return False
+        self.status.showMessage(f"Reopened {path}", 5000)
+        return True
+
+    def show_backups(self):
+        """Open the folder of this project's earlier versions, to open one from there."""
+        from .. import project_backups
+        if not self._project_path:
+            QMessageBox.information(
+                self, "Earlier versions",
+                "Earlier versions are kept each time a project is saved. Save this one "
+                "first.")
+            return
+        folder = project_backups.folder_for(self._project_path)
+        if not project_backups.history(self._project_path):
+            QMessageBox.information(
+                self, "Earlier versions",
+                f"No earlier version of this project yet. Each time it is saved, the "
+                f"version it replaces is kept in\n{folder}")
+            return
+        current = self._project_path
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open an earlier version", str(folder), "JSON Project (*.json)")
+        if not path or not self._keep_or_discard_changes():
+            return
+        try:
+            self._load_project_file(path)
+        except Exception as e:
+            QMessageBox.critical(self, "Open Failed", str(e))
+            return
+        # The earlier version is this project's, unsaved: Save puts it back in place of
+        # the current one (which is kept as a backup in turn), not into Backups.
+        self._project_path = current
+        _remember_project(current)
+        self._mark_dirty()
+        self.status.showMessage(
+            f"Opened the version saved in {Path(path).name}. Save to keep it.", 15000)
 
     def open_bundle(self, path):
         """Unpack a shareable project into a folder of its own and work on it there."""
@@ -475,9 +549,12 @@ class MainWindow(QMainWindow):
             self._write_project(path)
 
     def _write_project(self, path):
+        from .. import project_backups
         self.settings_tab.save()
-        Path(path).write_text(json.dumps(self.project, indent=2))
+        project_backups.back_up(path)        # the version this save replaces
+        Path(path).write_text(json.dumps(self.project, indent=2), encoding="utf-8")
         self._mark_clean()
+        _remember_project(str(path))
         self.status.showMessage(f"Saved {path}", 5000)
 
     def _show_log(self):
@@ -557,6 +634,18 @@ def _folder_access_check(parent) -> None:
         elif box.clickedButton() is not retry:
             return
         folder = folder_access.blocked_folder()
+
+
+LAST_PROJECT_KEY = "ui/last_project"
+
+
+def _remember_project(path) -> None:
+    """The project to reopen next time; None forgets it."""
+    settings = QSettings("Afterglow", "Afterglow")
+    if path:
+        settings.setValue(LAST_PROJECT_KEY, str(path))
+    else:
+        settings.remove(LAST_PROJECT_KEY)
 
 
 def _driver_reminder(parent) -> None:
@@ -893,6 +982,7 @@ def main():
     _folder_access_check(win)
     _driver_reminder(win)
     _usb_link_offer(win)
-    from .default_remote import ask_at_first_start
-    win.start_with_default_remote(ask_at_first_start(win))
+    if not win.reopen_last_project():
+        from .default_remote import ask_at_first_start
+        win.start_with_default_remote(ask_at_first_start(win))
     sys.exit(app.exec())

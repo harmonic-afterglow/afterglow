@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **The last project opens when Afterglow starts.** If it was moved, deleted or
+  damaged, Afterglow starts with an empty project and says so in the status bar.
+- **Earlier versions of a project are kept.** Each save first keeps the version it
+  replaces in `Documents/Afterglow/Backups`, the last twenty for each project.
+  **File › Show Earlier Versions** opens one; save to put it back.
+- **Keyboard shortcuts** for the File menu: New (Ctrl+N), Open (Ctrl+O), Import
+  .ezhex (Ctrl+I), Save (Ctrl+S), Save As (Ctrl+Shift+S), Export .ezhex (Ctrl+E),
+  Export Shareable Project (Ctrl+Shift+E) and Exit (Ctrl+Q) - Cmd on a Mac.
 - **French, Norwegian, Polish and Portuguese** for the Harmony 900's and 1100's own
   screens. Both remotes' firmware has thirteen languages; Afterglow offered nine.
 
