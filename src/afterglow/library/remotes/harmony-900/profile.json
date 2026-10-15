@@ -884,8 +884,9 @@
     ],
     "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
     "languages": [
-      ["English", "enu"], ["Spanish", "esp"], ["Russian", "rus"], ["German", "deu"],
-      ["Dutch", "nld"], ["Danish", "dan"], ["Finnish", "fin"], ["Italian", "ita"],
+      ["English", "enu"], ["Danish", "dan"], ["Dutch", "nld"], ["Finnish", "fin"],
+      ["French", "fra"], ["German", "deu"], ["Italian", "ita"], ["Norwegian", "nor"],
+      ["Polish", "plk"], ["Portuguese", "ptg"], ["Russian", "rus"], ["Spanish", "esp"],
       ["Swedish", "sve"]
     ]
   },
