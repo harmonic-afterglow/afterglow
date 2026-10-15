@@ -25,10 +25,8 @@ SAFE_MODE_NOTE = ("The remote is in Safe Mode. It can still be read, and writing
 def _check_backup(path: Path) -> None:
     """A backup that could not be put back is no backup: whole, and checksummed."""
     from .. import ezhex
-    raw = path.read_bytes()
-    _header, start, size, checksum = ezhex._split(raw)
-    payload = raw[start:start + size]
-    if not payload or len(payload) != size or (
+    _header, payload, checksum, outside = ezhex.read(path.read_bytes())
+    if not payload or outside < 0 or (
             checksum is not None and ezhex.checksum(payload) != checksum):
         raise ValueError(f"{path.name} came back incomplete")
 

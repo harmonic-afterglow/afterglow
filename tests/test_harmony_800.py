@@ -530,3 +530,36 @@ def test_the_800_is_offered_for_building_with_its_picture():
     assert profile.hard_key_art["svg"].is_file()
     assert set(profile.hard_key_art["keys"]) == set(profile.hard_keys)
 
+
+def test_a_built_configuration_file_imports_and_passes_the_write_checks(tmp_path):
+    """The file a build writes is Concordance's MH zip, not an .ezhex: the importer, Flash
+    a Configuration File and the write path all read it (ezhex.read), and it states only
+    its skin, which is what a write compares it by."""
+    from afterglow import concord, ezhex, first_write, importer
+    path = backend.configuration_file(generate.build(WATCHING)["image"],
+                                      tmp_path / "built.EZHex")
+    contents = ezhex.read(path.read_bytes())
+    assert contents.declared == ezhex.checksum(contents.payload) and not contents.outside
+    assert ezhex.stated(contents.header) == ("skin",)
+    project = importer.import_file(path).project
+    assert project["settings"]["remote"] == "harmony-800"
+    assert [d["label"] for d in project["devices"]] == [d["label"] for d in WATCHING["devices"]]
+    assert concord.file_mismatches(path, {"arch": 18, "skin": 86, "software_type": 0}) == []
+    assert concord.file_mismatches(path, {"arch": 12, "skin": 54, "software_type": 0})
+    first_write._artifact(path)
+
+
+def test_a_damaged_image_in_its_zip_fails_its_own_checksum(tmp_path):
+    from afterglow import ezhex, first_write
+    path = backend.configuration_file(generate.build(WATCHING)["image"],
+                                      tmp_path / "built.EZHex")
+    damaged = tmp_path / "damaged.EZHex"
+    with zipfile.ZipFile(path) as source, zipfile.ZipFile(damaged, "w") as out:
+        for name in source.namelist():
+            data = bytearray(source.read(name))
+            if name != ezhex.MH_DESCRIPTION:
+                data[4000] ^= 0xFF
+            out.writestr(name, bytes(data))
+    assert ezhex.read(damaged.read_bytes()).declared is None
+    with pytest.raises(first_write.FirstWriteError, match="checksum"):
+        first_write._artifact(damaged)

@@ -64,3 +64,18 @@ valid bytes. An unpacked tree therefore keeps the payload it came from beside th
 (`.ezhex_original`) and a digest of each entry's content (`.ezhex_meta.json`). When it is
 packed again, an entry whose content is unchanged gets its original compressed bytes back;
 only an edited entry is deflated afresh.
+
+## Concordance's MH configuration file
+
+A remote that speaks Concordance's MH protocol - the Harmony 800 - takes its
+configuration as a zip rather than an `.ezhex`: `Description.xml`, which names the file,
+where it goes (`PATH="/cfg/usercfg"`, `OPERATIONTYPE="userconfiguration"`), an XOR
+checksum over it (`SEED`, `OFFSET`, `LENGTH`, `EXPECTEDVALUE`) and the skin it is for
+(`<INTENDED><SKIN>`), and that file, the remote's image (libconcord/xml_headers.h).
+
+`ezhex.read` opens both kinds. For an MH zip it gives the image as the payload and a header
+made from the description - `<MHCONFIGURATION/>` and an `<INTENDEDVERSION>` holding only the
+skin - and the payload's `.ezhex` checksum as the declared one when the description's own
+checksum holds, none when it does not, so every reader checks both kinds the same way. The
+description names no architecture, flash, board or software type, so a write proves only
+the skin from the file (`ezhex.stated`); the attached remote is still checked on every field.

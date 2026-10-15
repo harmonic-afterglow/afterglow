@@ -44,17 +44,17 @@ def _artifact(path: Path, profile=None) -> tuple[dict, bytes]:
     path = Path(path).resolve()
     try:
         raw = path.read_bytes()
-        header, start, declared_size, declared_checksum = ezhex._split(raw)
+        header, payload, declared_checksum, outside = ezhex.read(raw)
     except (OSError, ValueError) as exc:
         raise FirstWriteError(f"cannot read {path}: {exc}") from exc
-    payload = raw[start:start + declared_size]
-    if start + declared_size != len(raw):
+    if outside:
         raise FirstWriteError(f"{path.name} has bytes outside its declared payload")
     if declared_checksum is None or ezhex.checksum(payload) != declared_checksum:
         raise FirstWriteError(f"{path.name} fails its EZHex checksum")
     profile = profile or remotes.identify(header)
     identity = remotes.identity_of(header)
-    problems = profile.identity_mismatches(identity, require_all=True)
+    problems = profile.identity_mismatches(identity, require_all=True,
+                                           stated=ezhex.stated(header))
     if problems:
         raise FirstWriteError(f"{path.name} violates its profile: {'; '.join(problems)}")
     carrier = payloads.get(profile.payload)

@@ -192,9 +192,10 @@ def file_mismatches(path, identity: dict) -> list[str]:
     from . import ezhex, remotes
 
     try:
-        header, *_rest = ezhex._split(Path(path).read_bytes())
+        header = ezhex.read(Path(path).read_bytes()).header
     except Exception:                                              # noqa: BLE001
         return ["it is not a Harmony configuration file"]
+    stated = ezhex.stated(header)
     wanted = remotes.identity_of(header)
     try:
         profile = remotes.identify(header)
@@ -206,6 +207,8 @@ def file_mismatches(path, identity: dict) -> list[str]:
         wanted, identity = profile.normal_identity(wanted), profile.normal_identity(identity)
     problems = []
     for field in IDENTITY_FIELDS:
+        if field not in stated:
+            continue                        # a file of its kind cannot say it
         theirs, ours = wanted.get(field), identity.get(field)
         if field == "skin" and {theirs, ours} <= skins:
             continue                        # one remote sold under several numbers
@@ -814,10 +817,11 @@ class Remote:
         """Prove that the artifact, profile, and attached remote all agree."""
         from . import ezhex, remotes
         try:
-            header, _start, _size, _checksum = ezhex._split(path.read_bytes())
+            header = ezhex.read(path.read_bytes()).header
         except Exception as exc:
             raise RemoteError(f"{path.name} is not a configuration file: {exc}") from exc
         wanted = remotes.identity_of(header)
+        stated = ezhex.stated(header)
         try:
             profile = remotes.identify(header)
         except remotes.UnknownRemote as exc:
@@ -830,12 +834,15 @@ class Remote:
         except (remotes.NotBuildable, remotes.NotWritable) as exc:
             raise RemoteError(str(exc)) from exc
 
-        artifact_problems = profile.identity_mismatches(wanted, require_all=True)
+        artifact_problems = profile.identity_mismatches(wanted, require_all=True,
+                                                        stated=stated)
         remote_problems = profile.identity_mismatches(identity, require_all=True)
         # A remote in Safe Mode, or a file read from one, is the same remote
         wanted, identity = profile.normal_identity(wanted), profile.normal_identity(identity)
         disagreements = []
         for field in ("arch", "skin", "flash", "board", "software_type"):
+            if field not in stated:
+                continue                    # the file cannot say it; the remote did
             if field == "skin" and {wanted.get(field), identity.get(field)} <= \
                     set(profile.skins):
                 continue                    # one remote sold under several numbers

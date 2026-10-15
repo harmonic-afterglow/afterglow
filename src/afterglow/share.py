@@ -28,7 +28,7 @@ def make_shareable(source, target) -> list[str]:
     source, target = Path(source), Path(target)
     if target.resolve() == source.resolve():
         raise ValueError("the shareable copy must not replace the original")
-    header = ezhex._split(source.read_bytes())[0]
+    header = ezhex.read(source.read_bytes()).header
     profile = remotes.identify(header)
     anonymise = getattr(backends.for_profile(profile), "anonymise", None)
     if not callable(anonymise):
