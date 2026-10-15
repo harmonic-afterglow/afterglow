@@ -124,6 +124,15 @@ changes:
 | `17` | the remote moved | `FUN_08018788` |
 | `31` | the touch controller (it wakes the remote) | `FUN_0800d724` |
 | `34`, then `32` / `33` | a switch closed / opened | `FUN_080183a0` |
+| `30` | the infrared engine's state changed (`FUN_0800c77c`) | the engine itself |
+
+**`30` must be answered.** The engine queues it as `65 0030` and stops (its byte at `+0xD`
+set) until the answer has run; Logitech's image answers `07 FFFA`. The One has no such event -
+the One's `30` is the touch screen, the 800's `31` - so a build carrying the One's rows left it
+unanswered: the first command of an activity's start went out and nothing after it, the IR
+indicator stayed up, and with the engine never idle (variable 17) the remote never slept. The
+idle context answers it now (`idle.IR_STATE`, a code marked `structures.NATIVE`). Measured in the
+emulator: four sends queued, one transmitted before; all four after.
 
 Logitech's image answers them in its context 1 as the One's answers the One's: `2B` beeps and
 shows the USB screen, `2C` returns, `23` beeps on external power, `2A` (charger state 3) shows
@@ -162,7 +171,12 @@ Run by `FUN_0800b9fc`; opcodes below `0x80` (`FUN_0800b290`, `FUN_0800b61a`, `FU
 A light is `3F` with band `C0`-`CF` (`FUN_0800b61a`): the operand's low byte holds the channel
 (high nibble), the level (bits 1-3) and a flag (bit 0). Channels 0-6 are LEDs
 (`FUN_080128fa`); **channel 7 is the display's backlight**, a driver of its own
-(`FUN_0800b274`), which Logitech's image sets only with the flag. The One reads five bits of
+(`FUN_0800b274`, then `FUN_0800e770`). Its levels are not all brightnesses: 1-5 wake the panel
+(`FUN_0800e614`) and set a brightness, 0 darkens it and puts the panel to sleep (Display Off,
+Sleep In), and **6 and 7 set the display's orientation** (`0x36`, portrait 240x320 and
+landscape). Logitech's image lights the screen at 4 and dims through 3 and 1. The One's
+screen level, 6, therefore woke the backlight's LEDs but left the panel asleep: builds map it
+to 4 (`lights.backlight_level`). The One reads five bits of
 channel and has its backlight on `0x11`, its keypad on `0x08`-`0x0C` and `0x10`, and eight key
 zones on 0-7 - so the One's zone 7 is the 800's backlight, and the first generated images
 switched the display off whenever a screen darkened that zone.

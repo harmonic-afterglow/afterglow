@@ -93,10 +93,17 @@ EVENTS = {
 }
 
 
+# A code that is the 800's own and no One code names - an event only the 800 posts - is
+# written NATIVE | code, and tag() passes it as it is.
+NATIVE = 0x10000
+
+
 def tag(code: int) -> int:
     """The 800's list tag for a One key code: an event is renumbered to the 800's (EVENTS);
     a key or touch zone going down, the One's `0x80 | n`, is the 800's `0xC000 | n`
-    (gsgd.md, "Lists")."""
+    (gsgd.md, "Lists"). A code marked NATIVE is the 800's already."""
+    if code & NATIVE and code <= NATIVE | 0xFFFF:
+        return code & 0xFFFF
     if code > 0xFF:                  # already an 800 tag: a keyboard key, say
         if code > 0xFFFF:
             raise ValueError(f"list tag {code!r} does not fit in 16 bits")

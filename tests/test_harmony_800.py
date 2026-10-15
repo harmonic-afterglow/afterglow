@@ -12,7 +12,7 @@ import pytest
 
 from afterglow import ir_signal
 from afterglow.backends.harmony_800 import (
-    backend, geometry, gsgd, ir_lowering, key_test, lists, structures)
+    backend, geometry, gsgd, ir_lowering, key_test, lights, lists, structures)
 from afterglow.backends.harmony_800 import generate
 
 
@@ -299,17 +299,29 @@ def test_every_event_answered_is_one_the_800_posts(image):
 def test_lights_name_the_800s_channels(image):
     """Every light is an LED (0-6) or the backlight (7), which is only ever turned to the
     level the idle layer wakes it to or off when it times out."""
-    lights = []
+    found = []
     for atoms in _objects(image):
-        lights += [operand for operand, opcode in atoms
+        found += [operand for operand, opcode in atoms
                    if opcode == 0x3F and 0xC000 <= operand <= 0xCFFF]
-    assert lights
-    for operand in lights:
+    assert found
+    for operand in found:
         channel, level = (operand & 0xFF) >> 4, (operand >> 1) & 7
         assert operand >> 8 == 0xC0 and channel <= 7, hex(operand)
         if channel == 7:
-            assert level in (0, 6), hex(operand)
-    assert any((operand & 0xFF) >> 4 == 7 and (operand >> 1) & 7 == 6 for operand in lights)
+            # a brightness, never 6 or 7: those turn the display, and a screen lit with
+            # one woke from sleep dark (lights.backlight_level)
+            assert level in (0, lights.BRIGHT), hex(operand)
+    assert any((operand & 0xFF) >> 4 == 7 and (operand >> 1) & 7 == lights.BRIGHT
+               for operand in found)
+
+
+def test_the_ir_engine_is_answered_each_time_its_state_changes(image):
+    """The 800's infrared engine posts 0x30 when its state changes and waits for it to be
+    answered; unanswered, the first command was the only one sent (gsgd.md, "Events")."""
+    answers = [(operand, category) for at in _contexts(image)
+               for tag, operand, category in _rows(image, at) if tag == 0x30]
+    assert (0xFFFA, 0x07) in answers
+    assert structures.tag(structures.NATIVE | 0x30) == 0x30 and structures.tag(0x30) == 0x31
 
 
 def test_lists_and_zones_speak_the_800s_dialect():
