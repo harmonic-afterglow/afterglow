@@ -20,8 +20,9 @@ from __future__ import annotations
 from ..qt.QtCore import QMimeData, QRect, QSize, Qt
 from ..qt.QtWidgets import (QCheckBox, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
                              QLabel, QMenu, QPushButton, QSizePolicy, QStackedWidget,
-                             QTabWidget, QVBoxLayout, QWidget, QWizardPage)
-from ..qt.QtGui import QCursor, QDrag, QIcon
+                             QStyle, QStyleOptionButton, QStylePainter, QTabWidget,
+                             QVBoxLayout, QWidget, QWizardPage)
+from ..qt.QtGui import QColor, QCursor, QDrag
 
 from .activity_buttons import ScreenButtonDialog, ScreenButtonsPage
 from .icons import pixmap as glyph_pixmap
@@ -104,6 +105,7 @@ class _SlotButton(QPushButton):
         # what the remote draws here from the configuration; nothing, where the
         # place's own picture is the button
         self.shows = tuple(shows)
+        self._glyph = None
         self.setMinimumSize(8, 8)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.clicked.connect(self._menu)
@@ -138,16 +140,16 @@ class _SlotButton(QPushButton):
             sends = said = None
         icon = (entry or {}).get("icon") if "icon" in self.shows else None
         glyph = glyph_pixmap(icon, 64) if icon else None
-        self.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull() else QIcon())
+        # drawn by paintEvent, behind the label, as the remote draws it
+        self._glyph = glyph if glyph is not None and not glyph.isNull() else None
         shown = entry if own else default if entry is None else None
         label = (shown or {}).get("label") if "label" in self.shows else None
         if sends is None:
             self.setText(f"{name}\n(nothing)")
-        elif glyph is not None and not glyph.isNull():
-            # the remote draws a button's icon instead of its label, never both
-            self.setText("")
-        elif label:
-            self.setText(label)
+        elif label or self._glyph is not None:
+            # a side bar draws its icon with the label over it (floater-group-1); an
+            # icon alone is a button with no label
+            self.setText(label or "")
         else:
             # a default is in brackets: it follows the main device until it is changed
             self.setText(f"{name}\n{sends}" if own else f"{name}\n({sends})")
@@ -155,10 +157,29 @@ class _SlotButton(QPushButton):
         self.setToolTip(f"{self.slot}: " + (f"{said} - {how}" if said else
                                             "nothing; the remote dims it"))
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
+    def paintEvent(self, event):
+        """A side bar's icon, centred, with its label over it - the remote's way."""
+        if self._glyph is None:
+            return super().paintEvent(event)
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        text, option.text = option.text, ""
+        painter = QStylePainter(self)
+        painter.drawControl(QStyle.ControlElement.CE_PushButton, option)
         side = int(min(self.width(), self.height()) * 0.7)
-        self.setIconSize(QSize(side, side))
+        icon = self._glyph.scaled(side, side, Qt.AspectRatioMode.KeepAspectRatio,
+                                  Qt.TransformationMode.SmoothTransformation)
+        painter.drawPixmap((self.width() - icon.width()) // 2,
+                           (self.height() - icon.height()) // 2, icon)
+        if text:
+            # white with a dark outline, as the remote writes over its icons: readable
+            # on any of them
+            centre = int(Qt.AlignmentFlag.AlignCenter)
+            painter.setPen(QColor("black"))
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                painter.drawText(self.rect().translated(dx, dy), centre, text)
+            painter.setPen(QColor("white"))
+            painter.drawText(self.rect(), centre, text)
 
     def _menu(self):
         entry, default = self.entry(), self.page.default_for(self.group, self.slot)
