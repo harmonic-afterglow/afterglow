@@ -2,12 +2,12 @@
 
 import copy
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
     QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
     QSplitter, QAbstractItemView, QHeaderView, QWizardPage
 )
-from PyQt6.QtCore import Qt, QSize
+from ..qt.QtCore import Qt, QSize
 
 from .macro import MacroEditorWidget, StartupEditor
 from .project import (drop_retired_fields)

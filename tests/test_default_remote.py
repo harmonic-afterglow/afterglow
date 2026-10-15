@@ -9,7 +9,7 @@ import pytest
 
 @pytest.fixture
 def setup(qapp_or_skip, tmp_path, monkeypatch):
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
 
     from afterglow.gui import default_remote
 
@@ -72,7 +72,7 @@ def test_changing_it_later_starts_on_the_current_one(setup):
 
 
 def _answer(monkeypatch, module, button, tick=False):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     shown = []
 
@@ -85,7 +85,7 @@ def _answer(monkeypatch, module, button, tick=False):
 
 
 def test_a_move_offers_the_new_remote(setup, monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     shown, _ = _answer(monkeypatch, setup.module, QMessageBox.StandardButton.Yes)
     setup.module.set_default_remote("harmony-900", setup.settings)
@@ -97,7 +97,7 @@ def test_a_move_offers_the_new_remote(setup, monkeypatch):
 
 
 def test_dont_ask_again_is_kept(setup, monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     shown, _ = _answer(monkeypatch, setup.module, QMessageBox.StandardButton.No, tick=True)
     setup.module.set_default_remote("harmony-900", setup.settings)

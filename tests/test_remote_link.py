@@ -184,7 +184,7 @@ def test_a_capture_with_neither_is_refused():
 def test_learned_codes_reach_the_build_spec():
     """A learned command points into the capture table with 0xFFFF<index>00; if the
     two halves disagree the command silently does nothing."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.device_wizard import _attach_learned
     from afterglow import backends, project_devices, remotes
 
@@ -208,7 +208,7 @@ def test_learned_codes_reach_the_build_spec():
 def test_learning_does_not_disturb_existing_captures():
     """Adding a learned key to a device that already has recorded ones must not
     renumber the others out from under their commands."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.device_wizard import _attach_learned
     old = ir_signal.waveform(
         [100, -100], native={"harmony-pk": {
@@ -354,7 +354,7 @@ def test_the_gui_learning_button_reaches_the_corrected_ssir_encoder(
     import io
     import zipfile
 
-    from PyQt6.QtWidgets import QInputDialog, QMessageBox
+    from afterglow.qt.QtWidgets import QInputDialog, QMessageBox
     from conftest import ROOT
     from afterglow.build_service import ConfigBuildService
     from afterglow.gui import remote_ops
@@ -434,7 +434,7 @@ def test_remote_operations_run_off_the_main_thread():
     """Learning waits five seconds for a keypress and pairing the better part of a
     minute. Doing either on the main thread greys the window out and the desktop
     offers to kill it."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui import remote_ops
     assert hasattr(remote_ops, "run_with_progress")
     gui = Path(remote_ops.__file__).parent
@@ -577,7 +577,7 @@ def test_the_log_reports_outcomes_in_words_and_keeps_the_advice_readable(qapp_or
     - the connection advice does - could arrive with them collapsed into one run-on
     paragraph. Assert against the rendered document rather than the string passed in.
     """
-    from PyQt6.QtWidgets import QTextEdit
+    from afterglow.qt.QtWidgets import QTextEdit
 
     log = QTextEdit()
     log.setReadOnly(True)
@@ -622,7 +622,7 @@ def test_pairing_waits_for_the_address_to_be_saved():
     body = source.split("def wait_for_new_receiver")[1].split("\ndef ")[0]
     assert "deadline" in body and "before" in body, "it must poll, not read once"
 
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui import blaster_scan
     tick = Path(blaster_scan.__file__).read_text().split("def _tick")[1].split(
         "\n    def ")[0]
@@ -661,7 +661,7 @@ def test_a_blaster_already_in_the_project_cannot_be_added_twice(qapp_or_skip,
                                                                 monkeypatch):
     """It is still shown - an empty list would look like a failure when the blaster is
     simply already set up - but it is not selectable."""
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "AA:AA", "label": 1}])
     dialog = BlasterScanDialog({"AA:AA"}, LINK["current"])
@@ -731,7 +731,7 @@ def test_a_blaster_paired_long_ago_still_counts_as_found(qapp_or_skip, monkeypat
 def test_a_known_but_silent_blaster_is_not_offered(qapp_or_skip, monkeypatch):
     """ControllerStatus 0 means the remote's link to it is down. Adding it would route
     devices to something unreachable."""
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
     from afterglow.gui.blaster_scan import BlasterScanDialog
     _stub_remote(monkeypatch, [{"mac": "CC", "label": 3, "status": 0}])
     dialog = BlasterScanDialog(set(), LINK["current"])
@@ -748,7 +748,7 @@ def test_a_known_but_silent_blaster_is_not_offered(qapp_or_skip, monkeypatch):
 def test_a_receiver_with_no_status_is_assumed_present():
     """The flag is a positive signal and an older configuration may predate it;
     treating its absence as "gone" would hide working hardware."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.blaster_scan import responding
     assert responding({"mac": "AA"}) is True
     assert responding({"mac": "AA", "status": 1}) is True
@@ -785,7 +785,7 @@ def test_routing_survives_a_reset_even_if_the_numbers_change(qapp_or_skip):
 def test_a_device_whose_blaster_never_returned_is_reported():
     """Silently leaving it pointing at a base that no longer exists is the failure
     that looks like broken hardware."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.rf_routing import assignments_by_mac, assignments_for
     anchored = assignments_by_mac([{"mac": "AA", "label": 1}, {"mac": "BB", "label": 2}],
                                   {"7": "1-A", "8": "2"})

@@ -4,14 +4,14 @@ import sys
 import json
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QApplication, QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QLabel,
     QMainWindow, QMessageBox, QRadioButton, QTabWidget, QVBoxLayout
 )
-from PyQt6.QtCore import QRectF, QSettings, QSize, Qt, QUrl
-from PyQt6.QtGui import (QAction, QDesktopServices, QIcon, QIconEngine,
+from ..qt.QtCore import QRectF, QSettings, QSize, Qt, QUrl
+from ..qt.QtGui import (QAction, QDesktopServices, QIcon, QIconEngine,
                          QPainter, QPixmap)
-from PyQt6.QtSvg import QSvgRenderer
+from ..qt.QtSvg import QSvgRenderer
 
 from .project import new_project as empty_project
 
@@ -560,8 +560,8 @@ class MainWindow(QMainWindow):
 
     def _show_log(self):
         """Open the folder that holds the log, for attaching it to a bug report."""
-        from PyQt6.QtCore import QUrl
-        from PyQt6.QtGui import QDesktopServices
+        from ..qt.QtCore import QUrl
+        from ..qt.QtGui import QDesktopServices
 
         from .. import applog
         log = applog.path()
@@ -578,7 +578,7 @@ class MainWindow(QMainWindow):
         # Deliberately no list of supported remotes. It is in the README, and the
         # application answers the question better by reading the model off whatever is
         # plugged in.
-        from PyQt6.QtCore import QSize
+        from ..qt.QtCore import QSize
 
         box = QMessageBox(self)
         box.setWindowTitle("About")
@@ -957,7 +957,11 @@ def _join_title_bar(window):
         send(nswindow, b"setBackgroundColor:", nscolour, argtypes=(ctypes.c_void_p,))
 
     paint()
-    QApplication.styleHints().colorSchemeChanged.connect(lambda _scheme: paint())
+    # Qt 6.5 and later say when the system turns dark or light; earlier Qt (the legacy
+    # builds) does not, and the title bar keeps the colour it started with.
+    changed = getattr(QApplication.styleHints(), "colorSchemeChanged", None)
+    if changed is not None:
+        changed.connect(lambda _scheme: paint())
 
 
 def main():
@@ -965,6 +969,8 @@ def main():
     applog.setup()
     from ..certificates import use_system_store
     use_system_store()
+    from ..qt import prepare_application
+    prepare_application()
     app = QApplication(sys.argv)
     app.setApplicationName("Afterglow")
     app.setOrganizationName("Afterglow")

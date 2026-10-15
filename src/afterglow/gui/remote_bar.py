@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (
+from ..qt.QtCore import pyqtSignal
+from ..qt.QtWidgets import (
     QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLabel, QListWidget,
     QListWidgetItem, QPushButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
 )

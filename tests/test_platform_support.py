@@ -92,7 +92,7 @@ def test_the_flash_tab_warns_on_an_untested_platform(qapp_or_skip, monkeypatch):
     macOS, not Windows: Windows is tested, and the tab is deliberately quiet there. The
     one-time driver dialog covers what a Windows user needs.
     """
-    from PyQt6.QtWidgets import QLabel
+    from afterglow.qt.QtWidgets import QLabel
 
     from afterglow.gui.tabs import UpdateTab
 
@@ -104,7 +104,7 @@ def test_the_flash_tab_warns_on_an_untested_platform(qapp_or_skip, monkeypatch):
 
 
 def test_the_flash_tab_stays_quiet_on_linux(qapp_or_skip, monkeypatch):
-    from PyQt6.QtWidgets import QLabel
+    from afterglow.qt.QtWidgets import QLabel
 
     from afterglow.gui.tabs import UpdateTab
 
@@ -232,7 +232,7 @@ def test_the_driver_reminder_shows_once_and_not_where_it_is_pointless(qapp_or_sk
     also not a blocker: authoring and building need no driver, and someone editing a
     configuration should not meet a hardware dialog at all.
     """
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
 
     from afterglow import concord
     from afterglow.gui import app as gui_app
@@ -265,7 +265,7 @@ def test_the_driver_reminder_shows_once_with_a_way_to_the_driver(qapp_or_skip,
     is worse than not showing it - so the answer is recorded and not asked again. It is
     also not a blocker: authoring and building need no driver at all.
     """
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
 
     from afterglow import concord
     from afterglow.gui import app as gui_app
@@ -545,7 +545,7 @@ def test_the_offer_is_skipped_when_it_would_be_pointless(qapp_or_skip, monkeypat
     """`should_ask` is consulted before the preference, on purpose: installing the rule
     has to end the question by itself, without the user having had to tick a box to stop
     being asked something that no longer applies."""
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
 
     from afterglow import usb_link
     from afterglow.gui import app as gui_app
@@ -609,8 +609,8 @@ def test_the_offer_uses_a_checkbox_for_the_preference_and_radios_for_the_choice(
         qapp_or_skip, monkeypatch, tmp_path):
     """"Don't ask again" is orthogonal to which option was picked, so it cannot be a
     fourth radio button - that would make declining and remembering the same click."""
-    from PyQt6.QtCore import QSettings
-    from PyQt6.QtWidgets import QCheckBox, QDialog, QRadioButton
+    from afterglow.qt.QtCore import QSettings
+    from afterglow.qt.QtWidgets import QCheckBox, QDialog, QRadioButton
 
     from afterglow import usb_link
     from afterglow.gui import app as gui_app
@@ -679,7 +679,7 @@ def test_every_flash_tab_button_goes_past_the_link_check(qapp_or_skip, monkeypat
 
     # The method imports QSettings when it runs, so patching the source module reaches
     # it - and the user's own settings file is never touched by this test.
-    monkeypatch.setattr("PyQt6.QtCore.QSettings", Settings)
+    monkeypatch.setattr("afterglow.qt.QtCore.QSettings", Settings)
 
     tab = UpdateTab({"settings": {}, "devices": [], "activities": []}, _StubSettings())
     tab.check_connection()
@@ -708,7 +708,7 @@ def test_a_failed_setup_says_so_and_stops_asking_but_leaves_a_way_back(qapp_or_s
     offer stops - but it cannot be a one-way door, which is why the Settings entry exists
     and why it asks regardless of both the preference and `should_ask`.
     """
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
 
     from afterglow import usb_link
     from afterglow.gui import app as gui_app
@@ -801,9 +801,9 @@ def test_the_window_icon_uses_the_drawing_made_for_each_size(qapp_or_skip):
     Compares the icon's 16px entry against the large drawing scaled to 16. They must
     differ, which they only do if the per-size file was used.
     """
-    from PyQt6.QtCore import QSize, Qt
-    from PyQt6.QtGui import QPainter, QPixmap
-    from PyQt6.QtSvg import QSvgRenderer
+    from afterglow.qt.QtCore import QSize, Qt
+    from afterglow.qt.QtGui import QPainter, QPixmap
+    from afterglow.qt.QtSvg import QSvgRenderer
 
     from afterglow import paths
     from afterglow.gui.app import _application_icon
@@ -833,13 +833,21 @@ def test_the_window_icon_is_rendered_at_fractional_scale_not_stretched(qapp_or_s
     Checks the pixmap is produced at the physical size and labelled with the ratio, so Qt
     draws it 1:1 rather than stretching it.
     """
-    from PyQt6.QtCore import QSize
+    from afterglow.qt import QT5
+    from afterglow.qt.QtCore import QSize
+    from afterglow.qt.QtGui import QIcon
 
-    from afterglow.gui.app import _application_icon
+    from afterglow.gui.app import _application_icon, _MarkIconEngine
 
     icon = _application_icon()
+    engine = _MarkIconEngine()
     for scale, expected in ((1.0, 16), (1.25, 20), (1.5, 24), (1.75, 28), (2.0, 32)):
-        pixmap = icon.pixmap(QSize(16, 16), scale)
+        if QT5:
+            # Qt 5's QIcon has no ratio overload; it asks the engine the same way.
+            pixmap = engine.scaledPixmap(QSize(16, 16), QIcon.Mode.Normal,
+                                         QIcon.State.Off, scale)
+        else:
+            pixmap = icon.pixmap(QSize(16, 16), scale)
         assert pixmap.width() == expected, f"{scale}x should render {expected}px"
         assert pixmap.devicePixelRatio() == scale, "the ratio must be carried"
         assert not pixmap.isNull()

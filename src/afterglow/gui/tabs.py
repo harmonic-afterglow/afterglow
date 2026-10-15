@@ -2,14 +2,14 @@
 
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
     QSpinBox, QFileDialog, QMessageBox, QTextEdit, QListWidget,
     QListWidgetItem, QAbstractItemView,
     QProgressBar
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from ..qt.QtCore import Qt, pyqtSignal
+from ..qt.QtGui import QFont
 
 from .build_service import BuildWorker as ConfigBuildWorker
 from .project import (mark_device_new, new_device_ids)
@@ -500,8 +500,8 @@ class SettingsTab(QWidget):
         self.theme.setCurrentIndex(max(0, self.theme.findData(chosen)))
 
     def _open_themes(self):
-        from PyQt6.QtCore import QUrl
-        from PyQt6.QtGui import QDesktopServices
+        from ..qt.QtCore import QUrl
+        from ..qt.QtGui import QDesktopServices
         from .. import themes
         profile = self._profile()
         if profile is None:
@@ -771,7 +771,7 @@ class UpdateTab(QWidget):
         positive has to cost one wrong line in a log rather than a refused operation -
         and the operation itself will say plainly enough whether it worked.
         """
-        from PyQt6.QtCore import QSettings
+        from ..qt.QtCore import QSettings
 
         from .. import usb_link
         from .constants import USB_LINK_CHOICE_KEY

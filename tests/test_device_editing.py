@@ -36,7 +36,7 @@ def made(templates, name):
 
 # captured codes
 def test_a_captured_command_does_not_offer_bytes_that_are_ignored(templates):
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
     from afterglow.gui.device_wizard import DeviceWizard
     wizard = DeviceWizard(templates, project={"devices": [], "settings": {}})
     wizard._on_template_selected(model(templates, "Captured Controller"))
@@ -52,7 +52,7 @@ def test_a_captured_command_does_not_offer_bytes_that_are_ignored(templates):
 def test_a_generated_command_stays_editable(templates):
     """The columns are real for a device whose codes are built from a codec - this must
     not have been fixed by disabling them everywhere."""
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
     from afterglow.gui.device_wizard import DeviceWizard
     wizard = DeviceWizard(templates, project={"devices": [], "settings": {}})
     wizard._on_template_selected(model(templates, "Generated Player"))

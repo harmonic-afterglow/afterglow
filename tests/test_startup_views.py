@@ -9,7 +9,7 @@ import pytest
 # `gui.macro` imports PyQt6 itself, and this import runs at collection - before any
 # fixture could skip. Without the guard the whole module errors on an interpreter that
 # has no PyQt6 instead of skipping, which is what a build-layer contributor gets.
-pytest.importorskip("PyQt6.QtWidgets")
+pytest.importorskip("afterglow.qt.QtWidgets")
 
 from afterglow.gui.macro import (SimpleStartupList, StartupEditor,  # noqa: E402
                                  can_be_simple, why_not_simple)

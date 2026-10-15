@@ -1,4 +1,4 @@
-"""The PyQt6 authoring GUI.
+"""The authoring GUI, on PyQt6 - or PyQt5 on older systems (see `afterglow.qt`).
 
 Split by concern so no one file grows unmanageable again:
 

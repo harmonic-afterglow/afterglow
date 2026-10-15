@@ -152,10 +152,10 @@ def entries_of(path):
 def qapp_or_skip():
     """A Qt application, or skip. Widget placement is worth testing; needing a display
     is not a reason to leave it untested."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     import os
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtWidgets import QApplication
+    from afterglow.qt.QtWidgets import QApplication
     return QApplication.instance() or QApplication([])
 
 

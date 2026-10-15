@@ -103,7 +103,7 @@ ODD,Sony20,1,-1,4
 def test_external_afterglow_database_carries_its_portable_protocol_into_a_build(
         tmp_path, build):
     from afterglow import ir_protocol
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.widgets import load_repo_templates
 
     root = tmp_path / "my-dumped-devices"
@@ -143,7 +143,7 @@ def test_external_afterglow_database_carries_its_portable_protocol_into_a_build(
 def test_external_afterglow_database_carries_a_dumped_native_protocol_into_a_build(
         tmp_path, build):
     from afterglow.backends.harmony_pk import ir_emit, mappings
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.widgets import load_repo_templates
 
     root = tmp_path / "remote-backups"
@@ -196,7 +196,7 @@ def test_a_record_naming_a_removed_catalogue_file_is_refused_with_guidance(tmp_p
     block id nobody recognises.
     """
     import json
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.widgets import load_repo_templates
 
     root = tmp_path / "private-library"

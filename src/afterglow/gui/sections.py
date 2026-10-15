@@ -14,8 +14,8 @@ tells people when to edit and when to leave alone, which a hidden page cannot.
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLabel,
+from ..qt.QtCore import Qt
+from ..qt.QtWidgets import (QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLabel,
                              QListWidget, QListWidgetItem, QScrollArea, QStackedWidget,
                              QVBoxLayout, QWidget, QWizard, QWizardPage)
 

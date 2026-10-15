@@ -1,7 +1,7 @@
 """Assign devices to RF blaster ports."""
 
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QMessageBox
 )
 

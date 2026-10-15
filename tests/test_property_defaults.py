@@ -35,7 +35,7 @@ def catalogue():
 
 def test_every_property_says_what_unset_does(catalogue):
     """The complaint this started from: "unset" alone tells a user nothing."""
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui.properties_editor import unset_text
     for scope in ("device", "activity"):
         for name in catalogue[scope]:
@@ -239,7 +239,7 @@ def test_changing_a_default_does_write_it(qapp_or_skip):
     """The other half: touching it must take effect."""
     page = editor("Television")
     page._rows_widgets = None
-    from PyQt6.QtWidgets import QCheckBox
+    from afterglow.qt.QtWidgets import QCheckBox
     box = page.findChildren(QCheckBox)[0]
     box.setChecked(not box.isChecked())
     assert page.values(), "changing a control wrote nothing"

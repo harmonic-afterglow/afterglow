@@ -92,7 +92,7 @@ def test_flashing_a_file_ends_by_saying_how_it_went(qapp_or_skip, tmp_path, monk
                                                     ok, message):
     """The progress window closing on its own, with nothing after it, reads as a crash:
     the end of a write is always a message, success or failure."""
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     from afterglow.gui import flash_file, remote_ops, usb_driver
     path = _file(tmp_path)

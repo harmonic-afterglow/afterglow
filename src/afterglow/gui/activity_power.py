@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QCheckBox, QComboBox, QLabel, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWizardPage, QAbstractItemView, QHeaderView,
 )

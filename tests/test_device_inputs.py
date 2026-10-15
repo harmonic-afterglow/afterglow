@@ -49,7 +49,7 @@ def test_an_untouched_page_changes_nothing(qapp_or_skip):
 
 
 def test_an_input_can_be_ticked_as_the_tv_s_app_without_editing_the_inputs(qapp_or_skip):
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
     device = _device(inputs=[["HDMI 1", "HDMI1"], ["Netflix", "HDMI2"]],
                      online_inputs=["Netflix"],
                      states=[{"id": "Input", "values": [], "actions": []}])

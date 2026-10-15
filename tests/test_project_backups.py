@@ -59,7 +59,7 @@ def test_an_opened_shareable_project_is_named_by_its_folder(tmp_path):
 # the window
 @pytest.fixture
 def window(qapp_or_skip, monkeypatch):
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
     from afterglow.gui import app
     QSettings("Afterglow", "Afterglow").remove(app.LAST_PROJECT_KEY)
     win = app.MainWindow()

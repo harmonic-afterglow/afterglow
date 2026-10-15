@@ -13,9 +13,9 @@ ONE = {"settings": {"remote": "harmony-one"}, "activities": [],
 
 def _drag(view, from_row, to_row):
     """Press on one row, move past the middle of another, let go."""
-    from PyQt6.QtCore import QEvent, QPointF, Qt
-    from PyQt6.QtGui import QMouseEvent
-    from PyQt6.QtWidgets import QApplication
+    from afterglow.qt.QtCore import QEvent, QPointF, Qt
+    from afterglow.qt.QtGui import QMouseEvent
+    from afterglow.qt.QtWidgets import QApplication
 
     view.resize(500, 400)
     view.show()
@@ -30,7 +30,7 @@ def _drag(view, from_row, to_row):
     def send(kind, x, y, buttons):
         point = QPointF(x, y)
         QApplication.sendEvent(viewport, QMouseEvent(
-            kind, point, viewport.mapToGlobal(point), Qt.MouseButton.LeftButton,
+            kind, point, QPointF(viewport.mapToGlobal(point.toPoint())), Qt.MouseButton.LeftButton,
             buttons, Qt.KeyboardModifier.NoModifier))
 
     left = Qt.MouseButton.LeftButton
@@ -67,7 +67,7 @@ def test_activities_are_put_in_order_by_dragging(qapp_or_skip):
 
 
 def test_a_click_is_not_a_drag(qapp_or_skip):
-    from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
+    from afterglow.qt.QtWidgets import QTableWidget, QTableWidgetItem
 
     from afterglow.gui.drag_rows import RowDragger
     table = QTableWidget(3, 1)
@@ -117,9 +117,9 @@ def test_a_card_is_dragged_by_its_grip(qapp_or_skip):
     """As the mouse does it: pressed on the grip, inside the card, inside the list."""
     import copy
 
-    from PyQt6.QtCore import QPoint, Qt
-    from PyQt6.QtTest import QTest
-    from PyQt6.QtWidgets import QLabel
+    from afterglow.qt.QtCore import QPoint, Qt
+    from afterglow.qt.QtTest import QTest
+    from afterglow.qt.QtWidgets import QLabel
 
     from afterglow.gui.tabs import DevicesTab
     project = copy.deepcopy(ONE)
@@ -143,7 +143,7 @@ def test_a_card_says_only_what_is_known(qapp_or_skip):
     """A device imported from a configuration has no make or model: its line started
     with a lone dot. An activity without a screen said "Display: ?"."""
     from afterglow.gui.tabs import ActivityCard, DeviceCard
-    from PyQt6.QtWidgets import QLabel
+    from afterglow.qt.QtWidgets import QLabel
     device = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
                         lambda *_: None, lambda *_: None, project=ONE)
     line = device.findChildren(QLabel)[-1].text()

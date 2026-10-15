@@ -17,7 +17,7 @@ def _remove_the_filter_afterwards():
 
 
 def test_a_wrapped_label_keeps_room_for_every_line(qapp_or_skip):
-    from PyQt6.QtWidgets import QApplication, QLabel
+    from afterglow.qt.QtWidgets import QApplication, QLabel
 
     from afterglow.gui.ui_helpers import keep_wrapped_labels_whole
     keep_wrapped_labels_whole(QApplication.instance())
@@ -35,7 +35,7 @@ def test_a_wrapped_label_keeps_room_for_every_line(qapp_or_skip):
 
 
 def test_an_unwrapped_label_is_left_alone(qapp_or_skip):
-    from PyQt6.QtWidgets import QApplication, QLabel
+    from afterglow.qt.QtWidgets import QApplication, QLabel
 
     from afterglow.gui.ui_helpers import keep_wrapped_labels_whole
     keep_wrapped_labels_whole(QApplication.instance())

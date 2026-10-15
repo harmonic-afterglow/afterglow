@@ -92,7 +92,7 @@ def test_the_self_check_detects_a_bundle_that_would_start_and_do_nothing(tmp_pat
     # `selfcheck.run` imports `afterglow.gui` on purpose: a bundle that cannot start its
     # interface is exactly what this is looking for. So the check needs Qt to pass, and
     # without it the correct outcome is to skip rather than to report a failure.
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     done = subprocess.run([sys.executable, str(ROOT / "afterglow.py"), "--self-check"],
                           capture_output=True, text=True, cwd=tmp_path)
     assert done.returncode == 0, done.stdout + done.stderr
@@ -178,7 +178,7 @@ def test_importing_the_interface_touches_no_filesystem_and_needs_no_home(tmp_pat
     """
     # The subprocess imports the interface, so this needs Qt even though what it asserts
     # is about the filesystem.
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     script = (
         "import sys\n"
         f"sys.path.insert(0, {str(ROOT / 'src')!r})\n"

@@ -18,9 +18,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
+from ..qt.QtCore import Qt
+from ..qt.QtGui import QPixmap
+from ..qt.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
                              QFileDialog, QFormLayout, QHBoxLayout, QHeaderView,
                              QLabel, QLineEdit, QMessageBox, QPushButton,
                              QStackedWidget, QTableWidget, QTableWidgetItem,
@@ -597,7 +597,7 @@ _MIN_PADDING = 8
 
 def previous_prepared_dir() -> Path | None:
     """Where versions before 0.2 kept normalised logos: Qt's application data."""
-    from PyQt6.QtCore import QStandardPaths
+    from ..qt.QtCore import QStandardPaths
     base = QStandardPaths.writableLocation(
         QStandardPaths.StandardLocation.AppDataLocation)
     return Path(base) / "logos" if base else None

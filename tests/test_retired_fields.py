@@ -18,7 +18,7 @@ import pytest
 # `gui.project` needs no Qt of its own, but importing any `afterglow.gui` submodule runs
 # the package `__init__`, which imports `app` and therefore PyQt6. This import happens at
 # collection, so a fixture cannot skip in time and the module errors instead.
-pytest.importorskip("PyQt6.QtWidgets")
+pytest.importorskip("afterglow.qt.QtWidgets")
 
 from afterglow.gui.project import (  # noqa: E402
     RETIRED_ACTIVITY_FIELDS, drop_retired_fields)

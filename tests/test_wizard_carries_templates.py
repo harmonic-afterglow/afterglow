@@ -231,7 +231,7 @@ def test_every_add_button_in_the_activity_pages_survives_a_press(qapp_or_skip,
                                                                  monkeypatch):
     """Press every "add" button once. They open a modal, so the dialog is stubbed to
     decline - what is being tested is that the handler runs at all."""
-    from PyQt6.QtWidgets import QDialog
+    from afterglow.qt.QtWidgets import QDialog
     from afterglow.gui import activity_buttons, activity_wizard
     monkeypatch.setattr(QDialog, "exec", lambda self: 0)
 
@@ -241,8 +241,15 @@ def test_every_add_button_in_the_activity_pages_survives_a_press(qapp_or_skip,
              activity_wizard.ActivityMacrosPage(devices, {})]
     for page in pages:
         for button in page.findChildren(type(page.findChild(
-                __import__("PyQt6.QtWidgets", fromlist=["QPushButton"]).QPushButton))):
-            if button.text().lower().startswith("add"):
+                __import__("afterglow.qt.QtWidgets", fromlist=["QPushButton"]).QPushButton))):
+            if not button.text().lower().startswith("add"):
+                continue
+            if button.menu() is not None:
+                # A menu button's click runs the menu modally - Qt 5 blocks there even
+                # offscreen. Trigger each entry instead, which is what a pick does.
+                for action in button.menu().actions():
+                    action.trigger()    # must not raise
+            else:
                 button.click()          # must not raise
 
 
@@ -257,7 +264,7 @@ def test_search_page_active_sources_chips_and_all_sources_merge(qapp_or_skip):
     assert not page._sources_chips_widget.isHidden()
     # Click second chip button to switch search_type
     chip_buttons = page._sources_chips_widget.findChildren(
-        __import__("PyQt6.QtWidgets", fromlist=["QPushButton"]).QPushButton
+        __import__("afterglow.qt.QtWidgets", fromlist=["QPushButton"]).QPushButton
     )
     assert len(chip_buttons) >= 1
     chip_buttons[0].click()

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import threading
 
-from PyQt6.QtCore import QEventLoop, QSettings, Qt, QTimer
-from PyQt6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QLabel, QMessageBox,
+from ..qt.QtCore import QEventLoop, QSettings, Qt, QTimer
+from ..qt.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QLabel, QMessageBox,
                              QProgressDialog, QPushButton, QVBoxLayout)
 
 from .. import concord, windows_driver

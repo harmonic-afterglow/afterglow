@@ -12,18 +12,19 @@ import pytest
 
 @pytest.fixture
 def grown(qapp_or_skip):
-    from PyQt6.QtWidgets import QApplication, QStyleFactory
+    from afterglow.qt.QtWidgets import QApplication, QStyleFactory
 
     from afterglow.gui.ui_helpers import let_form_fields_grow
     app = QApplication.instance()
-    name = app.style().name()
+    style = app.style()
+    name = style.name() if hasattr(style, "name") else style.objectName()  # Qt 5
     let_form_fields_grow(app)
     yield app
     app.setStyle(QStyleFactory.create(name))
 
 
 def test_a_forms_fields_take_the_width_they_are_given(grown):
-    from PyQt6.QtWidgets import QComboBox, QFormLayout, QWidget
+    from afterglow.qt.QtWidgets import QComboBox, QFormLayout, QWidget
     page = QWidget()
     form = QFormLayout(page)
     combo = QComboBox()

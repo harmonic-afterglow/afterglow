@@ -15,8 +15,8 @@ knows or cares where the images came from.
 """
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QIcon, QPixmap
+from ..qt.QtCore import QSize, Qt
+from ..qt.QtGui import QIcon, QPixmap
 
 from .. import paths
 

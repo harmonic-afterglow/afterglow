@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from ..qt.QtCore import QThread, pyqtSignal
 
 from ..applog import LOG
 
@@ -191,8 +191,8 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
     stays alive and the caller still reads as a straight line. Returns
     `(ok, message, result)`.
     """
-    from PyQt6.QtCore import QEventLoop, Qt
-    from PyQt6.QtWidgets import QProgressDialog
+    from ..qt.QtCore import QEventLoop, Qt
+    from ..qt.QtWidgets import QProgressDialog
 
     from .usb_driver import offer_before_operation
     offer_before_operation(parent)

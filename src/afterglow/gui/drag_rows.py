@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from typing import Callable
 
-from PyQt6.QtCore import QEvent, QObject, QPoint, QRectF, Qt, pyqtSlot
-from PyQt6.QtGui import QColor, QCursor, QIcon, QPainter, QPixmap
-from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QTableWidget,
+from ..qt.QtCore import QEvent, QObject, QPoint, QRectF, Qt, pyqtSlot
+from ..qt.QtGui import QColor, QCursor, QIcon, QPainter, QPixmap
+from ..qt.QtWidgets import (QAbstractItemView, QApplication, QFrame, QTableWidget,
                              QTableWidgetItem)
 
 EDGE = 18             # how near the top or bottom a drag scrolls the view

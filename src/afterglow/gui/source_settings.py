@@ -11,8 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 
-from PyQt6.QtCore import QSettings, Qt
-from PyQt6.QtWidgets import (
+from ..qt.QtCore import QSettings, Qt
+from ..qt.QtWidgets import (
     QApplication,
     QAbstractItemView,
     QDialog,

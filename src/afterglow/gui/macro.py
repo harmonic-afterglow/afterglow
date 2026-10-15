@@ -1,11 +1,11 @@
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
     QAbstractItemView, QHeaderView, QDialog, QFormLayout, QComboBox,
     QDialogButtonBox, QLabel, QLineEdit, QSpinBox, QMessageBox,
     QMenu, QRadioButton, QStackedWidget
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QIntValidator
+from ..qt.QtCore import Qt, pyqtSignal
+from ..qt.QtGui import QIntValidator
 
 from .drag_rows import RowDragger, move_table_row
 from .ui_helpers import FilterCombo, order_by_participation
