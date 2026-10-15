@@ -24,6 +24,7 @@ set -euo pipefail
 ARCH="${1:?usage: $0 i686|x86_64 <output dir>}"
 OUT="$(mkdir -p "${2:?usage: $0 i686|x86_64 <output dir>}" && cd "$2" && pwd)"
 HOST="${ARCH}-w64-mingw32"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 CONCORDANCE_REPO="${CONCORDANCE_REPO:-https://github.com/harmonic-afterglow/concordance}"
 CONCORDANCE_REF="${CONCORDANCE_REF:-usbnet-link}"
 WORK="${WORK:-/tmp/libconcord-legacy-$ARCH}"
@@ -177,7 +178,7 @@ echo "built $OUT/libconcord-6.dll from $(cat "$OUT/libconcord-commit")"
 # The WinUSB helper, both architectures whatever ARCH is: a 32-bit Afterglow on 64-bit
 # Windows 7 has to run the 64-bit one, since Windows refuses device installation from
 # a 32-bit process there. See afterglow-winusb.c.
-helper="$(cd "$(dirname "$0")" && pwd)/afterglow-winusb.c"
+helper="$HERE/afterglow-winusb.c"
 for target in i686:x86 x86_64:x64; do
   "${target%%:*}-w64-mingw32-gcc" -O2 -municode -static -D_WIN32_WINNT=0x0601 \
     -o "$OUT/afterglow-winusb-${target##*:}.exe" "$helper" -lsetupapi -lnewdev -lcfgmgr32
