@@ -92,6 +92,20 @@ if _libconcord:
         raise SystemExit(f"AFTERGLOW_BUNDLE_LIBCONCORD is not a file: {source}")
     binaries.append((str(source), "."))
 
+# ## The Universal C runtime, for Windows 7
+#
+# Python 3.5+ and everything built with current Visual C++ need the Universal CRT, which
+# Windows 10 and later carry and Windows 7 only has after update KB2999226. The legacy
+# Windows build points `AFTERGLOW_BUNDLE_UCRT` at the redistributable DLLs in the
+# Windows SDK; Microsoft supports shipping them beside the application this way, and on
+# Windows 10 and later the system's own copy is used regardless.
+_ucrt = os.environ.get("AFTERGLOW_BUNDLE_UCRT")
+if _ucrt:
+    found = sorted(Path(_ucrt).glob("*.dll"))
+    if not any(dll.name.lower() == "ucrtbase.dll" for dll in found):
+        raise SystemExit(f"AFTERGLOW_BUNDLE_UCRT holds no ucrtbase.dll: {_ucrt}")
+    binaries += [(str(dll), ".") for dll in found]
+
 analysis = Analysis(                      # noqa: F821
     # NOT `afterglow.py`: PyInstaller puts the entry script in the extraction
     # directory and on `sys.path`, where a script named after the package shadows it -
@@ -109,6 +123,12 @@ analysis = Analysis(                      # noqa: F821
     noarchive=False,
 )
 pyz = PYZ(analysis.pure)                  # noqa: F821
+
+# Every native file going into the bundle, one source path per line, for the checks
+# that read them before release: a one-file executable cannot be inspected afterwards.
+if os.environ.get("AFTERGLOW_BINARIES_LIST"):
+    Path(os.environ["AFTERGLOW_BINARIES_LIST"]).write_text(
+        "".join(f"{entry[1]}\n" for entry in analysis.binaries))
 
 if sys.platform != "darwin":
     exe = EXE(                            # noqa: F821
@@ -167,7 +187,8 @@ else:
         info_plist={
             "CFBundleDisplayName": "Afterglow",
             "NSHighResolutionCapable": True,
-            # 11 covers both architectures; the USB link is proven on 13.
-            "LSMinimumSystemVersion": "11.0",
+            # What the build was made for: 11.0 for the regular builds, 10.13 for the
+            # legacy Intel one. `minos.py` checks every binary in the app against it.
+            "LSMinimumSystemVersion": os.environ.get("AFTERGLOW_MACOS_MIN", "11.0"),
         },
     )

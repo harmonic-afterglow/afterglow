@@ -42,6 +42,20 @@ def test_nothing_is_looked_for_off_windows(monkeypatch):
         windows_driver.switch(windows_driver.INSTALL)
 
 
+def test_windows_7_is_not_offered_direct_access(monkeypatch):
+    """Windows 7's winusb.inf has no generic model to select, so the switch would fail."""
+    monkeypatch.setattr(windows_driver.sys, "platform", "win32")
+    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (6, 1, 7601),
+                        raising=False)
+    assert not windows_driver.applicable()
+    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (6, 2, 9200),
+                        raising=False)
+    assert windows_driver.applicable()
+    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (10, 0, 19045),
+                        raising=False)
+    assert windows_driver.applicable()
+
+
 def test_a_frozen_build_starts_itself_again(monkeypatch):
     monkeypatch.setattr(windows_driver.sys, "frozen", True, raising=False)
     monkeypatch.setattr(windows_driver.sys, "executable", r"C:\Apps\afterglow.exe")
