@@ -100,6 +100,7 @@ Importing takes your devices and activities and leaves the other remote's state 
 | `Dumps` | configurations read from a remote, ones you import, and the backup taken before writing an experimental remote |
 | `Generated` | configurations Afterglow builds - what **Flash** writes |
 | `Themes` | themes, a folder per remote that takes them (see [Themes](#themes)) |
+| `Backups` | earlier versions of each project, kept every time it is saved (**File > Show Earlier Versions**) |
 | `Library` | your own devices, and what you learn from the original remote |
 | `Logos` | favourite-channel logos; an import keeps the pictures it brings in `Logos/Imported` |
 
