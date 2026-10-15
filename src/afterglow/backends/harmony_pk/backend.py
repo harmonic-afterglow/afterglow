@@ -24,6 +24,11 @@ from . import BACKEND_NAMES, NAME
 from . import ir_compile, protocol_json, ssir
 from .mappings import protocol as protocol_mapping
 
+# A page of buttons is laid out by each button's <Position>; a place no button takes is
+# drawn empty, on a device's page and an activity's alike (the 900's ButtonImporter.as,
+# the 1100's ScrollingComboButtonBox.as).
+SCREEN_GAPS = True
+
 
 
 def rf_link():

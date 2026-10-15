@@ -19,7 +19,7 @@ def test_the_device_editor_lists_the_seldom_sections_last(qapp_or_skip):
     from afterglow.gui.device_wizard import DeviceEditor
     from afterglow.gui.sections import SELDOM
     editor = DeviceEditor([], existing=TV, project=ONE)
-    assert editor.section_names() == ["identity", "commands", "inputs", "timing",
+    assert editor.section_names() == ["identity", "commands", "screen", "inputs", "timing",
                                       "search"]
     rows = [editor.list.item(i).text().strip() for i in range(editor.list.count())]
     assert rows.index(SELDOM) == rows.index("Timing") - 1

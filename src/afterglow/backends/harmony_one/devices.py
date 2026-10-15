@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ... import project_devices
 from . import keys
 from .structures import OBJECT_ATOM, object_body
 
@@ -257,7 +258,13 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
                 },
             })
         ids = {command["name"]: command["command_id"] for command in commands}
+        # A page arranged for this device - read from a configuration or in the editor -
+        # replaces the one made from its labels. Gaps have no place on the One's pages,
+        # which fill their six buttons in turn.
+        screen = ([entry[:2] for entry in project_devices.screen_buttons(device) if entry]
+                  if device.get("screen_buttons") is not None else None)
         out.append({"index": index, "label": label, "commands": commands,
+                    **({"screen": screen} if screen is not None else {}),
                     **device_states(device, ids)})
     return out
 

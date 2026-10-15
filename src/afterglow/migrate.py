@@ -126,7 +126,7 @@ def _touchscreen(project, report):
         dropped = [key for key in ("soft_buttons", "image_buttons", "channels")
                    if activity.get(key)]
         for key in dropped:
-            count = len(activity.pop(key))
+            count = sum(entry is not None for entry in activity.pop(key))
             _row(report, f"Activity {activity.get('label')!r}", "removed",
                  f"{count} {key.replace('_', ' ')}: the remote has no touchscreen")
 
@@ -246,9 +246,14 @@ def _references(project, removed, report):
             _row(report, subject, "removed",
                  f"what {slot} did: it sent a command this remote cannot send")
         buttons = activity.get("soft_buttons") or []
-        kept = [button for button in buttons if not _mentions(button, removed)]
-        if len(kept) != len(buttons):
+        # Each one leaves its place empty, so the buttons after it stay where they were.
+        gone = sum(button is not None and _mentions(button, removed) for button in buttons)
+        if gone:
+            kept = [None if button is not None and _mentions(button, removed) else button
+                    for button in buttons]
+            while kept and kept[-1] is None:              # nothing after the last button
+                kept.pop()
             activity["soft_buttons"] = kept
             _row(report, subject, "removed",
-                 f"{len(buttons) - len(kept)} touchscreen button(s) that sent a command "
-                 "this remote cannot send")
+                 f"{gone} touchscreen button(s) that sent a command this remote cannot "
+                 "send")

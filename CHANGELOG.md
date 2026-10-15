@@ -6,6 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Arrange a device's own page of buttons.** Edit Device has a Screen page: pick which
+  commands get a button on the device's page of the remote's screen, drag them into
+  order, change what each says, leave a gap, or put one command there twice. Harmony
+  900, 1100 and One.
+- **See the page as the remote shows it.** Beside a device's and an activity's screen
+  buttons, a drawing of the remote's screen - two columns by three rows on the 900 and
+  the One, the 1100's own grids - a page at a time, with its arrows. Click a button there
+  to pick it in the list.
+- **Gaps between an activity's screen buttons**, with Add gap, on the Harmony 900 and
+  1100.
+
+### Fixed
+
+- **Importing a configuration put every command on each device's page.** Logitech's
+  configurations show a chosen few - an imported Harmony 900 or 1100 now keeps exactly
+  the page it had: the same buttons, in the same places, under the same names, with the
+  same icons. Projects imported before this have every command on the page; import the
+  configuration again to get its own page back.
+- **Importing a Harmony 900 configuration lost the layout of its activities' screen
+  buttons**: the buttons were read in file order and the empty places between them
+  dropped. Every activity page now comes back as it was.
+- **The Harmony One drew a command's name on its button** rather than the button's text,
+  and put a device's buttons in alphabetical order. It now draws the page as arranged
+  (gaps close up, since the One fills its places in turn), and keeps the order when a
+  configuration is imported.
+
 ## [0.3.0-beta.3] - 2026-10-15
 
 ### Added

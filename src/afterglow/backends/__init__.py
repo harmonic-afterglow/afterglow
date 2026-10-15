@@ -68,6 +68,13 @@ def for_profile(profile):
     return get(name)
 
 
+def screen_gaps(profile) -> bool:
+    """Whether `profile`'s remote can leave a place on a page of buttons empty. A
+    backend's format says so (`SCREEN_GAPS`): one whose pages fill their places in turn
+    closes a gap up."""
+    return bool(getattr(for_profile(profile), "SCREEN_GAPS", False))
+
+
 def rf_link(profile):
     """The RF blaster pairing for `profile`'s remote, or None if it has no RF.
 

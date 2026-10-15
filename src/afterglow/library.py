@@ -194,6 +194,11 @@ def learn(project: dict, extracted_dir: str | Path, library: Path | str = LIBRAR
         # the library arrived with nothing set and the Advanced page looked broken.
         if device.get("properties"):
             spec["properties"] = dict(device["properties"])
+        # Its page as the configuration laid it out, which is as much the device's as
+        # its labels are.
+        if device.get("screen_buttons") is not None:
+            spec["screen_buttons"] = [list(entry) if entry else None
+                                      for entry in device["screen_buttons"]]
 
         numeric = device.get("numeric")
         if numeric:

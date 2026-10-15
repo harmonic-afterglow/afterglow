@@ -188,7 +188,8 @@ def _gen_activity(act, by_id, remote=None):
         leave?   [action-step, ...] actions to run when the activity is left (LeaveActions),
         soft_buttons? [ (Label, deviceId, command[, icon])                      single-cmd button
                         | {label, device, command, icon?}                        single-cmd button
-                        | {label, icon?, macro:[action-step,...]} ]              macro button
+                        | {label, icon?, macro:[action-step,...]}                macro button
+                        | None ]                                     a place left empty
         screen_groups? [ [group name, [ {slot?, label, icon?, position?,
                                          device, command | macro}, ...]], ...]
                        touchscreen pages as the Harmony 1100 keeps them; replaces
@@ -236,11 +237,15 @@ def _gen_activity(act, by_id, remote=None):
                        f'<Presentation /></Role>' for r, d in roles if d)
     # touchscreen soft buttons (activity UI). An <Icon>NAME</Icon> renders the CUSTOM_NAME glyph;
     # a macro button gets its own multi-Action ActionList that the button's ActionId points at.
-    soft = act.get("soft_buttons", [])
+    soft = list(act.get("soft_buttons") or [])
+    while soft and soft[-1] is None:                 # nothing after the last button
+        soft.pop()
     soft_xml = ""
     if soft:
         btns = []
         for i, sb in enumerate(soft):
+            if sb is None:                           # a gap: no button takes position i
+                continue
             icon = macro = dev = cmd = label = None
             if isinstance(sb, dict):
                 label = sb["label"]; icon = sb.get("icon")

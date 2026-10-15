@@ -25,6 +25,10 @@ from . import command_index, gspm, importing, inventory, labels
 GENERIC_DEVICE = "HomeAppliance"
 GENERIC_ACTIVITY = "VirtualGeneric"
 
+# A page's buttons take its six places in turn (pages.BUTTON_POSITIONS): a gap left in a
+# page closes up.
+SCREEN_GAPS = False
+
 
 def validate_payload(payload: bytes, _profile=None) -> dict:
     return gspm.validate(payload)

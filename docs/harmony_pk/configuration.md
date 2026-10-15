@@ -140,6 +140,30 @@ leading digit of a channel than for the rest.
 `SendCommand` carries a `Duration` independently of its `Modifier`: a device needing a
 long press is written as `Modifier=Press` alongside `Duration=2000`.
 
+### A device's page
+
+A device's `<Presentation>` holds two groups. `HardButtons` binds the remote's own keys;
+`Misc` is the device's page on the screen: each `<Button>` has a `<Label>`, an optional
+`<Icon>` (a firmware glyph's name), a `<Position>` and an `<ActionId>`
+(`<device id>_<command>_Hold`). The page is not the command list. Over the donors, 131 of
+144 devices show only some of their commands, 134 in an order of their own; 9 leave
+positions empty, starting at 2 or skipping one, and 3 show one command twice under two
+labels. Afterglow keeps it as the project device's `screen_buttons`
+(`project_devices.screen_buttons`): `[command, label(, icon)]` per position, `null` for an
+empty one.
+
+An activity's `Misc` group works the same way, and is kept as its `soft_buttons`, with a
+`null` for an empty position: 48 of the 104 activity pages in the 900 donors leave one,
+and 60 list their buttons out of position order.
+
+The firmware sorts a group by `<Position>` and draws an empty button for every position
+nothing takes (`ButtonImporter.as` on the 900, `ScrollingComboButtonBox.as` on the 1100).
+Pages fill row by row: on the 900 six to a page, two columns by three rows, for devices
+and activities alike (`LayoutManager.as`); on the 1100 a device's page is three by
+three and an activity's three columns by two. Each profile gives its grid as
+`interface.screen_grid`; the backend says whether a page can have a gap at all
+(`SCREEN_GAPS`, which the One's cannot).
+
 ### Inter-device delay
 
 Presilence is an inter-device delay. It is applied only inside an activity, and only when
