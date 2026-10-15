@@ -829,7 +829,7 @@ class UpdateTab(QWidget):
         """
         from .. import ezhex, remotes
         try:
-            header = ezhex._split(Path(path).read_bytes())[0]
+            header = ezhex.read(Path(path).read_bytes()).header
             profile = remotes.identify(header)
         except remotes.UnknownRemote:
             self.log_box.append(

@@ -42,6 +42,89 @@ def _split(raw):
             int(size.group(1)) if size else len(raw) - start,
             int(cks.group(1)) if cks else None)
 
+# Concordance's other configuration file: for a remote that speaks its MH protocol (the
+# Harmony 800), a zip of `Description.xml` - which file goes where, its checksum, and the
+# skin it is intended for - and that file, the remote's image (libconcord/xml_headers.h).
+MH_DESCRIPTION = "Description.xml"
+# What a header made for an MH configuration says, so it can be told from an `.ezhex`'s:
+# it states the skin and nothing else (`stated`).
+MH_MARK = b"<MHCONFIGURATION/>"
+IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
+
+
+class Contents(tuple):
+    """A configuration file's (header, payload, declared checksum, bytes outside the
+    payload - negative for a file short of the payload it declares): what every reader of
+    a file wants, whichever kind of file it is."""
+    __slots__ = ()
+
+    def __new__(cls, header, payload, declared, outside):
+        return super().__new__(cls, (header, payload, declared, outside))
+
+    header = property(lambda self: self[0])
+    payload = property(lambda self: self[1])
+    declared = property(lambda self: self[2])
+    outside = property(lambda self: self[3])
+
+
+def read(raw: bytes) -> Contents:
+    """The header and payload of a configuration file: an `.ezhex`, or the zip Concordance
+    writes to an MH remote. An MH file's header is made from its `Description.xml`, and its
+    declared checksum is the `.ezhex` one of the image when the description's own checksum
+    holds, None when it does not - so one check serves both kinds."""
+    if raw[:4] == b"PK\x03\x04":
+        mh = _mh(raw)
+        if mh is not None:
+            return mh
+    header, start, size, declared = _split(raw)
+    payload = raw[start:start + size]
+    # bytes past the declared payload, or how many it is short of it, negative
+    return Contents(header, payload, declared, len(raw) - (start + size))
+
+
+def stated(header: bytes) -> tuple[str, ...]:
+    """The identity fields a file of this header can say: an MH configuration's
+    description names only the skin; an `.ezhex` header all of them."""
+    return ("skin",) if MH_MARK in header else IDENTITY_FIELDS
+
+
+def _mh(raw: bytes) -> Contents | None:
+    import io
+    import zipfile
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+        description = archive.read(MH_DESCRIPTION)
+    except (zipfile.BadZipFile, KeyError):
+        return None
+    entry = re.search(rb'<FILE NAME="([^"]+)"', description)     # the one file it sends
+    if entry is None:
+        raise NotAnEzhex(f"{MH_DESCRIPTION} names no configuration in it")
+    payload = archive.read(entry.group(1).decode("utf-8", "replace"))
+    skin = re.search(rb"<INTENDED>\s*<SKIN>(\d+)</SKIN>", description)
+    header = (b"<INFORMATION>" + MH_MARK + b"<INTENDEDVERSION>"
+              + (b"<SKIN>" + skin.group(1) + b"</SKIN>" if skin else b"")
+              + b"</INTENDEDVERSION></INFORMATION>")
+    return Contents(header, payload, checksum(payload) if _mh_checksum_holds(
+        description, payload) else None, 0)
+
+
+def _mh_checksum_holds(description: bytes, payload: bytes) -> bool:
+    """The description's XOR checksum: a two-byte seed, little end first, XORed with the
+    image's bytes in pairs over LENGTH bytes, against EXPECTEDVALUE."""
+    found = re.search(rb'<CHECKSUM SEED="0x([0-9a-fA-F]+)" OFFSET="0x([0-9a-fA-F]+)" '
+                      rb'LENGTH="0x([0-9a-fA-F]+)" EXPECTEDVALUE="0x([0-9a-fA-F]+)" '
+                      rb'TYPE="XOR"', description)
+    if found is None:
+        return False
+    seed, offset, length, expected = (int(value, 16) for value in found.groups())
+    if offset + length > len(payload):
+        return False
+    lanes = [seed & 0xFF, seed >> 8]
+    for index, byte in enumerate(payload[offset:offset + length]):
+        lanes[index % 2] ^= byte
+    return (lanes[1] << 8 | lanes[0]) == expected
+
+
 def checksum(payload: bytes) -> int:
     c = 0x69
     for b in payload:
@@ -69,7 +152,7 @@ def profile_of(path):
     """The remote profile a config on disk is for."""
     from . import remotes
     with open(path, "rb") as handle:
-        return remotes.identify(_split(handle.read())[0])
+        return remotes.identify(read(handle.read()).header)
 
 
 def _read_bytes(path):
@@ -84,8 +167,7 @@ def _header_beside(path):
 
 def unpack(ezhex, out_dir):
     raw = _read_bytes(ezhex)
-    header, pk, bds, cks = _split(raw)
-    payload = raw[pk:pk + bds]
+    header, payload, cks, _outside = read(raw)
     calc = checksum(payload)
     print(f"payload {len(payload)} bytes | declared checksum {cks} | computed {calc} | "
           + ("OK" if calc == cks else "MISMATCH"))
@@ -250,13 +332,10 @@ def pack_standalone(src_dir, out_path, do_rehash=True, profile=None):
 
 def verify(ezhex):
     raw = _read_bytes(ezhex)
-    _, pk, bds, cks = _split(raw)
-    payload = raw[pk:pk + bds]
+    header, payload, cks, trailing = read(raw)
     calc = checksum(payload)
-    trailing = len(raw) - (pk + bds)
-    print(f"BINARYDATASIZE={bds}  actual_payload={len(raw)-pk}  trailing_bytes={trailing}")
+    print(f"BINARYDATASIZE={len(payload)}  trailing_bytes={trailing}")
     print(f"CHECKSUM declared={cks}  computed={calc}  -> {'OK' if calc==cks else 'MISMATCH'}")
-    header = raw[:pk]
     try:
         from . import remotes
         print("remote:", remotes.describe(remotes.identify(header)).splitlines()[0])

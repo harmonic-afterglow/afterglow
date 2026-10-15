@@ -512,11 +512,14 @@ class RemoteProfile:
                 "explicitly promoted to \"experimental\" for controlled testing."
             )
 
-    def identity_mismatches(self, identity: dict, *, require_all: bool = False) -> list[str]:
+    def identity_mismatches(self, identity: dict, *, require_all: bool = False,
+                            stated=None) -> list[str]:
         """Describe conflicts with the identity constraints declared by this profile.
 
         Import may identify an older header that omits a field, but a destructive write
-        must pass ``require_all=True`` and prove every declared constraint.
+        must pass ``require_all=True`` and prove every declared constraint - every one the
+        file can state, ``stated`` (ezhex.stated): an MH configuration's description names
+        only its skin, and the remote it goes to is checked on every field regardless.
         """
         mismatches = []
         identity = self.normal_identity(identity)
@@ -537,7 +540,7 @@ class RemoteProfile:
                 continue
             actual = identity.get(name)
             if actual is None or actual == -1:
-                if require_all:
+                if require_all and (stated is None or name in stated):
                     mismatches.append(f"{name} is unavailable (expected {expected})")
             elif comparable(name, actual) != comparable(name, expected):
                 mismatches.append(f"{name} is {actual} (expected {expected})")
@@ -821,7 +824,7 @@ def main(argv=None):
             print(describe(profile), "\n")
     else:
         from . import ezhex
-        header, _, _, _ = ezhex._split(Path(args.config).read_bytes())
+        header = ezhex.read(Path(args.config).read_bytes()).header
         print(describe(identify(header)))
 
 
