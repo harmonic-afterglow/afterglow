@@ -1,0 +1,799 @@
+{
+  "extractor": "tools/harmony_one_extract_assets.py",
+  "font_roles": {
+    "button": "font-08",
+    "indicator": "font-04",
+    "menu_row": "font-05",
+    "softkey": "font-09",
+    "title": "font-03"
+  },
+  "fonts": {
+    "font-00": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-01": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-02": {
+      "height": 18,
+      "look": {
+        "colour": [
+          148,
+          206,
+          24
+        ],
+        "shadow": [
+          0,
+          12,
+          0
+        ]
+      }
+    },
+    "font-03": {
+      "height": 18,
+      "look": {
+        "colour": [
+          222,
+          121,
+          24
+        ],
+        "shadow": [
+          8,
+          4,
+          0
+        ]
+      }
+    },
+    "font-04": {
+      "height": 13,
+      "look": {
+        "colour": [
+          222,
+          121,
+          24
+        ],
+        "shadow": [
+          8,
+          4,
+          0
+        ]
+      }
+    },
+    "font-05": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-06": {
+      "height": 18,
+      "look": {
+        "colour": [
+          148,
+          230,
+          246
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-07": {
+      "height": 13,
+      "look": {
+        "colour": [
+          148,
+          206,
+          24
+        ],
+        "shadow": [
+          0,
+          12,
+          0
+        ]
+      }
+    },
+    "font-08": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-09": {
+      "height": 18,
+      "look": {
+        "colour": [
+          222,
+          121,
+          24
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-10": {
+      "height": 18,
+      "look": {
+        "colour": [
+          148,
+          230,
+          246
+        ],
+        "shadow": [
+          16,
+          28,
+          32
+        ]
+      }
+    },
+    "font-11": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-12": {
+      "height": 13,
+      "look": {
+        "colour": [
+          148,
+          230,
+          246
+        ],
+        "shadow": [
+          16,
+          28,
+          32
+        ]
+      }
+    },
+    "font-13": {
+      "height": 18,
+      "look": {
+        "colour": [
+          148,
+          206,
+          24
+        ],
+        "shadow": [
+          49,
+          52,
+          49
+        ]
+      }
+    },
+    "font-14": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-15": {
+      "height": 18,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": null
+      }
+    },
+    "font-16": {
+      "height": 30,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-17": {
+      "height": 13,
+      "look": {
+        "colour": [
+          205,
+          206,
+          205
+        ],
+        "shadow": [
+          0,
+          4,
+          0
+        ]
+      }
+    }
+  },
+  "pictures": {
+    "activity/button-frame/0": {
+      "file": "images/activity/button-frame/0.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/button-frame/1": {
+      "file": "images/activity/button-frame/1.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/button-frame/2": {
+      "file": "images/activity/button-frame/2.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/button-frame/3": {
+      "file": "images/activity/button-frame/3.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/button-frame/4": {
+      "file": "images/activity/button-frame/4.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/button-frame/5": {
+      "file": "images/activity/button-frame/5.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "activity/numpad-frame": {
+      "file": "images/activity/numpad-frame.png",
+      "mode": "raw",
+      "size": [
+        74,
+        58
+      ]
+    },
+    "activity/row-frame": {
+      "file": "images/activity/row-frame.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "activity/sending": {
+      "file": "images/activity/sending.png",
+      "mode": "raw",
+      "size": [
+        62,
+        33
+      ]
+    },
+    "backdrop": {
+      "file": "images/backdrop.png",
+      "mode": "raw",
+      "size": [
+        240,
+        320
+      ]
+    },
+    "button-frame/0": {
+      "file": "images/button-frame/0.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "button-frame/1": {
+      "file": "images/button-frame/1.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "button-frame/2": {
+      "file": "images/button-frame/2.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "button-frame/3": {
+      "file": "images/button-frame/3.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "button-frame/4": {
+      "file": "images/button-frame/4.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "button-frame/5": {
+      "file": "images/button-frame/5.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "charging/battery": {
+      "file": "images/charging/battery.png",
+      "mode": "raw",
+      "size": [
+        240,
+        320
+      ]
+    },
+    "charging/photo-1": {
+      "file": "images/charging/photo-1.png",
+      "mode": "raw",
+      "size": [
+        240,
+        320
+      ]
+    },
+    "charging/photo-2": {
+      "file": "images/charging/photo-2.png",
+      "mode": "raw",
+      "size": [
+        240,
+        320
+      ]
+    },
+    "charging/photo-3": {
+      "file": "images/charging/photo-3.png",
+      "mode": "raw",
+      "size": [
+        240,
+        320
+      ]
+    },
+    "chrome/header": {
+      "file": "images/chrome/header.png",
+      "mode": "raw",
+      "size": [
+        240,
+        44
+      ]
+    },
+    "chrome/softkeys": {
+      "file": "images/chrome/softkeys.png",
+      "mode": "raw",
+      "size": [
+        240,
+        26
+      ]
+    },
+    "numpad-frame": {
+      "file": "images/numpad-frame.png",
+      "mode": "raw",
+      "size": [
+        74,
+        58
+      ]
+    },
+    "options/button-frame/0": {
+      "file": "images/options/button-frame/0.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/button-frame/1": {
+      "file": "images/options/button-frame/1.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/button-frame/2": {
+      "file": "images/options/button-frame/2.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/button-frame/3": {
+      "file": "images/options/button-frame/3.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/button-frame/4": {
+      "file": "images/options/button-frame/4.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/button-frame/5": {
+      "file": "images/options/button-frame/5.png",
+      "mode": "raw",
+      "size": [
+        114,
+        78
+      ]
+    },
+    "options/row-frame/0": {
+      "file": "images/options/row-frame/0.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "options/row-frame/1": {
+      "file": "images/options/row-frame/1.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "options/row-frame/2": {
+      "file": "images/options/row-frame/2.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "platform/battery-low": {
+      "file": "images/platform/battery-low.png",
+      "mode": "raw",
+      "size": [
+        84,
+        96
+      ]
+    },
+    "platform/screen-00-0": {
+      "file": "images/platform/screen-00-0.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
+    "platform/screen-02-0": {
+      "file": "images/platform/screen-02-0.png",
+      "mode": "raw",
+      "size": [
+        176,
+        220
+      ]
+    },
+    "platform/screen-09-0": {
+      "file": "images/platform/screen-09-0.png",
+      "mode": "raw",
+      "size": [
+        87,
+        62
+      ]
+    },
+    "platform/usb-connected": {
+      "file": "images/platform/usb-connected.png",
+      "mode": "raw",
+      "size": [
+        94,
+        126
+      ]
+    },
+    "row-frame": {
+      "file": "images/row-frame.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "row-frame/1": {
+      "file": "images/row-frame/1.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "row-frame/2": {
+      "file": "images/row-frame/2.png",
+      "mode": "raw",
+      "size": [
+        232,
+        78
+      ]
+    },
+    "status/battery-0": {
+      "file": "images/status/battery-0.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-0-2": {
+      "file": "images/status/battery-0-2.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-1": {
+      "file": "images/status/battery-1.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-2": {
+      "file": "images/status/battery-2.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-3": {
+      "file": "images/status/battery-3.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-4": {
+      "file": "images/status/battery-4.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-5": {
+      "file": "images/status/battery-5.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-6": {
+      "file": "images/status/battery-6.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/battery-7": {
+      "file": "images/status/battery-7.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/charge-0": {
+      "file": "images/status/charge-0.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/charge-1": {
+      "file": "images/status/charge-1.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/charge-1-2": {
+      "file": "images/status/charge-1-2.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/indicator-0": {
+      "file": "images/status/indicator-0.png",
+      "mode": "raw",
+      "size": [
+        22,
+        18
+      ]
+    },
+    "status/indicator-1": {
+      "file": "images/status/indicator-1.png",
+      "mode": "raw",
+      "size": [
+        22,
+        18
+      ]
+    },
+    "status/power-3": {
+      "file": "images/status/power-3.png",
+      "mode": "raw",
+      "size": [
+        20,
+        11
+      ]
+    },
+    "status/progress": {
+      "file": "images/status/progress.png",
+      "mode": "raw",
+      "size": [
+        88,
+        10
+      ]
+    },
+    "tutorial/1": {
+      "file": "images/tutorial/1.png",
+      "mode": "raw",
+      "size": [
+        47,
+        58
+      ]
+    },
+    "tutorial/10": {
+      "file": "images/tutorial/10.png",
+      "mode": "raw",
+      "size": [
+        200,
+        116
+      ]
+    },
+    "tutorial/11": {
+      "file": "images/tutorial/11.png",
+      "mode": "raw",
+      "size": [
+        42,
+        52
+      ]
+    },
+    "tutorial/2": {
+      "file": "images/tutorial/2.png",
+      "mode": "raw",
+      "size": [
+        200,
+        116
+      ]
+    },
+    "tutorial/3": {
+      "file": "images/tutorial/3.png",
+      "mode": "raw",
+      "size": [
+        200,
+        116
+      ]
+    },
+    "tutorial/5": {
+      "file": "images/tutorial/5.png",
+      "mode": "raw",
+      "size": [
+        180,
+        100
+      ]
+    },
+    "tutorial/8": {
+      "file": "images/tutorial/8.png",
+      "mode": "raw",
+      "size": [
+        200,
+        116
+      ]
+    },
+    "tutorial/9": {
+      "file": "images/tutorial/9.png",
+      "mode": "raw",
+      "size": [
+        84,
+        41
+      ]
+    }
+  },
+  "remote": "harmony-800",
+  "schema": "afterglow-scaffold-assets/1",
+  "source": "extracted from a Harmony One configuration; artwork only",
+  "typeface": {
+    "regular": "fonts/galmuri/Galmuri11.bdf.gz",
+    "small": "fonts/galmuri/Galmuri9.bdf.gz"
+  }
+}

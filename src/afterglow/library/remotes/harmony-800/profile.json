@@ -1,0 +1,275 @@
+{
+  "id": "harmony-800",
+  "model": "Harmony 800",
+  "identity": {
+    "arch": 18,
+    "skin": 86,
+    "software_type": 0
+  },
+  "payload": "blob",
+  "backend": "harmony-800",
+  "status": "experimental",
+  "capabilities": {
+    "touchscreen": true,
+    "ir_learning": false,
+    "hard_keys": true,
+    "keyboard": true
+  },
+  "infrared": {
+    "native_protocols": [],
+    "waveform": "carrier-period",
+    "notes": "Every command is lowered to the 800's waveform records, the Harmony One's format (ir_lowering.py)."
+  },
+  "notes": "The Harmony 800 (USB 046d:c127, MH protocol): a touchscreen remote with a slide-out keyboard. Configurations are generated from the project with the Harmony One's generator on the 800's GSGD format (backends/harmony_800) and written as the zip Concordance sends to /cfg/usercfg; writing needs a libconcord that knows the 800 (concordance-fork, branch harmony-800). Afterglow reads back only configurations it built. The front panel's key codes and the seven LEDs were read off asdfgpio's 800 with the key and light tests; Mouse is kept for the touchpad, and the keyboard is still to be bound. Learning is off.",
+  "schema": "afterglow-remote/1",
+  "vocabulary": {
+    "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; the scaffold carries an icon for each type. The keys are the 800's 30 command keys, as asdfgpio's 800 named their codes (backends/harmony_800/keys.py): Activities, Off, Help, 123 and Mouse - kept for the touchpad - belong to the remote's own flow, and it has no number keys - 123 opens a keypad on the screen.",
+    "device_types": {
+      "Amplifier": "Amplifier",
+      "AudioVideoSwitch": "A/V switch",
+      "CableBox": "Cable box",
+      "Cassette": "Cassette deck",
+      "Cd": "CD player",
+      "CdJukebox": "CD jukebox",
+      "CdRadioCassette": "Radio / CD / cassette",
+      "ClimateControl": "Climate control",
+      "Computer": "Computer",
+      "Dat": "DAT deck",
+      "DvdCd": "DVD / CD player",
+      "DvdCdGame": "DVD / games console",
+      "DvdCdRadio": "DVD / CD / radio",
+      "DvdRecorder": "DVD recorder",
+      "DvdVcr": "DVD / VCR combo",
+      "DvdVcrReceiver": "DVD / VCR receiver",
+      "DvdrVcr": "DVD recorder / VCR",
+      "GameConsole": "Games console",
+      "HomeAppliance": "Home appliance",
+      "Laptop": "Laptop",
+      "Laserdisc": "LaserDisc player",
+      "Light": "Lighting",
+      "MediaCenterPC": "Media centre PC",
+      "Minidisc": "MiniDisc deck",
+      "Monitor": "Monitor",
+      "MusicServer": "Music server",
+      "Projector": "Projector",
+      "Pvr": "Recorder (PVR)",
+      "RadioTuner": "Radio tuner",
+      "Receiver": "AV receiver",
+      "Satellite": "Satellite receiver",
+      "SetTopBox": "Set-top box",
+      "Television": "Television",
+      "TvDvd": "TV / DVD combo",
+      "TvDvdVcr": "TV / DVD / VCR combo",
+      "TvHdd": "TV / hard-disc recorder",
+      "TvVcr": "TV / VCR combo",
+      "Vcr": "VCR"
+    },
+    "activity_types": [
+      [
+        "Listen to the CD Jukebox",
+        "VirtualCdJukebox"
+      ],
+      [
+        "Listen to a CD",
+        "VirtualCdMulti"
+      ],
+      [
+        "Watch a DVD",
+        "VirtualDvd"
+      ],
+      [
+        "Play a Game",
+        "VirtualGameConsole"
+      ],
+      [
+        "Custom / Other",
+        "VirtualGeneric"
+      ],
+      [
+        "Watch a Laserdisc",
+        "VirtualLaserdisc"
+      ],
+      [
+        "Listen to Music (Media Center)",
+        "VirtualMediaCenterMusic"
+      ],
+      [
+        "View Pictures",
+        "VirtualMediaCenterPictures"
+      ],
+      [
+        "Watch TV (Media Center)",
+        "VirtualMediaCenterTv"
+      ],
+      [
+        "Watch Video (Media Center)",
+        "VirtualMediaCenterVideos"
+      ],
+      [
+        "Listen to a MiniDisc",
+        "VirtualMinidisc"
+      ],
+      [
+        "Listen to the Music Server",
+        "VirtualMusicServer"
+      ],
+      [
+        "Give a Presentation",
+        "VirtualPresentation"
+      ],
+      [
+        "Watch the PVR",
+        "VirtualPvr"
+      ],
+      [
+        "Listen to the Radio",
+        "VirtualRadioSimple"
+      ],
+      [
+        "Watch ReplayTV",
+        "VirtualReplayTV"
+      ],
+      [
+        "Listen to Satellite Radio",
+        "VirtualSatelliteMusic"
+      ],
+      [
+        "Listen to a Tape",
+        "VirtualTape"
+      ],
+      [
+        "Teletext",
+        "VirtualTeletext"
+      ],
+      [
+        "Watch TV",
+        "VirtualTelevisionN"
+      ],
+      [
+        "Watch TiVo",
+        "VirtualTiVo"
+      ],
+      [
+        "Watch a Video",
+        "VirtualVcr"
+      ],
+      [
+        "Record to Video",
+        "VirtualVcrRecorder"
+      ]
+    ],
+    "_hard_keys_comment": "Page up and down are UpArrow and DownArrow, as on the Harmony 900; the Back key beside the D-pad is PrevChannel, the key the 900 prints Return; TV, DVR and the bottom row's Back, Home and PIP are named as Logitech's database names the commands for them.",
+    "hard_keys": [
+      "VolumeUp",
+      "VolumeDown",
+      "VolumeMute",
+      "ChannelUp",
+      "ChannelDown",
+      "PrevChannel",
+      "DirectionUp",
+      "DirectionDown",
+      "DirectionLeft",
+      "DirectionRight",
+      "Select",
+      "Menu",
+      "Exit",
+      "Info",
+      "Guide",
+      "UpArrow",
+      "DownArrow",
+      "Play",
+      "Pause",
+      "Stop",
+      "Rewind",
+      "FastForward",
+      "SkipBack",
+      "SkipForward",
+      "Record",
+      "TV",
+      "DVR",
+      "Back",
+      "Home",
+      "PIP"
+    ],
+    "hard_key_aliases": {
+      "PageUp": "UpArrow",
+      "PageDown": "DownArrow"
+    },
+    "hard_key_labels": {
+      "UpArrow": "Page up",
+      "DownArrow": "Page down",
+      "Menu": "Menu",
+      "Info": "Info",
+      "Exit": "Exit",
+      "Guide": "Guide",
+      "VolumeUp": "Volume +",
+      "VolumeDown": "Volume −",
+      "ChannelUp": "Channel +",
+      "ChannelDown": "Channel −",
+      "DirectionUp": "Up",
+      "DirectionDown": "Down",
+      "DirectionLeft": "Left",
+      "DirectionRight": "Right",
+      "Select": "OK",
+      "VolumeMute": "Mute",
+      "PrevChannel": "Back (previous channel)",
+      "Rewind": "Rewind",
+      "FastForward": "Fast forward",
+      "SkipBack": "Skip back",
+      "SkipForward": "Skip forward",
+      "Record": "Record",
+      "Stop": "Stop",
+      "Play": "Play",
+      "Pause": "Pause",
+      "TV": "TV",
+      "DVR": "DVR",
+      "Back": "Back (bottom row)",
+      "Home": "Home",
+      "PIP": "Picture in picture"
+    },
+    "hard_key_layout": []
+  },
+  "properties": {},
+  "interface": {
+    "_comment": "No RF blasters, no owner name (nothing on the One shows it) and no preferences file; a theme folder instead. No Advanced pages: the device and activity properties they edit are the Harmony 900's, which the One's builder does not read. Timing offers what the builder uses - power-on delay, the delay between digits, Always on. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
+    "tabs": [
+      "devices",
+      "activities",
+      "settings",
+      "flash"
+    ],
+    "device_pages": [
+      "search",
+      "identity",
+      "commands",
+      "inputs",
+      "timing"
+    ],
+    "activity_pages": [
+      "identity",
+      "roles",
+      "favourites",
+      "screen_buttons",
+      "hard_buttons",
+      "startup",
+      "power"
+    ],
+    "timing": [
+      "always_on",
+      "power_delay",
+      "press_interkey",
+      "input_delay",
+      "app_power_delay"
+    ],
+    "settings": [
+      "output_file",
+      "language"
+    ],
+    "languages": [
+      [
+        "English",
+        "enu"
+      ]
+    ]
+  }
+}
