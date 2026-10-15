@@ -372,7 +372,7 @@ class SettingsTab(QWidget):
         self.out_file   = QLineEdit(s.get("out_file", ""))
         self.first_name = QLineEdit(s.get("first_name", ""))
         self.last_name  = QLineEdit(s.get("last_name", ""))
-        for field, hint in ((self.out_file, "living-room.ezhex"),
+        for field, hint in ((self.out_file, "optional - named after the remote if empty"),
                             (self.first_name, "your first name"),
                             (self.last_name, "your last name")):
             field.setPlaceholderText(hint)
@@ -552,8 +552,9 @@ class SettingsTab(QWidget):
         # Clean up obsolete settings from old projects
         settings.pop("work_dir", None)
 
-    REQUIRED = (("out_file", "Output .ezhex file", "output_file"),
-                ("first_name", "First name", "owner"),
+    # The output file is not among them: Flash builds each time, to a file named after
+    # the remote unless one is given.
+    REQUIRED = (("first_name", "First name", "owner"),
                 ("last_name", "Last name", "owner"))
 
     def missing(self):
@@ -614,25 +615,23 @@ class UpdateTab(QWidget):
         layout.addWidget(sep())
 
         info = QLabel(
-            "Build compiles your devices and activities into a .ezhex file, and Flash "
-            "writes it to the remote. Read from Remote saves what is on the remote "
-            "now - do that once before you change anything, and keep the file."
+            "Flash to Remote builds this project and writes it to the remote. Read from "
+            "Remote saves what is on the remote now - do that once before you change "
+            "anything, and keep the file. To keep a built .ezhex without writing it, use "
+            "File › Export .ezhex."
         )
         info.setWordWrap(True)
         layout.addWidget(info)
         layout.addWidget(sep())
 
         btn_row = QHBoxLayout()
-        self.build_btn = QPushButton("Build Config")
         self.flash_btn = QPushButton("Flash to Remote")
         self.read_btn = QPushButton("Read from Remote")
         self.check_btn = QPushButton("Check Connection")
-        self.flash_btn.setEnabled(False)
-        self.build_btn.clicked.connect(self.build)
         self.flash_btn.clicked.connect(self.flash)
         self.read_btn.clicked.connect(self.read_from_remote)
         self.check_btn.clicked.connect(self.check_connection)
-        for button in (self.build_btn, self.flash_btn, self.read_btn, self.check_btn):
+        for button in (self.flash_btn, self.read_btn, self.check_btn):
             btn_row.addWidget(button)
         btn_row.addStretch()
         layout.addLayout(btn_row)
@@ -688,45 +687,63 @@ class UpdateTab(QWidget):
             "saved to the Dumps folder before anything is written")
 
     def refresh(self):
-        """The project's remote changed: a file built for the previous one is not this
-        one's, so it has to be rebuilt before anything can be written."""
-        self.flash_btn.setEnabled(False)
+        """The project's remote changed; the next Flash builds for the new one."""
         self._name_the_write()
 
-    def build(self):
+    def out_path(self) -> Path:
+        """Where a Flash builds to: the Output file named on Remote Settings, or one
+        named after the remote. Built each time, so it is never stale."""
+        out = str(self.project.get("settings", {}).get("out_file") or "").strip()
+        name = out or f"{self._profile().id}.ezhex"
+        path = Path(name)
+        return path if path.is_absolute() else user_folder("generated") / path
+
+    def _ready_to_build(self) -> bool:
         # Required settings have no defaults on purpose, so ask rather than invent one.
+        self.settings.save()
         missing = self.settings.missing()
         if missing:
             QMessageBox.warning(
                 self, "Missing settings",
                 "Fill these in on the Remote Settings tab first:\n\n  • "
                 + "\n  • ".join(missing))
-            return
-        self.log_box.clear()
-        self.build_btn.setEnabled(False)
-        self.flash_btn.setEnabled(False)
-        self.progress.setVisible(True)
-        self._building_new_device_ids = new_device_ids(self.project)
+            return False
+        return True
 
-        self.worker = ConfigBuildWorker(user_folder("generated"), self.project)
+    def _build(self, out_path: Path, then) -> None:
+        """Build the project as it is now to `out_path`, then call `then()`.
+
+        Flash and Export both come through here, so a write is always of the project
+        on screen - saved or not - and there is no separate step to forget."""
+        import copy
+        self.log_box.clear()
+        self._busy(True)
+        self._building_new_device_ids = new_device_ids(self.project)
+        project = copy.deepcopy(self.project)
+        project.setdefault("settings", {})["out_file"] = str(out_path)
+        self.worker = ConfigBuildWorker(user_folder("generated"), project)
         self.worker.log.connect(self.log_box.append)
-        self.worker.success.connect(self._on_success)
+        self.worker.success.connect(lambda: self._on_built(then))
         self.worker.failure.connect(self._on_failure)
         self.worker.start()
 
-    def _on_success(self):
+    def _on_built(self, then):
         self._built_new_device_ids = self._building_new_device_ids
-        self.progress.setVisible(False)
-        self.build_btn.setEnabled(True)
-        self.flash_btn.setEnabled(True)
+        self._busy(False)
+        then()
 
     def _on_failure(self, msg):
-        self.progress.setVisible(False)
-        self.build_btn.setEnabled(True)
+        self._busy(False)
         self.log_box.append(f"\nFAILED: build did not complete\n{msg}")
 
+    def export_to(self, path: Path) -> None:
+        """Build the project to a file of the user's choosing, writing nothing."""
+        if self._ready_to_build():
+            self._build(Path(path), lambda: self.log_box.append(
+                f"\nSUCCESS: Saved {path}."))
+
     def _busy(self, busy: bool):
-        for button in (self.build_btn, self.flash_btn, self.read_btn, self.check_btn):
+        for button in (self.flash_btn, self.read_btn, self.check_btn):
             button.setEnabled(not busy)
         self.progress.setVisible(busy)
 
@@ -786,9 +803,6 @@ class UpdateTab(QWidget):
         self.log_box.append(("\nSUCCESS: " if ok else "\nFAILED: ") + message)
         if ok and operation == "write":
             self.flash_succeeded.emit(self._built_new_device_ids)
-            # The file on disk still carries the one-time flags. Require a rebuild
-            # before another flash so it cannot prompt for the same devices again.
-            self.flash_btn.setEnabled(False)
 
     def check_connection(self):
         """Identify the attached remote. Reads nothing and changes nothing."""
@@ -837,34 +851,33 @@ class UpdateTab(QWidget):
             self.migrate_requested.emit(profile.id)
 
     def flash(self):
-        self.settings.save()
-        out = self.project["settings"].get("out_file", "")
-        out_path = (Path(out) if out and Path(out).is_absolute()
-                    else user_folder("generated") / (out or ""))
-        if not out or not out_path.exists():
-            QMessageBox.warning(self, "Nothing to flash",
-                                f"{out_path.name or 'The output file'} does not exist "
-                                "yet. Build the config first.")
+        """Build the project as it is on screen and write it, after one confirmation."""
+        if not self._ready_to_build():
             return
         profile = self._profile()
-        if not profile.verified:
-            self._flash_experimental(profile, out_path)
-            return
-        answer = QMessageBox.question(
-            self, "Flash to Remote",
-            f"Write {out_path.name} to the remote?\n\n"
-            "This replaces everything on it. If you have not saved the remote's "
-            "current configuration, cancel and use Read from Remote first - "
-            "there is no way to get it back afterwards.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No)
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-        self.log_box.clear()
-        self._run("write", path=str(out_path)).start()
+        if profile.verified:
+            answer = QMessageBox.question(
+                self, "Flash to Remote",
+                f"Build this project and write it to the {profile.model}?\n\n"
+                "This replaces everything on it. If you have not saved the remote's "
+                "current configuration, cancel and use Read from Remote first - "
+                "there is no way to get it back afterwards.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+            backup = None
+        else:
+            backup = self._confirm_experimental(profile)
+            if backup is None:
+                return
+        out_path = self.out_path()
+        options = {"backup": str(backup)} if backup else {}
+        self._build(out_path, lambda: self._run(
+            "write", path=str(out_path), **options).start())
 
-    def _flash_experimental(self, profile, out_path):
-        """Warn, then write - always backing the remote up first.
+    def _confirm_experimental(self, profile):
+        """Warn, and name the backup a write will take first; None if cancelled.
 
         A remote's own safe mode recovers it from a configuration that does not work, and
         the backup puts it back as it was. Asking for more than one confirmation, or
@@ -875,7 +888,7 @@ class UpdateTab(QWidget):
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle("Flash to Remote")
-        box.setText(f"Write {out_path.name} to the {profile.model}?")
+        box.setText(f"Build this project and write it to the {profile.model}?")
         box.setInformativeText(
             f"Support for the {profile.model} is experimental: configurations built "
             "for it have been tried on only a few remotes, so something may not work.\n\n"
@@ -886,7 +899,4 @@ class UpdateTab(QWidget):
         write = box.addButton("Back up and write", QMessageBox.ButtonRole.AcceptRole)
         box.addButton(QMessageBox.StandardButton.Cancel)
         box.exec()
-        if box.clickedButton() is not write:
-            return
-        self.log_box.clear()
-        self._run("write", path=str(out_path), backup=str(backup)).start()
+        return backup if box.clickedButton() is write else None

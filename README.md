@@ -76,7 +76,8 @@ Then:
 
 - **File > Import** that backup to bring your existing devices and activities into Afterglow - or skip it and start from an empty project.
 - Set your equipment up on the **Devices** and **Activities** tabs.
-- Back on **Flash**, choose **Build Config**, then **Flash to Remote**.
+- Back on **Flash**, choose **Flash to Remote**. It builds the project as it is and writes it;
+  **File > Export .ezhex** saves the built file instead, without writing anything.
 
 ### What you can set up
 
