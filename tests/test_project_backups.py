@@ -27,6 +27,16 @@ def test_the_version_a_save_replaces_is_kept(project_file):
 
 
 def test_only_the_last_versions_are_kept(project_file, monkeypatch):
+    """With the clock standing still, as it does between saves on Windows: Windows CI
+    named two backups alike and kept the wrong ones."""
+    import datetime as real
+
+    class Frozen(real.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 15, 8, 0, 0)
+
+    monkeypatch.setattr(project_backups, "datetime", Frozen)
     monkeypatch.setattr(project_backups, "KEEP", 3)
     for n in range(5):
         project_file.write_text(json.dumps({"version": n}))
