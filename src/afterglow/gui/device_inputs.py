@@ -14,8 +14,8 @@ kept as it was; untouched, nothing about it changes.
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from ..qt.QtCore import Qt
+from ..qt.QtWidgets import (
     QAbstractItemView, QButtonGroup, QCheckBox, QComboBox, QFormLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem, QPushButton,
     QRadioButton, QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
@@ -390,7 +390,7 @@ class DeviceInputsPage(QWizardPage):
     def validatePage(self) -> bool:
         problem = self.problem()
         if problem:
-            from PyQt6.QtWidgets import QMessageBox
+            from ..qt.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Inputs", problem)
         return problem is None
 

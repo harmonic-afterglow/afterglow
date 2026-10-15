@@ -516,7 +516,7 @@ def test_external_catalog_searches_indexes_and_materializes_only_faithful_comman
 
 def test_device_sources_are_independently_enabled_and_persist_outside_projects(
         tmp_path, qapp_or_skip):
-    from PyQt6.QtCore import QSettings
+    from afterglow.qt.QtCore import QSettings
     from afterglow.afterglow_sources import ExternalRepository
     from afterglow.gui.source_settings import SourcePreferences
 
@@ -585,7 +585,7 @@ def test_add_device_lists_only_enabled_catalogues(tmp_path, qapp_or_skip, monkey
 
 
 def test_source_setup_keeps_online_descriptions_compact(qapp_or_skip):
-    from PyQt6.QtWidgets import QLabel
+    from afterglow.qt.QtWidgets import QLabel
     from afterglow.gui.device_wizard import SearchPage
     from afterglow.gui.source_settings import SourcePreferences, SourceSettingsDialog
 

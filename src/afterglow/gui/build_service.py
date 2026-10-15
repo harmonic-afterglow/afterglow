@@ -1,7 +1,7 @@
 """Qt wrapper around the headless build service."""
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from ..qt.QtCore import QThread, pyqtSignal
 
 from ..applog import LOG
 from ..build_service import ConfigBuildService

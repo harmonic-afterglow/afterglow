@@ -6,8 +6,8 @@ default.
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import QSettings
-from PyQt6.QtWidgets import QCheckBox, QMessageBox
+from ..qt.QtCore import QSettings
+from ..qt.QtWidgets import QCheckBox, QMessageBox
 
 from .remote_bar import ChooseRemoteDialog
 from .tabs import remote_profiles

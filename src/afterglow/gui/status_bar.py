@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QStatusBar, QToolButton
+from ..qt.QtCore import pyqtSignal
+from ..qt.QtWidgets import QStatusBar, QToolButton
 
 from .remote_bar import STATUS_COLOURS
 

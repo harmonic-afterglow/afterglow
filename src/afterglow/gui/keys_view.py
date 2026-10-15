@@ -16,10 +16,10 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
-from PyQt6.QtCore import QPointF, QRectF, QSettings, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF, QTransform
-from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import (QButtonGroup, QHBoxLayout, QLabel, QSizePolicy,
+from ..qt.QtCore import QPointF, QRectF, QSettings, QSize, Qt, pyqtSignal
+from ..qt.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF, QTransform
+from ..qt.QtSvg import QSvgRenderer
+from ..qt.QtWidgets import (QButtonGroup, QHBoxLayout, QLabel, QSizePolicy,
                              QToolButton, QToolTip, QWidget)
 
 # What a key can be, and its colour. Assigned: it sends something of this device's.

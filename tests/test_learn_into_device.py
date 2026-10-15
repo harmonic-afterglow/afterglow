@@ -24,7 +24,7 @@ def _device():
 
 
 def _learn(editor, monkeypatch, name, capture):
-    from PyQt6.QtWidgets import QInputDialog, QMessageBox
+    from afterglow.qt.QtWidgets import QInputDialog, QMessageBox
 
     from afterglow.gui import remote_ops
     monkeypatch.setattr(concord, "available", lambda: True)
@@ -61,7 +61,7 @@ def test_a_key_learned_into_an_existing_device_is_built(qapp_or_skip, monkeypatc
 
 def test_learning_without_libconcord_says_why_instead_of_greying_out(qapp_or_skip,
                                                                      monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     from afterglow.gui.device_wizard import CommandsPage
     told = []

@@ -297,7 +297,7 @@ def test_backlight_timeout_stays_within_two_digits():
 
 # icons
 def test_icons_cover_the_vocabulary():
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow import remotes
     from afterglow.gui import icons
     if not icons.have_artwork():
@@ -308,7 +308,7 @@ def test_icons_cover_the_vocabulary():
 
 
 def test_button_glyphs_are_available():
-    pytest.importorskip("PyQt6.QtWidgets")
+    pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui import icons
     if not icons.have_artwork():
         pytest.skip("icon artwork not extracted")

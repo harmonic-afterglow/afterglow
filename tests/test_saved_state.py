@@ -12,7 +12,7 @@ import pytest
 
 @pytest.fixture
 def window(qapp_or_skip, monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
     monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: None)
     from afterglow.gui.app import MainWindow
     win = MainWindow()
@@ -28,14 +28,14 @@ def test_a_new_window_is_untitled_and_clean(window):
 
 
 def test_typing_in_remote_settings_marks_the_project_unsaved(window):
-    from PyQt6.QtTest import QTest
+    from afterglow.qt.QtTest import QTest
     QTest.keyClicks(window.settings_tab.first_name, "Ann")
     assert window.isWindowModified()
     assert window.status.saved.text() == "Unsaved changes"
 
 
 def test_changing_a_remote_preference_marks_it_unsaved(window):
-    from PyQt6.QtWidgets import QSpinBox
+    from afterglow.qt.QtWidgets import QSpinBox
     spin = next(w for w in window.settings_tab.prefs.values() if isinstance(w, QSpinBox))
     spin.setValue(spin.value() + 1 if spin.value() < spin.maximum() else spin.minimum())
     assert window.isWindowModified()
@@ -48,7 +48,7 @@ def test_reloading_the_fields_from_the_project_is_not_an_edit(window):
 
 
 def test_saving_clears_it_and_names_the_file(window, tmp_path):
-    from PyQt6.QtTest import QTest
+    from afterglow.qt.QtTest import QTest
     QTest.keyClicks(window.settings_tab.last_name, "Lee")
     window._project_path = str(tmp_path / "den.json")
     window.save_project()
@@ -60,8 +60,8 @@ def test_saving_clears_it_and_names_the_file(window, tmp_path):
 
 
 def test_a_new_project_asks_before_throwing_unsaved_work_away(window, monkeypatch):
-    from PyQt6.QtTest import QTest
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtTest import QTest
+    from afterglow.qt.QtWidgets import QMessageBox
     QTest.keyClicks(window.settings_tab.first_name, "Ann")
     asked = []
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: (

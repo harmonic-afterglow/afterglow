@@ -23,6 +23,9 @@ dependencies = []
 
 [project.optional-dependencies]
 gui = ["PyQt6>=6.5", "Pillow>=10", "truststore>=0.9"]
+# The legacy builds (Windows 7, 32-bit, macOS 10.13) run on Qt 5.15, the last Qt for
+# those systems. `afterglow.qt` picks PyQt6 when it is installed, PyQt5 otherwise.
+gui-legacy = ["PyQt5>=5.15", "Pillow>=10", "truststore>=0.9"]
 # `ruff` belongs here, not only in CI. It was installed by the workflow alone, so
 # `pip install -e '.[dev]'` produced an environment that could not run the gate CI
 # enforces - and it went uninstalled long enough for four F821 name errors to reach the

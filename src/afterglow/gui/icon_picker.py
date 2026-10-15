@@ -9,8 +9,8 @@ This shows that set and returns the chosen name, which is exactly the string the
 configuration stores. A user typing a name into a text box would be guessing at a
 vocabulary they cannot see.
 """
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QLineEdit, QListWidget,
+from ..qt.QtCore import QSize, Qt
+from ..qt.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QLineEdit, QListWidget,
                              QListWidgetItem, QPushButton, QVBoxLayout)
 
 from . import icons

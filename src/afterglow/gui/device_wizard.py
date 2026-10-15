@@ -4,13 +4,13 @@ import copy
 from collections import Counter
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
     QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
     QMenu, QMessageBox, QAbstractItemView, QHeaderView, QWizardPage
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QCursor
+from ..qt.QtCore import Qt, pyqtSignal
+from ..qt.QtGui import QCursor
 
 from .ui_helpers import FilterCombo
 
@@ -1229,7 +1229,7 @@ class CommandsPage(QWizardPage):
         carries a code no protocol describes: the command's <Code> points into
         SsIr.bin and its <Protocol> is -1.
         """
-        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        from ..qt.QtWidgets import QInputDialog, QMessageBox
 
         from .. import concord
         from .remote_ops import run_with_progress

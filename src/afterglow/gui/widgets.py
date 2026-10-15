@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
+from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QDialog, QDialogButtonBox, QLineEdit
 )
-from PyQt6.QtCore import QEvent, Qt, pyqtSignal
+from ..qt.QtCore import QEvent, Qt, pyqtSignal
 
 from .project import TemplateRepository
 from .ui_helpers import bold_label, separator

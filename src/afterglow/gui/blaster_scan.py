@@ -23,8 +23,8 @@ visible without unpairing anything.
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout,
+from ..qt.QtCore import Qt, QTimer
+from ..qt.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout,
                              QLabel, QListWidget, QListWidgetItem, QMessageBox,
                              QProgressBar, QPushButton, QVBoxLayout)
 

@@ -10,7 +10,7 @@ ticked.
 """
 import pytest
 
-pytest.importorskip("PyQt6")
+pytest.importorskip("afterglow.qt.QtWidgets")
 
 
 def receiver(mac, label, status=1):
@@ -18,7 +18,7 @@ def receiver(mac, label, status=1):
 
 
 def macs_checked(dialog):
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
 
     return {dialog._list.item(i).data(Qt.ItemDataRole.UserRole)["mac"]
             for i in range(dialog._list.count())
@@ -26,7 +26,7 @@ def macs_checked(dialog):
 
 
 def untick(dialog, mac):
-    from PyQt6.QtCore import Qt
+    from afterglow.qt.QtCore import Qt
 
     for i in range(dialog._list.count()):
         item = dialog._list.item(i)

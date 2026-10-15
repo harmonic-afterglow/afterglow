@@ -1,6 +1,6 @@
 """Small reusable Qt presentation helpers."""
-from PyQt6.QtCore import QEvent, QObject, Qt
-from PyQt6.QtWidgets import (QComboBox, QCompleter, QFormLayout, QFrame, QLabel,
+from ..qt.QtCore import QEvent, QObject, Qt
+from ..qt.QtWidgets import (QComboBox, QCompleter, QFormLayout, QFrame, QLabel,
                              QProxyStyle, QStyle,
                              QListView)
 
@@ -42,7 +42,7 @@ def keep_wrapped_labels_whole(app) -> None:
 def remove_wrapped_label_fix() -> None:
     """Undo `keep_wrapped_labels_whole`. Safe to call more than once."""
     global _installed
-    from PyQt6.QtWidgets import QApplication
+    from ..qt.QtWidgets import QApplication
     app = QApplication.instance()
     if _installed is not None and app is not None:
         app.removeEventFilter(_installed)
@@ -59,14 +59,18 @@ class _FormsGrow(QProxyStyle):
 
     def styleHint(self, hint, option=None, widget=None, return_data=None):
         if hint == QStyle.StyleHint.SH_FormLayoutFieldGrowthPolicy:
-            return QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow.value
+            grow = QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+            return getattr(grow, "value", grow)       # a Python enum in Qt 6, an int in 5
         return super().styleHint(hint, option, widget, return_data)
 
 
 def let_form_fields_grow(app) -> None:
     """Install `_FormsGrow` over the application's current style. Call once."""
     if not isinstance(app.style(), _FormsGrow):
-        app.setStyle(_FormsGrow(app.style().name()))
+        style = app.style()
+        # QStyle.name() is Qt 6.1; Qt 5 keeps the same name as the object's name.
+        name = style.name() if hasattr(style, "name") else style.objectName()
+        app.setStyle(_FormsGrow(name))
 
 
 _installed = None

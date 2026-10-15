@@ -23,7 +23,7 @@ Three kinds of row, all editable and all written back:
 * addable - anything else, via "Add property", because the catalog is evidence of what
   real configurations use, not a limit on what they may use
 """
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QHBoxLayout, QInputDialog,
+from ..qt.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QHBoxLayout, QInputDialog,
                              QLabel, QLineEdit, QPushButton, QScrollArea, QSpinBox,
                              QVBoxLayout, QWidget, QWizardPage)
 

@@ -19,8 +19,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = ROOT / "src" / "afterglow"
+# The interface layer: the windows, and the Qt binding they are written against.
+INTERFACE = {"gui", "qt"}
 CORE = [p for p in PACKAGE.rglob("*.py")
-        if "gui" not in p.relative_to(PACKAGE).parts]
+        if not INTERFACE & set(p.relative_to(PACKAGE).parts)]
 
 
 def imports(path):
@@ -36,7 +38,7 @@ def imports(path):
 @pytest.mark.parametrize("path", CORE, ids=lambda p: str(p.relative_to(ROOT)))
 def test_no_core_module_imports_the_interface(path):
     for name in imports(path):
-        assert "gui" not in name.split("."), \
+        assert not INTERFACE & set(name.split(".")), \
             f"{path.relative_to(ROOT)} imports {name}: the build layer must not need " \
             "the interface. Firmware vocabulary belongs in afterglow/vocabulary.py."
 
@@ -45,7 +47,7 @@ def test_no_core_module_imports_the_interface(path):
 def test_no_core_module_imports_a_third_party_package(path):
     """PyQt and Pillow are optional extras, declared under [gui]. Anything the build
     path touches has to come out of the standard library."""
-    banned = {"PyQt6", "PIL", "numpy", "requests"}
+    banned = {"PyQt6", "PyQt5", "PIL", "numpy", "requests"}
     for name in imports(path):
         assert name.split(".")[0] not in banned, \
             f"{path.relative_to(ROOT)} imports {name}, which is a GUI-only extra"
@@ -62,13 +64,13 @@ class Blocked:
     """find_spec, not find_module: the old hook was removed in 3.12 and a finder that
     only defines it is silently ignored, which made this whole check pass vacuously."""
     def find_spec(self, name, path=None, target=None):
-        if name.split(".")[0] in ("PyQt6", "PIL"):
+        if name.split(".")[0] in ("PyQt6", "PyQt5", "PIL"):
             raise ImportError(f"{{name}} is not installed")
         return None
 sys.meta_path.insert(0, Blocked())
 sys.path.insert(0, {str(ROOT / "src")!r})
 
-for blocked in ("PyQt6", "PIL"):          # prove the blocker actually blocks
+for blocked in ("PyQt6", "PyQt5", "PIL"):          # prove the blocker actually blocks
     try:
         __import__(blocked)
     except ImportError:
