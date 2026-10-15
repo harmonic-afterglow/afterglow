@@ -19,7 +19,7 @@ INSTALL, RESTORE = "install", "restore"
 CANCELLED = "cancelled"
 
 _USB_DEVICE_CLASS = "{88BAE032-5A81-49F0-BC3D-A4FF138216D6}"
-_WINUSB_MODEL = "WinUsb Device"
+GENERIC_WINUSB_ID = "USB\\MS_COMP_WINUSB"
 
 
 def applicable() -> bool:
@@ -38,15 +38,22 @@ def _api():
     import ctypes
     from ctypes import wintypes
 
+    # setupapi.h packs its structures to 1 byte on 32-bit Windows and 8 on 64-bit. With
+    # natural alignment SP_DRVINFO_DATA_V2_W comes out 4 bytes too long on 32-bit, its
+    # `cbSize` is refused, and no driver is ever listed.
+    pack = 1 if ctypes.sizeof(ctypes.c_void_p) == 4 else 8
+
     class GUID(ctypes.Structure):
         _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD),
                     ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8)]
 
-    class DEVINFO(ctypes.Structure):                       # SP_DEVINFO_DATA
+    class DEVINFO(ctypes.Structure):
+        _pack_ = pack                       # SP_DEVINFO_DATA
         _fields_ = [("cbSize", wintypes.DWORD), ("ClassGuid", GUID),
                     ("DevInst", wintypes.DWORD), ("Reserved", ctypes.c_size_t)]
 
-    class INSTALL_PARAMS(ctypes.Structure):                # SP_DEVINSTALL_PARAMS_W
+    class INSTALL_PARAMS(ctypes.Structure):
+        _pack_ = pack                # SP_DEVINSTALL_PARAMS_W
         _fields_ = [("cbSize", wintypes.DWORD), ("Flags", wintypes.DWORD),
                     ("FlagsEx", wintypes.DWORD), ("hwndParent", wintypes.HWND),
                     ("InstallMsgHandler", ctypes.c_void_p),
@@ -54,11 +61,21 @@ def _api():
                     ("FileQueue", ctypes.c_void_p), ("ClassInstallReserved", ctypes.c_size_t),
                     ("Reserved", wintypes.DWORD), ("DriverPath", wintypes.WCHAR * 260)]
 
-    class DRVINFO(ctypes.Structure):                       # SP_DRVINFO_DATA_V2_W
+    class DRVINFO(ctypes.Structure):
+        _pack_ = pack                       # SP_DRVINFO_DATA_V2_W
         _fields_ = [("cbSize", wintypes.DWORD), ("DriverType", wintypes.DWORD),
                     ("Reserved", ctypes.c_size_t), ("Description", wintypes.WCHAR * 256),
                     ("MfgName", wintypes.WCHAR * 256), ("ProviderName", wintypes.WCHAR * 256),
                     ("DriverDate", wintypes.FILETIME), ("DriverVersion", ctypes.c_ulonglong)]
+
+    class DRVDETAIL(ctypes.Structure):                     # SP_DRVINFO_DETAIL_DATA_W
+        _pack_ = pack
+        _fields_ = [("cbSize", wintypes.DWORD), ("InfDate", wintypes.FILETIME),
+                    ("CompatIDsOffset", wintypes.DWORD), ("CompatIDsLength", wintypes.DWORD),
+                    ("Reserved", ctypes.c_size_t), ("SectionName", wintypes.WCHAR * 256),
+                    ("InfFileName", wintypes.WCHAR * 260),
+                    ("DrvDescription", wintypes.WCHAR * 256),
+                    ("HardwareID", wintypes.WCHAR * 1)]
 
     setupapi = ctypes.WinDLL("setupapi", use_last_error=True)
     newdev = ctypes.WinDLL("newdev", use_last_error=True)
@@ -69,6 +86,10 @@ def _api():
         (setupapi.SetupDiGetClassDevsW, HDEVINFO,
          [ctypes.c_void_p, wintypes.LPCWSTR, wintypes.HWND, wintypes.DWORD]),
         (setupapi.SetupDiDestroyDeviceInfoList, wintypes.BOOL, [HDEVINFO]),
+        (setupapi.SetupDiCreateDeviceInfoList, HDEVINFO, [P(GUID), wintypes.HWND]),
+        (setupapi.SetupDiGetDriverInfoDetailW, wintypes.BOOL,
+         [HDEVINFO, P(DEVINFO), P(DRVINFO), ctypes.c_void_p, wintypes.DWORD,
+          P(wintypes.DWORD)]),
         (setupapi.SetupDiEnumDeviceInfo, wintypes.BOOL,
          [HDEVINFO, wintypes.DWORD, P(DEVINFO)]),
         (setupapi.SetupDiGetDeviceInstanceIdW, wintypes.BOOL,
@@ -106,8 +127,8 @@ def _api():
         pass
     api = Api()
     api.ctypes, api.wintypes = ctypes, wintypes
-    api.GUID, api.DEVINFO, api.INSTALL_PARAMS, api.DRVINFO = (
-        GUID, DEVINFO, INSTALL_PARAMS, DRVINFO)
+    api.GUID, api.DEVINFO, api.INSTALL_PARAMS, api.DRVINFO, api.DRVDETAIL = (
+        GUID, DEVINFO, INSTALL_PARAMS, DRVINFO, DRVDETAIL)
     api.setupapi, api.newdev, api.cfgmgr = setupapi, newdev, cfgmgr
     return api
 
@@ -209,33 +230,7 @@ def _bind(api, handle, dev, ident) -> None:
     guid = uuid.UUID(_USB_DEVICE_CLASS)
     dev.ClassGuid = api.GUID.from_buffer_copy(guid.bytes_le)
 
-    params = api.INSTALL_PARAMS()
-    params.cbSize = ctypes.sizeof(params)
-    if not api.setupapi.SetupDiGetDeviceInstallParamsW(handle, ctypes.byref(dev),
-                                                       ctypes.byref(params)):
-        raise _failed("prepare the remote", ctypes)
-    params.Flags |= DI_ENUMSINGLEINF
-    params.FlagsEx |= DI_FLAGSEX_ALLOWEXCLUDEDDRVS
-    params.DriverPath = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "INF",
-                                     "winusb.inf")
-    if not api.setupapi.SetupDiSetDeviceInstallParamsW(handle, ctypes.byref(dev),
-                                                       ctypes.byref(params)):
-        raise _failed("prepare the remote", ctypes)
-    if not api.setupapi.SetupDiBuildDriverInfoList(handle, ctypes.byref(dev),
-                                                   SPDIT_CLASSDRIVER):
-        raise _failed("find its own USB driver", ctypes)
-
-    index = 0
-    while True:
-        driver = api.DRVINFO()
-        driver.cbSize = ctypes.sizeof(driver)
-        if not api.setupapi.SetupDiEnumDriverInfoW(handle, ctypes.byref(dev),
-                                                   SPDIT_CLASSDRIVER, index,
-                                                   ctypes.byref(driver)):
-            raise DriverError("Windows' own USB driver was not found on this PC")
-        index += 1
-        if driver.Description == _WINUSB_MODEL:
-            break
+    driver = _generic_winusb(api, handle, dev)
     if not api.setupapi.SetupDiSetSelectedDriverW(handle, ctypes.byref(dev),
                                                   ctypes.byref(driver)):
         raise _failed("switch the remote", ctypes)
@@ -243,6 +238,94 @@ def _bind(api, handle, dev, ident) -> None:
     if not api.newdev.DiInstallDevice(None, handle, ctypes.byref(dev), ctypes.byref(driver),
                                       0, ctypes.byref(reboot)):
         raise _failed("switch the remote", ctypes)
+
+
+def _hardware_ids(api, handle, dev, driver) -> list[str]:
+    """The hardware and compatible IDs a driver entry installs on."""
+    ctypes = api.ctypes
+    size = 8192
+    buffer = ctypes.create_string_buffer(size)
+    detail = api.DRVDETAIL.from_buffer(buffer)
+    detail.cbSize = ctypes.sizeof(api.DRVDETAIL)
+    if not api.setupapi.SetupDiGetDriverInfoDetailW(
+            handle, dev, ctypes.byref(driver), buffer, size, None):
+        return []
+    start = api.DRVDETAIL.HardwareID.offset
+    text = buffer.raw[start:].decode("utf-16-le", "replace")
+    return [part for part in text.split("\0\0", 1)[0].split("\0") if part]
+
+
+def _generic_winusb(api, handle, dev):
+    """Windows' generic WinUSB entry from winusb.inf, as `SP_DRVINFO_DATA`.
+
+    Found by its hardware ID, `USB\\MS_COMP_WINUSB`. Its name is no use: it was matched
+    as "WinUsb Device", which Windows translates, and which Windows 11 does not use, so
+    direct access said "not found" on every Windows 11 and every non-English Windows.
+    `dev` may be None, for the class list of a device set with no device in it.
+    """
+    ctypes = api.ctypes
+    target = ctypes.byref(dev) if dev is not None else None
+    params = api.INSTALL_PARAMS()
+    params.cbSize = ctypes.sizeof(params)
+    if not api.setupapi.SetupDiGetDeviceInstallParamsW(handle, target,
+                                                       ctypes.byref(params)):
+        raise _failed("prepare the remote", ctypes)
+    params.Flags |= DI_ENUMSINGLEINF
+    params.FlagsEx |= DI_FLAGSEX_ALLOWEXCLUDEDDRVS
+    params.DriverPath = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "INF",
+                                     "winusb.inf")
+    if not api.setupapi.SetupDiSetDeviceInstallParamsW(handle, target,
+                                                       ctypes.byref(params)):
+        raise _failed("prepare the remote", ctypes)
+    if not api.setupapi.SetupDiBuildDriverInfoList(handle, target, SPDIT_CLASSDRIVER):
+        raise _failed("find its own USB driver", ctypes)
+
+    seen = []
+    index = 0
+    while True:
+        driver = api.DRVINFO()
+        driver.cbSize = ctypes.sizeof(driver)
+        if not api.setupapi.SetupDiEnumDriverInfoW(handle, target, SPDIT_CLASSDRIVER,
+                                                   index, ctypes.byref(driver)):
+            break
+        index += 1
+        ids = _hardware_ids(api, handle, target, driver)
+        if any(ident.upper() == GENERIC_WINUSB_ID for ident in ids):
+            return driver
+        seen.append(f"{driver.Description} ({', '.join(ids) or 'no IDs'})")
+    # Said in full, so a report from a Windows nobody here has can be acted on.
+    listed = "; ".join(seen) if seen else f"nothing (error {ctypes.get_last_error()})"
+    raise DriverError("Windows' own USB driver was not found on this PC. "
+                      f"winusb.inf offered: {listed}")
+
+
+def generic_driver_check() -> int:
+    """`--driver-check`: find the generic WinUSB entry with no remote plugged in.
+
+    Runs the same lookup direct access does, on a device set with nothing in it, so a
+    build can be checked on a machine with no remote - CI's Windows runners are Windows
+    Server 2025, which is Windows 11 underneath.
+    """
+    if sys.platform != "win32":
+        print("driver-check: not Windows")
+        return 0
+    import uuid
+    api = _api()
+    ctypes = api.ctypes
+    klass = api.GUID.from_buffer_copy(uuid.UUID(_USB_DEVICE_CLASS).bytes_le)
+    handle = api.setupapi.SetupDiCreateDeviceInfoList(ctypes.byref(klass), None)
+    if not handle or handle == INVALID_HANDLE:
+        print(f"driver-check: no device set (error {ctypes.get_last_error()})")
+        return 1
+    try:
+        driver = _generic_winusb(api, handle, None)
+    except DriverError as exc:
+        print(f"driver-check FAILED: {exc}")
+        return 1
+    finally:
+        api.setupapi.SetupDiDestroyDeviceInfoList(handle)
+    print(f"driver-check OK: {driver.Description!r} from {driver.ProviderName!r}")
+    return 0
 
 
 def _remove(api, handle, dev, ident) -> None:

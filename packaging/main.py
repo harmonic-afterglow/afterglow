@@ -50,6 +50,10 @@ def main() -> int:
     if "--concord-check" in sys.argv[1:]:
         from afterglow.selfcheck import concord_check
         return concord_check()
+    if "--driver-check" in sys.argv[1:]:
+        # Windows only: that direct access can find Windows' generic WinUSB entry.
+        from afterglow.windows_driver import generic_driver_check
+        return generic_driver_check()
     if "--import-check" in sys.argv[1:]:
         # Prove the bundle can do the thing it exists for, not merely that its registries
         # resolve: read a real configuration end to end.
