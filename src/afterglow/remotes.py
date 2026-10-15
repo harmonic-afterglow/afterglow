@@ -279,6 +279,15 @@ class RemoteProfile:
         groups = {name for name, _buttons in act.get("screen_groups") or []}
         if act.get("soft_buttons") and not act.get("screen_groups"):
             groups.add("Misc")
+        # an activity with favourites shows them: the screen of channels takes its
+        # corner from whatever its type would have put there
+        if act.get("image_buttons") or act.get("channels"):
+            for tab in screens["tabs"]:
+                if tab.get("channels"):
+                    groups.add(tab["group"])
+                    flags -= {other["flag"] for other in screens["tabs"]
+                              if other is not tab and other.get("corner") is not None
+                              and other.get("corner") == tab.get("corner")}
         flags |= {tab["flag"] for tab in screens["tabs"] if tab["group"] in groups}
         return {flag: "True" for flag in sorted(flags)}
 
@@ -315,8 +324,9 @@ class RemoteProfile:
         """{group: {place: {device, command, label?}}} - what a fixed place the activity
         does not set sends, on the tabs it shows: the command of the main device (its
         `control`) that goes by the place's name, or by one of the names `fill` lists for
-        it; with the tab's `labels` entry, on a tab that draws a label. `devices` is {id: device}, each with its `commands` ([name, ...] rows) and
-        `model`. Nothing for an imported activity: it has what Logitech gave it."""
+        it; with the tab's `labels` entry, on a tab that draws a label. `devices` is
+        {id: device}, each with its `commands` ([name, ...] rows) and `model`. Nothing
+        for an imported activity: it has what Logitech gave it."""
         if act.get("properties_complete"):
             return {}
         device = devices.get(act.get("control"))

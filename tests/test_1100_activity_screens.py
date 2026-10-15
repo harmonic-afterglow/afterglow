@@ -277,3 +277,59 @@ def test_side_buttons_change_places_by_dragging(qapp_or_skip):
     page.apply(spec)
     assert dict(spec["screen_groups"])["Transport"] == [
         {"label": "Guide", "device": "2", "command": "Guide", "slot": "SideBarRight3"}]
+
+
+def test_no_two_favourites_share_a_number():
+    """The remote keeps favourites by number: two alike would both run the last."""
+    from afterglow.backends.harmony_pk.builder.activities import _favourite_numbers
+    favourites = [("News", "command", ("2", "Guide"), "a.png"),
+                  ("News", "macro", [["delay", "2", 100]], "b.png"),
+                  ("5", "command", ("2", "Info"), None),
+                  ("BBC", "channel", 5, "c.png"),
+                  ("BBC", "channel", 101, "d.png")]
+    assert _favourite_numbers(favourites) == ["News", "News 2", "5 2", "5", "101"]
+
+
+def test_an_activity_with_favourites_shows_them():
+    """The 1100 shows favourites only on the top-right screen; a DVD activity would
+    put Discs there, and its favourites would never be seen."""
+    favourite = [("BBC", "channel", 1, None)]
+    tabs = _tabs(_props({"type": "VirtualDvd", "image_buttons": favourite}))
+    assert "Favorites" in tabs and "Discs" not in tabs
+    # the owner's own choice of that corner still wins
+    assert "Favorites" not in _tabs(_props({
+        "type": "VirtualDvd", "image_buttons": favourite,
+        "properties": {"ControlGroup_Favorites": "False", "ControlGroup_Discs": "True"}}))
+
+
+def test_the_1100_edits_favourites_on_its_top_right_screen(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.activity_wizard import ActivityEditor
+    profile = remotes.get("harmony-1100")
+    assert "favourites" not in profile.activity_pages
+    act = {"id": "9", "label": "TV", "type": "VirtualGeneric", "control": "2",
+           "display": "2", "image_buttons": [["BBC", "channel", 1, None]]}
+    editor = ActivityEditor([_device("2", ["1", "Guide"])], existing=act, remote=profile)
+    page = editor.p3b
+    assert page.top_right.currentData() == "Favorites"
+    assert page._favourites_warning.text() == ""
+    page.favourites._add_row("News", "command", ("2", "Guide"), None)
+    spec = editor._collect()
+    assert [entry[0] for entry in spec["image_buttons"]] == ["BBC", "News"]
+    page.show_screen("Discs", True)
+    assert page._favourites_warning.text().startswith("This activity has 2 favourites")
+
+
+def test_a_side_bar_offers_only_the_icons_it_can_draw(qapp_or_skip):
+    """The 1100's side bars load icons from the firmware's small set; one only the
+    large set has draws nothing there."""
+    from afterglow import remotes
+    from afterglow.gui.icon_picker import IconPicker, available
+    if not available():
+        pytest.skip("needs the button artwork")
+    small = remotes.get("harmony-1100").activity_screens["side_bar_icons"]
+    picker = IconPicker(None, only=small)
+    offered = {picker.list.item(row).text() for row in range(picker.list.count())}
+    assert offered and offered <= set(available())
+    assert {name.lower() for name in offered} <= {name.lower() for name in small}
+    assert len(offered) < len(available())

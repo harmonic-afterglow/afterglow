@@ -19,12 +19,12 @@ from __future__ import annotations
 
 from ..qt.QtCore import QMimeData, QRect, QSize, Qt
 from ..qt.QtWidgets import (QCheckBox, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
-                             QLabel, QMenu, QPushButton, QSizePolicy, QStackedWidget,
+                             QLabel, QMenu, QPushButton, QSizePolicy, QSplitter, QStackedWidget,
                              QStyle, QStyleOptionButton, QStylePainter, QTabWidget,
                              QVBoxLayout, QWidget, QWizardPage)
 from ..qt.QtGui import QColor, QCursor, QDrag
 
-from .activity_buttons import ScreenButtonDialog, ScreenButtonsPage
+from .activity_buttons import FavouritesPage, ScreenButtonDialog, ScreenButtonsPage
 from .icons import pixmap as glyph_pixmap
 
 TITLES = {"Transport": "Transport", "Numbers": "Numbers", "Favorites": "Favourites",
@@ -285,6 +285,8 @@ class ActivityTabsPage(QWizardPage):
         self._places: dict[str, QGroupBox] = {}
         self._notes: dict[str, QLabel] = {}
         self._misc = None
+        self.favourites = None          # the activity's favourites, on the 1100 here
+        self._favourites_warning = None
         self.top_right = None
         self._choice_tabs: list[str] = []
         corners: dict = {}
@@ -304,6 +306,7 @@ class ActivityTabsPage(QWizardPage):
             else:
                 self.tabs.addTab(self._choice(tabs), self._corner_name(corner))
         self._fill_start()
+        self._favourites_note()
         self.start.currentIndexChanged.connect(self._mark)
 
     def _corner_name(self, corner) -> str:
@@ -353,10 +356,14 @@ class ActivityTabsPage(QWizardPage):
             for name in self._choice_tabs:
                 self._on[name] = name == group
             self._screens_changed()
+            self._favourites_note()
         self.top_right.currentIndexChanged.connect(chosen)
         row.addWidget(self.top_right)
         row.addStretch()
         layout.addLayout(row)
+        self._favourites_warning = QLabel()
+        self._favourites_warning.setWordWrap(True)
+        layout.addWidget(self._favourites_warning)
         layout.addWidget(bodies, 1)
         return page
 
@@ -376,15 +383,22 @@ class ActivityTabsPage(QWizardPage):
             middle = self._misc.preview
             middle.setTitle("Your buttons - set in the list below")
             middle.let_scale()
+        elif tab.get("channels"):
+            # the favourites are this screen: on the 1100 they show nowhere else
+            self.favourites = FavouritesPage(self.devices, self._existing,
+                                             remote=self.remote)
+            self.favourites.setTitle("")
+            self.favourites.setSubTitle("")
+            for signal in (self.favourites.table.model().rowsInserted,
+                           self.favourites.table.model().rowsRemoved):
+                signal.connect(lambda *_: self._favourites_note())
+            middle = self.favourites.preview
+            middle.setTitle("Your favourites - set in the list below")
+            middle.let_scale()
         else:
             middle = QGroupBox()
-            grid = QGridLayout(middle)
-        if tab.get("channels"):
-            middle.setTitle("Your favourites")
-            note = QLabel("The activity's favourite channels, set on the Favourites page.")
-            note.setWordWrap(True)
-            grid.addWidget(note, 0, 0)
-        elif tab["group"] != "Misc":
+            QGridLayout(middle)
+        if tab["group"] != "Misc" and not tab.get("channels"):
             # the remote draws these itself: an owner picks what they send, nothing more
             draws = tab.get("draws", ("label", "icon"))
             middle.setTitle("Fixed - the remote's own picture, with your label"
@@ -404,14 +418,33 @@ class ActivityTabsPage(QWizardPage):
         note.hide()
         self._notes[tab["group"]] = note
         column.addWidget(note)
-        column.addWidget(frame, 3)
+        listed = None
         if self._misc is not None and tab["group"] == "Misc":
-            explain = QLabel("This list is the buttons in the middle of the screen above: "
-                             "in its order, 3 across and 2 down, a page at a time. A gap "
-                             "leaves a place empty.")
-            explain.setWordWrap(True)
-            column.addWidget(explain)
-            column.addWidget(self._misc, 2)
+            listed, text = self._misc, (
+                "This list is the buttons in the middle of the screen above: in its "
+                "order, 3 across and 2 down, a page at a time. A gap leaves a place empty.")
+        elif self.favourites is not None and tab.get("channels"):
+            listed, text = self.favourites, (
+                "This list is the logos in the middle of the screen above: in its order, "
+                "3 across and 2 down, a page at a time.")
+        if listed is None:
+            column.addWidget(frame, 1)
+            return widget
+        # the screen above, the list that fills it below, and a divider to share them
+        below = QWidget()
+        below_layout = QVBoxLayout(below)
+        below_layout.setContentsMargins(0, 0, 0, 0)
+        explain = QLabel(text)
+        explain.setWordWrap(True)
+        below_layout.addWidget(explain)
+        below_layout.addWidget(listed, 1)
+        split = QSplitter(Qt.Orientation.Vertical)
+        split.addWidget(frame)
+        split.addWidget(below)
+        split.setChildrenCollapsible(False)
+        split.setStretchFactor(0, 3)
+        split.setStretchFactor(1, 2)
+        column.addWidget(split, 1)
         return widget
 
     def _fill_places(self, tab: dict):
@@ -580,8 +613,10 @@ class ActivityTabsPage(QWizardPage):
         current = self.slot_entry(group, slot)
         if current is None or current.get("blank"):
             current = self.default_for(group, slot)
+        icons = (self.model.get("side_bar_icons") if slot.startswith("SideBar")
+                 else None)
         dialog = ScreenButtonDialog(self.devices, self, participating=self._participating,
-                                    existing=current, shows=shows)
+                                    existing=current, shows=shows, icons=icons)
         if dialog.exec() and dialog.result_data:
             self.set_slot(group, slot, {k: v for k, v in dialog.result_data.items()
                                         if k not in ("slot", "blank")})
@@ -601,6 +636,22 @@ class ActivityTabsPage(QWizardPage):
         self._participating = list(ids or [])
         if self._misc is not None:
             self._misc.set_participating(ids)
+        if self.favourites is not None:
+            self.favourites.set_participating(ids)
+
+    def _favourites_note(self):
+        """Favourites the remote will not show: they are kept, but this corner shows
+        something else."""
+        if self._favourites_warning is None or self.favourites is None:
+            return
+        count = len(self.favourites.get_buttons())
+        hidden = count and not any(self._on[tab["group"]] for tab in self.model["tabs"]
+                                   if tab.get("channels"))
+        self._favourites_warning.setText(
+            f"This activity has {count} favourite{'s' * (count != 1)}, which the remote "
+            "shows only when this corner shows Favourites. They are kept." if hidden
+            else "")
+        self._favourites_warning.setVisible(bool(hidden))
 
     def _misc_entries(self) -> list:
         """The page of buttons as a list in position order, a None for each gap."""
