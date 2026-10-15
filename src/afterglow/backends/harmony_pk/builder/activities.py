@@ -37,10 +37,17 @@ def _defaults_for(remote=None) -> dict:
 
 
 def _screen_tabs(act, remote=None) -> dict:
-    """The tabs a new activity's screen has (`RemoteProfile.activity_tabs`)."""
+    """The tabs a new activity's screen has (`RemoteProfile.activity_tabs`), and the one
+    it opens on (`RemoteProfile.start_screen`)."""
     profile = vocabulary_profile(remote)
     tabs = getattr(profile, "activity_tabs", None)
-    return tabs(act) if tabs else {}
+    flags = tabs(act) if tabs else {}
+    screens = getattr(profile, "activity_screens", None) or {}
+    shown = [tab["group"] for tab in screens.get("tabs") or [] if tab["flag"] in flags]
+    start = profile.start_screen(shown) if shown else None
+    if start and screens.get("start_property"):
+        flags[screens["start_property"]] = start
+    return flags
 
 
 def _act_props(act, remote=None):
@@ -156,15 +163,39 @@ def _held_command(macro) -> bool:
             and macro[0][3] == "Hold")
 
 
-def _screen_groups_xml(act):
+def _screen_groups(act, by_id, remote=None) -> list:
+    """The activity's touchscreen pages as they are written: its own `screen_groups`,
+    and on the tabs it shows, each fixed place it leaves unset filled from its main
+    device (`RemoteProfile.place_defaults`) - Play with the device's Play, 7 with its 7.
+    Not stored in the project, so a place follows the device when the activity's main
+    device changes; an imported activity is left exactly as it is."""
+    groups = [[name, list(buttons)] for name, buttons in act.get("screen_groups") or []]
+    profile = vocabulary_profile(remote)
+    fill = getattr(profile, "place_defaults", None)
+    for group, places in (fill(act, by_id) if fill else {}).items():
+        existing = next((entry for entry in groups if entry[0] == group), None)
+        if existing is None:
+            existing = [group, []]
+            groups.append(existing)
+        taken = {button.get("slot") for button in existing[1]}
+        existing[1].extend(dict(button, slot=place) for place, button in places.items()
+                           if place not in taken)
+    return groups
+
+
+def _screen_groups_xml(act, screen_groups):
     """An activity's touchscreen pages, page by page (the Harmony 1100's layout).
 
-    Returns (the ControlGroups' XML, the ActionLists their macro buttons need).
+    Returns (the ControlGroups' XML, the ActionLists their macro buttons need). A place
+    set to `blank` is one the owner emptied: nothing is written, so the remote dims it,
+    and no default fills it.
     """
     groups, action_lists = [], []
-    for g, (name, buttons) in enumerate(act["screen_groups"]):
+    for g, (name, buttons) in enumerate(screen_groups):
         out = []
         for b, button in enumerate(buttons):
+            if button.get("blank"):
+                continue
             if button.get("macro"):
                 aid = f'{act["id"]}_screen{g}_{b}'
                 action_lists.append(f'<ActionList name="{aid}">'
@@ -273,8 +304,13 @@ def _gen_activity(act, by_id, remote=None):
             btns.append(f'<Button><Label>{esc(label)}</Label>{icon_xml}'
                         f'<Position>{i}</Position><ActionId>{aid}</ActionId></Button>')
         soft_xml = '<ControlGroup name="Misc">' + "".join(btns) + '</ControlGroup>'
+    screen_groups = _screen_groups(act, by_id, remote)
     if act.get("screen_groups"):
-        soft_xml, screen_als = _screen_groups_xml(act)
+        soft_xml, screen_als = _screen_groups_xml(act, screen_groups)
+        macro_als.extend(screen_als)
+    elif screen_groups:                              # the fixed places' defaults only
+        fixed_xml, screen_als = _screen_groups_xml(act, screen_groups)
+        soft_xml += fixed_xml
         macro_als.extend(screen_als)
         
     enter_actions = "".join(_action(s) for s in act.get("enter", []))

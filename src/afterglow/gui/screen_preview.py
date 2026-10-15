@@ -61,6 +61,15 @@ class ScreenPreview(QGroupBox):
         layout.addLayout(turn)
         self._show()
 
+    def let_scale(self):
+        """Grow and shrink with whatever holds it, rather than keep a fixed size - for a
+        preview drawn inside a picture of the whole screen."""
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        for cell in self._cells:
+            cell.setMinimumSize(QSize(8, 8))
+            cell.setMaximumSize(QSize(16777215, 16777215))
+            cell.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+
     @property
     def per_page(self) -> int:
         return self.columns * self.rows

@@ -282,6 +282,65 @@ class RemoteProfile:
         flags |= {tab["flag"] for tab in screens["tabs"] if tab["group"] in groups}
         return {flag: "True" for flag in sorted(flags)}
 
+    def start_screen(self, shown: list[str]) -> str | None:
+        """The screen a new activity opens on, of the groups it shows: the first the
+        profile's `start_prefers` lists, as Logitech set them."""
+        prefers = (self.activity_screens or {}).get("start_prefers") or []
+        return next((group for group in prefers if group in shown), None)
+
+    def shown_tabs(self, act: dict) -> list[dict]:
+        """The tabs an activity's screen shows: its own properties, else what a new
+        activity of its type gets (`activity_tabs`). An imported activity's properties
+        are all it has."""
+        screens = self.activity_screens
+        if not screens:
+            return []
+        given = {} if act.get("properties_complete") else self.activity_tabs(act)
+        flags = {**given, **(act.get("properties") or {})}
+        return [tab for tab in screens["tabs"] if flags.get(tab["flag"]) == "True"]
+
+    @staticmethod
+    def tab_layout(tab: dict, model: str | None) -> list | None:
+        """A tab's fixed places, row by row - for the game controller, the pad the
+        remote draws for the main device's `model`, or None for a model it draws none
+        for. None too for a tab without fixed places."""
+        if "layouts" not in tab:
+            return tab.get("layout")
+        for name, models in (tab.get("layout_by_model") or {}).items():
+            if (model or "") in models:
+                return tab["layouts"][name]
+        return None
+
+    def place_defaults(self, act: dict, devices: dict) -> dict:
+        """{group: {place: {device, command, label?}}} - what a fixed place the activity
+        does not set sends, on the tabs it shows: the command of the main device (its
+        `control`) that goes by the place's name, or by one of the names `fill` lists for
+        it; with the tab's `labels` entry, on a tab that draws a label. `devices` is {id: device}, each with its `commands` ([name, ...] rows) and
+        `model`. Nothing for an imported activity: it has what Logitech gave it."""
+        if act.get("properties_complete"):
+            return {}
+        device = devices.get(act.get("control"))
+        if not device:
+            return {}
+        have = {row[0] for row in device.get("commands") or []}
+        out = {}
+        for tab in self.shown_tabs(act):
+            places = {}
+            for row in self.tab_layout(tab, device.get("model")) or []:
+                for place in row:
+                    if not place:
+                        continue
+                    names = [place, *(tab.get("fill") or {}).get(place, [])]
+                    command = next((name for name in names if name in have), None)
+                    if command:
+                        places[place] = {"device": device["id"], "command": command}
+                        label = (tab.get("labels") or {}).get(place)
+                        if label and "label" in tab.get("draws", ()):
+                            places[place]["label"] = label
+            if places:
+                out[tab["group"]] = places
+        return out
+
     def screen_grid(self, kind: str) -> tuple[int, int] | None:
         """(columns, rows) of a device's or an activity's page of buttons on this
         remote's screen, filled row by row - None for a remote with no such page."""

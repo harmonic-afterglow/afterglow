@@ -236,20 +236,29 @@ class FavouriteDialog(QDialog):
 
 
 class ScreenButtonDialog(QDialog):
-    """A touchscreen button: a label, a glyph from the remote, and what it does."""
+    """A touchscreen button: a label, a glyph from the remote, and what it does.
 
-    def __init__(self, devices, parent=None, participating=None, existing=None):
+    `shows` is what the remote draws on this button from the configuration: a place
+    whose picture is the button itself - the 1100's Play, its 7 - shows neither, and
+    is asked only what it does."""
+
+    def __init__(self, devices, parent=None, participating=None, existing=None,
+                 shows=("label", "icon")):
         super().__init__(parent)
         self.setWindowTitle("Command")
-        self.resize(520, 460)
+        self.resize(520, 460 if "icon" in shows else 360)
         self.result_data = None
+        self.shows = tuple(shows)
         existing = existing or {}
-        self.icon_name = existing.get("icon")
+        self.icon_name = existing.get("icon") if "icon" in self.shows else None
 
         layout = QFormLayout(self)
         self.label_edit = QLineEdit(existing.get("label", ""))
         self.label_edit.setPlaceholderText("e.g. Guide")
-        layout.addRow("Label:", self.label_edit)
+        if "label" in self.shows:
+            layout.addRow("Label:", self.label_edit)
+        else:
+            self.label_edit.hide()
 
         action_state = {}
         if existing.get("macro"):
@@ -271,13 +280,17 @@ class ScreenButtonDialog(QDialog):
         row.addWidget(self.preview)
         row.addWidget(choose)
         row.addWidget(self.icon_label, 1)
-        layout.addRow("Icon:", row)
         if self.icon_name:
             self.icon_label.setText(self.icon_name)
             self.preview.show_glyph(self.icon_name)
         note = QLabel("Icons come from the remote's own set.")
         note.setStyleSheet("color: gray;")
-        layout.addRow("", note)
+        if "icon" in self.shows:
+            layout.addRow("Icon:", row)
+            layout.addRow("", note)
+        else:
+            for widget in (self.preview, choose, self.icon_label, note):
+                widget.hide()
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                    | QDialogButtonBox.StandardButton.Cancel)
@@ -294,8 +307,8 @@ class ScreenButtonDialog(QDialog):
         self.preview.show_glyph(self.icon_name)
 
     def accept(self):
-        label = self.label_edit.text().strip()
-        if not label:
+        label = self.label_edit.text().strip() if "label" in self.shows else ""
+        if not label and "label" in self.shows:
             QMessageBox.warning(self, "A label is needed",
                                 "Give the button a name to show on screen.")
             return

@@ -95,6 +95,9 @@ class ActivityWizard(StepWizard):
         setter = getattr(page, "set_participating", None)
         if setter:
             setter(self._participating())
+        main = getattr(page, "set_main_device", None)
+        if main:
+            main(self.roles.ctrl_combo.currentData())
 
     def _participating(self):
         roles = self.roles
@@ -649,6 +652,9 @@ class ActivityEditor(SectionDialog):
             setter = getattr(tab, "set_participating", None)
             if setter:
                 setter(taking_part)
+        main = getattr(self.p3b, "set_main_device", None)
+        if main:
+            main(self.p1.ctrl_combo.currentData())
 
     def accept(self):
         self.result_spec = self._collect()

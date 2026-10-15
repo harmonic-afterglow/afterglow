@@ -1,29 +1,33 @@
 """An activity's screen as a set of tabs, for a remote that shows it that way (the 1100).
 
 The Harmony 1100 does not give an activity one page of buttons. It gives it up to four
-tabs - Transport, Numbers, one of Favorites / Game controller / Discs, and a page of
-buttons - each turned on by a property of the activity, each with named places of its
-own and side bars down both edges (afterglow-research/harmony-1100.md). The remote's
-profile describes them (`RemoteProfile.activity_screens`); this page edits them.
+screens, picked with the icons in the corners of the display - Transport, Numbers, one of
+Favorites / Game controller / Discs, and a page of buttons - each turned on by a property
+of the activity, each with named places of its own and side bars down both edges
+(afterglow-research/harmony-1100.md). The remote's profile describes them
+(`RemoteProfile.activity_screens`); this page edits them.
 
-The activity keeps them as `screen_groups`, the form an imported 1100 activity already
-has. Nothing is written until something here changes, so an activity from an older
-project - its buttons in `soft_buttons`, no tabs of its own - builds as it always did.
+A fixed place - Play, 7, A - is its own picture. What it sends comes, unless the owner
+says otherwise, from the activity's main device: the builder fills it there
+(`RemoteProfile.place_defaults`) and this page only shows what that will be. The
+activity keeps what the owner chose as `screen_groups`, the form an imported 1100
+activity already has; a place emptied on purpose is kept as `{"slot", "blank": True}`.
+Nothing is written until something here changes, so an activity from an older project -
+its buttons in `soft_buttons`, no tabs of its own - builds as it always did.
 """
 from __future__ import annotations
 
-from ..qt.QtCore import Qt
+from ..qt.QtCore import QMimeData, QRect, QSize, Qt
 from ..qt.QtWidgets import (QCheckBox, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
-                             QLabel, QMenu, QPushButton, QTabWidget, QVBoxLayout, QWidget,
-                             QWizardPage)
-from ..qt.QtGui import QCursor, QIcon
+                             QLabel, QMenu, QPushButton, QSizePolicy, QStackedWidget,
+                             QTabWidget, QVBoxLayout, QWidget, QWizardPage)
+from ..qt.QtGui import QCursor, QDrag, QIcon
 
 from .activity_buttons import ScreenButtonDialog, ScreenButtonsPage
 from .icons import pixmap as glyph_pixmap
 
 TITLES = {"Transport": "Transport", "Numbers": "Numbers", "Favorites": "Favourites",
           "GameController": "Game controller", "Discs": "Discs", "Misc": "Buttons"}
-CORNER_CHOICE = 3        # Favourites, Game controller and Discs share a corner: one shows
 
 
 def tab_groups(existing: dict) -> dict:
@@ -55,50 +59,175 @@ def slot_name(slot: str) -> str:
         slot, slot.replace("Number", "") if slot.startswith("Number") else slot)
 
 
+PLACE_MIME = "application/x-afterglow-place"
+
+
+def _dragged(event, group: str):
+    """The side-bar place a drag carries, if it is one from this same screen."""
+    data = event.mimeData()
+    if not data.hasFormat(PLACE_MIME):
+        return None
+    dragged_group, _, slot = bytes(data.data(PLACE_MIME)).decode().partition("\n")
+    return slot if dragged_group == group else None
+
+
+class _Grip(QLabel):
+    """The handle a side button is dragged by, on its outer edge: drop it on another
+    place on this screen's side bars and the two change places."""
+
+    def __init__(self, button: "_SlotButton"):
+        super().__init__("⠿")
+        self.button = button
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setToolTip("Drag to move this button to another place on the side bars")
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Ignored)
+
+    def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        data = QMimeData()
+        data.setData(PLACE_MIME, f"{self.button.group}\n{self.button.slot}".encode())
+        drag = QDrag(self)
+        drag.setMimeData(data)
+        drag.setPixmap(self.button.grab())
+        drag.exec(Qt.DropAction.MoveAction)
+
+
 class _SlotButton(QPushButton):
     """One named place: shows what is on it, and is clicked to change it."""
 
-    def __init__(self, slot: str, page: "ActivityTabsPage", group: str):
+    def __init__(self, slot: str, page: "ActivityTabsPage", group: str,
+                 shows=("label", "icon")):
         super().__init__()
         self.slot, self.page, self.group = slot, page, group
-        self.setMinimumSize(88, 44)
+        # what the remote draws here from the configuration; nothing, where the
+        # place's own picture is the button
+        self.shows = tuple(shows)
+        self.setMinimumSize(8, 8)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.clicked.connect(self._menu)
+        self.setAcceptDrops(group is not None and slot.startswith("SideBar"))
         self.refresh()
 
+    def dragEnterEvent(self, event):
+        if _dragged(event, self.group) not in (None, self.slot):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        source = _dragged(event, self.group)
+        if source not in (None, self.slot):
+            self.page.swap_slots(self.group, source, self.slot)
+            event.acceptProposedAction()
+
     def entry(self):
+        """What the owner put here: a button, `{"blank": True}`, or None."""
         return self.page.slot_entry(self.group, self.slot)
 
     def refresh(self):
         entry = self.entry()
-        icon = (entry or {}).get("icon")
-        glyph = glyph_pixmap(icon, 24) if icon else None
-        self.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull() else QIcon())
-        # Logitech often leaves a fixed place unlabelled - the remote draws Play or 7
-        # itself - so a place shows its own name when its button has no text.
+        default = self.page.default_for(self.group, self.slot)
         name = slot_name(self.slot)
-        self.setText(f"{name}\n(nothing)" if entry is None
-                     else (entry.get("label") or name))
-        # an empty place is dimmed, as the remote dims one nothing is on
-        self.setFlat(entry is None)
-        self.setToolTip(f"{self.slot}: " + (self.page.describe(entry) if entry
-                                            else "nothing"))
+        own = entry is not None and not entry.get("blank")
+        if own:
+            sends, said = self.page.describe(entry, brief=True), self.page.describe(entry)
+        elif entry is None and default is not None:
+            sends, said = (self.page.describe(default, brief=True),
+                           self.page.describe(default))
+        else:
+            sends = said = None
+        icon = (entry or {}).get("icon") if "icon" in self.shows else None
+        glyph = glyph_pixmap(icon, 64) if icon else None
+        self.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull() else QIcon())
+        shown = entry if own else default if entry is None else None
+        label = (shown or {}).get("label") if "label" in self.shows else None
+        if sends is None:
+            self.setText(f"{name}\n(nothing)")
+        elif glyph is not None and not glyph.isNull():
+            # the remote draws a button's icon instead of its label, never both
+            self.setText("")
+        elif label:
+            self.setText(label)
+        else:
+            # a default is in brackets: it follows the main device until it is changed
+            self.setText(f"{name}\n{sends}" if own else f"{name}\n({sends})")
+        how = "set here" if own else "the main device's own"
+        self.setToolTip(f"{self.slot}: " + (f"{said} - {how}" if said else
+                                            "nothing; the remote dims it"))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        side = int(min(self.width(), self.height()) * 0.7)
+        self.setIconSize(QSize(side, side))
 
     def _menu(self):
+        entry, default = self.entry(), self.page.default_for(self.group, self.slot)
+        empty = ((entry is not None and entry.get("blank"))
+                 or (entry is None and default is None))
         menu = QMenu(self)
         menu.addSection(self.slot)
-        change = menu.addAction("Set…" if self.entry() is None else "Change…")
+        change = menu.addAction("Set…" if empty else "Send something else…")
         clear = menu.addAction("Nothing")
-        clear.setEnabled(self.entry() is not None)
+        clear.setEnabled(not empty)
+        back = None
+        if default is not None and entry is not None:
+            back = menu.addAction(f"Back to default ({self.page.describe(default)})")
         chosen = menu.exec(QCursor.pos())
         if chosen is change:
-            self.page.edit_slot(self.group, self.slot)
+            self.page.edit_slot(self.group, self.slot, self.shows)
         elif chosen is clear:
+            # with a default to come back, "nothing" has to be said out loud
+            self.page.set_slot(self.group, self.slot,
+                               {"blank": True} if default is not None else None)
+        elif back is not None and chosen is back:
             self.page.set_slot(self.group, self.slot, None)
 
 
+class _ScreenFrame(QWidget):
+    """The remote's screen, at its own shape: 4:3, the 1100's 320 x 240 - the side bars
+    down its edges and the screen's places between them. However the window is sized
+    the screen keeps its shape, centred, and its text grows and shrinks with it."""
+
+    ASPECT = 4 / 3
+    SIDE = 0.2              # each side bar's share of the width
+
+    def __init__(self, left: QWidget, middle: QWidget, right: QWidget):
+        super().__init__()
+        self.parts = (left, middle, right)
+        for part in self.parts:
+            part.setParent(self)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMinimumSize(240, 180)
+
+    def sizeHint(self):
+        return QSize(560, 420)
+
+    def screen_rect(self) -> QRect:
+        """The largest 4:3 rectangle the widget holds, centred."""
+        width = min(self.width(), int(self.height() * self.ASPECT))
+        height = int(width / self.ASPECT)
+        return QRect((self.width() - width) // 2, (self.height() - height) // 2,
+                     width, height)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        screen = self.screen_rect()
+        side = int(screen.width() * self.SIDE)
+        left, middle, right = self.parts
+        left.setGeometry(screen.x(), screen.y(), side, screen.height())
+        middle.setGeometry(screen.x() + side, screen.y(), screen.width() - 2 * side,
+                           screen.height())
+        right.setGeometry(screen.right() + 1 - side, screen.y(), side, screen.height())
+        font = self.font()
+        # 9 points on a screen 360 pixels tall, in proportion either way
+        font.setPointSizeF(max(5.0, min(20.0, screen.height() / 40)))
+        for part in self.parts:
+            part.setFont(font)
+
+
 class ActivityTabsPage(QWizardPage):
-    """The tabs of an activity's screen: which show, which it opens on, and what is on
-    each one's named places, its side bars and its page of buttons."""
+    """The screens of an activity: which show, which it opens on, and what is on each
+    one's named places, its side bars and its page of buttons."""
 
     def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
@@ -109,12 +238,15 @@ class ActivityTabsPage(QWizardPage):
         self._existing = existing
         self._groups = tab_groups(existing)
         self._properties = dict(existing.get("properties") or {})
+        self._control = existing.get("control")
         self._changed = False
         self._participating = None
+        self._defaults: dict = {}
         self.setTitle("Screen buttons")
         self.setSubTitle(
-            "The tabs this activity's screen has on the remote, and what is on each. "
-            "Click a place to put a command or a macro on it.")
+            "The 1100 shows an activity as up to four screens, picked with the icons in "
+            "the corners of its display. A place in brackets sends the main device's own "
+            "command; click a place to change it.")
         layout = QVBoxLayout(self)
 
         opens = QHBoxLayout()
@@ -124,38 +256,93 @@ class ActivityTabsPage(QWizardPage):
         opens.addStretch()
         layout.addLayout(opens)
 
+        self._on = {tab["group"]: self._is_shown(tab) for tab in self.model["tabs"]}
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
         self._shown: dict[str, QCheckBox] = {}
         self._slots: list[_SlotButton] = []
+        self._places: dict[str, QGroupBox] = {}
+        self._notes: dict[str, QLabel] = {}
         self._misc = None
+        self.top_right = None
+        self._choice_tabs: list[str] = []
+        corners: dict = {}
         for tab in self.model["tabs"]:
-            self.tabs.addTab(self._tab(tab), TITLES.get(tab["group"], tab["group"]))
+            corners.setdefault(tab.get("corner"), []).append(tab)
+        # the remote's own order decides when a shared corner has more than one on
+        for tabs in corners.values():
+            if len(tabs) > 1:
+                first = next((tab["group"] for tab in tabs if self._on[tab["group"]]),
+                             None)
+                for tab in tabs:
+                    self._on[tab["group"]] = tab["group"] == first
+        self._recompute_defaults()
+        for corner, tabs in corners.items():
+            if len(tabs) == 1:
+                self.tabs.addTab(self._single(tabs[0]), self.screen_title(tabs[0]))
+            else:
+                self.tabs.addTab(self._choice(tabs), self._corner_name(corner))
         self._fill_start()
         self.start.currentIndexChanged.connect(self._mark)
 
+    def _corner_name(self, corner) -> str:
+        return (self.model.get("corners") or {}).get(str(corner)) or f"Corner {corner}"
+
+    def screen_title(self, tab: dict) -> str:
+        """A screen by its corner, as an owner finds it: "Top left: Transport"."""
+        corner = (self.model.get("corners") or {}).get(str(tab.get("corner")))
+        name = TITLES.get(tab["group"], tab["group"])
+        return f"{corner}: {name}" if corner else name
+
     # - Building the tabs ----------------------------------------------------
-    def _tab(self, tab: dict) -> QWidget:
+    def _single(self, tab: dict) -> QWidget:
+        """A corner with one screen: shown or not, and the screen."""
         page = QWidget()
         layout = QVBoxLayout(page)
-        shown = QCheckBox("Show this tab")
-        shown.setChecked(self._is_shown(tab))
-        shown.toggled.connect(lambda on, tab=tab: self._toggled(tab, on))
-        if tab.get("corner") == CORNER_CHOICE:
-            shown.setToolTip("Favourites, Game controller and Discs share a corner of the "
-                             "screen: the remote shows only one of them.")
+        shown = QCheckBox("Show this screen")
+        shown.setChecked(self._on[tab["group"]])
+        shown.toggled.connect(lambda on, tab=tab: self._set_on(tab["group"], on))
         self._shown[tab["group"]] = shown
         layout.addWidget(shown)
+        layout.addWidget(self._body(tab), 1)
+        return page
 
-        body = QHBoxLayout()
-        body.addWidget(self._side_bar(tab["group"], "Left"))
-        middle = QVBoxLayout()
-        if tab.get("channels"):
-            note = QLabel("Shows the activity's favourite channels, which are set on the "
-                          "Favourites page.")
-            note.setWordWrap(True)
-            middle.addWidget(note)
-        elif tab["group"] == "Misc":
+    def _choice(self, tabs: list) -> QWidget:
+        """A corner several screens share - the 1100's top right: Favourites, Game
+        controller or Discs. The remote shows one at most, so one is chosen."""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Shows:"))
+        self.top_right = QComboBox()
+        self.top_right.addItem("Nothing", None)
+        bodies = QStackedWidget()
+        bodies.addWidget(QLabel("This corner shows nothing."))
+        for tab in tabs:
+            self.top_right.addItem(TITLES.get(tab["group"], tab["group"]), tab["group"])
+            bodies.addWidget(self._body(tab))
+        self._choice_tabs = [tab["group"] for tab in tabs]
+        current = next((name for name in self._choice_tabs if self._on[name]), None)
+        self.top_right.setCurrentIndex(self.top_right.findData(current))
+        bodies.setCurrentIndex(self.top_right.currentIndex())
+
+        def chosen(index):
+            bodies.setCurrentIndex(index)
+            group = self.top_right.itemData(index)
+            for name in self._choice_tabs:
+                self._on[name] = name == group
+            self._screens_changed()
+        self.top_right.currentIndexChanged.connect(chosen)
+        row.addWidget(self.top_right)
+        row.addStretch()
+        layout.addLayout(row)
+        layout.addWidget(bodies, 1)
+        return page
+
+    def _body(self, tab: dict) -> QWidget:
+        """A screen as the remote lays it out - its side bars, and between them its
+        places - and, for the page of buttons, the list that fills it."""
+        if tab["group"] == "Misc":
             existing = {"label": self._existing.get("label"),
                         "soft_buttons": self._misc_entries()}
             self._misc = ScreenButtonsPage(self.devices, existing, remote=self.remote)
@@ -164,57 +351,122 @@ class ActivityTabsPage(QWizardPage):
             self._misc.table.model().rowsInserted.connect(self._mark)
             self._misc.table.model().rowsRemoved.connect(self._mark)
             self._misc.table.model().rowsMoved.connect(self._mark)
-            middle.addWidget(self._misc)
+            # its page of buttons, drawn where the remote draws it
+            middle = self._misc.preview
+            middle.setTitle("Your buttons - set in the list below")
+            middle.let_scale()
         else:
-            layout_rows, note = self._layout(tab)
-            if note:
-                warning = QLabel(note)
-                warning.setWordWrap(True)
-                middle.addWidget(warning)
-            grid = QGridLayout()
-            for row, cells in enumerate(layout_rows):
-                for column, slot in enumerate(cells):
-                    if slot:
-                        button = _SlotButton(slot, self, tab["group"])
-                        self._slots.append(button)
-                        grid.addWidget(button, row, column)
-            box = QGroupBox()
-            box.setLayout(grid)
-            middle.addWidget(box)
-            middle.addStretch()
-        body.addLayout(middle, 1)
-        body.addWidget(self._side_bar(tab["group"], "Right"))
-        layout.addLayout(body, 1)
-        return page
+            middle = QGroupBox()
+            grid = QGridLayout(middle)
+        if tab.get("channels"):
+            middle.setTitle("Your favourites")
+            note = QLabel("The activity's favourite channels, set on the Favourites page.")
+            note.setWordWrap(True)
+            grid.addWidget(note, 0, 0)
+        elif tab["group"] != "Misc":
+            # the remote draws these itself: an owner picks what they send, nothing more
+            draws = tab.get("draws", ("label", "icon"))
+            middle.setTitle("Fixed - the remote's own picture, with your label"
+                            if "label" in draws else "Fixed - the remote's own picture")
+            middle.setToolTip("The remote draws these buttons itself. You choose only "
+                              "what each one sends.")
+            self._places[tab["group"]] = middle
+        frame = _ScreenFrame(self._side_bar(tab["group"], "Left"), middle,
+                             self._side_bar(tab["group"], "Right"))
+        if tab["group"] in self._places:
+            self._fill_places(tab)
+        widget = QWidget()
+        column = QVBoxLayout(widget)
+        column.setContentsMargins(0, 0, 0, 0)
+        note = QLabel()
+        note.setWordWrap(True)
+        note.hide()
+        self._notes[tab["group"]] = note
+        column.addWidget(note)
+        column.addWidget(frame, 3)
+        if self._misc is not None and tab["group"] == "Misc":
+            explain = QLabel("This list is the buttons in the middle of the screen above: "
+                             "in its order, 3 across and 2 down, a page at a time. A gap "
+                             "leaves a place empty.")
+            explain.setWordWrap(True)
+            column.addWidget(explain)
+            column.addWidget(self._misc, 2)
+        return widget
+
+    def _fill_places(self, tab: dict):
+        """(Re)lay a screen's fixed places - the game pad changes with the main device."""
+        box = self._places[tab["group"]]
+        grid = box.layout()
+        while grid.count():
+            widget = grid.takeAt(0).widget()
+            if widget in self._slots:
+                self._slots.remove(widget)
+            widget.deleteLater()
+        layout_rows, note = self._layout(tab)
+        if tab["group"] in self._notes:
+            self._notes[tab["group"]].setText(note)
+            self._notes[tab["group"]].setVisible(bool(note))
+        for row, cells in enumerate(layout_rows):
+            for column, slot in enumerate(cells):
+                if slot:
+                    button = _SlotButton(slot, self, tab["group"],
+                                         shows=tab.get("draws", ("label", "icon")))
+                    self._slots.append(button)
+                    grid.addWidget(button, row, column)
+        if note:
+            empty = QLabel("(the remote shows nothing here)")
+            grid.addWidget(empty, 0, 0)
 
     def _side_bar(self, group: str, side: str) -> QGroupBox:
-        box = QGroupBox(f"{side} side")
+        box = QGroupBox("Your buttons")
+        box.setToolTip(f"The {side.lower()} side bar: your own buttons, with a label or "
+                       "an icon, on every screen of its own.")
         column = QVBoxLayout(box)
         for slot in self.model.get("side_bars") or []:
             if slot.startswith(f"SideBar{side}"):
-                button = _SlotButton(slot, self, group)
+                button = _SlotButton(slot, self, group,
+                                     shows=self.model.get("side_bar_draws",
+                                                          ("label", "icon")))
                 self._slots.append(button)
-                column.addWidget(button)
-        column.addStretch()
+                row = QHBoxLayout()
+                row.setSpacing(2)
+                grip = _Grip(button)
+                # the handle on the outer edge, away from the screen's middle
+                for widget in ((grip, button) if side == "Left" else (button, grip)):
+                    row.addWidget(widget, 0 if widget is grip else 1)
+                column.addLayout(row)
         return box
+
+    def _main_device(self) -> dict:
+        return next((d for d in self.devices if d.get("id") == self._control), {})
 
     def _layout(self, tab: dict) -> tuple[list, str]:
         """The tab's places, and anything to say about them. The game controller tab
         draws the pad of the activity's main device - by its model, as the remote
         decides - and nothing at all for a model it does not know."""
+        model = self._main_device().get("model") or ""
+        rows = self.remote.tab_layout(tab, model)
+        if rows is not None:
+            return rows, ""
         if "layouts" not in tab:
-            return tab["layout"], ""
-        model = next((d.get("model") for d in self.devices
-                      if d.get("id") == self._existing.get("control")), None) or ""
-        for name, models in (tab.get("layout_by_model") or {}).items():
-            if model in models:
-                return tab["layouts"][name], ""
-        first = next(iter(tab["layouts"].values()))
-        return first, (f"The remote shows this tab empty: it draws a pad only for a "
-                       f"main device whose model is an Xbox or a PlayStation, and this "
-                       f"activity's is {model or 'not set'}.")
+            return [], ""
+        return [], (f"The remote shows this screen empty: it draws a pad only for a main "
+                    f"device whose model is an Xbox or a PlayStation, and this "
+                    f"activity's is {model or 'not set'}. The side bars still work.")
 
-    # - Tabs on and off ---------------------------------------------------------
+    def set_main_device(self, device_id):
+        """The activity's main device, as its Devices page now says: the defaults and
+        the game pad follow it."""
+        if device_id == self._control:
+            return
+        self._control = device_id
+        self._recompute_defaults()
+        for tab in self.model["tabs"]:
+            if "layouts" in tab and tab["group"] in self._places:
+                self._fill_places(tab)
+        self._refresh()
+
+    # - Screens on and off -------------------------------------------------------
     def _is_shown(self, tab: dict) -> bool:
         value = self._properties.get(tab["flag"])
         if value is not None:
@@ -223,11 +475,25 @@ class ActivityTabsPage(QWizardPage):
             return False
         return tab["flag"] in self.remote.activity_tabs(self._existing)
 
-    def _toggled(self, tab: dict, on: bool):
-        if on and tab.get("corner") == CORNER_CHOICE:
-            for other in self.model["tabs"]:
-                if other is not tab and other.get("corner") == CORNER_CHOICE:
-                    self._shown[other["group"]].setChecked(False)
+    def is_shown(self, group: str) -> bool:
+        return self._on[group]
+
+    def show_screen(self, group: str, on: bool):
+        """Turn a screen on or off, as its checkbox or its corner's choice does."""
+        if group in self._shown:
+            self._shown[group].setChecked(on)
+        elif self.top_right is not None:
+            current = self.top_right.currentData()
+            self.top_right.setCurrentIndex(self.top_right.findData(
+                group if on else (None if current == group else current)))
+
+    def _set_on(self, group: str, on: bool):
+        self._on[group] = on
+        self._screens_changed()
+
+    def _screens_changed(self):
+        self._recompute_defaults()
+        self._refresh()
         self._fill_start()
         self._mark()
 
@@ -237,13 +503,29 @@ class ActivityTabsPage(QWizardPage):
         self.start.blockSignals(True)
         self.start.clear()
         for tab in self.model["tabs"]:
-            if self._shown[tab["group"]].isChecked():
-                self.start.addItem(TITLES.get(tab["group"], tab["group"]), tab["group"])
+            if self._on[tab["group"]]:
+                self.start.addItem(self.screen_title(tab), tab["group"])
         index = self.start.findData(current)
-        self.start.setCurrentIndex(index if index >= 0 else self.start.findData("Numbers"))
+        if index < 0:      # as a new activity would open
+            index = self.start.findData(self.remote.start_screen(
+                [tab["group"] for tab in self.model["tabs"] if self._on[tab["group"]]]))
+        self.start.setCurrentIndex(index if index >= 0 else 0)
         self.start.blockSignals(False)
 
     # - Places ------------------------------------------------------------------
+    def _recompute_defaults(self):
+        act = {"type": self._existing.get("type"), "control": self._control,
+               "properties_complete": self._existing.get("properties_complete"),
+               "properties": {tab["flag"]: "True" if self._on[tab["group"]] else "False"
+                              for tab in self.model["tabs"]}}
+        self._defaults = self.remote.place_defaults(
+            act, {d.get("id"): d for d in self.devices})
+
+    def default_for(self, group: str, slot: str):
+        """What the place sends if the owner leaves it: {device, command}, or None."""
+        found = (self._defaults.get(group) or {}).get(slot)
+        return dict(found) if found else None
+
     def slot_entry(self, group: str, slot: str):
         return next((entry for entry in self._groups.get(group) or []
                      if entry.get("slot") == slot), None)
@@ -253,25 +535,46 @@ class ActivityTabsPage(QWizardPage):
         if entry is not None:
             buttons.append(dict(entry, slot=slot))
         self._groups[group] = buttons
-        for button in self._slots:
-            if button.group == group and button.slot == slot:
-                button.refresh()
+        self._refresh(group, slot)
         self._mark()
 
-    def edit_slot(self, group: str, slot: str):
+    def swap_slots(self, group: str, first: str, second: str):
+        """Two places on a screen's side bars change what is on them."""
+        a, b = self.slot_entry(group, first), self.slot_entry(group, second)
+        buttons = [entry for entry in self._groups.get(group) or []
+                   if entry.get("slot") not in (first, second)]
+        buttons += [dict(entry, slot=slot) for entry, slot in ((a, second), (b, first))
+                    if entry is not None]
+        self._groups[group] = buttons
+        self._refresh(group, first)
+        self._refresh(group, second)
+        self._mark()
+
+    def _refresh(self, group=None, slot=None):
+        for button in self._slots:
+            if group is None or (button.group == group and button.slot == slot):
+                button.refresh()
+
+    def edit_slot(self, group: str, slot: str, shows=("label", "icon")):
         current = self.slot_entry(group, slot)
+        if current is None or current.get("blank"):
+            current = self.default_for(group, slot)
         dialog = ScreenButtonDialog(self.devices, self, participating=self._participating,
-                                    existing=current)
+                                    existing=current, shows=shows)
         if dialog.exec() and dialog.result_data:
             self.set_slot(group, slot, {k: v for k, v in dialog.result_data.items()
-                                        if k != "slot"})
+                                        if k not in ("slot", "blank")})
 
-    def describe(self, entry: dict) -> str:
+    def describe(self, entry: dict, brief: bool = False) -> str:
+        """What a place sends: "TV: Play" - or, `brief`, only "Play" where the main
+        device sends it, which is what every default is."""
         if entry.get("macro"):
             return f"{len(entry['macro'])} steps"
+        if brief and entry.get("device") == self._control:
+            return str(entry.get("command"))
         name = next((d.get("label", "?") for d in self.devices
                      if d.get("id") == entry.get("device")), entry.get("device"))
-        return f"{name} · {entry.get('command')}"
+        return f"{name}: {entry.get('command')}"
 
     def set_participating(self, ids):
         self._participating = list(ids or [])
@@ -311,8 +614,7 @@ class ActivityTabsPage(QWizardPage):
         spec.pop("soft_buttons", None)
         properties = dict(spec.get("properties") or {})
         for tab in self.model["tabs"]:
-            properties[tab["flag"]] = ("True" if self._shown[tab["group"]].isChecked()
-                                       else "False")
+            properties[tab["flag"]] = "True" if self._on[tab["group"]] else "False"
         if self.start.currentData():
             properties[self.model.get("start_property", "ActivityStartPage")] = \
                 self.start.currentData()

@@ -261,6 +261,8 @@ def _buttons(activity: dict) -> list[tuple[str, list]]:
     for entry in entries:
         if entry is None:            # a gap: the One's pages fill their places in turn
             continue
+        if isinstance(entry, dict) and entry.get("blank"):   # a place emptied on an 1100
+            continue
         if isinstance(entry, dict):
             label = entry.get("label") or ""
             macro = entry.get("macro") or [["command", entry.get("device"),

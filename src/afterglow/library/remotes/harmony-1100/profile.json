@@ -184,10 +184,10 @@
     ],
     "hard_key_labels": {
       "VolumeUp": "Volume +",
-      "VolumeDown": "Volume −",
+      "VolumeDown": "Volume \u2212",
       "VolumeMute": "Mute",
       "ChannelUp": "Channel +",
-      "ChannelDown": "Channel −",
+      "ChannelDown": "Channel \u2212",
       "PrevChannel": "Back (previous channel)",
       "DirectionUp": "Up",
       "DirectionDown": "Down",
@@ -935,6 +935,11 @@
     ],
     "activity_screens": {
       "start_property": "ActivityStartPage",
+      "start_prefers": [
+        "Transport",
+        "Numbers"
+      ],
+      "_start_prefers": "The screen a new activity opens on: the first of these it shows. Every activity in both 1100 configurations that shows Transport opens on it; the two radio activities, which do not, open on Numbers.",
       "side_bars": [
         "SideBarLeft1",
         "SideBarLeft2",
@@ -976,7 +981,25 @@
               "Stop",
               null
             ]
-          ]
+          ],
+          "draws": [],
+          "fill": {
+            "SkipBack": [
+              "SkipBackward",
+              "PreviousTrack",
+              "ChapterPrev",
+              "Replay"
+            ],
+            "SkipForward": [
+              "NextTrack",
+              "ChapterNext",
+              "Skip",
+              "Advance"
+            ],
+            "FrameAdvance": [
+              "SlowForward"
+            ]
+          }
         },
         {
           "group": "Numbers",
@@ -1003,7 +1026,46 @@
               "Number0",
               "NumberInput"
             ]
-          ]
+          ],
+          "draws": [],
+          "fill": {
+            "Number0": [
+              "0"
+            ],
+            "Number1": [
+              "1"
+            ],
+            "Number2": [
+              "2"
+            ],
+            "Number3": [
+              "3"
+            ],
+            "Number4": [
+              "4"
+            ],
+            "Number5": [
+              "5"
+            ],
+            "Number6": [
+              "6"
+            ],
+            "Number7": [
+              "7"
+            ],
+            "Number8": [
+              "8"
+            ],
+            "Number9": [
+              "9"
+            ],
+            "NumberStar": [
+              "*"
+            ],
+            "NumberInput": [
+              "#"
+            ]
+          }
         },
         {
           "group": "Favorites",
@@ -1078,6 +1140,12 @@
               "ps3",
               "Ps3"
             ]
+          },
+          "draws": [],
+          "fill": {
+            "X": [
+              "Cross"
+            ]
           }
         },
         {
@@ -1100,7 +1168,25 @@
               "DiscNext",
               null
             ]
-          ]
+          ],
+          "draws": [
+            "label"
+          ],
+          "fill": {
+            "DiscNext": [
+              "NextDisc"
+            ]
+          },
+          "labels": {
+            "Disc1": "Disc 1",
+            "Disc2": "Disc 2",
+            "Disc3": "Disc 3",
+            "Disc4": "Disc 4",
+            "Disc5": "Disc 5",
+            "Disc6": "Disc 6",
+            "DiscNext": "Next Disc"
+          },
+          "_labels": "Discs draws each button's label: a place filled from the main device is given this one. Next Disc is Logitech's own, from an 1100 configuration."
         },
         {
           "group": "Misc",
@@ -1111,9 +1197,29 @@
             2
           ]
         }
+      ],
+      "side_bar_draws": [
+        "label",
+        "icon"
+      ],
+      "corners": {
+        "1": "Top left",
+        "2": "Bottom left",
+        "3": "Top right",
+        "4": "Bottom right"
+      },
+      "_fill": "A fixed place a new activity does not set is filled from its main device (the DEFAULT role): with the command of the place's own name, else the first of `fill` the device has - names counted from the places Logitech filled in 1100 and 900 configurations."
+    },
+    "screen_grid": {
+      "device": [
+        3,
+        3
+      ],
+      "activity": [
+        3,
+        2
       ]
     },
-    "screen_grid": {"device": [3, 3], "activity": [3, 2]},
     "device_pages": [
       "search",
       "identity",
@@ -1150,10 +1256,58 @@
       "preferences"
     ],
     "languages": [
-      ["English", "enu"], ["Danish", "dan"], ["Dutch", "nld"], ["Finnish", "fin"],
-      ["French", "fra"], ["German", "deu"], ["Italian", "ita"], ["Norwegian", "nor"],
-      ["Polish", "plk"], ["Portuguese", "ptg"], ["Russian", "rus"], ["Spanish", "esp"],
-      ["Swedish", "sve"]
+      [
+        "English",
+        "enu"
+      ],
+      [
+        "Danish",
+        "dan"
+      ],
+      [
+        "Dutch",
+        "nld"
+      ],
+      [
+        "Finnish",
+        "fin"
+      ],
+      [
+        "French",
+        "fra"
+      ],
+      [
+        "German",
+        "deu"
+      ],
+      [
+        "Italian",
+        "ita"
+      ],
+      [
+        "Norwegian",
+        "nor"
+      ],
+      [
+        "Polish",
+        "plk"
+      ],
+      [
+        "Portuguese",
+        "ptg"
+      ],
+      [
+        "Russian",
+        "rus"
+      ],
+      [
+        "Spanish",
+        "esp"
+      ],
+      [
+        "Swedish",
+        "sve"
+      ]
     ]
   },
   "preferences": {
