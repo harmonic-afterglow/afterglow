@@ -118,46 +118,18 @@ jobs:
   linux:
     needs: identify
     runs-on: ubuntu-latest
+    # Built on Ubuntu 20.04 (glibc 2.31) so it runs there and on everything newer: a
+    # bundle carries its build machine's libraries, and built on the runner's 24.04 it
+    # needed glibc 2.38 - Ubuntu 22.04, Debian 12 and Mint 21 could not start it.
+    # The whole build is packaging/linux/build-bundle.sh, which runs the same locally.
+    container: ubuntu:20.04
     outputs:
-      libconcord: ${{ steps.libconcord.outputs.commit }}
+      libconcord: ${{ steps.build.outputs.libconcord }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-
-      - name: Install build and runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential autoconf automake libtool pkg-config \
-            libusb-1.0-0-dev libzip-dev libcurl4-openssl-dev libhidapi-dev \
-            libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3
-
-      - name: Build libconcord from Afterglow's fork
-        id: libconcord
-        run: |
-          set -euxo pipefail
-          git clone --depth 1 --branch "$CONCORDANCE_REF" "$CONCORDANCE_REPO" /tmp/concordance
-          echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          cd /tmp/concordance/libconcord
-          # Concordance ships autotools input, not a configure script.
-          autoreconf --install --force
-          ./configure --prefix=/tmp/libconcord-install
-          make -j"$(nproc)"
-          make install
-          # The versioned SONAME is what `concord.LIBRARY_NAMES` looks for first.
-          ls -l /tmp/libconcord-install/lib/
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          # `.[gui]`, not `.`: PyQt6 is an optional extra, and installing the bare
-          # package produces a bundle with no interface toolkit in it at all.
-          pip install -e ".[gui]"
-          pip install pyinstaller
 
       - name: Stamp the build version
+        shell: bash
         run: |
           set -euo pipefail
           # A frozen build has no dist-info, so this file is the only way it can name
@@ -166,26 +138,12 @@ jobs:
             > src/afterglow/_build.py
           cat src/afterglow/_build.py
 
-      - name: Build the bundle
-        env:
-          AFTERGLOW_BUNDLE_LIBCONCORD: /tmp/libconcord-install/lib/libconcord.so.6.0.0
-        run: pyinstaller --noconfirm packaging/afterglow.spec
-
-      - name: Check the bundle carries what it needs
+      - name: Build and check the bundle on Ubuntu 20.04
+        id: build
+        shell: bash
         run: |
-          set -euxo pipefail
-          test -x dist/afterglow
-          # A bundle that starts and cannot open an .ezhex is the failure mode this
-          # whole spec exists to prevent, so assert the registries actually resolve.
-          # Run from elsewhere with a scrubbed environment: run from the checkout it
-          # could pass by importing the source tree instead of its own contents.
-          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
-            "$GITHUB_WORKSPACE/dist/afterglow" --self-check
-          # The library is loaded by name through ctypes, which asks the *system*
-          # loader; a bundled copy is only reachable because `concord._load()` looks in
-          # the extraction directory first. Prove that, rather than assume it.
-          cd /tmp && env -i HOME="$HOME" PATH=/usr/bin:/bin \
-            "$GITHUB_WORKSPACE/dist/afterglow" --concord-check
+          packaging/linux/build-bundle.sh
+          echo "libconcord=$(cat /tmp/libconcord-commit)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v7
         with:
