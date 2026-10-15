@@ -1,14 +1,9 @@
-<img src="src/afterglow/branding/afterglow-icon.svg" alt="" width="120" align="right">
+<img src="src/afterglow/branding/afterglow-icon.svg" alt="" width="100" align="right">
 
-<div id="toc">
-  <ul style="list-style: none">
-    <summary>
-      
+
 [![Discord](https://img.shields.io/badge/-updates-5865f2?logo=discord&logoColor=white&labelColor=gray)](https://discord.gg/GEUdc2FfRH)
       <h1>Afterglow</h1> <!-- removes underline under the h1 -->
-    </summary>
-  </ul>
-</div>
+
 
 **Set up a Logitech Harmony remote after the service shut down.**
 
