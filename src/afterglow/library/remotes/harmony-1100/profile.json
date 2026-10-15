@@ -933,6 +933,186 @@
       "settings",
       "flash"
     ],
+    "activity_screens": {
+      "start_property": "ActivityStartPage",
+      "side_bars": [
+        "SideBarLeft1",
+        "SideBarLeft2",
+        "SideBarLeft3",
+        "SideBarLeft4",
+        "SideBarRight1",
+        "SideBarRight2",
+        "SideBarRight3",
+        "SideBarRight4"
+      ],
+      "tabs": [
+        {
+          "group": "Transport",
+          "flag": "ControlGroup_Transport",
+          "corner": 1,
+          "layout": [
+            [
+              null,
+              "Play",
+              null
+            ],
+            [
+              "Rewind",
+              null,
+              "FastForward"
+            ],
+            [
+              "SkipBack",
+              "Pause",
+              "SkipForward"
+            ],
+            [
+              "Record",
+              null,
+              "FrameAdvance"
+            ],
+            [
+              null,
+              "Stop",
+              null
+            ]
+          ]
+        },
+        {
+          "group": "Numbers",
+          "flag": "ControlGroup_Numbers",
+          "corner": 2,
+          "layout": [
+            [
+              "Number1",
+              "Number2",
+              "Number3"
+            ],
+            [
+              "Number4",
+              "Number5",
+              "Number6"
+            ],
+            [
+              "Number7",
+              "Number8",
+              "Number9"
+            ],
+            [
+              "NumberStar",
+              "Number0",
+              "NumberInput"
+            ]
+          ]
+        },
+        {
+          "group": "Favorites",
+          "flag": "ControlGroup_Favorites",
+          "corner": 3,
+          "channels": true
+        },
+        {
+          "group": "GameController",
+          "flag": "ControlGroup_GameController",
+          "corner": 3,
+          "layouts": {
+            "xbox": [
+              [
+                null,
+                "Y",
+                null
+              ],
+              [
+                "X",
+                null,
+                "B"
+              ],
+              [
+                null,
+                "A",
+                null
+              ]
+            ],
+            "playstation": [
+              [
+                null,
+                "Triangle",
+                null
+              ],
+              [
+                "Square",
+                null,
+                "Circle"
+              ],
+              [
+                null,
+                "X",
+                null
+              ]
+            ]
+          },
+          "layout_by_model": {
+            "xbox": [
+              "XBox",
+              "Xbox",
+              "XBox 360",
+              "Xbox 360",
+              "XBox360",
+              "Xbox360",
+              "xbox 360",
+              "xbox360"
+            ],
+            "playstation": [
+              "ps2",
+              "Ps2",
+              "PS2",
+              "PlayStation 2",
+              "PlayStation 3 IR2BT",
+              "PlayStation 3 IR2BTci",
+              "PlayStation 3 Logic3",
+              "PlayStation 3 Blu-Wave",
+              "PlayStation 3 ps3toothfairy",
+              "PlayStation 3 PS3IR-PRO",
+              "PlayStation 3",
+              "PS3",
+              "ps3",
+              "Ps3"
+            ]
+          }
+        },
+        {
+          "group": "Discs",
+          "flag": "ControlGroup_Discs",
+          "corner": 3,
+          "layout": [
+            [
+              "Disc1",
+              "Disc2",
+              "Disc3"
+            ],
+            [
+              "Disc4",
+              "Disc5",
+              "Disc6"
+            ],
+            [
+              null,
+              "DiscNext",
+              null
+            ]
+          ]
+        },
+        {
+          "group": "Misc",
+          "flag": "ControlGroup_Misc",
+          "corner": 4,
+          "grid": [
+            3,
+            2
+          ]
+        }
+      ]
+    },
     "screen_grid": {"device": [3, 3], "activity": [3, 2]},
     "device_pages": [
       "search",

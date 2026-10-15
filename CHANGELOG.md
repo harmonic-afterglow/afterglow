@@ -18,6 +18,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   to pick it in the list.
 - **Gaps between an activity's screen buttons**, with Add gap, on the Harmony 900 and
   1100.
+- **The Harmony 1100's activity tabs.** An 1100 activity's screen is up to four tabs -
+  Transport, Numbers, one of Favourites, Game controller or Discs, and a page of buttons -
+  each with side bars down both edges. Screen buttons now shows them as the remote lays
+  them out: turn each tab on or off, choose the one it opens on, and put a command or a
+  macro on any place. The game controller tab shows the Xbox or PlayStation pad the
+  remote draws for the activity's main device.
 
 ### Fixed
 
@@ -29,6 +35,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Importing a Harmony 900 configuration lost the layout of its activities' screen
   buttons**: the buttons were read in file order and the empty places between them
   dropped. Every activity page now comes back as it was.
+- **A Harmony 1100 activity made in Afterglow had no screen.** The remote shows an
+  activity's tabs only when the activity turns them on, and a new one turned none on.
+  It now gets the tabs Logitech gives its type - an older project too, the next time it
+  is flashed. Imported activities keep their own.
 - **The Harmony One drew a command's name on its button** rather than the button's text,
   and put a device's buttons in alphabetical order. It now draws the page as arranged
   (gaps close up, since the One fills its places in turn), and keeps the order when a

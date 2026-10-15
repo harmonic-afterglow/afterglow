@@ -36,10 +36,18 @@ def _defaults_for(remote=None) -> dict:
             if name.replace(" ", "") in by_squashed}
 
 
+def _screen_tabs(act, remote=None) -> dict:
+    """The tabs a new activity's screen has (`RemoteProfile.activity_tabs`)."""
+    profile = vocabulary_profile(remote)
+    tabs = getattr(profile, "activity_tabs", None)
+    return tabs(act) if tabs else {}
+
+
 def _act_props(act, remote=None):
     # An imported activity's properties are complete as they are: adding a default the
     # configuration did not have changes what the remote does with it.
-    defaults = {} if act.get("properties_complete") else _defaults_for(remote)
+    defaults = {} if act.get("properties_complete") else {
+        **_defaults_for(remote), **_screen_tabs(act, remote)}
     props = {**defaults, **(act.get("properties") or {})}
     return ("<Properties>"
             + "".join(f'<Property name="{esc(k)}">{esc(str(v))}</Property>'

@@ -40,6 +40,15 @@ def _does(macro, devices) -> str:
     return f"{len(macro)} steps"
 
 
+def screen_page(devices, existing, profile):
+    """The page for an activity's screen buttons: its tabs, on a remote whose activity
+    screen is a set of them (the 1100), or its one page of buttons."""
+    if getattr(profile, "activity_screens", None):
+        from .activity_screens import ActivityTabsPage
+        return ActivityTabsPage(devices, existing, remote=profile)
+    return ScreenButtonsPage(devices, existing, remote=profile)
+
+
 # "Custom / Other": what an activity without a type is shown as.
 GENERIC_TYPE = "VirtualGeneric"
 
@@ -56,7 +65,7 @@ class ActivityWizard(StepWizard):
         self.identity = ActivityIdentityPage(e, remote=profile)
         self.roles = ActivityRolesPage(devices, e)
         self.favourites = FavouritesPage(devices, e)
-        self.screen_buttons = ScreenButtonsPage(devices, e, remote=profile)
+        self.screen_buttons = screen_page(devices, e, profile)
         self.hard_buttons = ActivityHardButtonsPage(devices, e, remote=profile)
         self.startup = ActivityMacrosPage(devices, e)
         self.power_page = ActivityPowerPage(devices, e)
@@ -120,11 +129,12 @@ class ActivityWizard(StepWizard):
             spec["channel_confirm"] = confirm
         # The touchscreen buttons. These had no page at all, so an activity could not
         # be given one through the interface - the thing the manual asked for most.
-        spec["soft_buttons"]  = p4.get_buttons()
         spec["hard_macros"]   = p5.get_hard_macros()
         spec["enter"] = p6.enter_macro.get_macro()
         spec["leave"] = p6.leave_macro.get_macro()
         spec["properties"] = p7.values()
+        # after the properties: an activity's tabs are switched on by properties of it
+        p4.apply(spec)
         apply_plan(spec, self.power_page.get_plan())
         self._assets = p3.get_assets()
         return spec
@@ -607,7 +617,7 @@ class ActivityEditor(SectionDialog):
         self.p0 = ActivityIdentityPage(e, remote=profile)
         self.p1 = ActivityRolesPage(devices, e)
         self.p3 = FavouritesPage(devices, e)
-        self.p3b = ScreenButtonsPage(devices, e, remote=profile)
+        self.p3b = screen_page(devices, e, profile)
         self.p4 = ActivityHardButtonsPage(devices, e, remote=profile)
         self.p5 = ActivityMacrosPage(devices, e)
 
@@ -664,11 +674,12 @@ class ActivityEditor(SectionDialog):
             spec["channel_confirm"] = confirm
         # The touchscreen buttons. These had no page at all, so an activity could not
         # be given one through the interface - the thing the manual asked for most.
-        spec["soft_buttons"]  = screen.get_buttons()
         spec["hard_macros"]   = p4.get_hard_macros()
         spec["enter"] = p5.enter_macro.get_macro()
         spec["leave"] = p5.leave_macro.get_macro()
         spec["properties"] = p6.values()
+        # after the properties: an activity's tabs are switched on by properties of it
+        screen.apply(spec)
         apply_plan(spec, self.power.get_plan())
         self._assets = p3.get_assets()
         return spec
