@@ -167,20 +167,24 @@ jobs:
       # Doing it all under MSYS2 was the first attempt and it fails: PyQt6 publishes no
       # wheel for MSYS2's Python, so pip falls back to building it from source and stops
       # with "specify a working qmake or add it to PATH". Native Python gets the wheel.
+      #
+      # UCRT64, not MINGW64: in October 2026 MSYS2 dropped libusb from MINGW64 (it is
+      # built for CLANG64, CLANGARM64 and UCRT64 only), and the install stopped at
+      # "target not found". UCRT64 also links the C runtime the native Python uses.
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           path-type: inherit
           install: >-
             git base-devel
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-autotools
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-libusb
-            mingw-w64-x86_64-libzip
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-hidapi
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-autotools
+            mingw-w64-ucrt-x86_64-pkg-config
+            mingw-w64-ucrt-x86_64-libusb
+            mingw-w64-ucrt-x86_64-libzip
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-hidapi
 
       - name: Build libconcord from Afterglow's fork
         id: libconcord
@@ -206,7 +210,7 @@ jobs:
           # a hardcoded `C:\msys64` found nothing, and PyInstaller could not resolve
           # `libzip.dll` or `libhidapi-0.dll`. The bundle then carried a libconcord that
           # would not load, and said only "NOT available" three steps later.
-          cygpath -w /mingw64/bin > "$RUNNER_TEMP/mingw_bin.txt"
+          cygpath -w "$MSYSTEM_PREFIX/bin" > "$RUNNER_TEMP/mingw_bin.txt"
 
       - uses: actions/setup-python@v7
         with:
