@@ -294,13 +294,14 @@ def _same_title(title: str, label: str) -> bool:
 
 def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, dict]:
     """Each device's command pages read: its title, each command's label, and the
-    physical keys its pages bind, by device index. Given the devices' ``labels``, a page
-    titled otherwise - an activity's page showing one device's buttons - is not the
+    physical keys its pages bind, by device index, with ``buttons``: each button as
+    ``(command, label)`` in the order the pages show them. Given the devices' ``labels``,
+    a page titled otherwise - an activity's page showing one device's buttons - is not the
     device's."""
     labels = labels or {}
     out = {}
     for device, ordinals in command_pages(image).items():
-        titles, names, bound = [], {}, {}
+        titles, names, bound, buttons = [], {}, {}, []
         for ordinal in ordinals:
             screen = image.screens[ordinal]
             titled = [item["text"] for slot in screen["slots"]
@@ -312,10 +313,11 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
             for slot in screen["slots"]:
                 items = image.page_text(slot["program_offset"])
                 titles += [item["text"] for item in items if (item["x"], item["y"]) == TITLE_XY]
-                for position, command in (_touch_sends(image, slot) or {}).items():
+                for position, command in sorted((_touch_sends(image, slot) or {}).items()):
                     lines = _button_label(items, position)
                     if lines:
                         names.setdefault(command, image.join(lines))
+                        buttons.append((command, image.join(lines)))
             for entry in screen["header_entries"] + [
                     entry for slot in screen["slots"] for entry in slot["entries"]]:
                 name = keys.name_of(entry["key_code"])
@@ -325,7 +327,7 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
                 if len(sends) == 1 and sends[0][1] >> 8 == device:
                     bound.setdefault(name, sends[0][1])
         out[device] = {"title": max(set(titles), key=titles.count) if titles else None,
-                       "names": names, "keys": bound}
+                       "names": names, "keys": bound, "buttons": buttons}
     return out
 
 
@@ -523,7 +525,7 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
     out = []
     for device in native:
         index = device["native"]["harmony-one"]["device_index"]
-        page = pages.get(index, {"title": None, "names": {}, "keys": {}})
+        page = pages.get(index, {"title": None, "names": {}, "keys": {}, "buttons": []})
         state = states.get(index, {})
         ids = {signal["native"]["harmony-one"]["command_id"]: name
                for name, signal in device["signals"].items()}
@@ -551,6 +553,10 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
             [names[command], names[command] if command in page["names"] else "", "", "",
              sorted(slots[command]) or None]
             for command in ids if command not in same])
+        # The pages as drawn: which buttons, in what order, under which names.
+        project["screen_buttons"] = [
+            [names[same.get(command, command)], label]
+            for command, label in page["buttons"] if same.get(command, command) in names]
         project.update(_state_fields(state, names))
         if naming is not None:
             naming.update({command: (project["id"], name) for command, name in names.items()})

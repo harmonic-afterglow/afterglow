@@ -69,7 +69,7 @@ class NotBuildable(PermissionError):
 # `interface` section has to name the subset its remote has - there is no default, since
 # a default is a guess about a remote nobody described.
 TABS = ("devices", "activities", "settings", "flash")
-DEVICE_PAGES = ("search", "identity", "commands", "inputs", "timing", "advanced")
+DEVICE_PAGES = ("search", "identity", "commands", "screen", "inputs", "timing", "advanced")
 ACTIVITY_PAGES = ("identity", "roles", "favourites", "screen_buttons", "hard_buttons",
                   "startup", "power", "advanced")
 SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme", "preferences")
@@ -102,6 +102,14 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
         missing = [name for name in required if name not in listed]
         if missing:
             raise ValueError(f"{profile_id}: interface.{key} must include {missing}")
+    grid = interface.get("screen_grid")
+    if grid is not None and not (
+            isinstance(grid, dict) and set(grid) <= {"device", "activity"} and all(
+                isinstance(size, list) and len(size) == 2
+                and all(isinstance(n, int) and n > 0 for n in size)
+                for size in grid.values())):
+        raise ValueError(f"{profile_id}: interface.screen_grid gives a device's and an "
+                         "activity's page as [columns, rows]")
     languages = interface.get("languages")
     if not isinstance(languages, list) or not languages or not all(
             isinstance(pair, list) and len(pair) == 2 for pair in languages):
@@ -232,6 +240,12 @@ class RemoteProfile:
     def timing_fields(self) -> tuple:
         """The device Timing page's fields this remote's builder uses."""
         return self._offered("timing")
+
+    def screen_grid(self, kind: str) -> tuple[int, int] | None:
+        """(columns, rows) of a device's or an activity's page of buttons on this
+        remote's screen, filled row by row - None for a remote with no such page."""
+        size = (self.interface.get("screen_grid") or {}).get(kind)
+        return tuple(size) if size else None
 
     @property
     def languages(self) -> tuple:

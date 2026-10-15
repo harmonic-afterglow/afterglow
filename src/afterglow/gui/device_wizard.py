@@ -18,6 +18,7 @@ from .. import remotes
 from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
 from .device_inputs import DeviceInputsPage
+from .device_screen import DeviceScreenPage
 from .properties_editor import PropertiesEditor, PropertiesPage
 from .keys_view import ASSIGNED, FREE, KeysViewChoice, RemoteKeys, legend
 from .sections import SectionDialog, StepWizard
@@ -834,10 +835,10 @@ class CommandsPage(QWizardPage):
         self._signals = dict((existing or {}).get("signals") or {})
         self.setTitle("Commands")
         self.setSubTitle(
-            "What the device can be told to do. A command shown on screen gets a "
-            "button on the device's page of the remote; one left blank still works on "
-            "keys and in activities. Put a command on one of the remote's own keys "
-            "in the picture, or in the Key column of the list.")
+            "What the device can be told to do. Put a command on one of the remote's "
+            "own keys in the picture, or in the Key column of the list. Which commands "
+            "get a button on the device's page of the screen, and in what order, is "
+            "on the Screen page.")
         layout = QVBoxLayout(self)
 
         # - Power commands ----------------------------------------------
@@ -915,9 +916,9 @@ class CommandsPage(QWizardPage):
         self.table.setHorizontalHeaderLabels(
             ["Name", "On screen as", "Address (hex)", "Command (hex)", "Key"])
         self.table.horizontalHeaderItem(1).setToolTip(
-            "The text on the command's button on the remote's screen. Leave it empty "
-            "to keep the command off the screen: it still works on a key and in "
-            "activities.")
+            "The text a button for the command shows on the remote's screen. Until the "
+            "device's page is arranged on the Screen page, a command left empty here "
+            "has no button; it still works on a key and in activities.")
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -1523,6 +1524,7 @@ def _attach_learned(spec: dict, existing: dict, learned: dict) -> None:
 # `interface.device_pages` uses: the ones people come to change, then the ones whose
 # values come from the database or the imported configuration and are right as they are.
 DEVICE_SECTIONS = (("identity", "Device", False), ("commands", "Commands", False),
+                   ("screen", "Screen", False),
                    ("inputs", "Power & inputs", False), ("timing", "Timing", True),
                    ("search", "Change model", True), ("advanced", "Advanced", True))
 
@@ -1543,6 +1545,8 @@ class DeviceEditor(SectionDialog):
             remote=self.profile, replacing=True)
         self.page_identity = IdentityPage(self._existing, project=project)
         self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
+        self.page_screen   = DeviceScreenPage(self._existing, self.page_cmds.get_commands,
+                                              remote=self.profile)
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
         self.page_timing   = TimingPage(self._existing,
                                         fields=self.profile.timing_fields)
@@ -1554,7 +1558,8 @@ class DeviceEditor(SectionDialog):
 
         # Only the sections this remote's profile lists; see DeviceWizard.
         pages = {"search": self.page_search, "identity": self.page_identity,
-                 "commands": self.page_cmds, "inputs": self.page_inputs,
+                 "commands": self.page_cmds, "screen": self.page_screen,
+                 "inputs": self.page_inputs,
                  "timing": self.page_timing, "advanced": self.page_props}
         for name, label, seldom in DEVICE_SECTIONS:
             if name in self.profile.device_pages:
@@ -1566,6 +1571,8 @@ class DeviceEditor(SectionDialog):
     def section_shown(self, name):
         if name == "inputs":
             self.page_inputs.refresh_commands()
+        elif name == "screen":
+            self.page_screen.refresh()
 
     def _on_learned(self):
         """Refresh the summary after a portable waveform was learned."""
@@ -1584,6 +1591,7 @@ class DeviceEditor(SectionDialog):
             self.page_props.set_values(t["properties"])
         self.page_identity.apply_template(t)
         self.page_cmds.load_template(t)
+        self.page_screen.load(t)
         self.page_timing.load_template(t)
         self.page_inputs.load(t)
 
@@ -1606,6 +1614,8 @@ class DeviceEditor(SectionDialog):
             for macro in (activity.get("hard_macros") or {}).values():
                 steps += list(macro or [])
             for button in activity.get("soft_buttons") or []:
+                if button is None:
+                    continue
                 if isinstance(button, dict):
                     steps += list(button.get("macro") or [])
                     if button.get("device") and button.get("command"):
@@ -1677,6 +1687,8 @@ class DeviceEditor(SectionDialog):
             "commands":          command_rows,
         })
         self.page_inputs.apply(spec)
+        if "screen" in self.profile.device_pages:
+            self.page_screen.apply(spec)
         spec["signals"] = cmds.updated_signals(command_rows)
         _attach_learned(spec, self._existing, cmds.learned_captures())
         from .. import project_devices

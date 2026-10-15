@@ -56,7 +56,7 @@ class ActivityWizard(StepWizard):
         self.identity = ActivityIdentityPage(e, remote=profile)
         self.roles = ActivityRolesPage(devices, e)
         self.favourites = FavouritesPage(devices, e)
-        self.screen_buttons = ScreenButtonsPage(devices, e)
+        self.screen_buttons = ScreenButtonsPage(devices, e, remote=profile)
         self.hard_buttons = ActivityHardButtonsPage(devices, e, remote=profile)
         self.startup = ActivityMacrosPage(devices, e)
         self.power_page = ActivityPowerPage(devices, e)
@@ -607,7 +607,7 @@ class ActivityEditor(SectionDialog):
         self.p0 = ActivityIdentityPage(e, remote=profile)
         self.p1 = ActivityRolesPage(devices, e)
         self.p3 = FavouritesPage(devices, e)
-        self.p3b = ScreenButtonsPage(devices, e)
+        self.p3b = ScreenButtonsPage(devices, e, remote=profile)
         self.p4 = ActivityHardButtonsPage(devices, e, remote=profile)
         self.p5 = ActivityMacrosPage(devices, e)
 

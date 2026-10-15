@@ -3,6 +3,7 @@
 Format reference: docs/harmony_pk/configuration.md
 """
 
+from .... import project_devices
 from .. import ssir, states as states_mod
 from .actions import _a_send, digit_command
 from .codes import CODECS, code_pre, esc, necext_code, portable_code
@@ -77,14 +78,14 @@ def _gen_device(spec):
                  f'<Property name="HoldPreSilence">{hold_sil}</Property>'
                  f'<Property name="HoldInterKey">{hold_int}</Property></Properties>')
 
-    # The remote draws these on the device's page, so they survive a round trip.
-    icons = spec.get("icons", {})
+    # The device's own page: the buttons it was given, in their order. A gap is a
+    # position left empty, as Logitech's pages leave them.
     misc = "".join(
-        f"<Button><Label>{esc(l)}</Label>"
-        + (f"<Icon>{esc(icons[n])}</Icon>" if n in icons else "")
+        f"<Button><Label>{esc(entry[1])}</Label>"
+        + (f"<Icon>{esc(entry[2])}</Icon>" if len(entry) > 2 and entry[2] else "")
         + f"<Position>{i}</Position>"
-        f"<ActionId>{did}_{esc(n)}_Hold</ActionId></Button>"
-        for i,(n,l,_a,_c,_h) in enumerate(cmds))
+        f"<ActionId>{did}_{esc(entry[0])}_Hold</ActionId></Button>"
+        for i, entry in enumerate(project_devices.screen_buttons(spec)) if entry)
     hard = ""
     for n,_l,_a,_c,h in cmds:
         if not h: continue

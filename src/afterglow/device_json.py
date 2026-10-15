@@ -225,7 +225,7 @@ def to_project_device(spec: dict, device_id: str = "", *,
     if power.get("delay_ms") is not None:
         out["power_delay"] = power["delay_ms"]
     for key in ("inputs", "input_cycle", "numeric", "properties", "states",
-                "control_states", "icons", "online_inputs"):
+                "control_states", "icons", "online_inputs", "screen_buttons"):
         if spec.get(key):
             out[key] = json.loads(json.dumps(spec[key]))
     for key, value in (spec.get("timing") or {}).items():

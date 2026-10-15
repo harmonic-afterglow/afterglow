@@ -343,7 +343,7 @@ def build(project: dict, *, directory=None, library=None,
             button.get("label") or "" if isinstance(button, dict) else button[0]
             for button in (activity.get("soft_buttons") or []) + [
                 entry for _name, entries in activity.get("screen_groups") or []
-                for entry in entries]]
+                for entry in entries] if button is not None]
         for character in text} | set(project.get("power_off_label") or "")
     first = _configuration(project, directory, manifest, assets.load(directory, candidates),
                            stamp_fields, buttons, library, words)

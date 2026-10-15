@@ -60,6 +60,16 @@ def validate(device: dict, *, allow_opaque: bool = True) -> None:
         ir_signal.validate(signals[name])
         if not allow_opaque and signals[name]["kind"] == "backend-opaque":
             raise ValueError(f"command {name!r} has only backend-opaque evidence")
+    page = device.get("screen_buttons")
+    if page is not None:
+        if not isinstance(page, list):
+            raise ValueError("screen_buttons must be a list")
+        for entry in page:
+            if entry is not None and not (
+                    isinstance(entry, (list, tuple)) and 2 <= len(entry) <= 3
+                    and all(isinstance(part, str) for part in entry)):
+                raise ValueError(f"a screen button is [command, label(, icon)] or null, "
+                                 f"not {entry!r}")
     definitions = device.get("portable_protocol_definitions") or {}
     if not isinstance(definitions, dict):
         raise ValueError("portable_protocol_definitions must be an object")
@@ -159,6 +169,42 @@ def free_key_assignments(bound: dict, available) -> dict:
                 out[name] = key
                 break
     return out
+
+
+def screen_buttons(device: dict) -> list:
+    """The buttons on a device's own page of the remote's screen, in order: each
+    ``[command, label]`` or ``[command, label, icon]``, or None for a gap.
+
+    A device carries them as `screen_buttons` once its page has been read from a
+    configuration or arranged in the editor. Logitech's pages show a chosen few commands
+    in an order of their own - often under other names, now and then one command twice -
+    and an older project has no such list. Its page is then every command with a label,
+    in the order of its commands, which is how it was always built. A button whose
+    command the device no longer has is dropped, and so are gaps after the last button;
+    gaps before the first are Logitech's own, and kept."""
+    names = {str(row[0]) for row in device.get("commands") or [] if row}
+    page = device.get("screen_buttons")
+    if page is None:
+        icons = device.get("icons") or {}
+        page = [[row[0], row[1]] + ([icons[row[0]]] if row[0] in icons else [])
+                for row in device.get("commands") or []
+                if row and len(row) > 1 and row[1]]
+    out = [list(entry) if entry else None for entry in page
+           if entry is None or entry[0] in names]
+    while out and out[-1] is None:
+        out.pop()
+    return out
+
+
+def rename_screen_command(device: dict, old: str, new: str | None) -> None:
+    """Follow a command renamed (or removed, when ``new`` is None) on the device's page,
+    if it has one of its own."""
+    page = device.get("screen_buttons")
+    if page is None:
+        return
+    device["screen_buttons"] = [
+        entry if entry is None or entry[0] != old else [new, *entry[1:]]
+        for entry in page if entry is None or entry[0] != old or new is not None]
 
 
 def command_rows(device: dict) -> list[list]:

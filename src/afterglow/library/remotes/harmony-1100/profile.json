@@ -933,10 +933,12 @@
       "settings",
       "flash"
     ],
+    "screen_grid": {"device": [3, 3], "activity": [3, 2]},
     "device_pages": [
       "search",
       "identity",
       "commands",
+      "screen",
       "inputs",
       "timing",
       "advanced"

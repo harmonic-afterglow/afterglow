@@ -249,10 +249,12 @@
       "settings",
       "flash"
     ],
+    "screen_grid": {"device": [2, 3], "activity": [2, 3]},
     "device_pages": [
       "search",
       "identity",
       "commands",
+      "screen",
       "inputs",
       "timing"
     ],

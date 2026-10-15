@@ -602,16 +602,29 @@ class _HarmonyPkImport:
             soft_map = {}
             hard_map = {}
             icon_map = {}
+            # The device's own page, as the configuration lays it out: Logitech shows a
+            # chosen few commands, in an order of its own and with gaps, and sometimes
+            # one command twice under two names. Rebuilding it from the command list put
+            # every command on the page in file order.
+            placed = {}
             for cg in d.findall('Presentation/ControlGroup'):
                 if cg.attrib.get('name') == 'Misc':
                     for btn in cg.findall('Button'):
                         label = html.unescape(btn.find('Label').text or "")
                         _, cmd = parse_action_id(btn.find('ActionId').text)
                         if cmd:
-                            soft_map[cmd] = label
+                            soft_map.setdefault(cmd, label)
                             icon = btn.find('Icon')
                             if icon is not None and icon.text:
-                                icon_map[cmd] = icon.text
+                                icon_map.setdefault(cmd, icon.text)
+                            try:
+                                position = int(btn.findtext('Position'))
+                            except (TypeError, ValueError):
+                                position = len(placed) and max(placed) + 1
+                            while position in placed:
+                                position += 1
+                            placed[position] = [cmd, label] + (
+                                [icon.text] if icon is not None and icon.text else [])
                 elif cg.attrib.get('name') == 'HardButtons':
                     for btn in cg.findall('Button'):
                         hname = btn.attrib.get('name')
@@ -637,6 +650,10 @@ class _HarmonyPkImport:
             dev["commands"] = new_cmds
             if icon_map:
                 dev["icons"] = icon_map
+            known = {c[0] for c in new_cmds}
+            dev["screen_buttons"] = [
+                placed[position] if placed.get(position, [None])[0] in known else None
+                for position in range(max(placed) + 1 if placed else 0)]
             used = {}
             for cmd_name, code in dev["raw_codes"].items():
                 index = ssir.raw_index(code)
@@ -816,7 +833,23 @@ class _HarmonyPkImport:
                 # what the builder writes too. Reading only "SoftButtons" meant a config this
                 # tool produced could not be imported back: the buttons were simply not seen.
                 if cg.attrib.get('name') in ('Misc', 'SoftButtons') and not screen_groups:
+                    # In position order, with a None for each place no button takes: the
+                    # remote lays a page out by <Position>, not by file order, and draws
+                    # an empty place where none is given.
+                    placed = {}
                     for btn in cg.findall('Button'):
+                        try:
+                            position = int(btn.findtext('Position'))
+                        except (TypeError, ValueError):
+                            position = max(placed, default=-1) + 1
+                        while position in placed:
+                            position += 1
+                        placed[position] = btn
+                    for position in range(max(placed, default=-1) + 1):
+                        btn = placed.get(position)
+                        if btn is None:
+                            act["soft_buttons"].append(None)
+                            continue
                         label = html.unescape(btn.find('Label').text or "")
                         did, cmd = parse_action_id(btn.find('ActionId').text)
                         action_id = btn.find('ActionId').text or ""
@@ -832,6 +865,8 @@ class _HarmonyPkImport:
                             if icon_name:
                                 entry["icon"] = icon_name
                             act["soft_buttons"].append(entry)
+                        else:            # nothing to send: its place, so the rest keep theirs
+                            act["soft_buttons"].append(None)
                 elif cg.attrib.get('name') == 'HardButtons':
                     for btn in cg.findall('Button'):
                         hname = btn.attrib.get('name')

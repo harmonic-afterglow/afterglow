@@ -26,11 +26,12 @@ from ..qt.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
                              QStackedWidget, QTableWidget, QTableWidgetItem,
                              QVBoxLayout, QWidget, QWizardPage)
 
-from .. import paths
+from .. import backends, paths
 from .drag_rows import RowDragger, moved_list
 from .icon_picker import choose as choose_icon
 from .icons import pixmap as glyph_pixmap
 from .macro import MacroEditorWidget
+from .screen_preview import ScreenPreview
 from .ui_helpers import FilterCombo, order_by_participation
 
 PREVIEW = 48          # the remote draws these small; showing them huge flatters them
@@ -461,11 +462,13 @@ class FavouritesPage(QWizardPage):
 
 
 class ScreenButtonsPage(QWizardPage):
-    """The labelled buttons the activity puts on the touchscreen."""
+    """The labelled buttons the activity puts on the touchscreen, in order - a gap is a
+    place the remote leaves empty - with the page drawn as the remote shows it."""
 
-    def __init__(self, devices, existing, parent=None):
+    def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.devices = devices
+        self._title = (existing or {}).get("label") or ""
         self.setTitle("Screen buttons")
         self.setSubTitle(
             "The buttons on this activity's page of the remote's screen. Each sends "
@@ -473,17 +476,30 @@ class ScreenButtonsPage(QWizardPage):
         layout = QVBoxLayout(self)
 
         self.table = _ButtonTable(["Icon", "Label", "Does"])
-        layout.addWidget(self.table, 1)
+        body = QHBoxLayout()
+        body.addWidget(self.table, 1)
+        grid = remote.screen_grid("activity") if remote is not None else None
+        self.preview = ScreenPreview(*(grid or (2, 3)), title=self._title)
+        self.preview.setVisible(grid is not None)
+        self.preview.picked.connect(self.table.selectRow)
+        self.table.currentCellChanged.connect(lambda row, *_rest: self.preview.select(row))
+        body.addWidget(self.preview, 0, Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(body, 1)
         self.dragger = RowDragger(self.table, self._moved)
 
         row = QHBoxLayout()
         add = QPushButton("Add command…")
         add.clicked.connect(self._add)
+        gap = QPushButton("Add gap")
+        gap.setToolTip("An empty place between buttons, where the remote shows nothing.")
+        gap.clicked.connect(self._add_gap)
+        # Only where the remote can leave a place empty; the One closes a gap up.
+        gap.setVisible(remote is None or backends.screen_gaps(remote))
         edit = QPushButton("Edit…")
         edit.clicked.connect(self._edit)
         remove = QPushButton("Remove")
         remove.clicked.connect(self._remove)
-        for button in (add, edit, remove):
+        for button in (add, gap, edit, remove):
             row.addWidget(button)
         row.addStretch()
         layout.addLayout(row)
@@ -491,8 +507,32 @@ class ScreenButtonsPage(QWizardPage):
 
         for entry in existing.get("soft_buttons", []):
             self._add_row(entry)
+        self._show()
+
+    def _show(self):
+        """Draw the page as the list has it now."""
+        self.preview.set_buttons([
+            None if entry is None else (entry.get("label") or "", entry.get("icon"))
+            for entry in self._entries()])
+
+    def _add_gap(self):
+        row = self.table.currentRow()
+        at = row + 1 if row >= 0 and self.table.selectedItems() else self.table.rowCount()
+        entries = self._entries()
+        entries.insert(at, None)
+        self._set_rows(entries, at)
 
     def _add_row(self, entry):
+        if entry is None:                           # a place left empty
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            self.table.setCellWidget(row, 0, QLabel(""))
+            item = QTableWidgetItem("(gap)")
+            item.setForeground(Qt.GlobalColor.gray)
+            item.setData(Qt.ItemDataRole.UserRole, None)
+            self.table.setItem(row, 1, item)
+            self.table.setItem(row, 2, QTableWidgetItem(""))
+            return
         if isinstance(entry, (list, tuple)):        # (label, device, command[, icon])
             entry = {"label": entry[0], "device": entry[1], "command": entry[2],
                      **({"icon": entry[3]} if len(entry) > 3 else {})}
@@ -526,6 +566,7 @@ class ScreenButtonsPage(QWizardPage):
             self.devices, self, participating=getattr(self, "_participating", None))
         if dialog.exec() and dialog.result_data:
             self._add_row(dialog.result_data)
+            self._show()
 
     def _edit(self):
         """Change a command that is already in the list."""
@@ -533,12 +574,14 @@ class ScreenButtonsPage(QWizardPage):
         if row < 0:
             return
         entry = self.table.item(row, 1).data(Qt.ItemDataRole.UserRole)
+        if entry is None:                           # a gap has nothing to change
+            return
         dialog = ScreenButtonDialog(
             self.devices, self, participating=getattr(self, "_participating", None),
             existing=entry)
         if dialog.exec() and dialog.result_data:
             # In its place: it used to go to the end of the list.
-            entries = self.get_buttons()
+            entries = self._entries()
             entries[row] = dialog.result_data
             self._set_rows(entries, row)
 
@@ -546,21 +589,31 @@ class ScreenButtonsPage(QWizardPage):
         self.table.setRowCount(0)
         for entry in entries:
             self._add_row(entry)
+        self._show()
         if select is not None:
             self.table.selectRow(select)
 
     def _moved(self, from_row, to_row):
         """The buttons appear on the remote's screen in this order."""
-        self._set_rows(moved_list(self.get_buttons(), from_row, to_row), to_row)
+        self._set_rows(moved_list(self._entries(), from_row, to_row), to_row)
 
     def _remove(self):
         row = self.table.currentRow()
         if row >= 0:
             self.table.removeRow(row)
+            self._show()
 
-    def get_buttons(self):
+    def _entries(self):
+        """Every row as it stands, gaps and all."""
         return [self.table.item(r, 1).data(Qt.ItemDataRole.UserRole)
                 for r in range(self.table.rowCount())]
+
+    def get_buttons(self):
+        """The buttons in order, None for a gap; gaps after the last button go."""
+        out = self._entries()
+        while out and out[-1] is None:
+            out.pop()
+        return out
 
 
 def _describe(kind, payload):
