@@ -48,8 +48,15 @@ def back_up(project_path) -> Path | None:
             return None
         folder = folder_for(source)
         folder.mkdir(parents=True, exist_ok=True)
+        # The clock alone does not make a name unique: on Windows it moves in steps of
+        # about 15 ms, and two saves inside one step named the same backup. A count after
+        # the stamp keeps them apart and in order - counting on from the highest, since
+        # pruning frees the low numbers and reusing one would sort a new backup first.
+        name = name_of(source)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        target = folder / f"{name_of(source)}-{stamp}.json"
+        taken = [int(p.stem.rsplit("-", 1)[1]) for p in folder.glob(f"{name}-{stamp}-*.json")
+                 if p.stem.rsplit("-", 1)[1].isdigit()]
+        target = folder / f"{name}-{stamp}-{max(taken, default=-1) + 1:02d}.json"
         shutil.copyfile(source, target)
         for old in history(source)[:-KEEP]:
             old.unlink(missing_ok=True)
