@@ -16,8 +16,9 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
-from ..qt.QtCore import QPointF, QRectF, QSettings, QSize, Qt, pyqtSignal
-from ..qt.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF, QTransform
+from ..qt.QtCore import QPointF, QRect, QRectF, QSettings, QSize, Qt, pyqtSignal
+from ..qt.QtGui import (QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF, QRegion,
+                        QTransform)
 from ..qt.QtSvg import QSvgRenderer
 from ..qt.QtWidgets import (QButtonGroup, QHBoxLayout, QLabel, QSizePolicy,
                              QToolButton, QToolTip, QWidget)
@@ -56,11 +57,14 @@ class RemoteKeys(QWidget):
                 # guide may draw it as a line only, and the window would show through.
                 self._body = max(outlines, key=lambda o: o.boundingRect().width()
                                  * o.boundingRect().height(), default=QPainterPath())
-                self._keys = _without_inner({key: _key_shape(outlines, box)
-                                             for key, box in art["keys"].items()})
-                self._fixed = {name: _key_shape(outlines, box)
-                               for name, box in art["unassignable"].items()}
                 self._view = QRectF(*art["view"]) if art["view"] else renderer.viewBoxF()
+                faces = _Faces(renderer, self._view)
+
+                def shape(box):
+                    return faces.of(_clip(box)) or _key_shape(outlines, box)
+                self._keys = _without_inner({key: shape(box)
+                                             for key, box in art["keys"].items()})
+                self._fixed = {name: shape(box) for name, box in art["unassignable"].items()}
                 self._labels = {}
         if self._svg is None:
             boxes, self._labels, self._view = _grid(profile)
@@ -283,11 +287,8 @@ def _path(d) -> QPainterPath:
     return path
 
 
-def _key_shape(outlines, box) -> QPainterPath:
-    """The key's own part of the smallest outline around it; its box when none is.
-
-    `box` is x, y, width, height - or, for a key that is a slice of a ring, the corners
-    of the wedge that cuts it out, x1, y1, x2, y2, ... ."""
+def _clip(box) -> QPainterPath:
+    """A key's box as art.json gives it: x, y, width, height, or a wedge's corners."""
     clip = QPainterPath()
     if len(box) == 4:
         clip.addRect(QRectF(*box))
@@ -295,6 +296,15 @@ def _key_shape(outlines, box) -> QPainterPath:
         clip.addPolygon(QPolygonF([QPointF(box[i], box[i + 1])
                                    for i in range(0, len(box), 2)]))
         clip.closeSubpath()
+    return clip
+
+
+def _key_shape(outlines, box) -> QPainterPath:
+    """The key's own part of the smallest outline around it; its box when none is.
+
+    `box` is x, y, width, height - or, for a key that is a slice of a ring, the corners
+    of the wedge that cuts it out, x1, y1, x2, y2, ... ."""
+    clip = _clip(box)
     around = clip.boundingRect().adjusted(0.8, 0.8, -0.8, -0.8)
     surrounding = [o for o in outlines if o.boundingRect().contains(around)]
     if not surrounding:
@@ -304,6 +314,92 @@ def _key_shape(outlines, box) -> QPainterPath:
     filled = QPainterPath(outline)
     filled.setFillRule(Qt.FillRule.WindingFill)
     return filled.intersected(clip)
+
+
+class _Faces:
+    """Each key's face as the drawing paints it: the white inside its outline.
+
+    A key is lit by filling its shape, and the shape `_key_shape` finds is the key's
+    outline clipped to its box - or the box itself where the drawing has no closed
+    outline around it, as the 800's guide, which draws each outline as many short
+    strokes. A box is square-cornered and the key is not, so the tint spilled past its
+    rounded corners. So the drawing is rendered once, and a key's shape becomes the
+    largest white area inside it - the key's face, cut off by the outline's own ink -
+    grown by a pixel, under the outline, which a multiplied tint leaves black."""
+
+    SCALE = 6.0            # pixels to a drawing point
+    LIGHT = 200            # a pixel this bright or brighter is the key's paper
+
+    def __init__(self, renderer, view: QRectF):
+        self._view = view
+        width = max(1, round(view.width() * self.SCALE))
+        height = max(1, round(view.height() * self.SCALE))
+        image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(QColor("white"))
+        painter = QPainter(image)
+        renderer.setViewBox(view)
+        renderer.render(painter, QRectF(0, 0, width, height))
+        painter.end()
+        grey = image.convertToFormat(QImage.Format.Format_Grayscale8)
+        stride = grey.bytesPerLine()
+        bits = grey.constBits()
+        if hasattr(bits, "setsize"):
+            bits.setsize(stride * height)
+        raw = bytes(bits)
+        self._light = [raw[y * stride:y * stride + width] for y in range(height)]
+        self._size = (width, height)
+        self._to_view = (QTransform().translate(view.x(), view.y())
+                         .scale(1 / self.SCALE, 1 / self.SCALE))
+
+    def of(self, shape: QPainterPath) -> QPainterPath | None:
+        """The face inside ``shape``, a key's box: its largest white area, or None where
+        it holds none - the drawing leaves the key blank, or it is too small to tell."""
+        width, height = self._size
+        box = shape.boundingRect()
+        x0 = max(0, int((box.left() - self._view.x()) * self.SCALE))
+        y0 = max(0, int((box.top() - self._view.y()) * self.SCALE))
+        x1 = min(width, int((box.right() - self._view.x()) * self.SCALE) + 1)
+        y1 = min(height, int((box.bottom() - self._view.y()) * self.SCALE) + 1)
+        if x1 - x0 < 2 or y1 - y0 < 2:
+            return None
+        inside = self._to_view.inverted()[0].map(shape)
+        light, seen, best = self._light, set(), []
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                if (x, y) in seen or light[y][x] < self.LIGHT \
+                        or not inside.contains(QPointF(x + 0.5, y + 0.5)):
+                    continue
+                area, todo = [], [(x, y)]
+                seen.add((x, y))
+                while todo:
+                    cx, cy = todo.pop()
+                    area.append((cx, cy))
+                    for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                        if x0 <= nx < x1 and y0 <= ny < y1 and (nx, ny) not in seen \
+                                and light[ny][nx] >= self.LIGHT:
+                            seen.add((nx, ny))
+                            todo.append((nx, ny))
+                if len(area) > len(best):
+                    best = area
+        if len(best) < 4:
+            return None
+        rows: dict[int, list[int]] = {}
+        for x, y in best:
+            rows.setdefault(y, []).append(x)
+        region = QRegion()
+        for y, xs in rows.items():
+            xs.sort()
+            start = previous = xs[0]
+            for x in xs[1:] + [None]:
+                if x is not None and x == previous + 1:
+                    previous = x
+                    continue
+                region = region.united(QRegion(QRect(start - 1, y - 1, previous - start + 3, 3)))
+                if x is not None:
+                    start = previous = x
+        face = QPainterPath()
+        face.addRegion(region)
+        return self._to_view.map(face).simplified().intersected(shape)
 
 
 def _without_inner(shapes: dict) -> dict:

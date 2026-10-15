@@ -270,3 +270,24 @@ def test_the_list_views_key_picker_is_the_remote_drawing(qapp_or_skip):
     assert states["Exit"][0] == FREE
     picker._pick(None)                                    # "No key"
     assert picker.chosen is None
+
+
+def test_a_key_is_lit_inside_its_own_outline_not_its_box(qapp_or_skip):
+    """The 800's guide draws each outline as many short strokes, so no closed outline
+    holds a key: its face - the white inside the strokes - is what lights, so the rounded
+    corners of its box stay out."""
+    from afterglow import remotes
+    from afterglow.gui.keys_view import RemoteKeys
+    from afterglow.qt.QtCore import QPointF
+    profile = remotes.get("harmony-800")
+    view = RemoteKeys(profile)
+    assert view.has_picture() and set(view.keys()) == set(profile.hard_keys)
+    for key in ("Info", "Guide", "Record", "TV"):
+        x, y, w, h = profile.hard_key_art["keys"][key]
+        face = view._keys[key]
+        box = face.boundingRect()
+        assert x - 0.3 <= box.left() and box.right() <= x + w + 0.3, key
+        # the corners of the box are not the key's
+        assert not face.contains(QPointF(x + 0.2, y + 0.2)), key
+        assert face.contains(QPointF(x + 1.0, y + h / 2)), key      # beside its label
+    assert {"Off", "Numbers", "Activities", "Help", "Mouse"} == set(view._fixed)
