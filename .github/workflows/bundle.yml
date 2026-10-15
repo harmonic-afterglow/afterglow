@@ -319,6 +319,9 @@ jobs:
 
   windows-legacy:
     needs: [identify, windows-legacy-libconcord]
+    # The cross-build is allowed to fail (continue-on-error), which leaves its result
+    # "success"; its output is what says whether there is a libconcord to bundle.
+    if: needs.windows-legacy-libconcord.outputs.commit != ''
     runs-on: windows-latest
     continue-on-error: true
     env:
