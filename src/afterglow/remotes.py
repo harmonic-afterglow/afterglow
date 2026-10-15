@@ -110,6 +110,13 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
                 for size in grid.values())):
         raise ValueError(f"{profile_id}: interface.screen_grid gives a device's and an "
                          "activity's page as [columns, rows]")
+    screens = interface.get("activity_screens")
+    if screens is not None and not (
+            isinstance(screens, dict) and isinstance(screens.get("tabs"), list)
+            and all(isinstance(tab, dict) and tab.get("group") and tab.get("flag")
+                    for tab in screens["tabs"])):
+        raise ValueError(f"{profile_id}: interface.activity_screens lists its tabs, each "
+                         "with the group it shows and the property that turns it on")
     languages = interface.get("languages")
     if not isinstance(languages, list) or not languages or not all(
             isinstance(pair, list) and len(pair) == 2 for pair in languages):
@@ -240,6 +247,40 @@ class RemoteProfile:
     def timing_fields(self) -> tuple:
         """The device Timing page's fields this remote's builder uses."""
         return self._offered("timing")
+
+    @property
+    def activity_screens(self) -> dict | None:
+        """An activity's screen as a set of tabs, for a remote that has one (the 1100):
+        each tab's group, the property that turns it on, and its named slots - or None
+        where an activity's screen is one page of buttons."""
+        return self.interface.get("activity_screens")
+
+    def activity_tabs(self, act: dict) -> dict:
+        """{property: "True"} for the tabs a new activity's screen has, on a remote whose
+        activity screen is a set of tabs (the 1100) - each turned on by a property, and
+        with none on, the remote shows no screen at all. As Logitech gives them for the
+        activity's type (the `applies_to` of each tab's property), or as it gives a
+        generic activity for a type it never used; and any tab the activity has buttons
+        on. An activity's own property says otherwise."""
+        screens = self.activity_screens
+        if not screens:
+            return {}
+        declared = (self.properties or {}).get("activity") or {}
+
+        def given(kind):
+            out = set()
+            for tab in screens["tabs"]:
+                applies = (declared.get(tab["flag"]) or {}).get("applies_to")
+                if applies == "all" or kind in (applies or ()):
+                    out.add(tab["flag"])
+            return out
+
+        flags = given(act.get("type") or "VirtualGeneric") or given("VirtualGeneric")
+        groups = {name for name, _buttons in act.get("screen_groups") or []}
+        if act.get("soft_buttons") and not act.get("screen_groups"):
+            groups.add("Misc")
+        flags |= {tab["flag"] for tab in screens["tabs"] if tab["group"] in groups}
+        return {flag: "True" for flag in sorted(flags)}
 
     def screen_grid(self, kind: str) -> tuple[int, int] | None:
         """(columns, rows) of a device's or an activity's page of buttons on this

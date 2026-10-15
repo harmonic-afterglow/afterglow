@@ -608,6 +608,10 @@ class ScreenButtonsPage(QWizardPage):
         return [self.table.item(r, 1).data(Qt.ItemDataRole.UserRole)
                 for r in range(self.table.rowCount())]
 
+    def apply(self, spec: dict) -> None:
+        """Write the buttons into `spec`."""
+        spec["soft_buttons"] = self.get_buttons()
+
     def get_buttons(self):
         """The buttons in order, None for a gap; gaps after the last button go."""
         out = self._entries()
