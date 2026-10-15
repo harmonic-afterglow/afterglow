@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.3] - 2026-10-15
+
 ### Added
 
 - **The last project opens when Afterglow starts.** If it was moved, deleted or
@@ -47,6 +49,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Direct access said "Windows' own USB driver was not found on this PC"** on
+  Windows 11 and on Windows in other languages. It looked for Windows' generic USB
+  driver by its English name; it finds it by its hardware ID now, and if it still
+  cannot, it lists what Windows offered.
 - **A configuration saved by Logitech's software (`.EZHex`) did not show** when
   importing or flashing a file on Linux and macOS, whose file dialogs match the
   extension's case. Every spelling shows now, and those dialogs always offer All files.
