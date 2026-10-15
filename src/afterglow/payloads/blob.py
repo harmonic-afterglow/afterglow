@@ -21,8 +21,8 @@ def claims(src_dir: str) -> bool:
     return os.path.isfile(os.path.join(src_dir, PAYLOAD_FILE))
 
 # Four-byte tags seen at the start of a configuration blob, by architecture - read off
-# real configs, one remote per entry (Harmony 688/670, 880/885, 890, One, 650).
-MAGIC = {7: b"BMBM", 8: b"TPTP", 10: b"TPTP", 12: b"GSPM", 14: b"GSPM"}
+# real configs, one remote per entry (Harmony 688/670, 880/885, 890, One, 650, 800).
+MAGIC = {7: b"BMBM", 8: b"TPTP", 10: b"TPTP", 12: b"GSPM", 14: b"GSPM", 18: b"GSGD"}
 
 
 class NotAuthorable(NotImplementedError):

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="11" viewBox="0 0 20 11" shape-rendering="geometricPrecision">
+<defs>
+  <linearGradient id="band" gradientUnits="userSpaceOnUse"
+                  x1="0" y1="0" x2="0" y2="22">
+    <stop offset="0" stop-color="#363a38"/>
+    <stop offset="0.55" stop-color="#3f403e"/>
+    <stop offset="1" stop-color="#4a4743"/>
+  </linearGradient>
+  <linearGradient id="under" gradientUnits="userSpaceOnUse"
+                  x1="0" y1="22" x2="0" y2="44">
+    <stop offset="0" stop-color="#1c1b1b"/>
+    <stop offset="0.8" stop-color="#141413"/>
+    <stop offset="1" stop-color="#000000"/>
+  </linearGradient>
+</defs>
+  <g transform="translate(-217 -4)">
+  <rect width="240" height="44" fill="url(#under)"/>
+  <rect width="240" height="22" fill="url(#band)"/>
+  <rect y="21" width="240" height="1" fill="#57534f"/>
+  <rect y="22" width="240" height="1" fill="#0e0d0d"/>
+  </g>
+  <rect x="0.5" y="1.5" width="17" height="8" rx="1.5"
+        fill="#101010" stroke="#d6d6d2"/>
+  <rect x="18" y="3" width="2" height="4" fill="#d6d6d2"/>
+  <text x="9.0" y="8.5" text-anchor="middle" font-family="DejaVu Sans" font-weight="bold" font-size="8" fill="#8c8c8c">?</text>
+</svg>

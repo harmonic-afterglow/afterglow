@@ -14,7 +14,8 @@ and the result, `art.svg`, written beside it.
     python3 tools/remote_art.py ../afterglow-site/_sources/manuals \
         src/afterglow/library/remotes/harmony-one src/afterglow/library/remotes/harmony-900
 
-The first argument is the folder holding the user guides. Needs pdftocairo (poppler).
+The first argument is the folder holding the user guides. Needs pdftocairo (poppler), but
+not for a guide kept only as the SVG of its remote's page.
 """
 from __future__ import annotations
 
@@ -239,10 +240,14 @@ def main(argv=None):
     for folder in args.remotes:
         source = json.loads((folder / "art.json").read_text(encoding="utf-8"))["source"]
         with tempfile.TemporaryDirectory() as work:
-            page = Path(work) / "page.svg"
-            subprocess.run(["pdftocairo", "-svg", "-f", str(source["page"]),
-                            "-l", str(source["page"]), str(args.guides / source["guide"]),
-                            str(page)], check=True)
+            # a guide kept only as its page's SVG - pdftocairo's, the remote's page - is
+            # that page already
+            page = args.guides / source["guide"]
+            if page.suffix.lower() != ".svg":
+                page = Path(work) / "page.svg"
+                subprocess.run(["pdftocairo", "-svg", "-f", str(source["page"]),
+                                "-l", str(source["page"]), str(args.guides / source["guide"]),
+                                str(page)], check=True)
             out = folder / "art.svg"
             cut(page, source["region"], out, source.get("drop", ()),
                 {k.lower(): v for k, v in (source.get("recolour") or {}).items()},

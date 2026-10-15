@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="240" height="26" viewBox="0 0 240 26" shape-rendering="geometricPrecision">
+<defs>
+  <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#121314"/>
+    <stop offset="0.35" stop-color="#1d1f1e"/>
+    <stop offset="1" stop-color="#383a37"/>
+  </linearGradient>
+</defs>
+  <rect width="240" height="26" fill="url(#bar)"/>
+  <rect width="240" height="1" fill="#050607"/>
+  <rect x="119" y="2" width="1" height="24" fill="#070707"/>
+  <rect x="120" y="2" width="1" height="24" fill="#4b4c4a"/>
+</svg>

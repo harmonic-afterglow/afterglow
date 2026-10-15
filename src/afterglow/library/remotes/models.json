@@ -344,6 +344,10 @@
     "112": {
       "model": "Harmony 950",
       "manufacturer": "HAR"
+    },
+    "86": {
+      "model": "Harmony 800",
+      "manufacturer": "HAR"
     }
   }
 }

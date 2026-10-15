@@ -1,0 +1,755 @@
+# Translations for harmony-800.
+msgid ""
+msgstr ""
+"Project-Id-Version: harmony-800\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. The Activities screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "hub.activities-title"
+msgid "My Activities"
+msgstr ""
+
+#. The Activities screen when there are none: a message centred on the screen; about 160 pixels a line
+msgctxt "hub.no-activities"
+msgid "No activities"
+msgstr ""
+
+#. The device list: a screen's title, top left; about 96 pixels in the title font
+msgctxt "hub.devices-title"
+msgid "Devices"
+msgstr ""
+
+#. The device list when there are none: a message centred on the screen; about 160 pixels a line
+msgctxt "hub.no-devices"
+msgid "No devices"
+msgstr ""
+
+#. The key test screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "keytest.title"
+msgid "Key test"
+msgstr ""
+
+#. The key test, before a key: a message centred on the screen; about 160 pixels a line
+msgctxt "keytest.prompt"
+msgid "Press any key"
+msgstr ""
+
+#. The key test: {code} is the code the key sent, e.g. C02B. a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "keytest.pressed"
+msgid "That was {code}"
+msgstr ""
+
+#. The key test, after a key: a message centred on the screen; about 160 pixels a line
+msgctxt "keytest.again"
+msgid "Press another key"
+msgstr ""
+
+#. The key test: how to leave it. a message centred on the screen; about 160 pixels a line
+msgctxt "keytest.back"
+msgid "Touch the screen to go back"
+msgstr ""
+
+#. The light test screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "lighttest.title"
+msgid "Light test"
+msgstr ""
+
+#. The light test: {led} is the LED's number, 0 to 6. a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "lighttest.lit"
+msgid "Only LED {led} is lit"
+msgstr ""
+
+#. The light test: how to go on. a message centred on the screen; about 160 pixels a line
+msgctxt "lighttest.next"
+msgid "Touch the screen for the next"
+msgstr ""
+
+#. Opens Options: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.options"
+msgid "Options"
+msgstr ""
+
+#. Back to Activities: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.activities"
+msgid "Activities"
+msgstr ""
+
+#. Opens the device list: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.devices"
+msgid "Devices"
+msgstr ""
+
+#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.current-activity"
+msgid "Current Activity"
+msgstr ""
+
+#. After a screen's page total, e.g. '1/3 pages', in the small counter font; about 40 pixels
+msgctxt "pages"
+msgid "page"
+msgid_plural "pages"
+msgstr[0] ""
+msgstr[1] ""
+
+#. While an activity starts, under its icon; {activity} is its name. One line of about 164 pixels, cut to fit
+#, python-brace-format
+msgctxt "activity.starting"
+msgid "Starting {activity}"
+msgstr ""
+
+#. While an activity starts or Help is fixing it, at the bottom: a message centred on the screen; about 160 pixels a line; two lines at most
+msgctxt "activity.keep-pointed"
+msgid "Keep the remote pointed at your system."
+msgstr ""
+
+#. Help, under the activity's name, while it re-sends what the activity needs: a message centred on the screen; about 160 pixels a line
+msgctxt "activity.fixing"
+msgid "Attempting to fix the problem..."
+msgstr ""
+
+#. The title of Help when nothing is running, while it turns everything off again: a screen's title, top left; about 96 pixels in the title font
+msgctxt "activity.power-off"
+msgid "Power Off"
+msgstr ""
+
+#. On an activity's commands, opens its number keypad: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.numbers"
+msgid "123"
+msgstr ""
+
+#. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.back"
+msgid "Back"
+msgstr ""
+
+#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.commands"
+msgid "Commands"
+msgstr ""
+
+#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.favourites"
+msgid "Favorites"
+msgstr ""
+
+#. Help, at the bottom while it re-sends: a message centred on the screen; about 160 pixels a line; two lines
+msgctxt "help.keep-pointed"
+msgid "Keep the remote pointed to your system."
+msgstr ""
+
+#. Help's first question, after it has re-sent everything; a line break starts the explanation below it: a message centred on the screen; about 160 pixels a line
+msgctxt "help.fixed-first"
+msgid "Did that fix the problem?\nIf not, the remote will ask you questions to help correct the problem."
+msgstr ""
+
+#. Help, after a device answered: a message centred on the screen; about 160 pixels a line
+msgctxt "help.fixed"
+msgid "Did that fix the problem?"
+msgstr ""
+
+#. Help asks about each device an activity turns on; {device} is its name: a message centred on the screen; about 160 pixels a line; three lines at most
+#, python-brace-format
+msgctxt "assistant.is-on"
+msgid "Is the {device} on?"
+msgstr ""
+
+#. Help asks again after sending its power: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-on"
+msgid "Now is the {device} on?"
+msgstr ""
+
+#. Help asks about each input; {device} and {input} are names: a message centred on the screen; about 160 pixels a line; three lines at most
+#, python-brace-format
+msgctxt "assistant.input"
+msgid "Is the {device} set to the {input} input?"
+msgstr ""
+
+#. Help asks again after sending the input: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-input"
+msgid "Now is the {device} set to the {input} input?"
+msgstr ""
+
+#. Off's Help asks about each device: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.is-off"
+msgid "Is the {device} off?"
+msgstr ""
+
+#. Off's Help asks again after turning it off: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.now-off"
+msgid "Now is the {device} off?"
+msgstr ""
+
+#. An answer, bottom left: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.yes"
+msgid "Yes"
+msgstr ""
+
+#. An answer, bottom right: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.no"
+msgid "No"
+msgstr ""
+
+#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.ok"
+msgid "OK"
+msgstr ""
+
+#. The Remote Assistant's screens: the activity's name, or Off's, as their title: a screen's title, top left; about 96 pixels in the title font
+#, python-brace-format
+msgctxt "assistant.title"
+msgid "{name}:"
+msgstr ""
+
+#. Above each Remote Assistant note: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.heading"
+msgid "Remote Assistant:"
+msgstr ""
+
+#. After an activity starts: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.press-help"
+msgid "If any devices are not set up correctly, press \"Help\" now."
+msgstr ""
+
+#. After an activity starts, once Remote Assistant is back on: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.set-up"
+msgid "The remote has now set up your system for this Activity."
+msgstr ""
+
+#. Above Yes and No: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.hide"
+msgid "Do you want to hide the Remote Assistant?"
+msgstr ""
+
+#. After choosing to hide it: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.how-to-hide"
+msgid "To hide the remote assistant, use the software to update the display settings for your remote."
+msgstr ""
+
+#. The first note a new remote shows, when it starts: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.welcome"
+msgid "Welcome to your remote."
+msgstr ""
+
+#. After Off: a message centred on the screen; about 160 pixels a line
+msgctxt "assistant.all-off"
+msgid "Ensure all your devices are off.  If any devices are still on, press \"Help\" now."
+msgstr ""
+
+#. An Options row while the Remote Assistant asks after each start: a row label, centred on a 164-pixel row
+msgctxt "options.assistant-off"
+msgid "Turn Remote Assistant Off"
+msgstr ""
+
+#. An Options row while it does not: a row label, centred on a 164-pixel row
+msgctxt "options.assistant-on"
+msgid "Turn Remote Assistant On"
+msgstr ""
+
+#. An Options row: a row label, centred on a 164-pixel row
+msgctxt "options.tutorial"
+msgid "Tutorial"
+msgstr ""
+
+#. The Tutorial's screens: a screen's title, top left; about 96 pixels in the title font
+msgctxt "tutorial.title"
+msgid "Tutorial"
+msgstr ""
+
+#. Leaves the Tutorial: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "softkey.exit"
+msgid "Exit"
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.1"
+msgid "Welcome to your Harmony 800 touch-screen remote. Touch the screen to learn more."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.2"
+msgid "Use the arrow buttons on the sides of this screen to move between pages.\nPress the right arrow now."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.3"
+msgid "The Harmony remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the Activities button now."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.4"
+msgid "Activities are what you actually do with your entertainment system, like watch TV or listen to music.\nTouch Watch TV now."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.5"
+msgid "Selecting the Watch TV Activity turns on the devices you use to watch TV.\nPress the right arrow to continue."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.6"
+msgid "Look on the screen for functions you can't find elsewhere on the remote.\nPress the right arrow to continue."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.7"
+msgid "To select another Activity, simply press the Activities button.\nPress the right arrow to continue."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.8"
+msgid "Use the Help button if your Activity doesn't start properly.\nPress Help now."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.9"
+msgid "Help asks you questions to get your Activity back on track. Press the right arrow to continue."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.10"
+msgid "To turn off your entertainment system, press the Power button.\nPress the Power button to continue."
+msgstr ""
+
+#. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
+msgctxt "tutorial.11"
+msgid "It's that easy!\nYou can now enjoy your entertainment system with one-touch Activity control.\nPress Exit now."
+msgstr ""
+
+#. On the activity row the Tutorial pictures; about 100 pixels
+msgctxt "tutorial.watch-tv"
+msgid "Watch TV"
+msgstr ""
+
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.display"
+msgid "Display"
+msgstr ""
+
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.aspect"
+msgid "Aspect"
+msgstr ""
+
+#. The question the Tutorial pictures Help asking: a message centred on the screen; about 160 pixels a line
+msgctxt "tutorial.is-tv-on"
+msgid "Is the TV on?"
+msgstr ""
+
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.yes"
+msgid "Yes"
+msgstr ""
+
+#. On a button the Tutorial pictures: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "tutorial.no"
+msgid "No"
+msgstr ""
+
+#. The Options screen: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.title"
+msgid "Options"
+msgstr ""
+
+#. An Options row: a row label, centred on a 164-pixel row
+msgctxt "options.date-and-time"
+msgid "Date and Time"
+msgstr ""
+
+#. An Options row, and the title of its screen: a row label, centred on a 164-pixel row
+msgctxt "options.screen-sensitivity"
+msgid "Screen Sensitivity"
+msgstr ""
+
+#. An Options row while touch sounds are on: a row label, centred on a 164-pixel row
+msgctxt "options.sounds-off"
+msgid "Turn Screen Sounds Off"
+msgstr ""
+
+#. An Options row while touch sounds are off: a row label, centred on a 164-pixel row
+msgctxt "options.sounds-on"
+msgid "Turn Screen Sounds On"
+msgstr ""
+
+#. Steps back a screen: a softkey label, bottom of the screen; about 70 pixels
+msgctxt "options.back"
+msgid "Back"
+msgstr ""
+
+#. Closes a confirmation, bottom right; about 40 pixels
+msgctxt "options.ok"
+msgid "OK"
+msgstr ""
+
+#. Date and Time, choosing the year: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.year"
+msgid "Year"
+msgstr ""
+
+#. Date and Time, choosing the month: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.month"
+msgid "Month"
+msgstr ""
+
+#. Date and Time, choosing the day: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.day"
+msgid "Day"
+msgstr ""
+
+#. Date and Time, choosing the hour: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.hour"
+msgid "Hour"
+msgstr ""
+
+#. Date and Time, choosing the minute: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.minute"
+msgid "Minute"
+msgstr ""
+
+#. Date and Time, morning or afternoon: a screen's title, top left; about 96 pixels in the title font
+msgctxt "options.time-of-day"
+msgid "Time of Day"
+msgstr ""
+
+#. Morning: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.am"
+msgid "AM"
+msgstr ""
+
+#. Afternoon: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.pm"
+msgid "PM"
+msgstr ""
+
+#. Month 1: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.1"
+msgid "January"
+msgstr ""
+
+#. Month 2: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.2"
+msgid "February"
+msgstr ""
+
+#. Month 3: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.3"
+msgid "March"
+msgstr ""
+
+#. Month 4: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.4"
+msgid "April"
+msgstr ""
+
+#. Month 5: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.5"
+msgid "May"
+msgstr ""
+
+#. Month 6: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.6"
+msgid "June"
+msgstr ""
+
+#. Month 7: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.7"
+msgid "July"
+msgstr ""
+
+#. Month 8: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.8"
+msgid "August"
+msgstr ""
+
+#. Month 9: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.9"
+msgid "September"
+msgstr ""
+
+#. Month 10: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.10"
+msgid "October"
+msgstr ""
+
+#. Month 11: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.11"
+msgid "November"
+msgstr ""
+
+#. Month 12: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.month.12"
+msgid "December"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.very-low"
+msgid "Very Low"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.low"
+msgid "Low"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.medium"
+msgid "Medium"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.high"
+msgid "High"
+msgstr ""
+
+#. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
+msgctxt "options.sensitivity.very-high"
+msgid "Very High"
+msgstr ""
+
+#. Confirms the level chosen; the level follows on the next line: a message centred on the screen; about 160 pixels a line
+msgctxt "options.sensitivity-set"
+msgid "Screen sensitivity is set to"
+msgstr ""
+
+#. Closes a firmware notice, bottom right; about 40 pixels
+msgctxt "system.ok"
+msgid "OK"
+msgstr ""
+
+#. Title of a firmware diagnostic screen: a screen's title, top left; about 96 pixels in the title font
+#, python-brace-format
+msgctxt "system.message"
+msgid "System Message: {number}"
+msgstr ""
+
+#. Firmware screen 0, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.0"
+msgid "The battery level is low!"
+msgstr ""
+
+#. Firmware screen 1, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.1"
+msgid "USB Connected"
+msgstr ""
+
+#. Firmware screen 4, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.4"
+msgid "Update Successful"
+msgstr ""
+
+#. Firmware screen 5, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.5"
+msgid "Upgrade Success"
+msgstr ""
+
+#. Firmware screen 6, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.6"
+msgid "Update in progress"
+msgstr ""
+
+#. Firmware screen 7, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.7"
+msgid "Learning..."
+msgstr ""
+
+#. Firmware screen 8, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.8"
+msgid "Firmware upgrade in progress"
+msgstr ""
+
+#. Firmware screen 9, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.9"
+msgid "Charging problem.\nContact customer support:\nhttp://supportinfo.\nharmonyremote.com"
+msgstr ""
+
+#. Firmware screen 10, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.10"
+msgid "Go to Website\nto update settings"
+msgstr ""
+
+#. Firmware screen 11, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.11"
+msgid "USB\nInitialization"
+msgstr ""
+
+#. Firmware screen 12, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.12"
+msgid "Bootloader\nLocked"
+msgstr ""
+
+#. Firmware screen 13, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.13"
+msgid "Real Time Clock"
+msgstr ""
+
+#. Firmware screen 14, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.14"
+msgid "IR LEDs\nand\nPhotodiode"
+msgstr ""
+
+#. Firmware screen 15, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.15"
+msgid "FLASH Memory\nID"
+msgstr ""
+
+#. Firmware screen 16, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.16"
+msgid "FLASH Memory\nErase"
+msgstr ""
+
+#. Firmware screen 17, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.17"
+msgid "FLASH Memory\nWrite"
+msgstr ""
+
+#. Firmware screen 18, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.18"
+msgid "FLASH Memory\nClear"
+msgstr ""
+
+#. Firmware screen 19, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.19"
+msgid "LCD Module\nFailed"
+msgstr ""
+
+#. Firmware screen 20, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.20"
+msgid "PLL Failure"
+msgstr ""
+
+#. Firmware screen 21, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.21"
+msgid "BootRAM\nTruncated"
+msgstr ""
+
+#. Firmware screen 22, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.22"
+msgid "Safe Mode"
+msgstr ""
+
+#. Firmware screen 23, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.23"
+msgid "Safe Mode\nRequested"
+msgstr ""
+
+#. Firmware screen 24, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.24"
+msgid "Battery Low"
+msgstr ""
+
+#. Firmware screen 25, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.25"
+msgid "Battery Fast\nCharge"
+msgstr ""
+
+#. Firmware screen 26, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.26"
+msgid "Battery Trickle Charge"
+msgstr ""
+
+#. Firmware screen 27, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.27"
+msgid "Battery Charge\nComplete"
+msgstr ""
+
+#. Firmware screen 28, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.28"
+msgid "IR Sending"
+msgstr ""
+
+#. Firmware screen 29, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.29"
+msgid "Invalid\nConfiguration"
+msgstr ""
+
+#. Firmware screen 30, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.30"
+msgid "Bootloader\nBad Image"
+msgstr ""
+
+#. Firmware screen 31, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.31"
+msgid "Bootloader\nUpgrade Failed"
+msgstr ""
+
+#. Firmware screen 32, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.32"
+msgid "Battery ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 33, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.33"
+msgid "LightSense ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 34, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.34"
+msgid "Revision ADC\nNot Calibrated"
+msgstr ""
+
+#. Firmware screen 35, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.35"
+msgid "Application\nTerminated"
+msgstr ""
+
+#. Firmware screen 36, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.36"
+msgid "Configuration\nCorrupted"
+msgstr ""
+
+#. Firmware screen 37, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.37"
+msgid "Missing\nLicense"
+msgstr ""
+
+#. Firmware screen 38, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.38"
+msgid "USB Connected"
+msgstr ""
+
+#. Firmware screen 39, one line per line break, centred; about 160 pixels a line
+msgctxt "system.screen.39"
+msgid "Needs to be\nsetup.\nBattery\nCharging"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.0"
+msgid "Sun"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.1"
+msgid "Mon"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.2"
+msgid "Tue"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.3"
+msgid "Wed"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.4"
+msgid "Thu"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.5"
+msgid "Fri"
+msgstr ""
+
+#. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
+msgctxt "clock.weekday.6"
+msgid "Sat"
+msgstr ""

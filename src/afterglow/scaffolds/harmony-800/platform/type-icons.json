@@ -1,0 +1,22 @@
+{
+ "activities": {
+  "1403d82425a17784b25118251af53fb6b4e94afb5c079a42f2655ccd4441f7e7": "VirtualDvd",
+  "a4bcddf323c35901fd228a08321b4fdea510f5ff6d06d831a8c93f9dccdf8de7": "VirtualCdMulti",
+  "c51a17e3e6ee5d8aa8c5843d3383a6d14a307090d6021029d7bed51ce08d7504": "VirtualGameConsole",
+  "f1f0be9fcea28d140203b6b655a574d3d5329b1dce6d7acce6ab5ad5ea776795": "VirtualGeneric",
+  "f24f1d048f53aec55ccab7ded2676897b77019119ec5823cb61a0ac54c64e2f3": "VirtualTelevisionN"
+ },
+ "devices": {
+  "245b4599ca5cdcc9a2d404cf6af23e5e1ef1dd1b3acfa2a0b9aee9da41da6546": "AudioVideoSwitch",
+  "5f58935b160818005ebb7aaa2d9440261a24c64fa3e6f754ca90a497fc830a81": "DvdCd",
+  "82b5ec4ef92fac036f820a64bc7e150e52a9fd5d860dc274052cd50651f3ade3": "Television",
+  "97f13b97a086c4f2e800a070771a9482535b8529ed28fa11eacfae882c699510": "Amplifier",
+  "b6dd3a94ae24c082e661fd0ce3cbbf0401c2481cfa99e3e7df30cd51e59947f0": "Receiver",
+  "bbdac6d7296def8866f7fbb3ce67ecb03270d1be5e819a69ad44629115adc843": "Pvr",
+  "c1be90e6ba801454cc57d79c1147525fb06ee7bd1473a819d923a7b2a8166ffd": "MediaCenterPC",
+  "e517e3cb218400b629eeaf393e7d2cfec767a4fb0b614ce55e08b05f8b88f983": "GameConsole",
+  "e6d917a7dc9fef360d6280952d649d539a8d797f55411c53b4526ed428f797f2": "ClimateControl",
+  "fad484d887cbc84760b04763cbd490c350f4059f09e7c330dce964164f807c24": "Projector"
+ },
+ "schema": "afterglow-harmony-one-type-icons/1"
+}
