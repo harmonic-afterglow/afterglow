@@ -21,6 +21,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **The Linux download runs on Ubuntu 20.04 and newer.** It was built on Ubuntu 24.04
+  and needed the libraries of a 2024 system, so Ubuntu 22.04, Debian 12 and Linux Mint
+  21 could not start it. It is built on Ubuntu 20.04 now.
 - **Flash to Remote builds the project itself.** There is no Build Config step to
   remember: it builds the project as it is on screen, unsaved changes included, and
   writes it. To keep the built file without writing it, use **File › Export .ezhex**.

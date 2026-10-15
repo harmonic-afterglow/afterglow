@@ -54,7 +54,8 @@ still use it. Settings > Remote connection switches either way.
 **macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
 (Logitech's own Mac driver does not work on current macOS.)
 
-**Linux** needs nothing. The first time you run it, Afterglow offers to turn on
+**Linux** needs nothing, on a 64-bit Ubuntu 20.04, Debian 11, Fedora 32 or anything
+newer (glibc 2.31 and up). The first time you run it, Afterglow offers to turn on
 **direct access**, so it talks to the remote over USB itself; that asks for your password
 once. Settings > Remote connection has it, and the old network link, at any time.
 
