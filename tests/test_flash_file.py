@@ -115,3 +115,15 @@ def test_flashing_a_file_ends_by_saying_how_it_went(qapp_or_skip, tmp_path, monk
 
     flash_file.flash_file_dialog(None, tmp_path)
     assert said == [("info" if ok else "error", message)]
+
+
+def test_a_configuration_shows_whatever_case_its_extension_has():
+    """Logitech's software saves `.EZHex`; matching is case-sensitive on Linux and macOS,
+    so a backup made by it did not show in the dialog at all."""
+    from fnmatch import fnmatchcase
+
+    from afterglow.gui.constants import EZHEX_OPEN_FILTER, EZHEX_PATTERNS
+    patterns = EZHEX_PATTERNS.split()
+    for name in ("mine.ezhex", "backup.EZHex", "OLD.EZHEX", "renamed.Ezhex"):
+        assert any(fnmatchcase(name, p) for p in patterns), name
+    assert EZHEX_OPEN_FILTER.endswith("All files (*)")

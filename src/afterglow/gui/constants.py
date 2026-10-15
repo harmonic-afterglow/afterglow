@@ -41,3 +41,11 @@ def user_folder(kind: str) -> Path:
 
 # The shared device library that "Add Device" searches.
 REPO_DIR = paths.library("devices")
+
+
+# Logitech's software names a configuration `.EZHex`, Concordance and Afterglow write
+# `.ezhex`, and people rename them. A file dialog filter is case-sensitive on Linux and
+# macOS, so a backup saved by Logitech's software did not show at all; every spelling
+# met so far is listed, and an open dialog always offers All files as well.
+EZHEX_PATTERNS = "*.ezhex *.EZHex *.EZHEX *.Ezhex *.EzHex"
+EZHEX_OPEN_FILTER = f"Harmony configuration ({EZHEX_PATTERNS});;All files (*)"

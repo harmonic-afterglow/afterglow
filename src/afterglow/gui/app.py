@@ -15,7 +15,8 @@ from PyQt6.QtSvg import QSvgRenderer
 
 from .project import new_project as empty_project
 
-from .constants import USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY, user_files, user_folder
+from .constants import (EZHEX_OPEN_FILTER, USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY,
+                        user_files, user_folder)
 from .project import drop_retired_fields, retire_new_devices
 from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
@@ -482,7 +483,7 @@ class MainWindow(QMainWindow):
         editable project. Nothing is left beside the file (importer.import_file)."""
         path, _ = QFileDialog.getOpenFileName(
             self, "Import .ezhex", str(user_folder("dumps")),
-            "Harmony Config (*.ezhex);;All (*)")
+            EZHEX_OPEN_FILTER)
         if not path or not self._keep_or_discard_changes():
             return
         try:
