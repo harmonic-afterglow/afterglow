@@ -209,3 +209,39 @@ def test_a_remote_sold_under_another_skin_number_is_the_same_remote():
     assert profile.matches({"arch": 15, "skin": 64})
     assert not profile.matches({"arch": 15, "skin": 65})
     assert remotes._from_json(profile.to_json()).skins == (61, 64)
+
+
+@pytest.mark.parametrize("remote", ["harmony-900", "harmony-1100"])
+def test_every_language_the_firmware_has_is_offered_and_written(remote, tmp_path):
+    """Both firmwares (61.7.5, 63.7.7) carry `assets/.../content_<LocaleId>.txt` for
+    thirteen languages and load the one the configuration's `LocaleId` names; French,
+    Norwegian, Polish and Portuguese were missing from the list."""
+    import contextlib
+    import io
+    import zipfile
+
+    from afterglow import ezhex
+    from afterglow.build_service import ConfigBuildService
+    from conftest import ROOT
+
+    codes = {code for _name, code in remotes.get(remote).languages}
+    assert codes == {"enu", "dan", "nld", "fin", "fra", "deu", "ita", "nor", "plk",
+                     "ptg", "rus", "esp", "sve"}
+    out = tmp_path / "fr.ezhex"
+    project = {"settings": {"remote": remote, "locale": "fra", "out_file": str(out),
+                            "first_name": "T", "last_name": "U"},
+               "devices": [{"schema": "afterglow-project-device/1", "id": "1",
+                            "label": "TV", "type": "Television", "mfr": "T", "model": "M",
+                            "commands": [["PowerToggle", "PowerToggle", "", "", None]],
+                            "signals": {"PowerToggle": {
+                                "schema": "afterglow-ir-signal/1", "kind": "protocol",
+                                "protocol": "nec1", "name": "PowerToggle",
+                                "parameters": {"address": 1, "command": 2}}}}],
+               "activities": []}
+    with contextlib.redirect_stdout(io.StringIO()):
+        ConfigBuildService(ROOT, lambda _m: None).build(project)
+    raw = out.read_bytes()
+    _h, start, size, _c = ezhex._split(raw)
+    xml = zipfile.ZipFile(io.BytesIO(raw[start:start + size])).read(
+        "userconfig/UserConfiguration.xml").decode()
+    assert '<Property name="LocaleId">fra</Property>' in xml

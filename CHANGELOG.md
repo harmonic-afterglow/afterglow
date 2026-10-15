@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **French, Norwegian, Polish and Portuguese** for the Harmony 900's and 1100's own
+  screens. Both remotes' firmware has thirteen languages; Afterglow offered nine.
+
 ### Changed
 
 - **The Harmony 1100 and One are written like the 900.** Test write is gone: its
