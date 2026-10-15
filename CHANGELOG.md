@@ -19,7 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Downloads for older computers.** `afterglow-windows7-x86.exe` runs on Windows 7
   SP1 and 8, and on 32-bit Windows; `afterglow-macos-x86_64-legacy.dmg` runs on Intel
   Macs with macOS 10.13 High Sierra to 10.15 Catalina. Both use Qt 5.15, the last Qt
-  for those systems; Afterglow now runs on PyQt5 as well as PyQt6.
+  for those systems; Afterglow now runs on PyQt5 as well as PyQt6. Direct access works
+  on Windows 7 too: Windows 7 has no generic WinUSB entry to choose, so Afterglow brings
+  a small unsigned driver file, and Windows asks once whether to install it.
 - **French, Norwegian, Polish and Portuguese** for the Harmony 900's and 1100's own
   screens. Both remotes' firmware has thirteen languages; Afterglow offered nine.
 

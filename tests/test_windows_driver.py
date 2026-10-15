@@ -6,10 +6,13 @@ pin here is the logic around it, which runs anywhere.
 """
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
 from afterglow import windows_driver
+
+ROOT = Path(__file__).resolve().parent.parent
 
 ON_LOGITECH = {"id": r"USB\VID_046D&PID_C11F\1", "service": "RemoteControlUSBLAN",
                "started": True}
@@ -42,18 +45,90 @@ def test_nothing_is_looked_for_off_windows(monkeypatch):
         windows_driver.switch(windows_driver.INSTALL)
 
 
-def test_windows_7_is_not_offered_direct_access(monkeypatch):
-    """Windows 7's winusb.inf has no generic model to select, so the switch would fail."""
+def _windows(monkeypatch, version):
     monkeypatch.setattr(windows_driver.sys, "platform", "win32")
-    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (6, 1, 7601),
+    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: version,
                         raising=False)
-    assert not windows_driver.applicable()
-    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (6, 2, 9200),
-                        raising=False)
-    assert windows_driver.applicable()
-    monkeypatch.setattr(windows_driver.sys, "getwindowsversion", lambda: (10, 0, 19045),
-                        raising=False)
-    assert windows_driver.applicable()
+
+
+def test_windows_7_brings_its_own_inf_and_later_windows_do_not(monkeypatch):
+    """Windows 7's winusb.inf has no generic entry to select, so it gets Afterglow's."""
+    _windows(monkeypatch, (6, 1, 7601))
+    assert windows_driver.applicable() and windows_driver.needs_own_inf()
+    for later in ((6, 2, 9200), (6, 3, 9600), (10, 0, 19045), (10, 0, 26100)):
+        _windows(monkeypatch, later)
+        assert windows_driver.applicable() and not windows_driver.needs_own_inf()
+    _windows(monkeypatch, (6, 0, 6002))
+    assert not windows_driver.applicable(), "no Afterglow runs on Vista"
+
+
+def test_the_own_inf_binds_every_remote_to_windows_winusb():
+    text = windows_driver.own_inf_text()
+    for ident in windows_driver.REMOTE_IDS:
+        assert text.count(f"USB\\{ident}") == 2, "one model line per architecture"
+    assert "Include = winusb.inf" in text and "Needs = WINUSB.NT" in text
+    assert "ServiceBinary = %12%\\WinUSB.sys" in text
+    assert "[ClassInstall32]" in text, "Windows 7 has no USB devices class"
+    assert text.isascii()
+
+
+def test_the_helper_only_deletes_infs_with_the_marker_afterglow_writes():
+    """The marker is how the helper tells our INF from everyone else's. It has to be the
+    same string in both places, or "go back" would leave ours installed."""
+    source = (ROOT / "packaging" / "windows" / "afterglow-winusb.c").read_text()
+    assert f'#define MARKER L"{windows_driver.OWN_INF_MARKER}"' in source
+    assert windows_driver.own_inf_text().startswith(windows_driver.OWN_INF_MARKER)
+
+
+def test_the_helper_matches_the_system_not_the_process(monkeypatch, tmp_path):
+    """A 32-bit Afterglow on 64-bit Windows 7 must run the 64-bit helper: Windows
+    refuses device installation from a 32-bit process there."""
+    for name in ("afterglow-winusb-x86.exe", "afterglow-winusb-x64.exe"):
+        (tmp_path / name).write_bytes(b"MZ")
+    monkeypatch.setattr(windows_driver.sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.setenv("PROCESSOR_ARCHITECTURE", "x86")
+    monkeypatch.setenv("PROCESSOR_ARCHITEW6432", "AMD64")
+    assert windows_driver.helper_path().endswith("afterglow-winusb-x64.exe")
+    monkeypatch.delenv("PROCESSOR_ARCHITEW6432")
+    assert windows_driver.helper_path().endswith("afterglow-winusb-x86.exe")
+
+
+def test_windows_7_switches_through_the_helper(monkeypatch):
+    _windows(monkeypatch, (6, 1, 7601))
+    state = {"service": "USBLAN"}
+    calls = []
+    monkeypatch.setattr(windows_driver, "remotes", lambda: [
+        {"id": "USB\\VID_046D&PID_C11F\\1", "service": state["service"], "started": True}])
+    monkeypatch.setattr(windows_driver, "_settle", lambda want_winusb: windows_driver.remotes())
+
+    def helper(*arguments):
+        calls.append(arguments)
+        state["service"] = "WinUSB" if arguments[0] == "install" else "USBLAN"
+        return ""
+    monkeypatch.setattr(windows_driver, "_run_helper", helper)
+
+    assert windows_driver.switch(windows_driver.INSTALL) == \
+        "The remote now uses direct access."
+    verb, inf, ident = calls[0]
+    assert verb == "install" and ident == "USB\\VID_046D&PID_C11F"
+    assert windows_driver.own_inf_text().replace("\n", "\r\n") == \
+        open(inf, newline="").read()
+    assert windows_driver.switch(windows_driver.INSTALL) == "Nothing needed changing."
+    assert windows_driver.switch(windows_driver.RESTORE) == \
+        "The remote now uses Logitech's driver."
+    assert calls[-1] == ("remove", "USB\\VID_046D&PID_C11F")
+
+
+def test_a_refused_publisher_prompt_says_how_to_accept_it(monkeypatch, tmp_path):
+    helper = tmp_path / "afterglow-winusb-x64.exe"
+    helper.write_bytes(b"")
+    monkeypatch.setattr(windows_driver, "helper_path", lambda: str(helper))
+
+    class Done:
+        returncode, stdout, stderr = 2, "Windows was told not to install the driver.", ""
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: Done())
+    with pytest.raises(windows_driver.DriverError, match="Install this driver software"):
+        windows_driver._run_helper("install", "x.inf", "USB\\VID_046D&PID_C11F")
 
 
 def test_a_frozen_build_starts_itself_again(monkeypatch):

@@ -53,9 +53,11 @@ still use it. Settings > Remote connection switches either way.
 
 **Windows 7 and 8, and 32-bit Windows** have their own download,
 `afterglow-windows7-x86.exe`, which runs on Windows 7 SP1 and everything after. Windows 7
-needs its updates (at least KB2533623, or its replacement KB3063858). Direct access needs
-Windows 8, so on Windows 7 Afterglow uses Logitech's driver, which the Harmony Remote
-Software installs.
+needs its updates (at least KB2533623, or its replacement KB3063858). Direct access works
+there too, with one extra step: Windows says it cannot verify the driver's publisher, and
+you choose **Install this driver software anyway**. The driver is Windows' own WinUSB;
+only the small file that points the remote at it comes from Afterglow, and it is not
+signed.
 
 **macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
 (Logitech's own Mac driver does not work on current macOS.) The regular builds run on
