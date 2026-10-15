@@ -23,7 +23,12 @@ _WINUSB_MODEL = "WinUsb Device"
 
 
 def applicable() -> bool:
-    return sys.platform == "win32"
+    # Windows 8 and later only. The "WinUsb Device" model this selects was added to
+    # winusb.inf in Windows 8; on Windows 7 WinUSB needs a driver package of its own, so
+    # the switch could only fail there. Logitech's driver is the way in on 7.
+    if sys.platform != "win32":
+        return False
+    return tuple(sys.getwindowsversion()[:2]) >= (6, 2)
 
 
 # --- SetupAPI ---------------------------------------------------------------------------

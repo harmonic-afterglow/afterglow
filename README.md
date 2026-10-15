@@ -51,8 +51,16 @@ which is no longer maintained and is refused by many current PCs. Logitech's Har
 Remote Software is not needed; where its driver is installed and loads, Afterglow can
 still use it. Settings > Remote connection switches either way.
 
+**Windows 7 and 8, and 32-bit Windows** have their own download,
+`afterglow-windows7-x86.exe`, which runs on Windows 7 SP1 and everything after. Windows 7
+needs its updates (at least KB2533623, or its replacement KB3063858). Direct access needs
+Windows 8, so on Windows 7 Afterglow uses Logitech's driver, which the Harmony Remote
+Software installs.
+
 **macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
-(Logitech's own Mac driver does not work on current macOS.)
+(Logitech's own Mac driver does not work on current macOS.) The regular builds run on
+macOS 11 Big Sur and later; for an Intel Mac on 10.13 High Sierra to 10.15 Catalina,
+download `afterglow-macos-x86_64-legacy.dmg`.
 
 **Linux** needs nothing, on a 64-bit Ubuntu 20.04, Debian 11, Fedora 32 or anything
 newer (glibc 2.31 and up). The first time you run it, Afterglow offers to turn on

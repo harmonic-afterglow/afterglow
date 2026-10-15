@@ -275,11 +275,138 @@ jobs:
           path: dist/afterglow.exe
           if-no-files-found: error
 
-  # macOS: an application bundle in a disk image, per architecture.
+  # ## Windows 7 and 32-bit Windows (legacy)
   #
-  # Apple Silicon is the build that matters and has to pass. Intel is built too while
-  # runners and Homebrew still support it, but does not hold the release back: Homebrew
-  # has been dropping x86_64.
+  # One 32-bit executable, which runs on 32- and 64-bit Windows 7 SP1 and everything
+  # after. Qt 5.15.2 is the last Qt with Windows wheels and Windows 7 support; Python is
+  # the unofficial Windows 7 build (adang1345/PythonVista), since python.org's 3.9+ will
+  # not start there. Optional: it does not hold a release back.
+  #
+  # libconcord cannot come from MSYS2 here - it dropped Windows 7 and 32-bit - so it is
+  # cross-compiled on Linux, every dependency linked in statically for Windows 7.
+  windows-legacy-libconcord:
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    continue-on-error: true
+    outputs:
+      commit: ${{ steps.build.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cross-compile libconcord for 32-bit Windows 7
+        id: build
+        shell: bash
+        run: |
+          packaging/windows/build-libconcord-legacy.sh i686 /tmp/libconcord-out
+          echo "commit=$(cat /tmp/libconcord-out/libconcord-commit)" >> "$GITHUB_OUTPUT"
+      - name: Check it loads on Windows 7
+        shell: bash
+        run: |
+          apt-get install -y -qq --no-install-recommends python3 > /dev/null
+          python3 packaging/windows/win7check.py /tmp/libconcord-out/libconcord-6.dll
+      - uses: actions/upload-artifact@v7
+        with:
+          name: libconcord-windows-x86-legacy
+          path: /tmp/libconcord-out/libconcord-6.dll
+          if-no-files-found: error
+
+  windows-legacy:
+    needs: [identify, windows-legacy-libconcord]
+    runs-on: windows-latest
+    continue-on-error: true
+    env:
+      PYTHON_WIN7: "3.13.16"
+      PYTHON_WIN7_SHA256: 404dcf648b9ce9faaf75a28a6d26aceae61f4c9b58d55281677929bafe2269cf
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: libconcord-windows-x86-legacy
+          path: libconcord
+
+      - name: Install the Windows 7 Python
+        shell: pwsh
+        run: |
+          # The NuGet package is a plain zip of a complete interpreter, so there is no
+          # installer to run. Pinned by checksum: it comes from one person's releases.
+          $v = $env:PYTHON_WIN7
+          $url = "https://github.com/adang1345/PythonVista/releases/download/v$v/pythonx86.$v.nupkg"
+          Invoke-WebRequest $url -OutFile python.zip
+          $sum = (Get-FileHash python.zip -Algorithm SHA256).Hash.ToLower()
+          if ($sum -ne $env:PYTHON_WIN7_SHA256) { throw "python package checksum $sum" }
+          Expand-Archive python.zip -DestinationPath python-win7
+          $py = Resolve-Path python-win7/tools/python.exe
+          & $py -c "import platform, struct; print(platform.python_version(), struct.calcsize('P') * 8, 'bit')"
+          & $py -m ensurepip --upgrade
+          "PYTHON_WIN7_EXE=$py" >> $env:GITHUB_ENV
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          & $env:PYTHON_WIN7_EXE -m pip install --upgrade pip
+          # PyQt5 resolves PyQt5-Qt5 5.15.2 here, the last Qt 5 with Windows wheels.
+          & $env:PYTHON_WIN7_EXE -m pip install -e ".[gui-legacy]" pyinstaller
+          & $env:PYTHON_WIN7_EXE -m pip list
+
+      - name: Stamp the build version
+        shell: pwsh
+        run: |
+          $v = "${{ needs.identify.outputs.version }}"
+          Set-Content -Path src/afterglow/_build.py -Value "VERSION = `"$v`""
+
+      - name: Build the bundle
+        shell: pwsh
+        run: |
+          # The Universal CRT, carried app-locally for Windows 7 machines without
+          # KB2999226. The Windows SDK on the runner has the redistributable.
+          $redist = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Redist" -Directory |
+            Where-Object { Test-Path "$($_.FullName)\ucrt\DLLs\x86\ucrtbase.dll" } |
+            Sort-Object Name | Select-Object -Last 1
+          if (-not $redist) { throw "no Universal CRT redistributable on this runner" }
+          $env:AFTERGLOW_BUNDLE_UCRT = "$($redist.FullName)\ucrt\DLLs\x86"
+          $env:AFTERGLOW_BUNDLE_LIBCONCORD = Resolve-Path libconcord/libconcord-6.dll
+          $env:AFTERGLOW_BINARIES_LIST = "$env:RUNNER_TEMP\binaries.txt"
+          & $env:PYTHON_WIN7_EXE -m PyInstaller --noconfirm packaging/afterglow.spec
+
+      - name: Check nothing in it is newer than Windows 7
+        shell: pwsh
+        run: |
+          # Every DLL and extension module PyInstaller packed, and the launcher it wrapped
+          # them in - a one-file executable cannot be opened up afterwards.
+          $boot = & $env:PYTHON_WIN7_EXE -c "import os, PyInstaller; print(os.path.join(os.path.dirname(PyInstaller.__file__), 'bootloader', 'Windows-32bit-intel', 'runw.exe'))"
+          Add-Content "$env:RUNNER_TEMP\binaries.txt" $boot
+          & $env:PYTHON_WIN7_EXE packaging/windows/win7check.py "@$env:RUNNER_TEMP\binaries.txt"
+          if ($LASTEXITCODE -ne 0) { throw "the bundle would not start on Windows 7" }
+
+      - name: Check the bundle carries what it needs
+        shell: pwsh
+        run: |
+          function Invoke-Check($check) {
+            $p = Start-Process -FilePath ".\dist\afterglow.exe" `
+                               -ArgumentList $check -NoNewWindow -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$check failed with $($p.ExitCode)" }
+          }
+          Invoke-Check "--self-check"
+          Invoke-Check "--concord-check"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: afterglow-windows-x86-legacy${{ needs.identify.outputs.suffix }}
+          path: dist/afterglow.exe
+          if-no-files-found: error
+
+  # macOS: an application bundle in a disk image, per build.
+  #
+  # Apple Silicon is the build that matters and has to pass. The Intel builds do not hold
+  # the release back: Homebrew and GitHub have been dropping x86_64. The legacy Intel
+  # build is Qt 5.15 for macOS 10.13 High Sierra, the oldest that Qt, Python and Xcode
+  # can still all target.
+  #
+  # Every binary in the app is checked against the oldest macOS it claims, by `minos.py`.
+  # The first bundles said 11.0 and needed 15: Homebrew's libraries are built for the
+  # macOS they were poured on, and the newest Qt 6 wheels are built for 13. So libconcord
+  # and its libraries are built here for the target (packaging/macos/build-libconcord.sh),
+  # Python is python.org's (built for 10.13), and Qt 6 stays on 6.7, the last for 11.
   #
   # The app is ad-hoc signed (PyInstaller does it; arm64 code must carry a signature) and
   # not notarized, so a downloaded copy has to be allowed once in System Settings >
@@ -292,53 +419,65 @@ jobs:
         include:
           - runner: macos-15
             arch: arm64
+            name: arm64
+            target: "11.0"
+            install: '.[gui] PyQt6==6.7.1'
             required: true
           - runner: macos-15-intel
             arch: x86_64
+            name: x86_64
+            target: "11.0"
+            install: '.[gui] PyQt6==6.7.1'
+            required: false
+          - runner: macos-15-intel
+            arch: x86_64
+            name: x86_64-legacy
+            target: "10.13"
+            # 5.15.11's Intel wheel is built for 11; 5.15.10's for 10.13.
+            install: '.[gui-legacy] PyQt5==5.15.10'
             required: false
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ !matrix.required }}
+    env:
+      PYTHON_MACOS: "3.13.16"
+      PYTHON_MACOS_SHA256: 30666509020b4da0dd8bc2e773255f34d76b7bb80b66960a928d5f6daa0192d7
     outputs:
       libconcord: ${{ steps.libconcord.outputs.commit }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build dependencies
-        run: brew install autoconf automake libtool pkg-config libusb hidapi libzip
+      # Build tools only. No libraries from Homebrew: see above.
+      - name: Install build tools
+        run: brew install autoconf automake libtool pkg-config
 
-      - name: Build libconcord from Afterglow's fork
+      - name: Build libconcord for macOS ${{ matrix.target }}
         id: libconcord
         run: |
-          set -euxo pipefail
-          git clone --depth 1 --branch "$CONCORDANCE_REF" "$CONCORDANCE_REPO" /tmp/concordance
-          echo "commit=$(git -C /tmp/concordance rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          cd /tmp/concordance/libconcord
-          mkdir -p m4
-          autoreconf --install --force
-          brew_prefix="$(brew --prefix)"
-          # The IR-learning code needs C++11; older Apple compilers default to C++98.
-          CPPFLAGS="-I${brew_prefix}/include" LDFLAGS="-L${brew_prefix}/lib" \
-            CXXFLAGS="-std=c++11 -O2" \
-            ./configure --prefix=/tmp/libconcord-install --disable-mime-update \
-            | tee /tmp/configure.log
-          # Without libusb this would build, and bundle, a libconcord that cannot reach
-          # a remote on macOS at all.
-          grep -q "over USB (libusb-1.0): yes" /tmp/configure.log
-          make -j"$(sysctl -n hw.ncpu)"
-          make install
-          ls -l /tmp/libconcord-install/lib/
+          packaging/macos/build-libconcord.sh "${{ matrix.target }}" /tmp/libconcord-out
+          echo "commit=$(cat /tmp/libconcord-out/libconcord-commit)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
+      # python.org's interpreter, not setup-python's: it is built for macOS 10.13, and
+      # PyInstaller packs the interpreter it runs under.
+      - name: Install Python from python.org
+        run: |
+          set -euxo pipefail
+          pkg="python-${PYTHON_MACOS}-macos11.pkg"
+          curl -fsSL -o /tmp/python.pkg "https://www.python.org/ftp/python/${PYTHON_MACOS}/${pkg}"
+          echo "${PYTHON_MACOS_SHA256}  /tmp/python.pkg" | shasum -a 256 -c -
+          sudo installer -pkg /tmp/python.pkg -target /
+          minor="${PYTHON_MACOS%.*}"
+          "/Library/Frameworks/Python.framework/Versions/${minor}/bin/python${minor}" \
+            -m venv /tmp/build-venv
+          echo "/tmp/build-venv/bin" >> "$GITHUB_PATH"
 
       - name: Install Python dependencies
         run: |
+          set -euxo pipefail
           python -m pip install --upgrade pip
           # `.[gui]` brings Pillow too, which PyInstaller uses to turn the .ico into
           # the app icon.
-          pip install -e ".[gui]"
-          pip install pyinstaller
+          pip install -e ${{ matrix.install }} pyinstaller
+          pip list
 
       - name: Stamp the build version
         run: |
@@ -349,8 +488,15 @@ jobs:
 
       - name: Build the app
         env:
-          AFTERGLOW_BUNDLE_LIBCONCORD: /tmp/libconcord-install/lib/libconcord.6.dylib
+          AFTERGLOW_BUNDLE_LIBCONCORD: /tmp/libconcord-out/libconcord.6.dylib
+          AFTERGLOW_MACOS_MIN: ${{ matrix.target }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
         run: pyinstaller --noconfirm packaging/afterglow.spec
+
+      - name: Check every binary in it runs on macOS ${{ matrix.target }}
+        run: |
+          python packaging/macos/minos.py dist/Afterglow.app \
+            --arch "${{ matrix.arch }}" --max "${{ matrix.target }}"
 
       - name: Check the app carries what it needs
         run: |
@@ -367,12 +513,12 @@ jobs:
           # Not grep -q: it stops reading at the first match, nm dies of SIGPIPE, and
           # pipefail fails a check that passed.
           nm -gU "$lib" | grep UsbNetLink_Open > /dev/null
-          # Nothing may still point into Homebrew: that path does not exist on a
-          # user's Mac.
+          # Nothing may still point into Homebrew or the build directory: those paths
+          # do not exist on a user's Mac.
           if find "$app" \( -name '*.dylib' -o -name '*.so' \) -type f -print0 \
                | xargs -0 otool -L \
-               | grep -E "^[[:space:]]+(/opt/homebrew|/usr/local/(Cellar|opt|lib))"; then
-            echo "a bundled library still links into Homebrew"; exit 1
+               | grep -E "^[[:space:]]+(/opt/homebrew|/usr/local/(Cellar|opt|lib)|/tmp/)"; then
+            echo "a bundled library still links outside the app"; exit 1
           fi
           codesign --verify --deep --strict "$app"
 
@@ -383,12 +529,12 @@ jobs:
           cp -R dist/Afterglow.app dmg/
           ln -s /Applications dmg/Applications
           hdiutil create -volname Afterglow -srcfolder dmg -ov -format UDZO \
-            "afterglow-macos-${{ matrix.arch }}.dmg"
+            "afterglow-macos-${{ matrix.name }}.dmg"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: afterglow-macos-${{ matrix.arch }}${{ needs.identify.outputs.suffix }}
-          path: afterglow-macos-${{ matrix.arch }}.dmg
+          name: afterglow-macos-${{ matrix.name }}${{ needs.identify.outputs.suffix }}
+          path: afterglow-macos-${{ matrix.name }}.dmg
           if-no-files-found: error
 
   # Publish the executables and disk images as a GitHub release.
@@ -405,9 +551,10 @@ jobs:
   # `download-artifact` is v8 while `upload-artifact` is v7: the two are separate actions
   # and their majors do not track each other. Check both when bumping.
   release:
-    needs: [linux, windows, macos]
-    # `always()` and the explicit checks: an optional macOS build that failed must not
-    # cancel the release, but a failed Linux or Windows build must.
+    needs: [linux, windows, windows-legacy-libconcord, windows-legacy, macos]
+    # `always()` and the explicit checks: an optional build (Intel and legacy macOS,
+    # legacy Windows) that failed must not cancel the release, but a failed Linux or
+    # Windows build must.
     if: >-
       always() && startsWith(github.ref, 'refs/tags/')
       && needs.linux.result == 'success' && needs.windows.result == 'success'
@@ -431,6 +578,11 @@ jobs:
              release/afterglow-linux-x86_64
           cp artifacts/afterglow-windows-x86_64/afterglow.exe \
              release/afterglow-windows-x86_64.exe
+          # The legacy Windows build, when it succeeded.
+          if [ -f artifacts/afterglow-windows-x86-legacy/afterglow.exe ]; then
+            cp artifacts/afterglow-windows-x86-legacy/afterglow.exe \
+               release/afterglow-windows7-x86.exe
+          fi
           # Whichever macOS builds succeeded; Apple Silicon is required, Intel is not.
           test -f artifacts/afterglow-macos-arm64/afterglow-macos-arm64.dmg
           cp artifacts/afterglow-macos-*/afterglow-macos-*.dmg release/
@@ -443,6 +595,7 @@ jobs:
         env:
           LINUX_LIBCONCORD: ${{ needs.linux.outputs.libconcord }}
           WINDOWS_LIBCONCORD: ${{ needs.windows.outputs.libconcord }}
+          WINDOWS_LEGACY_LIBCONCORD: ${{ needs.windows-legacy-libconcord.outputs.commit }}
           MACOS_LIBCONCORD: ${{ needs.macos.outputs.libconcord }}
         run: |
           set -euo pipefail
@@ -452,10 +605,12 @@ jobs:
           cat > notes.md <<'EOF'
           | File | Platform |
           |---|---|
-          | `afterglow-windows-x86_64.exe` | Windows |
+          | `afterglow-windows-x86_64.exe` | Windows 10 and 11 |
+          | `afterglow-windows7-x86.exe` | Windows 7 SP1 and 8, or 32-bit Windows (when present) |
           | `afterglow-linux-x86_64` | Linux - `chmod +x` it first |
-          | `afterglow-macos-arm64.dmg` | macOS, Apple Silicon |
-          | `afterglow-macos-x86_64.dmg` | macOS, Intel (when present) |
+          | `afterglow-macos-arm64.dmg` | macOS 11 and later, Apple Silicon |
+          | `afterglow-macos-x86_64.dmg` | macOS 11 and later, Intel (when present) |
+          | `afterglow-macos-x86_64-legacy.dmg` | macOS 10.13 to 10.15, Intel (when present) |
 
           Standalone; no Python needed, and no driver to install. **Windows and
           Linux** offer *direct access* the first time a remote is connected, which
@@ -475,6 +630,7 @@ jobs:
             echo
             echo "- Linux \`${LINUX_LIBCONCORD}\`"
             echo "- Windows \`${WINDOWS_LIBCONCORD}\`"
+            echo "- Windows 7 \`${WINDOWS_LEGACY_LIBCONCORD}\`"
             echo "- macOS \`${MACOS_LIBCONCORD}\`"
           } >> notes.md
           cat notes.md

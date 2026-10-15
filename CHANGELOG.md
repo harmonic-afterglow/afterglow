@@ -16,11 +16,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Keyboard shortcuts** for the File menu: New (Ctrl+N), Open (Ctrl+O), Import
   .ezhex (Ctrl+I), Save (Ctrl+S), Save As (Ctrl+Shift+S), Export .ezhex (Ctrl+E),
   Export Shareable Project (Ctrl+Shift+E) and Exit (Ctrl+Q) - Cmd on a Mac.
+- **Downloads for older computers.** `afterglow-windows7-x86.exe` runs on Windows 7
+  SP1 and 8, and on 32-bit Windows; `afterglow-macos-x86_64-legacy.dmg` runs on Intel
+  Macs with macOS 10.13 High Sierra to 10.15 Catalina. Both use Qt 5.15, the last Qt
+  for those systems; Afterglow now runs on PyQt5 as well as PyQt6.
 - **French, Norwegian, Polish and Portuguese** for the Harmony 900's and 1100's own
   screens. Both remotes' firmware has thirteen languages; Afterglow offered nine.
 
 ### Changed
 
+- **The macOS downloads really run on macOS 11.** They said 11 but carried libraries
+  built for macOS 13, 14 and 15, so on anything older than 15 they could fail to
+  start. Every library is now built for 11 and the build checks each file.
 - **The Linux download runs on Ubuntu 20.04 and newer.** It was built on Ubuntu 24.04
   and needed the libraries of a 2024 system, so Ubuntu 22.04, Debian 12 and Linux Mint
   21 could not start it. It is built on Ubuntu 20.04 now.
