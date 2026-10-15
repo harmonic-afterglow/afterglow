@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import copy
 
+from . import structures
+
 
 # Opcodes and bands, as the Harmony 800's interpreter reads them (gspm.md).
 OBJECT = 0x7F
@@ -50,6 +52,8 @@ SCREEN = 0x11
 KEYPAD = (4, 5, 6)
 TOUCH = (0, 1, 2, 3)
 ZONES = 8
+# The screen's level is the One's, as every light here is written; lights.py renumbers it
+# to the 800's brightness.
 SCREEN_LEVEL, KEY_LEVEL, TOUCH_LEVEL = 6, 4, 1
 # Setting 1: arm the motion sensor, so the next movement posts MOTION (0x17) once - what
 # upstairs writes after darkening everything, so picking the remote up wakes it - or
@@ -92,6 +96,7 @@ LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
 ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
+IR_STATE = 0x30          # the 800's own: the infrared engine's state changed
 # The firmware's charging events (gspm.md, "Where the events come from"): external power
 # removed and connected - lifted off the cradle and set on it - and a charger fault.
 CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
@@ -299,6 +304,11 @@ class _Machine:
             0x10: m.object([self.low_battery_wake, self.usb_setting]),
             0x19: [0xFFF6, MODE_STACK],
             0x2D: [0xFFFA, MODE_STACK],
+            # The 800's infrared engine posts 0x30 each time its state changes and waits
+            # until the event is answered; Logitech's 800 image answers `07 FFFA`. A build
+            # that left it unanswered sent its first command and no other, kept the IR
+            # indicator up and never slept (gsgd.md, "Events").
+            structures.NATIVE | IR_STATE: [0xFFFA, MODE_STACK],
             0x25: [0, 0],
             0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
             0xAF: m.object([[BEEP_PAGE, BEEP], [NEXT_PAGE, PAGE]]),
