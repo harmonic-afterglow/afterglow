@@ -24,6 +24,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   them out: turn each tab on or off, choose the one it opens on, and put a command or a
   macro on any place. The game controller tab shows the Xbox or PlayStation pad the
   remote draws for the activity's main device.
+- **The 1100's fixed buttons fill themselves.** Play, Pause, the number pad, the game pad
+  and Next Disc send the activity's main device's own commands unless you choose
+  otherwise - by name, or by the names Logitech used for them (Skip forward is
+  NextTrack or ChapterNext on many players). Change one, set it to nothing, or put it
+  back to the default. They follow the main device when it changes; imported activities
+  keep exactly what they had.
+- **The 1100's screen editor looks like the screen.** Each corner of the display is a
+  tab - "Top left: Transport" and so on - drawn at the remote's own 4:3 shape, scaling
+  with the window. The fixed buttons are marked as the remote's own pictures; your side
+  buttons can be dragged between places by their handles; the top-right corner is one
+  choice of Favourites, Game controller or Discs, as the remote shows only one.
 
 ### Fixed
 
@@ -37,8 +48,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   dropped. Every activity page now comes back as it was.
 - **A Harmony 1100 activity made in Afterglow had no screen.** The remote shows an
   activity's tabs only when the activity turns them on, and a new one turned none on.
-  It now gets the tabs Logitech gives its type - an older project too, the next time it
-  is flashed. Imported activities keep their own.
+  It now gets the tabs Logitech gives its type, and opens on Transport as Logitech's do -
+  an older project too, the next time it is flashed. Imported activities keep their own.
 - **The Harmony One drew a command's name on its button** rather than the button's text,
   and put a device's buttons in alphabetical order. It now draws the page as arranged
   (gaps close up, since the One fills its places in turn), and keeps the order when a
