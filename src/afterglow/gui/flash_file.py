@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QFileDialog,
                              QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
                              QVBoxLayout)
 
+from .constants import EZHEX_OPEN_FILTER
 from .remote_ops import run_with_progress
 
 TITLE = "Flash a configuration file"
@@ -58,7 +59,7 @@ class FlashFileDialog(QDialog):
     def _choose(self):
         name, _ = QFileDialog.getOpenFileName(
             self, "Choose a configuration file", str(self._start),
-            "Harmony configuration (*.ezhex *.EZHex);;All files (*)")
+            EZHEX_OPEN_FILTER)
         if name:
             self.path.setText(name)
 

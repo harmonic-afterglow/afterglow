@@ -35,6 +35,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **A configuration saved by Logitech's software (`.EZHex`) did not show** when
+  importing or flashing a file on Linux and macOS, whose file dialogs match the
+  extension's case. Every spelling shows now, and those dialogs always offer All files.
 - **Build config failed on Windows with "[Errno 9] Bad file descriptor"** once a build
   had printed enough progress: the Windows application has no console to print to. That
   output is now dropped, and a failed build writes its details to the log file.
