@@ -68,10 +68,11 @@ LOW_BATTERY = 2
 
 # Timers: the keypad goes dark when OFF runs out; POLL re-arms OFF while AWAKE says so.
 OFF_DURATION, POLL_DURATION = 10, 2
-# Charging, as every donor has it: the charging screens start this long after the remote
-# starts charging, the battery stays up for BATTERY_SHOWN and each photo after it for
-# PHOTO_SHOWN; a charging problem's notice stays lit for PROBLEM_SHOWN.
-SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, PROBLEM_SHOWN = 5, 5, 1, 20
+# Charging: the charging screens start this long after the remote starts charging, the
+# battery stays up for BATTERY_SHOWN and each picture after it (a theme's) for PHOTO_SHOWN,
+# then the screen rests dark for CHARGING_DARK and the battery shows again; a charging
+# problem's notice stays lit for PROBLEM_SHOWN.
+SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, CHARGING_DARK, PROBLEM_SHOWN = 5, 5, 1, 25, 20
 
 # What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
 # the arrows light only where there are pages to turn, a softkey's bar only where the
@@ -279,9 +280,15 @@ class _Machine:
         self.charging_shown = m.flag()
         self.frame_timers = [m.timer(BATTERY_SHOWN if index == 0 else PHOTO_SHOWN)
                              for index in range(count)]
+        # After the last picture the screen rests dark, as the 800's factory image lets it,
+        # and the ring starts again from the battery. Darkening the backlight stops every
+        # timer (FUN_0800e770), so the rest's timer starts after it.
+        self.rest_timer = m.timer(CHARGING_DARK)
+        m.timers[self.rest_timer]["action"] = [{"exit": "charging-0"}, ENTER_MODE]
+        rest = m.object([light(SCREEN, 0), _timer(START_TIMER, self.rest_timer)])
         for index, timer in enumerate(self.frame_timers):
-            m.timers[timer]["action"] = [{"exit": f"charging-{(index + 1) % count}"},
-                                         ENTER_MODE]
+            m.timers[timer]["action"] = rest if index == count - 1 else [
+                {"exit": f"charging-{index + 1}"}, ENTER_MODE]
         self.show_timer = m.timer(SHOW_DELAY)
         m.timers[self.show_timer]["action"] = m.object(
             [[PUSH_MODE, MODE_STACK], [{"exit": "charging-0"}, ENTER_MODE]])
@@ -418,7 +425,8 @@ class _Machine:
                         [[STATUS, MODE_STACK], light(SCREEN, SCREEN_LEVEL)] + dark
                         + [usb, _write(self.charging_shown, 1), _timer(START_TIMER, timer)]),
                     f"{LEAVE:#04x}": m.object(
-                        [_timer(STOP_TIMER, timer), _write(self.charging_shown, 0),
+                        [_timer(STOP_TIMER, timer), _timer(STOP_TIMER, self.rest_timer),
+                         _write(self.charging_shown, 0),
                          self.charge]),
                     f"{REDRAW:#04x}": [0, 0]}
                 for index, timer in enumerate(self.frame_timers)}

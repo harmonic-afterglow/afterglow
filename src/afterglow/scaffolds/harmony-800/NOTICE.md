@@ -21,7 +21,7 @@ configuration - the one a remote carries before it is set up - by
 Logitech's, under the same restriction as below.
 
 **Logitech's artwork.** The rest of the pictures were **extracted from a real Harmony One
-configuration** - the charging screens, the firmware's notice pictures under `platform/`,
+configuration** - the firmware's notice pictures under `platform/`,
 the Tutorial's hand and thumb (`tutorial/1`, `11`) - or are Logitech's type icons
 (`images/icons/`). The icons are MyHarmony's, as Logitech serves them to that software
 (`https://files.myharmony.com/Assets/Images/`), written by

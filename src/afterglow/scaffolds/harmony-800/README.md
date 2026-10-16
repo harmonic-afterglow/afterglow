@@ -23,8 +23,9 @@ and 4 apart - four shorter rows on the number keypad - and a softkey bar across 
     images/status/charge-*.png        20x11   the charge animation
     images/status/indicator-*.png     22x18   the IR indicator at (192,0)
     images/status/progress.png        88x10   what the clock is drawn on, at (152,19)
-    images/charging/battery.png      240x320  shown while the remote charges, then...
-    images/charging/photo-1..3.png   240x320  ...each photo in turn, round again
+    images/charging/battery.png      240x320  shown while the remote charges, for a few
+                                              seconds at a time, the screen dark between
+    images/charging/photo-<n>.png    240x320  optional: shown after the battery, in turn
     images/tutorial/<n>.png                   the Tutorial's pictures of the remote
     fonts/galmuri/                            the typeface every slot is drawn from
     fonts/font.ttf                            optional: your own font for all text

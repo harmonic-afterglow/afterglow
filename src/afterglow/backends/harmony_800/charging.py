@@ -1,11 +1,11 @@
-"""The screens a Harmony 800 shows while it charges, as every donor shows them.
+"""The screens a Harmony 800 shows while it charges, as its factory image shows them.
 
-A battery, then photographs, each a whole screen of one picture with nothing over it - no
-title, no status bar - shown in a ring: the idle layer (idle.py) opens the ring a moment
-after charging starts and goes back to what was shown when charging stops, and each screen
-enters the next when its timer runs out. Every key starts the ring again from the
-battery, so a key pressed on the cradle does nothing else. The pictures are the scaffold's
-`charging/*`, so a theme can replace them.
+The battery - and after it any photographs a theme adds - each a whole screen of one picture
+with nothing over it, no title, no status bar: the idle layer (idle.py) opens them a moment
+after charging starts and goes back to what was shown when charging stops; each screen
+enters the next when its timer runs out, and after the last the screen rests dark and the
+battery shows again. Every key starts again from the battery, so a key pressed on the cradle
+does nothing else. The pictures are the scaffold's `charging/*`, so a theme can replace them.
 
 Format reference: docs/harmony_one/gspm.md, "Charging"
 """
