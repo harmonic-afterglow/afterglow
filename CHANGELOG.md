@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **A Harmony 1100 sold as skin 64 was refused** with "skin is 64 (expected 63);
+  board is 0.4.14 (expected 0.3.0)", and was called "Unknown" throughout. Its firmware
+  is the 1100's with only the model number changed, and Logitech's own software wrote
+  it configurations, so it is an 1100: skin 64 and board 0.4 are now recognised. A
+  remote libconcord has no name for is named by the profile that recognises it.
+
 ### Added
 
 - **Arrange a device's own page of buttons.** Edit Device has a Screen page: pick which
