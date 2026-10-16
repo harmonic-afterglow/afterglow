@@ -242,6 +242,7 @@
       "search",
       "identity",
       "commands",
+      "screen",
       "inputs",
       "timing"
     ],
@@ -270,6 +271,16 @@
         "English",
         "enu"
       ]
-    ]
+    ],
+    "screen_grid": {
+      "device": [
+        2,
+        3
+      ],
+      "activity": [
+        2,
+        3
+      ]
+    }
   }
 }

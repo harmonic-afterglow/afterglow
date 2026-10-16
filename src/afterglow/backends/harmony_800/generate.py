@@ -22,6 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ... import project_devices
+
 from . import activities as activity_plan
 from . import (
     assemble, catalogue, charging, firmware_screens, font_index, keys, lights, ordinals,
@@ -348,14 +350,15 @@ def build(project: dict, *, directory=None, library=None,
     # image is then built with exactly those, numbered from 1 in each slot.
     candidates = catalogue.characters(words) | {
         character for device in project.get("devices") or []
-        for text in [device.get("label") or ""] + list(device.get("signals") or {})
+        for text in [device.get("label") or ""] + list(device.get("signals") or {}) + [
+            entry[1] or "" for entry in project_devices.screen_buttons(device) if entry]
         for character in text} | {
         character for activity in project.get("activities") or []
         for text in [activity.get("label") or ""] + [
             button.get("label") or "" if isinstance(button, dict) else button[0]
             for button in (activity.get("soft_buttons") or []) + [
                 entry for _name, entries in activity.get("screen_groups") or []
-                for entry in entries]]
+                for entry in entries] if button is not None]
         for character in text} | set(project.get("power_off_label") or "")
     first = _configuration(project, directory, manifest, assets.load(directory, candidates),
                            stamp_fields, buttons, library, words)

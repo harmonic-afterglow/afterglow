@@ -111,6 +111,9 @@ def _activity(activity: dict, specs, devices, index_of, skipped) -> dict:
 
     buttons = []
     for button in _buttons(activity):
+        if button is None:
+            buttons.append(None)
+            continue
         label_, macro = button
         buttons.append((label_, _steps(macro, specs, devices, index_of,
                                        f"{where} button {label_!r}", skipped)))
@@ -269,13 +272,19 @@ def _numbers(activity: dict, devices, index_of) -> list[tuple]:
     return []
 
 
-def _buttons(activity: dict) -> list[tuple[str, list]]:
-    """An activity's on-screen buttons, in order, each with the steps it runs."""
+def _buttons(activity: dict) -> list[tuple[str, list] | None]:
+    """An activity's on-screen buttons, in order, each with the steps it runs - None for
+    a gap, a place on its page left empty."""
     out = []
     groups = activity.get("screen_groups")
     entries = ([button for _name, buttons in groups for button in buttons] if groups
                else activity.get("soft_buttons") or [])
     for entry in entries:
+        if entry is None:            # a gap: that place on the page stays empty
+            out.append(None)
+            continue
+        if isinstance(entry, dict) and entry.get("blank"):   # a place emptied on an 1100
+            continue
         if isinstance(entry, dict):
             label = entry.get("label") or ""
             macro = entry.get("macro") or [["command", entry.get("device"),
@@ -283,4 +292,6 @@ def _buttons(activity: dict) -> list[tuple[str, list]]:
         else:
             label, macro = entry[0], [["command", entry[1], entry[2]]]
         out.append((label, macro))
+    while out and out[-1] is None:          # nothing after the last button
+        out.pop()
     return out
