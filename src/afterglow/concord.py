@@ -150,6 +150,21 @@ def _place(source: Path, target: Path) -> None:
         ) from exc
 
 
+def _model_name(identity: dict) -> str:
+    """The remote's model name, from its profile where libconcord has none.
+
+    libconcord names models from its own table, which has no name for some sold variants
+    - skin 64 is a Harmony 1100 - so every message said "writing to Unknown". The one
+    profile that recognises the remote knows its name.
+    """
+    model = identity.get("model") or ""
+    if model not in ("", "Unknown"):
+        return model
+    from . import remotes
+    known = [profile for profile in remotes.load_all() if profile.matches(identity)]
+    return known[0].model if len(known) == 1 else model
+
+
 class RemoteError(RuntimeError):
     """The library refused an operation. Carries libconcord's own message."""
 
@@ -625,6 +640,7 @@ class Remote:
             "can_write": self.lib.is_config_update_supported() == 0,
         }
         identity["safe_mode"] = _in_safe_mode(identity)
+        identity["model"] = _model_name(identity)
         return identity
 
     def save_config(self, path, on_progress=None) -> int:
