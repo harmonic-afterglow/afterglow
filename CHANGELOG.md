@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **A Harmony 1100 build stopped at Xbox 360 and Media Center devices** brought over
+  from a Harmony 900, with "a backend-opaque signal has nothing to play back" for every
+  command. Their RC6 commands came in as the 900's own codes, which the 900 plays but the
+  1100 cannot. The 1100 build now converts them, toggle bit and all.
+
 ## [0.3.0-beta.4] - 2026-10-16
 
 ### Added
