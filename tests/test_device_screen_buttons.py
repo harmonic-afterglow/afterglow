@@ -141,11 +141,11 @@ def test_the_one_draws_a_device_s_page_in_its_order_under_its_labels(one_project
     frames = type("Frames", (), {"buttons": ["button"]})()
     pages = hub.device_pages(lowered, frames, {"button"}, font={})
     [page] = pages[0]
-    # the One fills its six places in turn, so a gap closes up
-    assert [(button["name"], button["label"]) for button in page] == [
-        ("Menu", "Set up"), ("PowerOn", "On"), ("Menu", "Again")]
+    # a gap is a place left empty, as on the 900 and 1100
+    assert [button and (button["name"], button["label"]) for button in page] == [
+        ("Menu", "Set up"), None, ("PowerOn", "On"), ("Menu", "Again")]
     # a device with no page of its own is drawn as before
-    assert [button["name"] for page in pages[1] for button in page] == [
+    assert [button["name"] for page in pages[1] for button in page if button] == [
         command["name"] for command in lowered[1]["commands"] if not command.get("hidden")]
 
 
@@ -153,8 +153,9 @@ def test_a_one_device_s_page_reads_back_in_its_order(one_project, tmp_path):
     from afterglow.backends.harmony_one import generate
     from test_harmony_one_import import _imported as imported
     project = imported(generate.build(one_project)["image"], tmp_path)
+    # the gap included: nothing is drawn or bound there, and so nothing reads back
     assert project["devices"][0]["screen_buttons"] == [
-        ["Menu", "Menu"], ["PowerOn", "PowerOn"], ["Guide", "Guide"]]
+        ["Menu", "Menu"], None, ["PowerOn", "PowerOn"], ["Guide", "Guide"]]
 
 
 # the editor
@@ -251,17 +252,39 @@ def test_an_activity_page_arranged_with_a_gap_is_built_with_it(configs, unpacked
     assert page == [(1, "Go", None, f"{device['id']}_{command}_Hold")]
 
 
-def test_the_one_closes_an_activity_s_gap_up():
+def test_the_one_keeps_an_activity_s_gaps():
     from afterglow.backends.harmony_one import activities
-    activity = {"soft_buttons": [None, ["A", "tv", "Menu"], None, ["B", "tv", "Guide"]]}
-    assert [label for label, _steps in activities._buttons(activity)] == ["A", "B"]
+    activity = {"soft_buttons": [None, ["A", "tv", "Menu"], None, ["B", "tv", "Guide"],
+                                 None]}
+    # a place left empty stays empty; there is nothing after the last button
+    assert [button and button[0] for button in activities._buttons(activity)] == [
+        None, "A", None, "B"]
+
+
+# not digits: a button that dials a number reads back as a favourite
+FILLERS = ("ChannelUp", "Select", "InputHdmi1", "PowerOn")
+
+
+def test_a_one_activity_s_gaps_read_back(tmp_path):
+    from afterglow.backends.harmony_one import generate
+    from test_harmony_one_activities import PROJECT
+    from test_harmony_one_import import _imported as imported
+    project = copy.deepcopy(PROJECT)
+    project["activities"][0]["soft_buttons"] = [
+        ["Guide", "tv", "Guide"], None, ["Menu", "tv", "Menu"]] + [
+        [name, "tv", name] for name in FILLERS] + [None, ["Last", "tv", "InputHdmi2"]]
+    back = imported(generate.build(project)["image"], tmp_path)["activities"][0]
+    tv = back["soft_buttons"][0][1]
+    # a gap on the first page, and one on the second
+    assert back["soft_buttons"] == [["Guide", tv, "Guide"], None, ["Menu", tv, "Menu"]] + [
+        [name, tv, name] for name in FILLERS] + [None, ["Last", tv, "InputHdmi2"]]
 
 
 # the remote's grid
 @pytest.mark.parametrize("remote, device, activity, gaps", [
     ("harmony-900", (2, 3), (2, 3), True),       # ButtonImporter.as, LayoutManager.as
     ("harmony-1100", (3, 3), (3, 2), True),      # devices-group / pushlist-group swf
-    ("harmony-one", (2, 3), (2, 3), False),      # pages.BUTTON_POSITIONS
+    ("harmony-one", (2, 3), (2, 3), True),       # pages.BUTTON_POSITIONS
 ])
 def test_each_remote_says_how_its_pages_are_laid_out(remote, device, activity, gaps):
     from afterglow import backends, remotes
