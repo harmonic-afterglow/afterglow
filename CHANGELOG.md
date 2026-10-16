@@ -6,13 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-### Fixed
-
-- **A Harmony 1100 sold as skin 64 was refused** with "skin is 64 (expected 63);
-  board is 0.4.14 (expected 0.3.0)", and was called "Unknown" throughout. Its firmware
-  is the 1100's with only the model number changed, and Logitech's own software wrote
-  it configurations, so it is an 1100: skin 64 and board 0.4 are now recognised. A
-  remote libconcord has no name for is named by the profile that recognises it.
+## [0.3.0-beta.4] - 2026-10-16
 
 ### Added
 
@@ -59,6 +53,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Mode it asks for its USB link only every few seconds, up to half a minute apart, so
   the first connection waits for it; later ones are immediate. This needs the
   libconcord that comes with this version.
+- **A Harmony 1100 sold as skin 64 was refused** with "skin is 64 (expected 63);
+  board is 0.4.14 (expected 0.3.0)", and was called "Unknown" throughout. Its firmware
+  is the 1100's with only the model number changed, and Logitech's own software wrote
+  it configurations, so it is an 1100: skin 64 and board 0.4 are now recognised. A
+  remote libconcord has no name for is named by the profile that recognises it.
 - **Two favourites with the same name did the same thing.** The remote finds a
   favourite by its number, and a favourite that sends a command or runs a macro used its
   name as that number - so the second of two alike ran the first's. Each now gets a
