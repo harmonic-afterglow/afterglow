@@ -6,7 +6,8 @@
     "skin": 61,
     "flash": "0x01:0x49",
     "board": "0.1.0",
-    "software_type": 0
+    "software_type": 0,
+    "safe_mode_software_type": 4
   },
   "payload": "pk",
   "backend": "harmony-pk",

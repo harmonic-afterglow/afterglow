@@ -15,6 +15,12 @@ from ..applog import LOG
 
 from .. import concord, hao
 
+# A Harmony 900 in Safe Mode (and an 1100, the same firmware family) still answers on
+# USB: it can be read, and a configuration written to it is how it gets out.
+SAFE_MODE_NOTE = ("The remote is in Safe Mode. It can still be read, and writing a "
+                  "configuration to it - Flash, or Settings › Flash a Configuration File "
+                  "with a backup - is how it is brought back.")
+
 
 def _check_backup(path: Path) -> None:
     """A backup that could not be put back is no backup: whole, and checksummed."""
@@ -50,7 +56,10 @@ class RemoteWorker(QThread):
     def _remote(self):
         """The remote, saying so first: finding it alone can take 20 seconds."""
         self.progress.emit("Connecting to the remote", 0, 0)
-        self.log.emit("Connecting to the remote...")
+        # In Safe Mode the remote asks for its USB link only every 4 to 32 seconds, and
+        # libconcord waits for the next time: the first connection can take that long.
+        self.log.emit("Connecting to the remote... (in Safe Mode this can take up to "
+                      "half a minute)")
         return concord.Remote()
 
     def run(self):
@@ -71,6 +80,8 @@ class RemoteWorker(QThread):
             identity = remote.identity(self._on_progress)
         self.log.emit(f"{identity['mfg']} {identity['model']} "
                       f"(skin {identity['skin']}, firmware {identity['firmware']})")
+        if identity.get("safe_mode"):
+            self.log.emit(SAFE_MODE_NOTE)
         used, total = identity["config_used"], identity["config_total"]
         # libconcord cannot learn the size of the configuration region on the usbnet
         # remotes (900, 1000, 1100) and reports 1 for it.
@@ -80,12 +91,15 @@ class RemoteWorker(QThread):
         elif used:
             self.log.emit(f"Configuration: {used:,} bytes")
         self.result.emit(identity)
-        self.done.emit(True, f"Connected to {identity['model']}.")
+        self.done.emit(True, f"Connected to {identity['model']}"
+                             f"{' in Safe Mode' if identity.get('safe_mode') else ''}.")
 
     def _read(self):
         target = Path(self.kwargs["path"])
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            if identity.get("safe_mode"):
+                self.log.emit(SAFE_MODE_NOTE)
             self.log.emit(f"Reading from {identity['model']}...")
             size = remote.save_config(target, self._on_progress)
         self.log.emit(f"Saved {target}")
@@ -97,6 +111,8 @@ class RemoteWorker(QThread):
         backup = self.kwargs.get("backup")
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            if identity.get("safe_mode"):
+                self.log.emit(SAFE_MODE_NOTE)
             if backup:
                 # Same connection, before anything is changed. No backup, no write.
                 self.log.emit(f"Saving what is on the {identity['model']} now...")
@@ -124,6 +140,8 @@ class RemoteWorker(QThread):
         force = bool(self.kwargs.get("force"))
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            if identity.get("safe_mode"):
+                self.log.emit(SAFE_MODE_NOTE)
             self.log.emit(f"Writing {path.name} to {identity['model']}"
                           f"{' (forced)' if force else ''}...")
             remote.flash_file(path, self._on_progress, force=force)

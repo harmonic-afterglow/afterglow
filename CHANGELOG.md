@@ -44,6 +44,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **A Harmony 900 in Safe Mode could not be reached** (issue #9). It reports itself
+  differently there and runs no web server, so it was refused before anything was
+  read. It is now recognised as the same remote in Safe Mode: it can be read, and a
+  configuration - or a backup - written to it, which is how it is brought back. In Safe
+  Mode it asks for its USB link only every few seconds, up to half a minute apart, so
+  the first connection waits for it; later ones are immediate. This needs the
+  libconcord that comes with this version.
 - **Two favourites with the same name did the same thing.** The remote finds a
   favourite by its number, and a favourite that sends a command or runs a macro used its
   name as that number - so the second of two alike ran the first's. Each now gets a
