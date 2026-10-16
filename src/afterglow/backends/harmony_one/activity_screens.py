@@ -12,7 +12,7 @@ from __future__ import annotations
 from ...project_devices import input_label
 
 from . import activity_index, keys, structures
-from .hub import page_zones
+from .hub import page_zones, without_gaps
 from .idle import MODE_STACK
 from .pages import (
     ASSISTANT_Y, BUTTON_POSITIONS, FIRST_BUTTON_KEY, HELP_FONT, HELP_KEEP_TOP, HELP_PROMPT_Y,
@@ -302,14 +302,18 @@ class Flow:
     def _button_pages(self, act, entries, ordinals, other, other_key, kind_name):
         """An activity's favourites or its buttons, six a page; the side strips turn the
         pages, the left softkey goes to ``other`` (the other set's first page), and
-        Devices opens the device list. Each entry is ``(label, steps, picture)``."""
+        Devices opens the device list. Each entry is ``(label, steps, picture)``, or None
+        for a gap: a place left empty, with no key and nothing drawn."""
         screens, layout, actions = self.screens, self.layout, self.actions
         frames, frame_width = self._frames(), self.frames.width
         chunks = [entries[at:at + len(BUTTON_POSITIONS)]
                   for at in range(0, len(entries), len(BUTTON_POSITIONS))] or [[]]
         for page_index, chunk in enumerate(chunks):
             rows = []
-            for slot, (_label, steps, _picture) in enumerate(chunk):
+            for slot, entry in enumerate(chunk):
+                if entry is None:
+                    continue
+                _label, steps, _picture = entry
                 if len(steps) == 1 and steps[0][0] == "send":
                     target = actions.wrapper(steps[0][1], steps[0][2])
                 else:
@@ -323,7 +327,7 @@ class Flow:
                     ordinals[(page_index + 1) % len(ordinals)]), OBJECT_ATOM))
             rows.append((PAGE_DEVICES_KEY, layout.navigation(self.ordinals.menu[0]),
                          OBJECT_ATOM))
-            zones = [zone for zone in page_zones(self.geometry, len(chunk))
+            zones = [zone for zone in without_gaps(page_zones(self.geometry, len(chunk)), chunk)
                      if zone["y"] != SOFTKEY_LEFT_ZONE["y"]]
             zones.append(dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F))
             softkeys = ["devices"]
@@ -331,14 +335,17 @@ class Flow:
                 zones.append(dict(SOFTKEY_LEFT_ZONE, tag=PAGE_ACTIVITIES_KEY & 0x7F))
                 rows.append((PAGE_ACTIVITIES_KEY, layout.navigation(other), OBJECT_ATOM))
                 softkeys.insert(0, other_key)
-            labels = [text if picture is None else None for text, _steps, picture in chunk]
-            pictured = [picture for _text, _steps, picture in chunk]
+            labels = [None if entry is None or entry[2] is not None else entry[0]
+                      for entry in chunk]
+            pictured = [None if entry is None else entry[2] for entry in chunk]
+            gaps = [entry is None for entry in chunk]
 
             def program(picture, prologue, labels=labels, pictured=pictured,
-                        softkeys=softkeys):
+                        softkeys=softkeys, gaps=gaps):
                 built = button_page(
-                    labels, [picture(role or frames[slot])
-                             for slot, role in enumerate(pictured)], screens.font,
+                    labels, [None if gap else picture(role or frames[slot])
+                             for slot, (role, gap) in enumerate(zip(pictured, gaps))],
+                    screens.font,
                     prologue=prologue, attribute=screens.label, frame_width=frame_width)
                 return screens.softkeys(built, softkeys)
             kind = kind_name + ("-paged" if len(chunks) > 1 else "")
@@ -356,7 +363,8 @@ class Flow:
                                      for item in act["favourites"]], ordinals["favourites"],
                                ordinals["pages"][0] if both else None, "commands", kind_name)
         if ordinals["pages"]:
-            self._button_pages(act, [(text, steps, None) for text, steps in act["buttons"]],
+            self._button_pages(act, [None if button is None else (*button, None)
+                                     for button in act["buttons"]],
                                ordinals["pages"], ordinals["favourites"][0] if both else None,
                                "favourites", kind_name)
 

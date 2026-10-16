@@ -18,8 +18,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   buttons, a drawing of the remote's screen - two columns by three rows on the 900 and
   the One, the 1100's own grids - a page at a time, with its arrows. Click a button there
   to pick it in the list.
-- **Gaps between an activity's screen buttons**, with Add gap, on the Harmony 900 and
-  1100.
+- **Gaps between an activity's screen buttons**, with Add gap, on the Harmony 900, 1100
+  and One. On the One, which Afterglow draws itself, a gap is a place with nothing drawn
+  and nothing bound.
 - **The Harmony 1100's activity tabs.** An 1100 activity's screen is up to four tabs -
   Transport, Numbers, one of Favourites, Game controller or Discs, and a page of buttons -
   each with side bars down both edges. Screen buttons now shows them as the remote lays
@@ -79,9 +80,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   It now gets the tabs Logitech gives its type, and opens on Transport as Logitech's do -
   an older project too, the next time it is flashed. Imported activities keep their own.
 - **The Harmony One drew a command's name on its button** rather than the button's text,
-  and put a device's buttons in alphabetical order. It now draws the page as arranged
-  (gaps close up, since the One fills its places in turn), and keeps the order when a
-  configuration is imported.
+  and put a device's buttons in alphabetical order. It now draws the page as arranged,
+  gaps included, and keeps the order when a configuration is imported.
 
 ## [0.3.0-beta.3] - 2026-10-15
 

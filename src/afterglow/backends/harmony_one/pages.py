@@ -106,7 +106,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
 
     Each button is its frame and then its label, centred over the frame the way every
     donor page centres one: the label's x is the midpoint of the frame less half the
-    text's width. A label wider than its button wraps onto a second line.
+    text's width. A label wider than its button wraps onto a second line. A place whose
+    frame is None is a gap: nothing is drawn there.
     """
     if len(labels) != len(frames):
         raise ValueError("a page needs one frame per label")
@@ -126,6 +127,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
     # in whatever the previous program left behind. Every donor page sets it explicitly.
     out.append({"opcode": "attribute", "value": attribute})
     for index, (label, frame) in enumerate(zip(labels, frames)):
+        if frame is None:          # a gap: the place is left empty
+            continue
         left, top = BUTTON_POSITIONS[index]
         out.append({"opcode": "bitmap", "x": left, "y": top, "target": frame})
         frame_width = FRAME_WIDTH if frame_width is None else frame_width

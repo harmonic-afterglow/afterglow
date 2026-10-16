@@ -302,6 +302,7 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
     out = {}
     for device, ordinals in command_pages(image).items():
         titles, names, bound, buttons = [], {}, {}, []
+        page = 0
         for ordinal in ordinals:
             screen = image.screens[ordinal]
             titled = [item["text"] for slot in screen["slots"]
@@ -317,7 +318,11 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
                     lines = _button_label(items, position)
                     if lines:
                         names.setdefault(command, image.join(lines))
+                        # a place before this one with nothing in it was left empty
+                        while len(buttons) < page * len(BUTTON_POSITIONS) + position:
+                            buttons.append(None)
                         buttons.append((command, image.join(lines)))
+            page += 1
             for entry in screen["header_entries"] + [
                     entry for slot in screen["slots"] for entry in slot["entries"]]:
                 name = keys.name_of(entry["key_code"])
@@ -555,8 +560,9 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
             for command in ids if command not in same])
         # The pages as drawn: which buttons, in what order, under which names.
         project["screen_buttons"] = [
-            [names[same.get(command, command)], label]
-            for command, label in page["buttons"] if same.get(command, command) in names]
+            None if button is None else [names[same.get(button[0], button[0])], button[1]]
+            for button in page["buttons"]
+            if button is None or same.get(button[0], button[0]) in names]
         project.update(_state_fields(state, names))
         if naming is not None:
             naming.update({command: (project["id"], name) for command, name in names.items()})
@@ -943,6 +949,7 @@ class Activities:
         """An activity's on-screen buttons and favourites: the pages titled with its name
         whose buttons send and do nothing else."""
         buttons, favourites = [], []
+        pages = 0                     # pages of buttons so far, for where a gap falls
         for screen in self.image.screens:
             for slot in screen["slots"]:
                 items = self.image.page_text(slot["program_offset"])
@@ -962,6 +969,7 @@ class Activities:
                         found = None
                         break
                     found.append((position, steps))
+                on_page = False
                 for position, steps in sorted(found or ()):
                     lines = _button_label(items, position)
                     macro = self.macro(steps)
@@ -974,8 +982,13 @@ class Activities:
                         logo = None if text else self._logo(slot, position)
                         favourites.append((text, macro, logo))
                     else:
+                        # a place before this one with nothing in it was left empty
+                        while len(buttons) < pages * len(BUTTON_POSITIONS) + position:
+                            buttons.append(None)
                         buttons.append([text, *macro[0][1:]] if _plain_send(macro)
                                        else {"label": text, "macro": macro})
+                        on_page = True
+                pages += on_page
         out = {"soft_buttons": buttons}
         if favourites:
             out.update(self.favourites(favourites))

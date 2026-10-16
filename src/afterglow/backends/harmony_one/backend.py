@@ -25,9 +25,10 @@ from . import command_index, gspm, importing, inventory, labels
 GENERIC_DEVICE = "HomeAppliance"
 GENERIC_ACTIVITY = "VirtualGeneric"
 
-# A page's buttons take its six places in turn (pages.BUTTON_POSITIONS): a gap left in a
-# page closes up.
-SCREEN_GAPS = False
+# A page's buttons take its six places in turn (pages.BUTTON_POSITIONS), and a gap is a
+# place drawn and bound with nothing: no frame, no label, no key, no touch zone.
+# Logitech's own One images never leave one; Afterglow draws its pages itself.
+SCREEN_GAPS = True
 
 
 def validate_payload(payload: bytes, _profile=None) -> dict:
