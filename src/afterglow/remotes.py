@@ -169,6 +169,10 @@ class RemoteProfile:
     flash: str | None = None
     board: str | None = None
     software_type: int | None = None
+    # What the remote reports as its software type while in Safe Mode - the Harmony
+    # 900 says 4 there, 0 otherwise. The same remote, running its recovery image: it
+    # can still be read and written, and writing it is how it gets out.
+    safe_mode_software_type: int | None = None
     firmware_min: str | None = None
     firmware_max: str | None = None
     payload: str = ""          # required in the JSON; see load()
@@ -515,6 +519,7 @@ class RemoteProfile:
         must pass ``require_all=True`` and prove every declared constraint.
         """
         mismatches = []
+        identity = self.normal_identity(identity)
         skin = identity.get("skin")
         if self.other_skins and skin in self.other_skins:
             identity = {**identity, "skin": self.skin}      # the same remote
@@ -552,6 +557,18 @@ class RemoteProfile:
                         f"firmware is {firmware} (maximum {self.firmware_max})")
         return mismatches
 
+    def in_safe_mode(self, identity: dict) -> bool:
+        """Whether this identity is this remote's Safe Mode (see
+        `safe_mode_software_type`)."""
+        return (self.safe_mode_software_type is not None
+                and identity.get("software_type") == self.safe_mode_software_type)
+
+    def normal_identity(self, identity: dict) -> dict:
+        """The identity as the remote reports it outside Safe Mode."""
+        if self.in_safe_mode(identity) and self.software_type is not None:
+            return {**identity, "software_type": self.software_type}
+        return identity
+
     def matches(self, identity: dict) -> bool:
         """Whether every identity field present agrees with this profile."""
         return not self.identity_mismatches(identity)
@@ -569,6 +586,8 @@ class RemoteProfile:
                    if self.firmware_min or self.firmware_max else {}),
                 **({"other_skins": list(self.other_skins)} if self.other_skins else {}),
                 **({"other_boards": list(self.other_boards)} if self.other_boards else {}),
+                **({"safe_mode_software_type": self.safe_mode_software_type}
+                   if self.safe_mode_software_type is not None else {}),
             },
             "payload": self.payload, "backend": self.backend, "status": self.status,
             "capabilities": self.capabilities,
@@ -648,6 +667,7 @@ def _from_json(data: dict) -> RemoteProfile:
         id=data["id"], model=data["model"],
         arch=ident.get("arch"), skin=ident.get("skin"), flash=ident.get("flash"),
         board=ident.get("board"), software_type=ident.get("software_type"),
+        safe_mode_software_type=ident.get("safe_mode_software_type"),
         firmware_min=firmware.get("min"), firmware_max=firmware.get("max"),
         payload=payload, backend=backend,
         status=_status(data),

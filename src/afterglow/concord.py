@@ -158,6 +158,16 @@ LC_FILE_TYPE_CONFIGURATION = 2
 IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
 
 
+def _in_safe_mode(identity: dict) -> bool:
+    """Whether the remote is a known one, running its Safe Mode image."""
+    from . import remotes
+    try:
+        profiles = remotes.load_all()
+    except (OSError, ValueError):
+        return False
+    return any(p.in_safe_mode(identity) and p.matches(identity) for p in profiles)
+
+
 def file_mismatches(path, identity: dict) -> list[str]:
     """How the configuration file at `path` was made for a remote other than `identity`.
 
@@ -176,6 +186,9 @@ def file_mismatches(path, identity: dict) -> list[str]:
     except remotes.UnknownRemote:
         profile = None
     skins = set(profile.skins) if profile else set()
+    if profile:
+        # a remote in Safe Mode, or a backup read from one, is still that remote
+        wanted, identity = profile.normal_identity(wanted), profile.normal_identity(identity)
     problems = []
     for field in IDENTITY_FIELDS:
         theirs, ours = wanted.get(field), identity.get(field)
@@ -594,7 +607,7 @@ class Remote:
             "get_hw_ver_maj", "get_hw_ver_min", "get_hw_ver_mic"))
         flash = (number("get_flash_mfg"), number("get_flash_id"))
 
-        return {
+        identity = {
             "mfg": text("get_mfg"),
             "model": text("get_model"),
             "codename": text("get_codename"),
@@ -611,6 +624,8 @@ class Remote:
             "can_read": self.lib.is_config_dump_supported() == 0,
             "can_write": self.lib.is_config_update_supported() == 0,
         }
+        identity["safe_mode"] = _in_safe_mode(identity)
+        return identity
 
     def save_config(self, path, on_progress=None) -> int:
         """Read the configuration off the remote and save it as a `.ezhex`.
@@ -801,6 +816,8 @@ class Remote:
 
         artifact_problems = profile.identity_mismatches(wanted, require_all=True)
         remote_problems = profile.identity_mismatches(identity, require_all=True)
+        # A remote in Safe Mode, or a file read from one, is the same remote
+        wanted, identity = profile.normal_identity(wanted), profile.normal_identity(identity)
         disagreements = []
         for field in ("arch", "skin", "flash", "board", "software_type"):
             if field == "skin" and {wanted.get(field), identity.get(field)} <= \
