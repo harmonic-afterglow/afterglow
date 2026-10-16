@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ... import project_devices
 from . import keypad, keys
 from .structures import OBJECT_ATOM, object_body
 
@@ -206,7 +207,8 @@ def held_commands(project: dict, devices: list[dict], planned: dict, *, library=
         for key in ("enter", "leave"):
             activity[key] = resolve(activity[key])
         activity["keys"] = {code: resolve(steps) for code, steps in activity["keys"].items()}
-        activity["buttons"] = [(label, resolve(steps)) for label, steps in activity["buttons"]]
+        activity["buttons"] = [None if button is None else (button[0], resolve(button[1]))
+                               for button in activity["buttons"]]
         activity["favourites"] = [dict(item, steps=resolve(item["steps"]))
                                   for item in activity.get("favourites") or []]
 
@@ -259,7 +261,15 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
                 },
             })
         ids = {command["name"]: command["command_id"] for command in commands}
+        # A page arranged for this device - read from a configuration or in the editor -
+        # replaces the one made from its labels, its gaps (None) left empty on the remote.
+        screen = ([entry[:2] if entry else None
+                   for entry in project_devices.screen_buttons(device)]
+                  if device.get("screen_buttons") is not None else None)
+        while screen and screen[-1] is None:        # nothing after the last button
+            screen.pop()
         out.append({"index": index, "label": label, "commands": commands,
+                    **({"screen": screen} if screen is not None else {}),
                     **device_states(device, ids)})
     return out
 

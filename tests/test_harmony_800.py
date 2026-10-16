@@ -575,3 +575,24 @@ def test_a_damaged_image_in_its_zip_fails_its_own_checksum(tmp_path):
     assert ezhex.read(damaged.read_bytes()).declared is None
     with pytest.raises(first_write.FirstWriteError, match="checksum"):
         first_write._artifact(damaged)
+
+
+def test_a_device_page_and_an_activity_keep_their_order_labels_and_gaps():
+    """As on the One since 0.3.0-beta.4: a device's own page (screen_buttons) shows its
+    buttons in its order under its labels, and a gap - None - is a place left empty, with
+    nothing drawn and nothing bound."""
+    import copy
+    from afterglow.backends.harmony_800 import activities, devices, hub
+    project = copy.deepcopy(WATCHING)
+    tv = project["devices"][0]
+    tv["screen_buttons"] = [["2", "Two"], None, ["1", "One"]]
+    project["activities"][0]["soft_buttons"] = [None, *project["activities"][0]["soft_buttons"][:1]]
+    lowered = devices.lowered_devices(project)
+    assert lowered[0]["screen"] == [["2", "Two"], None, ["1", "One"]]
+    frames = type("Frames", (), {"buttons": ["f"] * 6})()
+    page = hub.device_pages(lowered, frames, {"f"}, {})[0][0]
+    assert [None if b is None else (b["name"], b["label"]) for b in page] == \
+        [("2", "Two"), None, ("1", "One")]
+    assert activities._buttons(project["activities"][0])[0] is None
+    assert gsgd.validate(generate.build(project)["image"])["ok"]
+    assert backend.SCREEN_GAPS

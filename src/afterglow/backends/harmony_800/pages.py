@@ -143,6 +143,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
     # in whatever the previous program left behind. Every donor page sets it explicitly.
     out.append({"opcode": "attribute", "value": attribute})
     for index, (label, frame) in enumerate(zip(labels, frames)):
+        if frame is None:          # a gap: the place is left empty
+            continue
         left, top = BUTTON_POSITIONS[index]
         out.append({"opcode": "bitmap", "x": left, "y": top, "target": frame})
         frame_width = FRAME_WIDTH if frame_width is None else frame_width

@@ -21,6 +21,10 @@ from ..contracts import BuildResult, ImportResult
 from . import gsgd, mark
 
 SKIN = 0x56
+# A page's buttons take its six places in turn (pages.BUTTON_POSITIONS), and a gap is a
+# place drawn and bound with nothing: no frame, no label, no key, no touch zone, as on the
+# Harmony One; Afterglow draws the 800's pages itself.
+SCREEN_GAPS = True
 # What Concordance writes for an MH remote's configuration and reads back
 # (libconcord/xml_headers.h, `mh_config_header`): the file, where it goes, its size, and
 # the checksum over all but the last six bytes - the image's own, seeded 0x4321.

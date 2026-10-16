@@ -6,6 +6,8 @@ Format reference: docs/harmony_one/gspm.md
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from . import drawing, keypad, structures
 from .devices import device_key_rows
 from .pages import (
@@ -17,17 +19,45 @@ from .scaffold import menu_template
 from .structures import OBJECT_ATOM
 
 
+class _Button(Mapping):
+    """A button on a device's page: its command, seen through, under a label of its own.
+    A view rather than a copy, since the command's wrapper is numbered after the pages
+    are planned - and one command can sit on a page twice, under two labels."""
+
+    def __init__(self, command: dict, label: str):
+        self._command, self._label = command, label
+
+    def __getitem__(self, key):
+        return self._label if key == "label" else self._command[key]
+
+    def __iter__(self):
+        return iter({**self._command, "label": self._label})
+
+    def __len__(self):
+        return len({**self._command, "label": self._label})
+
+
 def device_pages(devices: list[dict], frames, roles, font) -> dict[int, list]:
     """Each device's command pages, six commands a page, by device index - when there is a
-    font to label them with and a frame to draw them on. A command on one of the device's
-    keys, one with no label and a held code an activity sends have a record but no button,
-    as on Logitech's pages; a device with no button left still has its one page, which is
-    where its keys are bound."""
+    font to label them with and a frame to draw them on. A device given a page of its own
+    (``screen``) shows those buttons, in that order and under those labels. Otherwise a
+    command on one of the device's keys, one with no label and a held code an activity
+    sends have a record but no button, as on Logitech's pages. A device with no button
+    left still has its one page, which is where its keys are bound. A None on a page given
+    to it is a gap: that place stays empty."""
     out = {}
     if not (all(role in roles for role in frames.buttons) and font is not None):
         return out
     for device in devices:
-        commands = [command for command in device["commands"] if not command.get("hidden")]
+        if "screen" in device:
+            # The page the device was given: its buttons in order, each under its label.
+            by_name = {command["name"]: command for command in device["commands"]}
+            commands = [None if entry is None else _Button(by_name[entry[0]], entry[1])
+                        for entry in device["screen"]
+                        if entry is None or entry[0] in by_name]
+        else:
+            commands = [command for command in device["commands"]
+                        if not command.get("hidden")]
         out[device["index"]] = [commands[first:first + len(BUTTON_POSITIONS)]
                                 for first in range(0, len(commands), len(BUTTON_POSITIONS))
                                 ] or [[]]
@@ -139,7 +169,7 @@ class Hub:
             home = ordinals.menu_of_device.get(device_index, pages[0])
             for page_index, chunk in enumerate(chunks):
                 rows = [(FIRST_BUTTON_KEY + index, command["wrapper_index"], OBJECT_ATOM)
-                        for index, command in enumerate(chunk)]
+                        for index, command in enumerate(chunk) if command is not None]
                 if len(chunks) > 1:
                     previous = pages[page_index - 1] if page_index else home
                     following = pages[page_index + 1] if page_index + 1 < len(chunks) else home
@@ -147,7 +177,7 @@ class Hub:
                     rows.append((SIDE_NEXT_KEY, layout.navigation(following), OBJECT_ATOM))
                 elif ordinals.menu_of_device:
                     rows.append((SIDE_NEXT_KEY, layout.navigation(home), OBJECT_ATOM))
-                zones = page_zones(self.geometry, len(chunk))
+                zones = without_gaps(page_zones(self.geometry, len(chunk)), chunk)
                 # The softkeys upstairs' device pages carry: Activities bottom left,
                 # Devices bottom right, in the screen's bottom strip. Whatever a donor
                 # template had in the strip gives way to them.
@@ -157,14 +187,17 @@ class Hub:
                               dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F)]
                     rows.append((PAGE_ACTIVITIES_KEY, self._to_activities(), OBJECT_ATOM))
                     rows.append((PAGE_DEVICES_KEY, layout.navigation(home), OBJECT_ATOM))
-                labels = [command["name"] for command in chunk]
+                labels = [None if command is None else command.get("label") or command["name"]
+                          for command in chunk]
+                gaps = [command is None for command in chunk]
                 keys = device_key_rows(self.devices[device_index]["commands"])
                 if device_index in ordinals.keypads:
                     keys = keypad.with_opener(keys, layout, ordinals.keypads[device_index])
 
-                def program(picture, prologue, labels=labels):
+                def program(picture, prologue, labels=labels, gaps=gaps):
                     out = button_page(
-                        labels, [picture(role) for role in frames.buttons[:len(labels)]],
+                        labels, [None if gap else picture(role)
+                                 for role, gap in zip(frames.buttons, gaps)],
                         screens.font, prologue=prologue, attribute=screens.label,
                         frame_width=frames.width)
                     if self.hub and running:
@@ -196,6 +229,13 @@ def page_zones(geometry: dict[int, list[dict]], buttons: int) -> list[dict]:
             if (zone["tag"] | 0x80) < FIRST_BUTTON_KEY + buttons
             or (zone["tag"] | 0x80) >= FIRST_BUTTON_KEY + len(BUTTON_POSITIONS)]
 
+
+
+def without_gaps(zones: list[dict], chunk: list) -> list[dict]:
+    """A page's touch zones but those of its gaps (the None places in ``chunk``), so a
+    touch where nothing is drawn does nothing."""
+    empty = {FIRST_BUTTON_KEY + slot for slot, entry in enumerate(chunk) if entry is None}
+    return [zone for zone in zones if (zone["tag"] | 0x80) not in empty]
 
 def empty_screen(screens, owned_handlers):
     """Nothing the project owns to show still needs a screen at the first owned ordinal,
