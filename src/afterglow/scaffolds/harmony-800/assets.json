@@ -412,30 +412,6 @@
         320
       ]
     },
-    "charging/photo-1": {
-      "file": "images/charging/photo-1.png",
-      "mode": "raw",
-      "size": [
-        240,
-        320
-      ]
-    },
-    "charging/photo-2": {
-      "file": "images/charging/photo-2.png",
-      "mode": "raw",
-      "size": [
-        240,
-        320
-      ]
-    },
-    "charging/photo-3": {
-      "file": "images/charging/photo-3.png",
-      "mode": "raw",
-      "size": [
-        240,
-        320
-      ]
-    },
     "chrome/header": {
       "file": "images/chrome/header.png",
       "mode": "raw",
