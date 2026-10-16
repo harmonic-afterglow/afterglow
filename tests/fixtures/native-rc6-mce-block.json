@@ -1,0 +1,114 @@
+{
+ "backend": "harmony-pk",
+ "body_hex": "01e86b0000320104001e000eff7a9d010002022f00140000000d488a8403b981bb01b981b701b9817703b9816f032b857903b981b981be01be01b981",
+ "carrier_hz": 36200,
+ "carrier_period_ns": 27624,
+ "durations": [
+  {
+   "at": 28,
+   "kind": "space",
+   "us": 900
+  },
+  {
+   "at": 30,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 32,
+   "kind": "space",
+   "us": 443
+  },
+  {
+   "at": 34,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 36,
+   "kind": "space",
+   "us": 439
+  },
+  {
+   "at": 38,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 40,
+   "kind": "space",
+   "us": 887
+  },
+  {
+   "at": 42,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 44,
+   "kind": "space",
+   "us": 879
+  },
+  {
+   "at": 46,
+   "kind": "mark",
+   "us": 1323
+  },
+  {
+   "at": 48,
+   "kind": "space",
+   "us": 889
+  },
+  {
+   "at": 50,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 52,
+   "kind": "mark",
+   "us": 441
+  },
+  {
+   "at": 54,
+   "kind": "space",
+   "us": 446
+  },
+  {
+   "at": 56,
+   "kind": "space",
+   "us": 446
+  },
+  {
+   "at": 58,
+   "kind": "mark",
+   "us": 441
+  }
+ ],
+ "element_count": 1,
+ "flag": 1,
+ "id": "6bd42e0eea79",
+ "leader": [
+  {
+   "at": 28,
+   "kind": "space",
+   "us": 900
+  },
+  {
+   "at": 30,
+   "kind": "mark",
+   "us": 441
+  }
+ ],
+ "materialized_external_data": false,
+ "name": "Imported native protocol 8",
+ "origin": "imported-irproto",
+ "pointer_fields": [
+  7,
+  19,
+  21
+ ],
+ "pwm_parameter": 50,
+ "schema": "harmony-ir-protocol/1",
+ "size": 60
+}
