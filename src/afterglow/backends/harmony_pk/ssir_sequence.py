@@ -275,10 +275,13 @@ def _segment(pulses, silence_ms: int = 0) -> list[int]:
 
 def _renders(signal: dict, library) -> tuple[int, list[tuple[list[int], list[int]]]]:
     """(carrier Hz, [(press pulses, hold pulses) per toggle state])."""
-    from ... import ir_protocol
+    from ... import ir_protocol, ir_signal
     if signal["kind"] == "waveform":
-        pulses = list(signal["pulses_us"])
-        return int(signal.get("carrier_hz") or 38000), [(pulses, pulses)]
+        # One variant per recording: a toggling command read from a Harmony One has two,
+        # which the 1100 plays in turn as it does a protocol's toggle states.
+        return int(signal.get("carrier_hz") or 38000), [
+            (list(recording["pulses_us"]), list(recording["pulses_us"]))
+            for recording in ir_signal.recordings(signal)]
     if signal["kind"] != "protocol":
         raise ValueError(f"a {signal['kind']} signal has nothing to play back")
     variants, state, carrier = [], None, 38000

@@ -394,6 +394,9 @@ def migrate_legacy_device(source: dict, *, device_id: str = "",
         out["commands"].append(row)
         out["signals"][name] = signal
 
+    # A record that keeps a Code with its program - a library entry, an old project -
+    # gets the same conversion as an import, so nothing it carries stays native-only.
+    promote_native_signals(out)
     project_devices.validate(out)
     return out
 

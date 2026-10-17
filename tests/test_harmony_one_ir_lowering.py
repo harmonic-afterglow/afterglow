@@ -222,3 +222,55 @@ def test_command_records_refuse_unmeasured_flags_and_inconsistent_carriers():
         records.command_record(0x100, 0x200, None, 26315, 13157, flag=2)
     with pytest.raises(ValueError, match="half-period"):
         records.command_record(0x100, 0x200, None, 26315, 13158)
+
+
+def test_a_toggling_waveform_keeps_both_recordings_through_lowering():
+    """A One import keeps a toggling command's second set as the waveform's `alternate`,
+    and lowering writes it back as the record's second set."""
+    first = [9000, -4500, 560, -1690, 560, -40000]
+    second = [9000, -4500, 560, -560, 560, -41130]
+    signal = ir_signal.waveform(first, carrier_hz=36000, alternate={"pulses_us": second})
+
+    lowered = ir_lowering.lower(signal)
+
+    assert lowered.alternate is not None
+    assert lowered.press_waveform == ir_lowering.encode_waveform(
+        first, entry_us=ir_lowering.DEFAULT_ENTRY_US)
+    assert lowered.alternate[0] == ir_lowering.encode_waveform(
+        second, entry_us=ir_lowering.DEFAULT_ENTRY_US)
+    assert ir_lowering.lower(ir_signal.waveform(first, carrier_hz=36000)).alternate is None
+
+
+def test_a_records_second_set_imports_as_the_alternate_recording():
+    lowered = ir_lowering.lower(ir_signal.protocol_signal("rc5-13", {"code": 0x123}))
+    payload = bytearray(0x800)
+    press, hold, _release = lowered.alternate
+    for offset, body in {0x200: lowered.press_waveform, 0x300: lowered.hold_waveform,
+                         0x400: press, 0x500: hold}.items():
+        payload[offset:offset + len(body)] = body
+    payload[0x100:0x100 + 34] = records.command_record(
+        0x100, 0x200, 0x300, lowered.carrier_period_ns, lowered.carrier_half_period_ns,
+        alternate=(0x400, 0x500, None))
+    record = command_index._record(bytes(payload), 0x100)
+    report = {"devices": [{"device_index": 0, "declared_commands": 1, "commands": [
+        {**record, "ordinal": 0, "command_id": 0, "device_ids": [], "object_indexes": []}]}]}
+
+    (device,) = command_index.portable_devices(report)
+    signal = device["signals"]["Command 00"]
+
+    assert signal["alternate"]["pulses_us"] != signal["pulses_us"]
+    again = ir_lowering.lower(signal)
+    assert again.press_waveform == lowered.press_waveform
+    assert again.alternate[0] == press
+
+
+def test_the_alternate_must_be_a_recording():
+    """As read from a project file: the alternate is a recording of the same signal, so
+    it carries no carrier or anything else of its own."""
+    signal = ir_signal.waveform([500, -500], carrier_hz=38000,
+                                alternate={"pulses_us": [500, -600]})
+    with pytest.raises(ValueError, match="alternate"):
+        ir_signal.validate({**signal, "alternate": {"pulses_us": [500, -500],
+                                                    "carrier_hz": 1}})
+    with pytest.raises(ValueError, match="non-empty"):
+        ir_signal.validate({**signal, "alternate": {"pulses_us": []}})

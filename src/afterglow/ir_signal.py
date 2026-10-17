@@ -13,6 +13,9 @@ Signals are a discriminated union:
     A measured carrier and signed microsecond durations. Positive values are marks;
     negative values are spaces. Optional ``sections`` retain intro/repeat/release
     boundaries when a source format carries them; the durations remain stored once.
+    Optional ``alternate`` is a second recording of the same shape (``pulses_us`` and
+    ``sections``) for a toggling command: the remote sends the two in turn, one per press,
+    as a Harmony One does with an RC5/RC6 command it read from Logitech's own record.
 ``backend-opaque``
     Native evidence an importer can preserve but cannot yet translate.
 
@@ -74,7 +77,7 @@ def protocol_signal(protocol: str, parameters: dict, *, name: str = "",
 
 def waveform(pulses_us, *, name: str = "", carrier_hz: int | None = None,
              sections: dict | None = None, provenance: dict | None = None,
-             native: dict | None = None) -> dict:
+             native: dict | None = None, alternate: dict | None = None) -> dict:
     """Create a portable waveform signal without redundant derived fields."""
     out = {
         "schema": SCHEMA,
@@ -86,11 +89,27 @@ def waveform(pulses_us, *, name: str = "", carrier_hz: int | None = None,
         out["carrier_hz"] = int(carrier_hz)
     if sections is not None:
         out["sections"] = dict(sections)
+    if alternate is not None:
+        out["alternate"] = {"pulses_us": [int(pulse) for pulse in alternate["pulses_us"]],
+                            **({"sections": dict(alternate["sections"])}
+                               if alternate.get("sections") is not None else {})}
     if provenance:
         out["provenance"] = dict(provenance)
     if native:
         out["native"] = dict(native)
     validate(out)
+    return out
+
+
+def recordings(spec: dict) -> list[dict]:
+    """A waveform signal as the recordings a remote sends in turn: itself, and its
+    ``alternate`` for a toggling command. Each has ``pulses_us`` and maybe ``sections``,
+    with the carrier, so it can be handled as the signal itself."""
+    out = [spec]
+    if spec.get("alternate"):
+        out.append({**{key: value for key, value in spec.items()
+                       if key not in ("alternate", "sections")},
+                    **spec["alternate"]})
     return out
 
 
@@ -194,6 +213,15 @@ def validate(spec: dict) -> None:
             raise ValueError("a backend-opaque signal needs native evidence")
         return
 
+    _validate_recording(spec)
+    alternate = spec.get("alternate")
+    if alternate is not None:
+        if not isinstance(alternate, dict) or set(alternate) - {"pulses_us", "sections"}:
+            raise ValueError("a waveform alternate holds pulses_us and optional sections")
+        _validate_recording(alternate)
+
+
+def _validate_recording(spec: dict) -> None:
     pulses = spec.get("pulses_us")
     if not isinstance(pulses, list) or not pulses:
         raise ValueError("a waveform signal needs a non-empty pulses_us list")
