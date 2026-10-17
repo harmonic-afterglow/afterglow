@@ -34,31 +34,10 @@ def _quiet_missing_console() -> None:
 
 def main() -> int:
     _quiet_missing_console()
-    if "--version" in sys.argv[1:]:
-        # Answering this must not need Qt: it is what someone runs to report a bug.
-        from afterglow import __version__
-        print(__version__)
-        return 0
-    if "--usb-driver" in sys.argv[1:]:
-        # The elevated half of switching the remote's Windows driver: started by the
-        # running application through Windows' consent prompt, never by hand.
-        from afterglow.windows_driver import main as usb_driver
-        return usb_driver()
-    if "--self-check" in sys.argv[1:]:
-        from afterglow.selfcheck import run
-        return run()
-    if "--concord-check" in sys.argv[1:]:
-        from afterglow.selfcheck import concord_check
-        return concord_check()
-    if "--driver-check" in sys.argv[1:]:
-        # Windows only: that direct access can find Windows' generic WinUSB entry.
-        from afterglow.windows_driver import generic_driver_check
-        return generic_driver_check()
-    if "--import-check" in sys.argv[1:]:
-        # Prove the bundle can do the thing it exists for, not merely that its registries
-        # resolve: read a real configuration end to end.
-        from afterglow.selfcheck import import_check
-        return import_check(sys.argv[sys.argv.index("--import-check") + 1])
+    from afterglow.launch import handle_flags
+    status = handle_flags()
+    if status is not None:
+        return status
     from afterglow.gui import main as gui_main
     gui_main()
     return 0

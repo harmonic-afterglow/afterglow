@@ -192,3 +192,17 @@ def test_importing_the_interface_touches_no_filesystem_and_needs_no_home(tmp_pat
                           cwd=tmp_path, env=environment)
     assert done.returncode == 0, done.stderr
     assert "True" in done.stdout, "the user directory must be a call, not a constant"
+
+
+def test_the_launcher_answers_version_without_opening_the_window(tmp_path):
+    """`python afterglow.py --version` opened the window: only the bundle's entry point
+    knew the flag. Both now share afterglow.launch. And it names this checkout's version
+    - an editable install records one once, possibly another checkout's, and a 0.3.0b4
+    tree called itself 0.2.0."""
+    import tomllib
+    declared = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    done = subprocess.run([sys.executable, str(ROOT / "afterglow.py"), "--version"],
+                          capture_output=True, text=True, cwd=tmp_path, timeout=60,
+                          env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == declared

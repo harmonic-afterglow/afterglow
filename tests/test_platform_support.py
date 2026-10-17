@@ -979,11 +979,13 @@ def test_the_version_prefers_the_build_stamp_then_falls_back(monkeypatch, tmp_pa
     stamp = ROOT_PACKAGE / "_build.py"
     assert not stamp.exists(), "the stamp is generated; it must not be committed"
 
-    # Without a stamp it reports what pyproject declares.
+    # Without a stamp, a checkout reports what its own pyproject declares - not the
+    # version an editable install recorded once, possibly from another checkout, which
+    # had a 0.3.0b4 tree call itself 0.2.0.
     import tomllib
     declared = tomllib.loads((ROOT_PACKAGE.parent.parent / "pyproject.toml")
                              .read_text())["project"]["version"]
-    assert afterglow._resolve_version() in (declared, afterglow.__version__)
+    assert afterglow._resolve_version() == declared
 
     # With one, the stamp wins.
     stamp.write_text('VERSION = "v9.9.9-test"\n')

@@ -16,8 +16,15 @@ def _resolve_version() -> str:
        identify a downloaded executable: a frozen build carries no `dist-info`, so
        package metadata is unavailable, and a tag build and a push build of the same
        commit have to be distinguishable.
-    2. Installed package metadata, for `pip install`.
-    3. The version declared in `pyproject.toml`, for a plain checkout.
+    2. The version declared in the `pyproject.toml` of the source tree this package is
+       running from, when it runs from one.
+    3. Installed package metadata, for `pip install` - a package with no source tree
+       beside it.
+
+    The source tree comes before the metadata on purpose. An editable install records
+    its version once, when it is made, and nothing updates it: a checkout installed at
+    0.2.0b1 went on calling itself 0.2.0 at 0.3.0b4. The record need not even be this
+    tree's - it was another checkout's - since metadata is looked up by name.
 
     Never raises. A version string is for telling someone which build they are running,
     and failing to produce one must not stop the application starting.
@@ -27,6 +34,9 @@ def _resolve_version() -> str:
         return VERSION
     except Exception:                           # noqa: BLE001
         pass
+    declared = _declared_version()
+    if declared != "unknown":
+        return declared
     try:
         from importlib.metadata import PackageNotFoundError, version
         try:
@@ -35,19 +45,23 @@ def _resolve_version() -> str:
             pass
     except Exception:                           # noqa: BLE001
         pass
-    return _declared_version()
+    return "unknown"
 
 
 def _declared_version() -> str:
-    """The version in `pyproject.toml`, for a checkout that was never installed."""
+    """The version in the `pyproject.toml` of the source tree this package runs from,
+    or "unknown" when it is not running from one (installed, or frozen)."""
     import tomllib
     from pathlib import Path
 
     candidate = Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
     try:
-        return tomllib.loads(candidate.read_text())["project"]["version"]
+        project = tomllib.loads(candidate.read_text())["project"]
+        if project.get("name") == "afterglow":
+            return project["version"]
     except Exception:                           # noqa: BLE001
-        return "unknown"
+        pass
+    return "unknown"
 
 
 __version__ = _resolve_version()

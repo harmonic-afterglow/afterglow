@@ -22,6 +22,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   them in turn, which Afterglow now writes as Logitech does - worked out from the Harmony
   800's firmware and matched against every RC5/RC6 command in Logitech-made One
   configurations.
+- **Run from source, Afterglow named the wrong version** - 0.2.0 on 0.3.0 - when an
+  older editable install was in the environment, and `python afterglow.py --version`
+  opened the window instead of answering. The checkout's own version wins now, and every
+  command-line flag works however Afterglow is started.
 - **The PlayStation 3's Stop now waits as Logitech meant it to** on the Harmony One and
   1100. Logitech's PS3 adapter protocol ends Stop with 6 seconds of nothing, so the
   remote sends nothing else until the console has stopped; a 900 does that, and the One
