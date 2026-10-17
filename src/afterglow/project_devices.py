@@ -282,4 +282,23 @@ def normalise_project(project: dict) -> dict:
         migrated.append(clean(device) if is_portable(device)
                         else backend.migrate_legacy_device(device))
     project["devices"] = migrated
+    _promote_native_signals(migrated)
     return project
+
+
+def _promote_native_signals(devices: list[dict]) -> None:
+    """Native-only commands become portable protocols where their backend can convert them.
+
+    Every installed backend is offered every device, whatever the project's remote: a
+    device keeps its native evidence however often it moves between remotes, and each
+    backend converts only its own (`promote_native_signals`, optional).
+    """
+    from . import backends
+    for name in backends.installed():
+        try:
+            promote = getattr(backends.get(name), "promote_native_signals", None)
+        except (LookupError, TypeError):
+            continue
+        if promote is not None:
+            for device in devices:
+                promote(device)

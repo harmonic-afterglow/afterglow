@@ -273,44 +273,12 @@ def _segment(pulses, silence_ms: int = 0) -> list[int]:
         + list(SEGMENT_END)
 
 
-def _opaque_as_protocol(signal: dict) -> tuple[dict, dict]:
-    """A native Code with its protocol program, as a portable signal and its library.
-
-    A 900 configuration's command is a Code for one of its own IrProto programs. The
-    import makes most of them portable, but keeps a Code native ("backend-opaque") when
-    the program's semantic decoder declines it and the block was not promoted - RC5/RC6
-    blocks with a declared toggle bit are not, so a 900 rebuild keeps that declaration.
-    Xbox 360 and Media Center codes are RC6 with fields the RC6-MCE decoder does not
-    accept. A 900 plays such a Code as it is; an 1100 needs the pulses, so the program
-    is promoted here, the same proved conversion the import uses (`native_portable`
-    runs both through the carrier VM, toggle bit included), and rendered from that.
-    """
-    from . import NAME, native_portable
-    from ... import ir_signal
-    native = (signal.get("native") or {}).get(NAME) or {}
-    definition, code = native.get("protocol_definition"), native.get("code")
-    if native.get("format") != "command-code" or not definition or not code:
-        raise ValueError(f"a {signal['kind']} signal has nothing to play back")
-    try:
-        promotion = native_portable.promote(definition, [code])
-    except native_portable.PromotionError as exc:
-        raise ValueError(f"its native protocol cannot be converted: {exc}") from exc
-    portable = promotion.definition
-    return (ir_signal.protocol_signal(
-        portable["id"], {}, name=signal.get("name", ""),
-        transmission=promotion.transmissions[native_portable.code_key(code)],
-        provenance={"kind": "structural-native-import", "backend": NAME}),
-        {portable["id"]: portable})
-
-
 def _renders(signal: dict, library) -> tuple[int, list[tuple[list[int], list[int]]]]:
     """(carrier Hz, [(press pulses, hold pulses) per toggle state])."""
     from ... import ir_protocol
     if signal["kind"] == "waveform":
         pulses = list(signal["pulses_us"])
         return int(signal.get("carrier_hz") or 38000), [(pulses, pulses)]
-    if signal["kind"] == "backend-opaque":
-        signal, library = _opaque_as_protocol(signal)
     if signal["kind"] != "protocol":
         raise ValueError(f"a {signal['kind']} signal has nothing to play back")
     variants, state, carrier = [], None, 38000

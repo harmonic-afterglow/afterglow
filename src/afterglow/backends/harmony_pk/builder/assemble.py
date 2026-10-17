@@ -122,6 +122,54 @@ def _repair_scaffold_line_endings(work) -> None:
               f"the scaffold is affected - see .gitattributes.")
 
 
+def _block_definitions(specs) -> dict:
+    """The native block definitions the devices carry, one per block id.
+
+    Two devices may reach one block through different protocols: NEC1 and extended NEC
+    emit the same program and differ only in how a Code frames the address, so the block
+    is one block. What has to agree is the program, not the name it was emitted under -
+    comparing names refused an owner's configuration whose TV spoke NEC1 and whose
+    receiver spoke extended NEC.
+    """
+    def _program(definition):
+        return {key: value for key, value in definition.items() if key != "name"}
+
+    definitions = {}
+    for spec in specs:
+        for block_id, definition in (spec.get("protocol_definitions") or {}).items():
+            existing = definitions.get(block_id)
+            if existing is not None and _program(existing) != _program(definition):
+                raise ValueError(
+                    f"Devices carry conflicting definitions for protocol block {block_id}")
+            definitions[block_id] = definition
+    return definitions
+
+
+def _toggle_declarations(payload: bytes) -> dict[int, str]:
+    """`<Protocols>` entries for the blocks of `payload` that toggle, by block index.
+
+    Logitech's configurations declare an RC5/RC6 toggle bit twice: in the program (an
+    element's toggle position, which the carrier VM and `native_portable` read) and in
+    `<Protocols>` as `ToggleBit1`. Every declaration in the available configurations -
+    RC6 at 14, two RC5 variants at 1 - equals its block's own position, so the XML is
+    derived from the program. Only the single-element shape those show is written; a
+    block with several elements has no example to follow and is left undeclared.
+    """
+    from .. import native_portable, protocol_json
+    declarations = {}
+    blocks, starts = irproto.parse_proto(payload)
+    for index, (block, start) in enumerate(zip(blocks, starts)):
+        try:
+            definition = protocol_json.extract_definition(block, payload, start)
+            _native, elements = native_portable._element_table(definition)
+        except ValueError:
+            continue
+        if len(elements) == 1 and elements[0].get("toggle_at") is not None:
+            declarations[index] = (f'<CodeSequence index="0"><ToggleBit1>'
+                                   f'{elements[0]["toggle_at"]}</ToggleBit1></CodeSequence>')
+    return declarations
+
+
 def build(specs, work, request: BuildRequest | None = None):
     """Build a complete config tree from device specs and activities."""
     request = request or BuildRequest()
@@ -167,10 +215,16 @@ def build(specs, work, request: BuildRequest | None = None):
                     spec["raw_codes"][name] = new
         protocols.validate(specs)
         block_order = protocols.resolve(specs)
-        # Per-protocol metadata (toggle bits) re-emitted at whatever index each block
-        # landed at this time round. Carried by id, written by position.
+        proto_payload = irproto.assemble(block_order, _block_definitions(specs))
+        # Per-protocol metadata (toggle bits) at whatever index each block landed at this
+        # time round, carried by id and written by position. A block nothing was carried
+        # for - a toggle protocol added from a database, or moved from another project -
+        # gets its declaration from its own program, which is where an imported one
+        # came from in the first place.
+        derived = _toggle_declarations(proto_payload)
         protocol_meta = {block_id: (protocol_meta_by_id or {}).get(block_id)
-                         for block_id in block_order}
+                         or derived.get(index)
+                         for index, block_id in enumerate(block_order)}
         protocol_entries = "".join(
             f'<Protocol index="{index}">{inner}</Protocol>'
             for index, (block_id, inner) in enumerate(protocol_meta.items()) if inner)
@@ -326,27 +380,10 @@ def build(specs, work, request: BuildRequest | None = None):
               "w", encoding="utf-8") as f:
         f.write(actionlists_xml)
 
-    # Assemble the final IrProto.bin from the ordered library blocks the devices actually use
-    # (each generated at the position it lands in, so there is no relocation step).
+    # The IrProto.bin assembled above from the ordered library blocks the devices actually
+    # use (each generated at the position it lands in, so there is no relocation step).
     total = sum(len(s["commands"]) for s in specs)
-    # Two devices may reach one block through different protocols: NEC1 and extended
-    # NEC emit the same program and differ only in how a Code frames the address, so the
-    # block is one block. What has to agree is the program, not the name it was emitted
-    # under - comparing names refused an owner's configuration whose TV spoke NEC1 and
-    # whose receiver spoke extended NEC.
-    def _program(definition):
-        return {key: value for key, value in definition.items() if key != "name"}
-
-    definitions = {}
-    for spec in specs:
-        for block_id, definition in (spec.get("protocol_definitions") or {}).items():
-            existing = definitions.get(block_id)
-            if existing is not None and _program(existing) != _program(definition):
-                raise ValueError(
-                    f"Devices carry conflicting definitions for protocol block {block_id}")
-            definitions[block_id] = definition
-    irproto.write_payload(os.path.join(work, "userconfig", "IrProto.bin"),
-                          irproto.assemble(block_order, definitions))
+    irproto.write_payload(os.path.join(work, "userconfig", "IrProto.bin"), proto_payload)
     ssir.write(os.path.join(work, "userconfig", "SsIr.bin"), raw_entries)
     print(f"built {len(specs)} device(s), {total} commands, {len(block_order)} protocol block(s) "
           f"[{', '.join(block_order)}] -> {work}/")
