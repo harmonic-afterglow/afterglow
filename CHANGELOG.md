@@ -10,8 +10,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **A Harmony 1100 build stopped at Xbox 360 and Media Center devices** brought over
   from a Harmony 900, with "a backend-opaque signal has nothing to play back" for every
-  command. Their RC6 commands came in as the 900's own codes, which the 900 plays but the
-  1100 cannot. The 1100 build now converts them, toggle bit and all.
+  command. Importing a 900 kept every RC5 and RC6 command - those with a toggle bit, so
+  the device can tell a second press from a held key - in the 900's own code, which only
+  a 900 can play. They are now imported as portable protocols like every other command,
+  toggle bit included, and projects saved before are converted when they are opened. A
+  rebuild for the 900 is unchanged: the same protocol programs, the same codes on air,
+  and the same toggle declarations, now written from each protocol itself.
 
 ## [0.3.0-beta.4] - 2026-10-16
 

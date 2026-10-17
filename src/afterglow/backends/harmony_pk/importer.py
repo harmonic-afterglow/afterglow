@@ -405,8 +405,15 @@ class _HarmonyPkImport:
         # the block supplies carrier elements while each Code supplies element order,
         # lifecycle stages and payload bits. Promote the pair once, before devices are
         # migrated. Any structural or VM-proof failure simply leaves the existing opaque
-        # import path in charge. Blocks with companion XML metadata stay native until that
-        # metadata itself has a portable representation.
+        # import path in charge.
+        #
+        # RC5/RC6 blocks are promoted too. They were once kept native "until their
+        # companion XML metadata has a portable representation" - the `<Protocols>`
+        # `ToggleBit1` - and it has one: the program declares the same toggle position,
+        # `promote` carries it as the portable `toggle` state, and a 900 build writes the
+        # XML back from the block (`builder.assemble._toggle_declarations`). Kept native,
+        # every RC6 command (Xbox, Media Center) could be rebuilt for a 900 and nothing
+        # else: the 1100 and the One need pulses, which only a portable protocol gives.
         from . import native_portable
         codes_by_block = {}
         for command in self._root.findall("Device/Commands/Command"):
@@ -423,8 +430,6 @@ class _HarmonyPkImport:
                 codes_by_block.setdefault(block_id, []).append(code)
         self._promoted_protocols = {}
         for block_id, codes in codes_by_block.items():
-            if block_id in self._protocol_meta:
-                continue
             try:
                 self._promoted_protocols[block_id] = native_portable.promote(
                     self._imported_protocols[block_id], codes)

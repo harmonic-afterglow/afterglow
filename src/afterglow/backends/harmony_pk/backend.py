@@ -259,6 +259,45 @@ def claims_legacy(spec: dict) -> bool:
     return schema in LEGACY_DEVICE_SCHEMAS or schema is None
 
 
+def promote_native_signals(device: dict) -> int:
+    """Make a portable device's native-only Codes portable, in place; how many changed.
+
+    Projects imported before RC5/RC6 blocks were promoted carry those commands as Codes
+    for the 900's own program ("backend-opaque"): playable on a 900 and nowhere else, so
+    the 1100 build stopped at every Xbox and Media Center command. The Code and its
+    program travel together in the signal, which is all `native_portable.promote` needs -
+    the same proved conversion an import runs now. A program that does not convert is
+    left as it was; its commands still rebuild for a 900.
+    """
+    from . import native_portable
+    signals = device.get("signals") or {}
+    by_block: dict[str, list[str]] = {}
+    for name, signal in signals.items():
+        native = (_native_evidence(signal) if signal.get("kind") == "backend-opaque"
+                  else {})
+        if native.get("format") == "command-code" and native.get("code") \
+                and native.get("protocol_definition"):
+            by_block.setdefault(native.get("protocol_block_id") or
+                                native["protocol_definition"].get("id", ""), []).append(name)
+    changed = 0
+    for names in by_block.values():
+        evidence = [_native_evidence(signals[name]) for name in names]
+        try:
+            promotion = native_portable.promote(evidence[0]["protocol_definition"],
+                                                [native["code"] for native in evidence])
+        except native_portable.PromotionError:
+            continue
+        definition = promotion.definition
+        for name, native in zip(names, evidence):
+            signals[name] = ir_signal.protocol_signal(
+                definition["id"], {}, name=signals[name].get("name") or name,
+                transmission=promotion.transmissions[native_portable.code_key(native["code"])],
+                provenance={"kind": "structural-native-import", "backend": NAME})
+        device.setdefault("portable_protocol_definitions", {})[definition["id"]] = definition
+        changed += len(names)
+    return changed
+
+
 def migrate_legacy_device(source: dict, *, device_id: str = "",
                           library: Path | None = None) -> dict:
     """Convert a legacy Harmony device/library record to a portable project device."""
