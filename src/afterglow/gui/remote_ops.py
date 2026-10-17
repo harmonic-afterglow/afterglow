@@ -17,6 +17,11 @@ from .. import concord, hao
 
 # A Harmony 900 in Safe Mode (and an 1100, the same firmware family) still answers on
 # USB: it can be read, and a configuration written to it is how it gets out.
+DAMAGED_CONFIG_NOTE = (
+    "The configuration on the remote is damaged or missing - most often a write that did "
+    "not finish - so there is nothing on it to read or back up. Writing a configuration "
+    "repairs it: your backup (Settings > Flash a configuration file), or a build with "
+    "Flash to Remote.")
 SAFE_MODE_NOTE = ("The remote is in Safe Mode. It can still be read, and writing a "
                   "configuration to it - Flash, or Settings › Flash a Configuration File "
                   "with a backup - is how it is brought back.")
@@ -80,6 +85,8 @@ class RemoteWorker(QThread):
                       f"(skin {identity['skin']}, firmware {identity['firmware']})")
         if identity.get("safe_mode"):
             self.log.emit(SAFE_MODE_NOTE)
+        if identity.get("config_valid") is False:
+            self.log.emit(DAMAGED_CONFIG_NOTE)
         used, total = identity["config_used"], identity["config_total"]
         # libconcord cannot learn the size of the configuration region on the usbnet
         # remotes (900, 1000, 1100) and reports 1 for it.
@@ -98,6 +105,8 @@ class RemoteWorker(QThread):
             identity = remote.identity(self._on_progress)
             if identity.get("safe_mode"):
                 self.log.emit(SAFE_MODE_NOTE)
+            if identity.get("config_valid") is False:
+                raise concord.RemoteError(DAMAGED_CONFIG_NOTE)
             self.log.emit(f"Reading from {identity['model']}...")
             size = remote.save_config(target, self._on_progress)
         self.log.emit(f"Saved {target}")
@@ -111,6 +120,12 @@ class RemoteWorker(QThread):
             identity = remote.identity(self._on_progress)
             if identity.get("safe_mode"):
                 self.log.emit(SAFE_MODE_NOTE)
+            if backup and identity.get("config_valid") is False:
+                # nothing whole to keep: the write is what repairs it
+                self.log.emit(DAMAGED_CONFIG_NOTE)
+                self.log.emit("No backup was taken: there is no whole configuration on "
+                              "the remote to save.")
+                backup = None
             if backup:
                 # Same connection, before anything is changed. No backup, no write.
                 self.log.emit(f"Saving what is on the {identity['model']} now...")
@@ -140,6 +155,8 @@ class RemoteWorker(QThread):
             identity = remote.identity(self._on_progress)
             if identity.get("safe_mode"):
                 self.log.emit(SAFE_MODE_NOTE)
+            if identity.get("config_valid") is False:
+                self.log.emit(DAMAGED_CONFIG_NOTE)
             self.log.emit(f"Writing {path.name} to {identity['model']}"
                           f"{' (forced)' if force else ''}...")
             remote.flash_file(path, self._on_progress, force=force)

@@ -170,6 +170,11 @@ class RemoteError(RuntimeError):
 
 
 LC_FILE_TYPE_CONFIGURATION = 2
+# libconcord's "The configuration present on the remote is invalid": the remote answered and
+# said who it is, but its configuration area does not start with its model's cookie - an
+# interrupted or a bad write, or none yet. Concordance itself only warns about it, since a
+# remote in that state is exactly the one that needs a configuration written.
+LC_ERROR_INVALID_CONFIG = 16
 IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
 
 
@@ -609,9 +614,14 @@ class Remote:
 
     # reading
     def identity(self, on_progress=None) -> dict:
-        """Who is attached. Also the connectivity test - it talks to the remote."""
-        self._check(self.lib.get_identity(self._callback(on_progress), None),
-                    "identifying the remote")
+        """Who is attached. Also the connectivity test - it talks to the remote.
+
+        A remote whose configuration is damaged or missing is still identified, with
+        ``config_valid`` False: it cannot be read or backed up, but it can and should be
+        written (``concordance`` does the same, with a warning)."""
+        err = self.lib.get_identity(self._callback(on_progress), None)
+        if err != LC_ERROR_INVALID_CONFIG:
+            self._check(err, "identifying the remote")
 
         def text(name):
             value = getattr(self.lib, name)()
@@ -642,6 +652,13 @@ class Remote:
             "can_read": self.lib.is_config_dump_supported() == 0,
             "can_write": self.lib.is_config_update_supported() == 0,
         }
+        used, total = identity["config_used"], identity["config_total"]
+        # a configuration said to end past the end of its area is not one: its cookie
+        # survived and the rest did not (a Harmony 650 reported 16,580,406 bytes)
+        identity["config_valid"] = (err != LC_ERROR_INVALID_CONFIG
+                                    and not (total > 1 and used > total))
+        if not identity["config_valid"]:
+            identity["config_used"] = 0
         identity["safe_mode"] = _in_safe_mode(identity)
         identity["model"] = _model_name(identity)
         return identity
