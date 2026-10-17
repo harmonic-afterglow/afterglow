@@ -40,11 +40,18 @@ def place_commands(layout, devices) -> list[list[int]]:
         for command in device["commands"]:
             phases = {phase: place(out, body)
                       for phase, body in sorted(command["phases"].items())}
-            record = place(out, bytes(records.PREFIX_SIZE + 20))
-            out[record:record + 25] = records.command_record(
+            # A toggling command's other state: a second set, sent on every other press.
+            others = {phase: place(out, body)
+                      for phase, body in sorted((command.get("alternate_phases")
+                                                 or {}).items())}
+            alternate = ((others["press"], others.get("hold"), others.get("release"))
+                         if others else None)
+            size = records.record_size(alternate is not None)
+            record = place(out, bytes(size))
+            out[record:record + size] = records.command_record(
                 record, phases["press"], phases.get("hold"),
                 command["carrier_period_ns"], command["carrier_half_period_ns"],
-                release_offset=phases.get("release"))
+                release_offset=phases.get("release"), alternate=alternate)
             placed.append(record)
         placed_devices.append(placed)
     return placed_devices

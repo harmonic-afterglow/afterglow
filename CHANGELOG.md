@@ -16,6 +16,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   toggle bit included, and projects saved before are converted when they are opened. A
   rebuild for the 900 is unchanged: the same protocol programs, the same codes on air,
   and the same toggle declarations, now written from each protocol itself.
+- **The Harmony One refused Xbox, Media Center and other RC5/RC6 devices** ("protocol has
+  sender state; Harmony One state selection is not yet mapped"). These devices need a bit
+  that changes between presses. The One stores both versions of each such command and sends
+  them in turn, which Afterglow now writes as Logitech does - worked out from the Harmony
+  800's firmware and matched against every RC5/RC6 command in Logitech-made One
+  configurations.
 
 ## [0.3.0-beta.4] - 2026-10-16
 
