@@ -274,3 +274,50 @@ def test_the_alternate_must_be_a_recording():
                                                     "carrier_hz": 1}})
     with pytest.raises(ValueError, match="non-empty"):
         ir_signal.validate({**signal, "alternate": {"pulses_us": []}})
+
+
+def _stop_spacer(tmp_path):
+    """Logitech's PS3 adapter protocol, cut down: a frame, and Stop's Finish - 6 s of
+    nothing (`Logitech 24 Bit KeyCodeStopSpacer`), which keeps a 900's IR busy that long
+    after the key is let go."""
+    definition = {
+        "schema": ir_protocol.SCHEMA,
+        "id": "test-stop-spacer",
+        "modulation": {"kind": "carrier", "carrier_hz": 38_000},
+        "parameters": {},
+        "bursts": {"key": [4000, -4500, 400, -50_000], "spacer": [-6_000_000]},
+        "alphabets": {},
+        "frames": {
+            "key": {"segments": [{"burst": "key"}]},
+            "spacer": {"segments": [{"burst": "spacer"}]},
+        },
+        "transmission": {
+            "press": [{"frame": "key"}],
+            "hold": [{"frame": "key"}],
+            "release": [{"frame": "spacer"}],
+        },
+    }
+    (tmp_path / "test-stop-spacer.json").write_text(json.dumps(definition))
+    return ir_signal.protocol_signal("test-stop-spacer", {})
+
+
+def _seconds(body: bytes) -> float:
+    return sum(word & 0x7FFF for word in words(body)) / 1e6
+
+
+def test_a_silent_release_is_a_wait_at_the_end_of_the_press(tmp_path):
+    lowered = ir_lowering.lower(_stop_spacer(tmp_path), library=tmp_path)
+
+    assert lowered.release_waveform is None, "a One release has to begin with a mark"
+    # 50 ms lead-in, the frame, its 50 ms gap and the 6 s wait - as a tap on a 900.
+    assert round(_seconds(lowered.press_waveform), 3) == round(
+        0.050 + (4000 + 4500 + 400 + 50_000 + 6_000_000) / 1e6, 3)
+    assert round(_seconds(lowered.hold_waveform), 3) == 0.059, "held, it repeats as ever"
+
+
+def test_a_held_command_still_ends_with_the_wait(tmp_path):
+    lowered = ir_lowering.lower(_stop_spacer(tmp_path), library=tmp_path, held_ms=500)
+
+    assert lowered.release_waveform is None
+    assert _seconds(lowered.press_waveform) > 6.5
+    assert words(lowered.press_waveform)[-3:-2] != [0x8000 | 400], "it ends on the wait"

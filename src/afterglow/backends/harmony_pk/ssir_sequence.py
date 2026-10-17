@@ -290,9 +290,16 @@ def _renders(signal: dict, library) -> tuple[int, list[tuple[list[int], list[int
                                                        library=library)
         hold, _ignored = ir_protocol.render_transmission(signal, phase="hold",
                                                          state=after, library=library)
+        release, _ignored = ir_protocol.render_transmission(signal, phase="release",
+                                                            state=after, library=library)
         carrier = press["carrier_hz"] if press else carrier
         pair = (press["pulses_us"] if press else [],
                 hold["pulses_us"] if hold else [])
+        if release and not any(pulse > 0 for pulse in release["pulses_us"]):
+            # A release that is only silence is a wait after the command (Logitech's PS3
+            # adapter: 6 s after Stop). The 1100 stores no release, so the press ends
+            # with it, as a tap on a 900 does.
+            pair = (list(pair[0]) + list(release["pulses_us"]), pair[1])
         if variants and pair == variants[0]:
             break                                   # the toggle state has cycled back
         variants.append(pair)
