@@ -27,6 +27,10 @@ class LoweredSignal:
     press_waveform: bytes
     hold_waveform: bytes | None
     release_waveform: bytes | None
+    # A toggling protocol's other state, (press, hold, release): written as the record's
+    # second pointer set, which the remote sends on every other press (see
+    # `records.command_record`). None for a command that does not toggle.
+    alternate: tuple[bytes, bytes | None, bytes | None] | None = None
 
 
 def split_space(duration_us: int) -> list[int]:
@@ -178,47 +182,76 @@ def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US,
         carrier = signal.get("carrier_hz")
         if carrier is None:
             raise ValueError("Harmony 800 cannot lower a waveform without a carrier")
-        press_pulses, hold_pulses, release_pulses = _waveform_phases(signal)
+        # Itself, and for a toggling command read from a One its other recording.
+        phases = [_waveform_phases(recording) for recording in ir_signal.recordings(signal)]
     else:
         definition = ir_protocol.protocol(signal["protocol"], library)
-        if definition.get("state"):
+        state = definition.get("state") or {}
+        if any(entry.get("kind") != "toggle" or entry.get("advance", "press") != "press"
+               for entry in state.values()):
             raise ValueError(
-                f"protocol {signal['protocol']!r} has sender state; Harmony 800 state "
-                "selection is not yet mapped")
+                f"protocol {signal['protocol']!r} keeps sender state other than a toggle "
+                "that changes with each press; a Harmony 800 record cannot follow it")
         modulation = definition["modulation"]
         if modulation["kind"] != "carrier":
             raise ValueError(
                 f"protocol {signal['protocol']!r} is unmodulated; Harmony 800 command "
                 "records require a measured carrier")
         carrier = modulation["carrier_hz"]
-        press, state = ir_protocol.render_transmission(
-            signal, phase="press", library=library)
-        hold, state = ir_protocol.render_transmission(
-            signal, phase="hold", state=state, library=library)
-        release, _state = ir_protocol.render_transmission(
-            signal, phase="release", state=state, library=library)
-        if press is None:
-            raise ValueError(f"protocol {signal['protocol']!r} has an empty press phase")
-        press_pulses = list(press["pulses_us"])
-        hold_pulses = list(hold["pulses_us"]) if hold is not None else None
-        release_pulses = list(release["pulses_us"]) if release is not None else None
-        minimum = ir_protocol.hold_minimum(definition, signal.get("transmission"))
-        if minimum and hold_pulses is None:
-            raise ValueError(
-                f"protocol {signal['protocol']!r} requires hold frames but has none")
-        for _ in range(minimum):
-            press_pulses.extend(hold_pulses or [])
+        first, after = _protocol_phases(signal, definition, None, library)
+        phases = [first]
+        if state:
+            # The remote alternates between the record's two sets, starting with the
+            # first: the protocol's first press, then the press after it.
+            phases.append(_protocol_phases(signal, definition, after, library)[0])
 
-    if held_ms is not None:
-        press_pulses = held(press_pulses, hold_pulses, release_pulses, held_ms)
-        hold_pulses = release_pulses = None
+    encoded = []
+    for press_pulses, hold_pulses, release_pulses in phases:
+        if held_ms is not None:
+            press_pulses = held(press_pulses, hold_pulses, release_pulses, held_ms)
+            hold_pulses = release_pulses = None
+        elif release_pulses and not any(pulse > 0 for pulse in release_pulses):
+            # A release that is only silence is a wait after the command: Logitech's
+            # PS3 adapter protocol ends Stop with 6 s of it (`KeyCodeStopSpacer`, its
+            # Finish), which keeps a 900's IR busy that long after the key is let go. An
+            # 800 release waveform has to begin with a mark, so the wait ends the press
+            # instead: a tap behaves as on the 900, and a held Stop repeats after it.
+            press_pulses = list(press_pulses) + list(release_pulses)
+            release_pulses = None
+        encoded.append((
+            encode_waveform(press_pulses, entry_us=entry_us),
+            encode_waveform(hold_pulses, entry_us=None) if hold_pulses is not None else None,
+            encode_release_waveform(release_pulses) if release_pulses is not None else None,
+        ))
     period, half = carrier_fields(carrier)
+    (press, hold, release), *others = encoded
     return LoweredSignal(
         carrier_period_ns=period,
         carrier_half_period_ns=half,
-        press_waveform=encode_waveform(press_pulses, entry_us=entry_us),
-        hold_waveform=(encode_waveform(hold_pulses, entry_us=None)
-                       if hold_pulses is not None else None),
-        release_waveform=(encode_release_waveform(release_pulses)
-                          if release_pulses is not None else None),
+        press_waveform=press,
+        hold_waveform=hold,
+        release_waveform=release,
+        alternate=others[0] if others else None,
     )
+
+
+def _protocol_phases(signal: dict, definition: dict, state, library):
+    """((press, hold, release) pulses, the state after) for one press of `signal`."""
+    press, state = ir_protocol.render_transmission(
+        signal, phase="press", state=state, library=library)
+    hold, state = ir_protocol.render_transmission(
+        signal, phase="hold", state=state, library=library)
+    release, state = ir_protocol.render_transmission(
+        signal, phase="release", state=state, library=library)
+    if press is None:
+        raise ValueError(f"protocol {signal['protocol']!r} has an empty press phase")
+    press_pulses = list(press["pulses_us"])
+    hold_pulses = list(hold["pulses_us"]) if hold is not None else None
+    release_pulses = list(release["pulses_us"]) if release is not None else None
+    minimum = ir_protocol.hold_minimum(definition, signal.get("transmission"))
+    if minimum and hold_pulses is None:
+        raise ValueError(
+            f"protocol {signal['protocol']!r} requires hold frames but has none")
+    for _ in range(minimum):
+        press_pulses.extend(hold_pulses or [])
+    return (press_pulses, hold_pulses, release_pulses), state

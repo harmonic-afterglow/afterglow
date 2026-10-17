@@ -202,6 +202,9 @@ def _record(payload: bytes, offset: int) -> dict:
     if waveform_mode not in (1, 2):
         raise ValueError(
             f"command record {offset:#x} has unsupported waveform mode {waveform_mode}")
+    # Mode 2 is a toggling (RC5/RC6) command: a second set of three pointers follows,
+    # which the remote sends on every other press (records.command_record). Every one in
+    # Logitech's images has it; one without is read as the single set it is.
     pointers = [_u24(payload, offset + field) for field in (16, 19, 22)]
     if not pointers[0]:
         raise ValueError(f"command record {offset:#x} has no press waveform")
@@ -221,6 +224,20 @@ def _record(payload: bytes, offset: int) -> dict:
             raise ValueError(
                 f"command record {offset:#x} release pointer falls outside the image")
         waveforms["release"] = _decode_release_waveform(payload, release_offset)
+    alternate = {}
+    second = ([_u24(payload, offset + field) for field in (25, 28, 31)]
+              if waveform_mode == 2 and offset + 34 <= len(payload) else [0, 0, 0])
+    if second[0] and 0 <= second[0] - gspm.BASE < len(payload):
+        try:
+            for index, (name, absolute) in enumerate(zip(names, second[:2])):
+                if absolute:
+                    alternate[name] = _decode_waveform(
+                        payload, absolute - gspm.BASE, press=index == 0)
+            if second[2]:
+                alternate["release"] = _decode_release_waveform(
+                    payload, second[2] - gspm.BASE)
+        except ValueError:
+            alternate = {}          # not a second set after all; the first still stands
     return {
         "record_offset": offset,
         "record_prefix": payload[offset:offset + 5].hex(),
@@ -229,6 +246,7 @@ def _record(payload: bytes, offset: int) -> dict:
         "carrier_hz": _carrier_hz(period),
         "waveform_mode": waveform_mode,
         "waveforms": waveforms,
+        **({"alternate_waveforms": alternate} if alternate else {}),
     }
 
 
@@ -319,6 +337,19 @@ def inspect(payload: bytes) -> dict:
     }
 
 
+def _recording(waves: dict) -> tuple[list[int], dict | None]:
+    """A record's (press, hold, release) waveforms as one recording and its sections."""
+    pulses = list(waves["press"]["pulses_us"])
+    if "hold" not in waves and "release" not in waves:
+        return pulses, None
+    hold_pulses = waves.get("hold", {}).get("pulses_us", [])
+    release_pulses = waves.get("release", {}).get("pulses_us", [])
+    sections = {"intro_pulses": len(pulses), "repeat_pulses": len(hold_pulses)}
+    if release_pulses:
+        sections["release_pulses"] = len(release_pulses)
+    return pulses + hold_pulses + release_pulses, sections
+
+
 def portable_devices(
         report: dict, key_report: dict | None = None, menu_report: dict | None = None,
 ) -> list[dict]:
@@ -352,24 +383,21 @@ def portable_devices(
             key_bindings = bindings_by_command.get(native["command_id"])
             if key_bindings:
                 evidence["key_bindings"] = key_bindings
-            pulses = list(waves["press"]["pulses_us"])
-            sections = None
-            if "hold" in waves or "release" in waves:
-                hold_pulses = waves.get("hold", {}).get("pulses_us", [])
-                release_pulses = waves.get("release", {}).get("pulses_us", [])
-                pulses += hold_pulses
-                pulses += release_pulses
-                sections = {
-                    "intro_pulses": len(waves["press"]["pulses_us"]),
-                    "repeat_pulses": len(hold_pulses),
-                }
-                if release_pulses:
-                    sections["release_pulses"] = len(release_pulses)
+            pulses, sections = _recording(waves)
+            # A toggling command's other state, sent on every other press.
+            others = native.get("alternate_waveforms")
+            alternate = None
+            if others and "press" in others:
+                other_pulses, other_sections = _recording(others)
+                alternate = {"pulses_us": other_pulses, "sections": other_sections}
+                evidence["alternate_waveform_offsets"] = {
+                    phase: waveform["offset"] for phase, waveform in others.items()}
             signals[name] = ir_signal.waveform(
                 pulses,
                 name=name,
                 carrier_hz=native["carrier_hz"],
                 sections=sections,
+                alternate=alternate,
                 provenance={"kind": "structural-native-import", "backend": "harmony-one"},
                 native={"harmony-one": evidence},
             )

@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **The Harmony 800, as an experimental remote.** Logitech never sold it; Afterglow builds
+  its configurations from a prototype's firmware and factory files, and a tester's
+  remote runs them: activities, devices, the keypad, Options, sleep and wake, key lights
+  and charging. Its configuration file is the one Concordance reads and writes, and
+  Afterglow reads it back as the project it was built from. Xbox, Media Center and other
+  RC5/RC6 devices work as on the One. The battery icon uses the One's levels: the
+  prototype's own showed full only above 4.20 V, which a charged battery never reaches.
+  The keyboard, the touchpad and IR learning are not supported yet.
+
 ### Fixed
 
 - **A Harmony 1100 build stopped at Xbox 360 and Media Center devices** brought over

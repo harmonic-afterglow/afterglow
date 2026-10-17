@@ -91,6 +91,25 @@ as the firmware reads it:
 Section 4's opening bytes are the same bytes the One's notes read as a "key table": read as the
 800 firmware reads them, they map firmware message ids (`FUN_080138bc(id)`) to screens.
 
+## Battery levels
+
+The firmware's battery level (variable 9, 0-7) is the battery's voltage looked up in two of
+section 16's property tables: table 6 on battery, table 7 on the cradle (`FUN_0800f398`, which
+reads them through `FUN_080149d4`). Each holds sixteen `u16` millivolt values, eight
+(lower, upper) pairs: above a pair's upper value the level passes it, between the two it stays
+where it was. The voltage is the ADC's reading times a factor from `/sys/battery`
+(`FUN_0800f238`, `FUN_0800f63e`); on a unit whose record is blank (0xFF) the firmware uses
+1 + 0x9C80/65536, the nominal 3.3 V reference over a halving divider. Tables missing from the
+configuration fall back to a copy in the firmware.
+
+The factory configuration's tables, and the firmware's copy, are one evenly spaced table for
+both: 3.70 V to 4.20 V, full above 4.20 V. A charged battery settles below that (tester's
+unit: 4.13 V asleep, 3.96 V with the screen on), so the remote never shows full, and level 2 -
+where the configuration warns of a low battery - begins near half charge. Afterglow writes the
+Harmony One's tables instead, Logitech's curve for the same kind of cell: on battery
+3.00-4.05 V, on the cradle full above 4.17 V. The level itself was measured correct: the
+tester's 4.13 V read as level 6, as the factory table says.
+
 ## Lists
 
 A screen's handler list, its key register and a context are lists, searched by
