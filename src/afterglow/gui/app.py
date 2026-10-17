@@ -340,8 +340,9 @@ class MainWindow(QMainWindow):
         """Show the project saved at `path`. Raises if it cannot be read; on failure the
         window is left on an empty project rather than half of a broken one."""
         from .. import project_devices
-        data = project_devices.normalise_project(
-            drop_retired_fields(json.loads(Path(path).read_text(encoding="utf-8"))))
+        raw = drop_retired_fields(json.loads(Path(path).read_text(encoding="utf-8")))
+        native = project_devices.native_only(raw)
+        data = project_devices.normalise_project(raw)
         try:
             self.project.clear()
             self.project.update(data)
@@ -356,6 +357,15 @@ class MainWindow(QMainWindow):
             self._reload_tabs()
             raise
         _remember_project(self._project_path)
+        converted = native - project_devices.native_only(self.project)
+        if converted > 0:
+            # Commands kept in a remote's own code (an older Afterglow left RC5/RC6 that
+            # way) were made portable on reading; keep that, so the file says what the
+            # window does. The save backs the old file up first, as every save does.
+            self._write_project(path)
+            self.status.showMessage(
+                f"Converted {converted} command(s) to portable protocols, so they work on "
+                f"every remote. Saved; the previous version is in Backups.", 15000)
 
     def reopen_last_project(self) -> bool:
         """Open the project worked on last time. Never raises: a project that was moved,

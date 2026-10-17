@@ -286,6 +286,15 @@ def normalise_project(project: dict) -> dict:
     return project
 
 
+def native_only(project: dict) -> int:
+    """How many commands in a project are a remote's native code ("backend-opaque") -
+    playable only on the remote they were read from."""
+    return sum(signal.get("kind") == "backend-opaque"
+               for device in project.get("devices") or []
+               for signal in (device.get("signals") or {}).values()
+               if isinstance(signal, dict))
+
+
 def _promote_native_signals(devices: list[dict]) -> None:
     """Native-only commands become portable protocols where their backend can convert them.
 

@@ -337,6 +337,19 @@ def inspect(payload: bytes) -> dict:
     }
 
 
+def _recording(waves: dict) -> tuple[list[int], dict | None]:
+    """A record's (press, hold, release) waveforms as one recording and its sections."""
+    pulses = list(waves["press"]["pulses_us"])
+    if "hold" not in waves and "release" not in waves:
+        return pulses, None
+    hold_pulses = waves.get("hold", {}).get("pulses_us", [])
+    release_pulses = waves.get("release", {}).get("pulses_us", [])
+    sections = {"intro_pulses": len(pulses), "repeat_pulses": len(hold_pulses)}
+    if release_pulses:
+        sections["release_pulses"] = len(release_pulses)
+    return pulses + hold_pulses + release_pulses, sections
+
+
 def portable_devices(
         report: dict, key_report: dict | None = None, menu_report: dict | None = None,
 ) -> list[dict]:
@@ -370,24 +383,21 @@ def portable_devices(
             key_bindings = bindings_by_command.get(native["command_id"])
             if key_bindings:
                 evidence["key_bindings"] = key_bindings
-            pulses = list(waves["press"]["pulses_us"])
-            sections = None
-            if "hold" in waves or "release" in waves:
-                hold_pulses = waves.get("hold", {}).get("pulses_us", [])
-                release_pulses = waves.get("release", {}).get("pulses_us", [])
-                pulses += hold_pulses
-                pulses += release_pulses
-                sections = {
-                    "intro_pulses": len(waves["press"]["pulses_us"]),
-                    "repeat_pulses": len(hold_pulses),
-                }
-                if release_pulses:
-                    sections["release_pulses"] = len(release_pulses)
+            pulses, sections = _recording(waves)
+            # A toggling command's other state, sent on every other press.
+            others = native.get("alternate_waveforms")
+            alternate = None
+            if others and "press" in others:
+                other_pulses, other_sections = _recording(others)
+                alternate = {"pulses_us": other_pulses, "sections": other_sections}
+                evidence["alternate_waveform_offsets"] = {
+                    phase: waveform["offset"] for phase, waveform in others.items()}
             signals[name] = ir_signal.waveform(
                 pulses,
                 name=name,
                 carrier_hz=native["carrier_hz"],
                 sections=sections,
+                alternate=alternate,
                 provenance={"kind": "structural-native-import", "backend": "harmony-one"},
                 native={"harmony-one": evidence},
             )

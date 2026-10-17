@@ -176,10 +176,11 @@ def test_external_afterglow_database_carries_a_dumped_native_protocol_into_a_bui
     output = build({"devices": [spec], "activities": [], "settings": {}})
 
     assert output.is_file()
+    # The dumped program travels with the command and is converted on reading, as every
+    # native Code with its program is: the device is portable, so other remotes play it.
     signal = spec["signals"]["PowerToggle"]
-    assert signal["kind"] == "backend-opaque"
-    assert signal["native"]["harmony-pk"]["protocol_definition"]["id"] == \
-        "123456789abc"
+    assert signal["kind"] == "protocol"
+    assert signal["protocol"] in spec["portable_protocol_definitions"]
     assert "protocol_definitions" not in spec
 
 

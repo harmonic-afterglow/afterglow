@@ -86,3 +86,39 @@ def test_a_900_build_declares_the_toggle_bit_from_the_block():
     payload = irproto.assemble(["6bd42e0eea79"], {"6bd42e0eea79": RC6_BLOCK})
     assert assemble._toggle_declarations(payload) == {
         0: '<CodeSequence index="0"><ToggleBit1>14</ToggleBit1></CodeSequence>'}
+
+
+def test_the_1100_plays_a_ones_two_recordings_in_turn():
+    signal = ir_signal.waveform([2632, -900, 441, -40000], carrier_hz=36200,
+                                alternate={"pulses_us": [2632, -900, 882, -39559]})
+    _carrier, variants = ssir_sequence._renders(signal, None)
+    assert [press for press, _hold in variants] == [[2632, -900, 441, -40000],
+                                                    [2632, -900, 882, -39559]]
+
+
+def test_opening_a_project_saves_it_converted_and_keeps_the_old_one(
+        qapp_or_skip, tmp_path, monkeypatch):
+    """At launch the last project is reopened through the same path: a project saved with
+    native-only commands is rewritten with portable ones, the old file in Backups."""
+    from afterglow import project_backups
+    from afterglow.qt.QtCore import QSettings
+    from afterglow.gui import app
+    monkeypatch.setattr(project_backups.paths, "user_folder",
+                        lambda kind: tmp_path / "Backups" if kind == "backups" else tmp_path)
+    QSettings("Afterglow", "Afterglow").remove(app.LAST_PROJECT_KEY)
+    window = app.MainWindow()
+    window._write_project(tmp_path / "living-room.json")
+    saved = json.loads((tmp_path / "living-room.json").read_text())
+    saved["settings"]["remote"] = "harmony-1100"
+    saved["devices"] = [_device(OK=_native(XBOX_360_OK))]
+    (tmp_path / "living-room.json").write_text(json.dumps(saved))
+    try:
+        window._load_project_file(tmp_path / "living-room.json")
+        on_disk = json.loads((tmp_path / "living-room.json").read_text())
+        assert on_disk["devices"][0]["signals"]["OK"]["kind"] == "protocol"
+        (earlier,) = [path for path in project_backups.history(tmp_path / "living-room.json")
+                      if "backend-opaque" in path.read_text()]
+        assert earlier.exists()
+        assert "Converted 1 command" in window.status.currentMessage()
+    finally:
+        QSettings("Afterglow", "Afterglow").remove(app.LAST_PROJECT_KEY)

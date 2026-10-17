@@ -182,7 +182,8 @@ def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US,
         carrier = signal.get("carrier_hz")
         if carrier is None:
             raise ValueError("Harmony One cannot lower a waveform without a carrier")
-        phases = [_waveform_phases(signal)]
+        # Itself, and for a toggling command read from a One its other recording.
+        phases = [_waveform_phases(recording) for recording in ir_signal.recordings(signal)]
     else:
         definition = ir_protocol.protocol(signal["protocol"], library)
         state = definition.get("state") or {}
