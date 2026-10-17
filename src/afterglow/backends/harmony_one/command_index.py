@@ -202,6 +202,9 @@ def _record(payload: bytes, offset: int) -> dict:
     if waveform_mode not in (1, 2):
         raise ValueError(
             f"command record {offset:#x} has unsupported waveform mode {waveform_mode}")
+    # Mode 2 is a toggling (RC5/RC6) command: a second set of three pointers follows,
+    # which the remote sends on every other press (records.command_record). Every one in
+    # Logitech's images has it; one without is read as the single set it is.
     pointers = [_u24(payload, offset + field) for field in (16, 19, 22)]
     if not pointers[0]:
         raise ValueError(f"command record {offset:#x} has no press waveform")
@@ -221,6 +224,20 @@ def _record(payload: bytes, offset: int) -> dict:
             raise ValueError(
                 f"command record {offset:#x} release pointer falls outside the image")
         waveforms["release"] = _decode_release_waveform(payload, release_offset)
+    alternate = {}
+    second = ([_u24(payload, offset + field) for field in (25, 28, 31)]
+              if waveform_mode == 2 and offset + 34 <= len(payload) else [0, 0, 0])
+    if second[0] and 0 <= second[0] - gspm.BASE < len(payload):
+        try:
+            for index, (name, absolute) in enumerate(zip(names, second[:2])):
+                if absolute:
+                    alternate[name] = _decode_waveform(
+                        payload, absolute - gspm.BASE, press=index == 0)
+            if second[2]:
+                alternate["release"] = _decode_release_waveform(
+                    payload, second[2] - gspm.BASE)
+        except ValueError:
+            alternate = {}          # not a second set after all; the first still stands
     return {
         "record_offset": offset,
         "record_prefix": payload[offset:offset + 5].hex(),
@@ -229,6 +246,7 @@ def _record(payload: bytes, offset: int) -> dict:
         "carrier_hz": _carrier_hz(period),
         "waveform_mode": waveform_mode,
         "waveforms": waveforms,
+        **({"alternate_waveforms": alternate} if alternate else {}),
     }
 
 

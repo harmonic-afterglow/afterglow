@@ -198,7 +198,9 @@ def held_commands(project: dict, devices: list[dict], planned: dict, *, library=
                     "command_id": (index << 8) | ordinal,
                     "carrier_period_ns": lowered.carrier_period_ns,
                     "carrier_half_period_ns": lowered.carrier_half_period_ns,
-                    "phases": {"press": lowered.press_waveform}})
+                    "phases": {"press": lowered.press_waveform},
+                    **({"alternate_phases": _phases(lowered.alternate)}
+                       if lowered.alternate else {})})
                 made[(index, command_id, held_ms)] = (index << 8) | ordinal
             out.append(("send", index, made[(index, command_id, held_ms)]))
         return out
@@ -211,6 +213,12 @@ def held_commands(project: dict, devices: list[dict], planned: dict, *, library=
                                for button in activity["buttons"]]
         activity["favourites"] = [dict(item, steps=resolve(item["steps"]))
                                   for item in activity.get("favourites") or []]
+
+
+def _phases(waveforms) -> dict:
+    """(press, hold, release) waveform bodies as a record's phases, the empty ones left out."""
+    return {phase: body for phase, body in zip(("press", "hold", "release"), waveforms)
+            if body}
 
 
 def lowered_devices(project: dict, *, library=None) -> list[dict]:
@@ -257,6 +265,8 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
                         ("release", lowered.release_waveform),
                     ) if body
                 },
+                **({"alternate_phases": _phases(lowered.alternate)}
+                   if lowered.alternate else {}),
             })
         ids = {command["name"]: command["command_id"] for command in commands}
         # A page arranged for this device - read from a configuration or in the editor -

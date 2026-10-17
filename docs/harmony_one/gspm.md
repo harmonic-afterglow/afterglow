@@ -169,10 +169,10 @@ waveforms without knowing their protocol family. The command record stores the c
 nanoseconds, truncated from `1,000,000,000 / Hz`, and half that integer period. Portable
 waveforms with intro/repeat sections map to the two waveform pointers in the same way.
 
-This mapping does not yet cover sender-owned state such as RC5/RC6 toggle bits or unmodulated
-signals. Those cases remain rejected until the corresponding native lifecycle mechanism is
-evidenced. Lowering also does not assign record addresses, command IDs, or object references;
-the generator places the records and numbers them.
+Sender-owned state - the RC5/RC6 toggle bit - has its own record form, below ("A toggling
+command has two waveform sets"). Unmodulated signals remain rejected. Lowering does not assign
+record addresses, command IDs, or object references; the generator places the records and
+numbers them.
 
 ## Section 5 command ownership
 
@@ -183,8 +183,9 @@ pointer targets byte `+11` of its record; subtracting 11 reaches the carrier fie
 table. The device ordinal is the high byte of the command ID and the command ordinal is its low
 byte.
 
-The byte at record `+15` is `1` or `2` in the current donors; its meaning is not yet assigned.
-Three pointer-sized slots follow at `+16`, `+19`, and `+22`. The first always points to a press
+The byte at record `+15` is the waveform mode: `1` for an ordinary command, `2` for one that
+toggles (see "A toggling command has two waveform sets"). Three pointer-sized slots follow at
+`+16`, `+19`, and `+22`. The first always points to a press
 waveform. The second is optional and points to the independently established hold waveform. The
 third was zero throughout RE-HARMONY's original corpus but is populated on 230 commands in two
 broader donors. It is the release waveform pointer. All 120 affected commands in one donor share
@@ -198,6 +199,28 @@ MCIR-2 keyboard decoder independently treats a zero keyboard scancode as releasi
 agreement between two native images, Logitech's protocol definition, and the receiver-side Linux
 implementation establishes lifecycle meaning without relying on a guessed opcode. Bytes preceding
 the carrier vary between donors and are preserved without being treated as flags.
+
+### A toggling command has two waveform sets
+
+RC5 and RC6 devices tell a second press from a held key by a toggle bit that the sender flips
+between presses. The One does not flip it in a waveform: Logitech stores both versions. A
+toggling command's record has waveform mode `2` at `+15` and a **second** set of three pointers
+at `+25`, `+28` and `+31` (press, hold, release), so the record is 34 bytes.
+
+Which set is sent is in the Harmony 800's firmware, whose records are the same: the command
+starter at `0x0800CE50` keeps a 16-bit mask with one bit per device ordinal, flips the device's
+bit on each command it starts, and passes "bit now set" to the record reader at `0x08015540`,
+which for mode 2 skips one pointer set (9 bytes) when that is false. So a device's first
+command after power-on sends the first set, the next the second, and so on; holding a key
+repeats the chosen set's hold waveform without flipping; a device ordinal of 16 or more has no
+bit and always sends the second set.
+
+Every RC5/RC6 command in the donors is mode 2 - 33, 99 and 89 records in three images, RC6 at
+36.2 kHz with a 2632 us leader and RC5 with 889 us half-bits - and nothing else is. Each has the
+second set, and its press waveform differs from the first only in the toggle bit, repeated in
+every frame the press sends; for RC6-MCE (Media Center, Xbox) that bit is bit 15 of the data,
+not the RC6 header's trailer bit. The generator writes a toggling protocol the same way: the
+first set is its first press, the second the press after.
 
 An exact command object in section 11 has two atoms: `{command_id, 0x7d}` followed by
 `{device_id, 0x7c}`. Every section-5 command in all four donors has at least one such object.

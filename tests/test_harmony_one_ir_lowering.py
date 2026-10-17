@@ -8,7 +8,7 @@ import struct
 import pytest
 
 from afterglow import ir_protocol, ir_signal
-from afterglow.backends.harmony_one import gspm, ir_lowering, records
+from afterglow.backends.harmony_one import command_index, gspm, ir_lowering, records
 
 
 def words(payload: bytes) -> list[int]:
@@ -128,11 +128,61 @@ def test_a_protocol_release_recipe_uses_the_zero_terminated_third_slot(tmp_path)
     assert words(lowered.release_waveform) == [0x8000 | 300, 0]
 
 
-def test_toggle_protocols_wait_for_a_native_state_mapping():
+def test_a_toggling_protocol_lowers_to_both_of_its_states():
+    """RC5 flips a bit on each press, and the One sends a toggling command's two waveform
+    sets in turn (records.command_record): the first press, then the next."""
     signal = ir_signal.protocol_signal("rc5-13", {"code": 0x123})
 
-    with pytest.raises(ValueError, match="sender state"):
-        ir_lowering.lower(signal)
+    lowered = ir_lowering.lower(signal)
+
+    assert lowered.alternate is not None
+    press, hold, release = lowered.alternate
+    assert press != lowered.press_waveform, "the two presses differ in the toggle bit"
+    first, after = ir_protocol.render_transmission(signal, phase="press")
+    _hold, after = ir_protocol.render_transmission(signal, phase="hold", state=after)
+    _release, after = ir_protocol.render_transmission(signal, phase="release", state=after)
+    second, _next = ir_protocol.render_transmission(signal, phase="press", state=after)
+    assert lowered.press_waveform == ir_lowering.encode_waveform(
+        first["pulses_us"], entry_us=ir_lowering.DEFAULT_ENTRY_US)
+    assert press == ir_lowering.encode_waveform(
+        second["pulses_us"], entry_us=ir_lowering.DEFAULT_ENTRY_US)
+
+
+def test_a_command_that_does_not_toggle_has_one_set():
+    signal = ir_signal.protocol_signal("nec1", {"address": 4, "command": 8})
+    assert ir_lowering.lower(signal).alternate is None
+
+
+def test_a_toggling_record_is_the_34_byte_one_with_waveform_mode_2():
+    """As the 800's firmware reads it and every RC5/RC6 record in the One donors has it:
+    mode 2 at +15, then two (press, hold, release) pointer sets."""
+    record = records.command_record(0x100, 0x200, 0x240, 27624, 27624 // 2,
+                                    alternate=(0x300, 0x340, None))
+    assert len(record) == 34 and record[15] == 2
+    assert int.from_bytes(record[16:19], "little") == gspm.BASE + 0x200
+    assert int.from_bytes(record[25:28], "little") == gspm.BASE + 0x300
+    assert int.from_bytes(record[28:31], "little") == gspm.BASE + 0x340
+    assert record[31:34] == bytes(3)
+    single = records.command_record(0x100, 0x200, 0x240, 27624, 27624 // 2)
+    assert len(single) == 25 and single[15] == 1
+
+
+def test_both_sets_of_a_toggling_record_read_back():
+    lowered = ir_lowering.lower(ir_signal.protocol_signal("rc5-13", {"code": 0x123}))
+    payload = bytearray(0x800)
+    press, hold, _release = lowered.alternate
+    places = {0x200: lowered.press_waveform, 0x300: lowered.hold_waveform,
+              0x400: press, 0x500: hold}
+    for offset, body in places.items():
+        payload[offset:offset + len(body)] = body
+    payload[0x100:0x100 + 34] = records.command_record(
+        0x100, 0x200, 0x300, lowered.carrier_period_ns, lowered.carrier_half_period_ns,
+        alternate=(0x400, 0x500, None))
+    read = command_index._record(bytes(payload), 0x100)
+    assert read["waveform_mode"] == 2
+    assert read["waveforms"]["press"]["pulses_us"] != \
+        read["alternate_waveforms"]["press"]["pulses_us"]
+    assert set(read["alternate_waveforms"]) == {"press", "hold"}
 
 
 def test_marks_are_not_silently_truncated_to_the_native_field():
