@@ -6,12 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.5] - 2026-10-18
+
 ### Added
 
 - **The Harmony 800, as an experimental remote.** Logitech never sold it; Afterglow builds
   its configurations from a prototype's firmware and factory files, and a tester's
-  remote runs them: activities, devices, the keypad, Options, sleep and wake, key lights
-  and charging. Its configuration file is the one Concordance reads and writes, and
+  remote runs them: activities and devices send their commands, and it sleeps and wakes
+  as it should. Its configuration file is the one Concordance reads and writes, and
   Afterglow reads it back as the project it was built from. Xbox, Media Center and other
   RC5/RC6 devices work as on the One. The battery icon uses the One's levels: the
   prototype's own showed full only above 4.20 V, which a charged battery never reaches.
@@ -19,6 +21,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **A remote whose configuration was damaged could not be repaired.** After an
+  interrupted or failed write, libconcord reports the configuration as invalid, and
+  Afterglow took that for a remote it could not identify - so the remote that most needed
+  a new configuration could not be given one. The remote is now identified, and Check
+  Connection says the configuration is damaged and how to repair it. Flash to Remote and
+  Flash a Configuration File write over it, without first backing up the damaged one;
+  Read refuses, as there is nothing sound to read.
+- **Afterglow could restart while switching a Windows remote to direct access**, with
+  "Unexpected error: KeyError: 'result'" in its log (issue #9): it read the switch's
+  answer a moment before the answer was there. It now waits for it, and says plainly if
+  none came.
 - **A Harmony 1100 build stopped at Xbox 360 and Media Center devices** brought over
   from a Harmony 900, with "a backend-opaque signal has nothing to play back" for every
   command. Importing a 900 kept every RC5 and RC6 command - those with a toggle bit, so
