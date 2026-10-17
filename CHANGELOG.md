@@ -22,6 +22,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   them in turn, which Afterglow now writes as Logitech does - worked out from the Harmony
   800's firmware and matched against every RC5/RC6 command in Logitech-made One
   configurations.
+- **The PlayStation 3's Stop now waits as Logitech meant it to** on the Harmony One and
+  1100. Logitech's PS3 adapter protocol ends Stop with 6 seconds of nothing, so the
+  remote sends nothing else until the console has stopped; a 900 does that, and the One
+  build refused the whole configuration over it. Both remotes now end Stop with that
+  wait; holding Stop repeats after it.
 - **Importing a Harmony One kept only one version of such commands**, so rebuilding it
   sent the same one on every press. Both are kept now, and a Harmony 1100 build of a One's
   devices plays them in turn too.

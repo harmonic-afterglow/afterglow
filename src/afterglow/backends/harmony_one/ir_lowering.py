@@ -210,6 +210,14 @@ def lower(signal: dict, *, library=None, entry_us: int = DEFAULT_ENTRY_US,
         if held_ms is not None:
             press_pulses = held(press_pulses, hold_pulses, release_pulses, held_ms)
             hold_pulses = release_pulses = None
+        elif release_pulses and not any(pulse > 0 for pulse in release_pulses):
+            # A release that is only silence is a wait after the command: Logitech's
+            # PS3 adapter protocol ends Stop with 6 s of it (`KeyCodeStopSpacer`, its
+            # Finish), which keeps a 900's IR busy that long after the key is let go. A
+            # One release waveform has to begin with a mark, so the wait ends the press
+            # instead: a tap behaves as on the 900, and a held Stop repeats after it.
+            press_pulses = list(press_pulses) + list(release_pulses)
+            release_pulses = None
         encoded.append((
             encode_waveform(press_pulses, entry_us=entry_us),
             encode_waveform(hold_pulses, entry_us=None) if hold_pulses is not None else None,
@@ -240,10 +248,6 @@ def _protocol_phases(signal: dict, definition: dict, state, library):
     press_pulses = list(press["pulses_us"])
     hold_pulses = list(hold["pulses_us"]) if hold is not None else None
     release_pulses = list(release["pulses_us"]) if release is not None else None
-    if release_pulses is not None and not any(pulse > 0 for pulse in release_pulses):
-        # A release that is only silence sends nothing - a 900 import gives the PS3's
-        # Stop a 6 s one - and a One release waveform has to begin with a mark.
-        release_pulses = None
     minimum = ir_protocol.hold_minimum(definition, signal.get("transmission"))
     if minimum and hold_pulses is None:
         raise ValueError(

@@ -122,3 +122,22 @@ def test_opening_a_project_saves_it_converted_and_keeps_the_old_one(
         assert "Converted 1 command" in window.status.currentMessage()
     finally:
         QSettings("Afterglow", "Afterglow").remove(app.LAST_PROJECT_KEY)
+
+
+def test_the_1100_ends_a_press_with_a_silent_release(tmp_path):
+    """Logitech's PS3 adapter waits 6 s after Stop; the 1100 stores no release."""
+    definition = {
+        "schema": "afterglow-ir-protocol/1", "id": "test-stop-spacer",
+        "modulation": {"kind": "carrier", "carrier_hz": 38_000}, "parameters": {},
+        "bursts": {"key": [4000, -4500, 400, -50_000], "spacer": [-6_000_000]},
+        "alphabets": {},
+        "frames": {"key": {"segments": [{"burst": "key"}]},
+                   "spacer": {"segments": [{"burst": "spacer"}]}},
+        "transmission": {"press": [{"frame": "key"}], "hold": [{"frame": "key"}],
+                         "release": [{"frame": "spacer"}]},
+    }
+    signal = ir_signal.protocol_signal("test-stop-spacer", {})
+    _carrier, ((press, hold),) = ssir_sequence._renders(signal,
+                                                        {"test-stop-spacer": definition})
+    assert sum(map(abs, press)) == 4000 + 4500 + 400 + 50_000 + 6_000_000
+    assert sum(map(abs, hold)) == 4000 + 4500 + 400 + 50_000
