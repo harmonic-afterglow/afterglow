@@ -996,3 +996,100 @@ def test_no_write_without_a_whole_backup(tmp_path, monkeypatch):
     worker.run()
     assert said["ok"] is False and "nothing was written" in said["text"]
     assert wrote == []
+
+
+def _identity_library(error, used, total):
+    """A libconcord that identifies a Harmony 650 and answers get_identity with ``error``."""
+    class Library:
+        def get_identity(self, *_a):
+            return error
+
+        def lc_strerror(self, _err):
+            return b"The configuration present on the remote is invalid"
+
+    numbers = {"get_skin": 72, "get_arch": 14, "get_fw_ver_maj": 0, "get_fw_ver_min": 2,
+               "get_config_bytes_used": used, "get_config_bytes_total": total,
+               "is_config_dump_supported": 0, "is_config_update_supported": 0}
+    library = Library()
+    for name, value in numbers.items():
+        setattr(library, name, lambda value=value: value)
+    for name in ("get_mfg", "get_model", "get_codename"):
+        setattr(library, name, lambda: b"")
+    return library
+
+
+@pytest.mark.parametrize("error, used", [(16, 0), (0, 16_580_406)],
+                         ids=["no cookie", "ends past its area"])
+def test_a_remote_with_a_damaged_configuration_is_identified_so_it_can_be_written(error, used):
+    """As concordance does, a damaged configuration is a warning, not a refusal: the
+    remote that has one is the one that most needs a configuration written."""
+    from afterglow import concord
+    remote = concord.Remote.__new__(concord.Remote)
+    remote.lib = _identity_library(error, used, 4_000_000)
+    remote._keep_alive = None
+    identity = remote.identity()
+    assert identity["skin"] == 72 and identity["config_valid"] is False
+    assert identity["config_used"] == 0
+
+
+def test_a_whole_configuration_stays_valid():
+    from afterglow import concord
+    remote = concord.Remote.__new__(concord.Remote)
+    remote.lib = _identity_library(0, 771_156, 4_000_000)
+    remote._keep_alive = None
+    assert concord.Remote.identity(remote)["config_valid"] is True
+
+
+def _damaged_remote(monkeypatch, saved, wrote):
+    from afterglow.gui import remote_ops
+
+    class Remote:
+        last_restart_error = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def identity(self, *_a):
+            return {"model": "Harmony 650", "config_valid": False}
+
+        def save_config(self, path, *_a):
+            saved.append(path)
+
+        def write_config(self, path, *_a):
+            wrote.append(path)
+
+        def flash_file(self, path, *_a, **_k):
+            wrote.append(path)
+
+    monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
+    return remote_ops
+
+
+def test_a_damaged_configuration_is_written_over_without_a_backup(tmp_path, monkeypatch):
+    saved, wrote = [], []
+    remote_ops = _damaged_remote(monkeypatch, saved, wrote)
+    said, logged = {}, []
+    for operation, kwargs in (("write", {"path": "new.ezhex",
+                                         "backup": str(tmp_path / "before.ezhex")}),
+                              ("flash", {"path": "backup.ezhex"})):
+        worker = remote_ops.RemoteWorker(operation, None, **kwargs)
+        worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+        worker.log.connect(logged.append)
+        worker.run()
+        assert said["ok"] is True, said
+    assert saved == [] and len(wrote) == 2
+    assert any("damaged or missing" in line for line in logged)
+
+
+def test_a_damaged_configuration_is_not_read(tmp_path, monkeypatch):
+    saved, wrote = [], []
+    remote_ops = _damaged_remote(monkeypatch, saved, wrote)
+    worker = remote_ops.RemoteWorker("read", None, path=str(tmp_path / "dump.ezhex"))
+    said = {}
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.run()
+    assert said["ok"] is False and "damaged or missing" in said["text"]
+    assert saved == []
