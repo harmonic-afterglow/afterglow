@@ -596,3 +596,52 @@ def test_a_device_page_and_an_activity_keep_their_order_labels_and_gaps():
     assert activities._buttons(project["activities"][0])[0] is None
     assert gsgd.validate(generate.build(project)["image"])["ok"]
     assert backend.SCREEN_GAPS
+
+
+def _property_table(image, number):
+    """Section 16's property table ``number``, as FUN_080149d4 finds it."""
+    s16 = gsgd.sections(image)[16]
+    at = _u24(image, s16 + 1 + 3 * number)
+    return list(struct.unpack_from(f"<{image[at]}H", image, at + 1))
+
+
+def test_the_battery_levels_are_the_ones_so_a_charged_battery_reads_full(image):
+    """The 800's factory table put full above 4.20 V, which a charged battery never
+    reaches; the tester's read 4.13 V asleep and stayed a level short."""
+    def level(millivolts, table, shown):
+        for pair in range(8):
+            low, high = table[2 * pair], table[2 * pair + 1]
+            if millivolts <= low:
+                return pair
+            if millivolts <= high:
+                return pair if shown <= pair else pair + 1
+        return 8
+
+    battery, cradle = _property_table(image, 6), _property_table(image, 7)
+    assert battery[:14] == [3000, 3015, 3627, 3652, 3674, 3704, 3725, 3751, 3772, 3850,
+                            3875, 3952, 4025, 4051]
+    assert cradle[13] == 4170
+    assert level(4130, battery, 0) == 7
+    assert level(3960, battery, 0) == 6
+    assert level(4190, cradle, 0) == 7
+
+
+def test_a_toggling_command_is_written_with_both_of_its_states():
+    """RC5 flips a bit on each press; the 800's firmware sends a mode-2 record's two
+    pointer sets in turn (0x0800CE50, 0x08015540), as the One's does."""
+    project = {"devices": [{"label": "Media Center", "type": "MediaCenterPC", "signals": {
+        "PowerToggle": ir_signal.protocol_signal("rc5-13", {"code": 0x10C}),
+        "Play": _nec(0x0A, 2)}}]}
+    image = generate.build(project)["image"]
+    table = _u24(image, gsgd.sections(image)[5] + 1)
+    modes = {}
+    for ordinal, name in enumerate(sorted(project["devices"][0]["signals"])):
+        record = _u24(image, table + 3 + 3 * ordinal) - 11
+        modes[name] = image[record + 15]
+        if name == "PowerToggle":
+            lowered = ir_lowering.lower(project["devices"][0]["signals"][name])
+            first, second = _u24(image, record + 16), _u24(image, record + 25)
+            assert image[first:first + len(lowered.press_waveform)] == lowered.press_waveform
+            other = lowered.alternate[0]
+            assert image[second:second + len(other)] == other != lowered.press_waveform
+    assert modes == {"Play": 1, "PowerToggle": 2}

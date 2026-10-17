@@ -13,6 +13,17 @@ from . import gspm
 NEW_COMMAND_FLAG = 0x01
 PRESERVED_FLAGS = (0x01, 0x04)
 PREFIX_SIZE = 5
+RECORD_SIZE = 25
+# A toggling command (RC5/RC6) is a record with two sets of waveform pointers, and its
+# waveform mode at +15 says 2. Read from the Harmony 800's firmware (the routine at
+# 0x08015540 skips 9 bytes - one set - when the device's toggle bit is clear) and matched
+# by every RC5/RC6 command in the One donors: 221 records, each with a second set whose
+# press waveform differs from the first only in the toggle bit.
+TOGGLING_RECORD_SIZE = RECORD_SIZE + 9
+
+
+def record_size(alternate: bool) -> int:
+    return TOGGLING_RECORD_SIZE if alternate else RECORD_SIZE
 
 
 def _u24(value: int, label: str) -> bytes:
@@ -27,11 +38,27 @@ def _pointer(offset: int, label: str) -> bytes:
     return _u24(gspm.BASE + offset, label)
 
 
+def _pointers(press_offset: int, hold_offset: int | None, release_offset: int | None,
+              which: str) -> bytes:
+    return (_pointer(press_offset, f"{which}press waveform pointer")
+            + (_pointer(hold_offset, f"{which}hold waveform pointer")
+               if hold_offset is not None else bytes(3))
+            + (_pointer(release_offset, f"{which}release waveform pointer")
+               if release_offset is not None else bytes(3)))
+
+
 def command_record(record_offset: int, press_offset: int, hold_offset: int | None,
                    carrier_period_ns: int, carrier_half_period_ns: int, *,
                    release_offset: int | None = None,
+                   alternate: tuple[int, int | None, int | None] | None = None,
                    flag: int = NEW_COMMAND_FLAG, prefix: bytes | None = None) -> bytes:
     """Build the measured 25-byte record after placement offsets are known.
+
+    With `alternate` - the (press, hold, release) offsets of a toggling command's other
+    state - the record is the 34-byte one Logitech writes for RC5/RC6: waveform mode 2
+    and a second pointer set. The remote keeps one toggle bit per device, flips it on
+    each command it starts for that device, and sends the first set when the bit is set,
+    so a device's first press after power-on sends the first set and the next the other.
 
     A record authored here opens with one of the flags this backend writes. A record
     being rebuilt from one that already exists passes its own five opening bytes
@@ -51,12 +78,11 @@ def command_record(record_offset: int, press_offset: int, hold_offset: int | Non
     out += _u24(carrier_period_ns, "carrier period")
     out += _u24(carrier_half_period_ns, "carrier half-period")
     out += b"\x01" + _pointer(record_offset + 4, "command self-pointer")
-    out += b"\x01" + _pointer(press_offset, "press waveform pointer")
-    out += (_pointer(hold_offset, "hold waveform pointer")
-            if hold_offset is not None else bytes(3))
-    out += (_pointer(release_offset, "release waveform pointer")
-            if release_offset is not None else bytes(3))
-    assert len(out) == 25
+    out += b"\x02" if alternate is not None else b"\x01"
+    out += _pointers(press_offset, hold_offset, release_offset, "")
+    if alternate is not None:
+        out += _pointers(*alternate, "alternate ")
+    assert len(out) == record_size(alternate is not None)
     return bytes(out)
 
 

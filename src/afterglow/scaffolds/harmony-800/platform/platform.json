@@ -1,5 +1,5 @@
 {
- "_comment": "Logitech's Harmony 800 platform state, from a factory remote's /fw/embeddedcfg (sections 0-3, 17, 18, the engine records) and /cfg/usercfg (the property tables). See NOTICE.md.",
+ "_comment": "Logitech's Harmony 800 platform state, from a factory remote's /fw/embeddedcfg (sections 0-3, 17, 18, the engine records) and /cfg/usercfg (the property tables) - except tables 6 and 7, the battery's levels on battery and on the cradle, which are the Harmony One's: the 800's own put full above 4.20 V, which a charged battery never reaches. See NOTICE.md.",
  "sections": {
   "0": "edfe1c0000a7080000000000526f6f74a70900000001005374617465efbe",
   "1": "1212560d000000",
@@ -34,7 +34,7 @@
   ]
  },
  "properties": {
-  "tail": "012c000626002600190014000f000a00012d0004190014000f000a00012e0004190014000f000a0010770e9f0ea10ec90ef40e1c0f470f6f0f9a0fc20fed0f1510401068100f270f2710770e9f0ea10ec90ef40e1c0f470f6f0f9a0fc20fed0f1510401068100f270f2701000002c409e42a0881001500030001000000000000000000",
+  "tail": "012c000626002600190014000f000a00012d0004190014000f000a00012e0004190014000f000a0010b80bc70b2b0e440e5a0e780e8d0ea70ebc0e0a0f230f700fb90fd30f0f270f2710b80bc70b2b0e440e5a0e780e8d0ea70ebc0e0a0f230f700fb90f4a100f270f2701000002c409e42a0881001500030001000000000000000000",
   "tables": [
    0,
    3,
