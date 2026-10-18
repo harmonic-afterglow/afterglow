@@ -552,7 +552,10 @@ def test_a_missed_reboot_is_reported_as_written_and_not_as_a_linux_chore(qapp_or
         def identity(self, *_a):
             return {"model": "Harmony 900"}
 
-        def write_config(self, *_a):
+        def check_write(self, *_a, **_k):
+            pass
+
+        def write_config(self, *_a, **_k):
             return None
 
     monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
@@ -957,11 +960,14 @@ def _writing_remote(monkeypatch, saved, wrote, backup_bytes):
         def identity(self, *_a):
             return {"model": "Harmony 1100"}
 
+        def check_write(self, *_a, **_k):
+            pass
+
         def save_config(self, path, *_a):
             saved.append(path)
             Path(path).write_bytes(backup_bytes)
 
-        def write_config(self, path, *_a):
+        def write_config(self, path, *_a, **_k):
             wrote.append(path)
 
     monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
@@ -1055,10 +1061,13 @@ def _damaged_remote(monkeypatch, saved, wrote):
         def identity(self, *_a):
             return {"model": "Harmony 650", "config_valid": False}
 
+        def check_write(self, *_a, **_k):
+            pass
+
         def save_config(self, path, *_a):
             saved.append(path)
 
-        def write_config(self, path, *_a):
+        def write_config(self, path, *_a, **_k):
             wrote.append(path)
 
         def flash_file(self, path, *_a, **_k):
@@ -1093,3 +1102,79 @@ def test_a_damaged_configuration_is_not_read(tmp_path, monkeypatch):
     worker.run()
     assert said["ok"] is False and "damaged or missing" in said["text"]
     assert saved == []
+
+
+def test_an_unconfirmed_board_of_the_same_remote_asks_rather_than_refuses(a_config):
+    """A board revision or flash chip no remote of the model has been confirmed with is
+    asked about, not refused: a Harmony 900 on board 0.0.15 - Logitech's files say 0.1 -
+    was turned away, written by force, and worked. Nothing is written until the person
+    agrees."""
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Harmony 900", board="0.7.3")
+    with pytest.raises(concord.UnconfirmedRemote) as raised:
+        concord.Remote._verify_intended_for(Path(a_config), identity)
+    assert raised.value.cautions and raised.value.cautions[0].startswith("board")
+    assert concord.Remote._verify_intended_for(
+        Path(a_config), identity, accept_unconfirmed=True).id == "harmony-900"
+
+
+@pytest.mark.parametrize("field,replacement", [("arch", 12), ("skin", 54), ("software_type", 99)])
+def test_another_remote_is_refused_even_when_told_to_go_ahead(a_config, field, replacement):
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Other remote", **{field: replacement})
+    with pytest.raises(concord.RemoteError, match="Refusing to write") as raised:
+        concord.Remote._verify_intended_for(Path(a_config), identity,
+                                            accept_unconfirmed=True)
+    assert not isinstance(raised.value, concord.UnconfirmedRemote)
+
+
+def test_a_900_on_board_0_0_is_written_without_asking(a_config):
+    """Two owners' 900s report board 0.0.15 and took Afterglow's builds: board 0.0 is the
+    900's."""
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Harmony 900", board="0.0.15")
+    assert concord.Remote._verify_intended_for(Path(a_config), identity).id == "harmony-900"
+
+
+def test_an_unconfirmed_remote_is_asked_about_before_any_backup(tmp_path, monkeypatch):
+    from afterglow.gui import remote_ops
+
+    saved, wrote, asked = [], [], []
+
+    class Remote:
+        last_restart_error = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def identity(self, *_a):
+            return {"model": "Harmony 900"}
+
+        def check_write(self, path, identity, accept_unconfirmed=False):
+            if not accept_unconfirmed:
+                raise concord.UnconfirmedRemote("unconfirmed", ["board is 0.0.15"])
+
+        def save_config(self, path, *_a):
+            saved.append(path)
+
+        def write_config(self, path, *_a, **_k):
+            wrote.append(path)
+
+    monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
+    worker = remote_ops.RemoteWorker("write", None, path="new.ezhex",
+                                     backup=str(tmp_path / "before.ezhex"))
+    worker.unconfirmed.connect(asked.append)
+    worker.run()
+    assert asked == [["board is 0.0.15"]] and saved == [] and wrote == []

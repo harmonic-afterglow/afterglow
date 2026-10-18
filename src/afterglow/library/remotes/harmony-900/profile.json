@@ -6,6 +6,7 @@
     "skin": 61,
     "flash": "0x01:0x49",
     "board": "0.1.0",
+    "other_boards": ["0.0.0"],
     "software_type": 0,
     "safe_mode_software_type": 4
   },
@@ -36,7 +37,7 @@
     "waveform": "carrier-period",
     "notes": "SsIr stores a u32 little-endian carrier period in nanoseconds followed by a u16 pulse-word count and signed mark/space words. Established from the unstripped irgen raw path and hardware-validated with a newly generated Yamaha RAV16 Volume Up waveform on 2026-08-30."
   },
-  "notes": "Identity taken from real dumps. Configs built by Afterglow have been flashed to one and boot.",
+  "notes": "Identity taken from real dumps. Configs built by Afterglow have been flashed to one and boot. Board 0.0 (live 0.0.15, two owners, 2026-10-18) took Afterglow builds and works, where Logitech's own files say 0.1.",
   "schema": "afterglow-remote/1",
   "vocabulary": {
     "_comment": "What this model can be told. Read out of its own app-main.swf: one movie clip per device and activity type, and the physical keys the case actually has. The identifiers are Logitech's; the readable labels are ours, because the firmware has no name table for them and the friendly names the web configurator showed went away with it. Another model has a different set - a remote with no touchscreen has no screen buttons, and one with fewer keys has fewer slots.",

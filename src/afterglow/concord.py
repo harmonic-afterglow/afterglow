@@ -169,6 +169,22 @@ class RemoteError(RuntimeError):
     """The library refused an operation. Carries libconcord's own message."""
 
 
+class UnconfirmedRemote(RemoteError):
+    """The file is for this model of remote, but this remote differs from every one of
+    the model Afterglow knows in its board revision or flash chip - a Harmony 900 on
+    board 0.0, where Logitech's own files say 0.1, wrote and ran fine. Nothing is written
+    until the person says so: ``cautions`` says what differs."""
+
+    def __init__(self, message: str, cautions: list[str]):
+        super().__init__(message)
+        self.cautions = cautions
+
+
+# What an unconfirmed revision of a remote differs by: its board and its flash chip. A
+# different arch, skin or software type is another remote, and is never written.
+CAUTION_FIELDS = ("board", "flash")
+
+
 LC_FILE_TYPE_CONFIGURATION = 2
 # libconcord's "The configuration present on the remote is invalid": the remote answered and
 # said who it is, but its configuration area does not start with its model's cookie - an
@@ -702,7 +718,8 @@ class Remote:
             self.lib.delete_blob(blob)
 
     # writing
-    def write_config(self, path, on_progress=None, reset=True) -> None:
+    def write_config(self, path, on_progress=None, reset=True,
+                     accept_unconfirmed=False) -> None:
         """Flash a `.ezhex` onto the attached remote.
 
         Refuses a file built for a different model. libconcord would likely refuse it
@@ -717,8 +734,13 @@ class Remote:
         if not identity["can_write"]:
             raise RemoteError(f"{identity['model']} does not support configuration "
                               "updates through libconcord")
-        self._verify_intended_for(path, identity)
+        self._verify_intended_for(path, identity, accept_unconfirmed=accept_unconfirmed)
         self._apply_config(path, on_progress=on_progress, reset=reset)
+
+    def check_write(self, path, identity: dict, accept_unconfirmed=False) -> None:
+        """What write_config checks before anything is written, on its own: so a backup
+        is not taken for a write that then stops to ask."""
+        self._verify_intended_for(Path(path), identity, accept_unconfirmed=accept_unconfirmed)
 
     def flash_file(self, path, on_progress=None, force=False) -> None:
         """Write any configuration file, such as a backup, as `concordance -C` would.
@@ -830,8 +852,11 @@ class Remote:
 
     @staticmethod
     def _verify_intended_for(
-            path: Path, identity: dict, *, allow_experimental: bool = False):
-        """Prove that the artifact, profile, and attached remote all agree."""
+            path: Path, identity: dict, *, allow_experimental: bool = False,
+            accept_unconfirmed: bool = False):
+        """Prove that the artifact, profile, and attached remote all agree. A different
+        remote is refused; an unconfirmed board revision or flash chip of the same one
+        raises UnconfirmedRemote unless ``accept_unconfirmed``."""
         from . import ezhex, remotes
         try:
             header = ezhex.read(path.read_bytes()).header
@@ -872,11 +897,19 @@ class Remote:
                     f"{field} differs: file {wanted.get(field)!r}, remote "
                     f"{identity.get(field)!r}")
         problems = artifact_problems + remote_problems + disagreements
-        if problems:
+        cautions = [problem for problem in problems
+                    if problem.split(" ", 1)[0] in CAUTION_FIELDS]
+        refusals = [problem for problem in problems if problem not in cautions]
+        if refusals:
             raise RemoteError(
                 f"{path.name} is not proven compatible with the attached "
                 f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
                 "Refusing to write it.")
+        if cautions and not accept_unconfirmed:
+            raise UnconfirmedRemote(
+                f"{path.name} is for this {profile.model}, but this one has not been "
+                f"confirmed with Afterglow: {'; '.join(cautions)}. Nothing was written.",
+                cautions)
         return profile
 
     def reset(self, on_progress=None) -> None:
