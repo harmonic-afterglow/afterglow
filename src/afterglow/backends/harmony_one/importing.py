@@ -43,6 +43,12 @@ INPUT_NAME = re.compile(r"^(?P<label>.+)_Input_(?P<count>\d+)$")
 # first app after power-on sets after waiting the rest of that delay
 # (devices.device_state_records).
 ONLINE_NAME = re.compile(r"^(?P<label>.+)_Online(?P<power>Power)?_2$")
+# A device's other states, as Logitech's database declares them beside power and input -
+# `TV_Screen_8`, `TV_TVInput_3` on a Dutch 650's television - which its input writes:
+# `<Label>_<state>_<values>`, the label a device's power or input variable has.
+STATE_NAME = re.compile(r"^(?P<label>.+)_(?P<state>[A-Za-z][A-Za-z0-9]*)_(?P<count>\d+)$")
+NOT_STATES = ("Power", "Input", "Online", "OnlinePower")
+SET = "set"
 # A transition taken from any value, as direct inputs have them.
 ANY = (activity_index.ANY_STATE, 0xFFFD)
 
@@ -286,10 +292,13 @@ def command_pages(image: Image) -> dict[int, list[int]]:
 
 
 def _same_title(title: str, label: str) -> bool:
-    """Whether a page's title is ``label``, perhaps cut short to fit."""
+    """Whether a page's title is ``label``, perhaps cut short to fit - which Logitech
+    marks with "..": a title that is whole is that label only, so "Watch Smarthub" is not
+    "Watch Smarthub Stereo"."""
+    if not title.endswith(".."):
+        return label == title
     title = title.removesuffix("..")
-    return label == title or (title != "" and label.startswith(title)
-                              and title != label and len(title) >= 4)
+    return label == title or (title != "" and label.startswith(title) and len(title) >= 4)
 
 
 def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, dict]:
@@ -365,6 +374,13 @@ def device_variables(image: Image) -> list[tuple[dict, int, str]]:
         found.append((record, device, kind))
     found += [(record, by_label[label], kind) for record, label, kind in pending
               if label in by_label]
+    # the device's other states: named with a label one of its power or input has
+    for record in image.engine:
+        name = image.names.get(record["property_id"]) or ""
+        match = STATE_NAME.match(name)
+        if (match and match["label"] in by_label and match["state"] not in NOT_STATES
+                and int(match["count"]) == record["limit"] + 1):
+            found.append((record, by_label[match["label"]], f"state:{match['state']}"))
     return found
 
 
@@ -421,13 +437,62 @@ def read_states(image: Image) -> dict[int, dict]:
     every command as its id: ``{"power": {...}, "inputs": {...}}`` by device index."""
     out: dict[int, dict] = defaultdict(dict)
     gates = online_gates(image)
-    for record, device, kind in device_variables(image):
-        _state(out[device], record, kind == "power", image, gates)
+    found = device_variables(image)
+    # a device's other states, by variable: what its input's writes to them mean
+    others = {record["property_id"]: kind.split(":", 1)[1] for record, _device, kind in found
+              if kind.startswith("state:")}
+    for record, device, kind in found:
+        if kind.startswith("state:"):
+            state = _control_state(record, image, others)
+            if state:
+                out[device].setdefault("control", []).append(
+                    {"id": kind.split(":", 1)[1], **state})
+            continue
+        _state(out[device], record, kind == "power", image, gates, others)
     return dict(out)
 
 
-def _state(states: dict, record: dict, power, image: Image, gates=None):
+def _sequence(image: Image, item: dict, others: dict) -> list[tuple]:
+    """What a transition does, as an input or a state's route says it: its sends, its
+    waits, and its writes to the device's other states, ``(SET, state, value)``."""
+    if item["category"] >= 0x80:
+        variable = item["category"] & 0x7F
+        return [(SET, others[variable], item["operand"])] if variable in others else []
+    if item["category"] != OBJECT:
+        return []
+    out = []
+    for step in image.steps(item["operand"]):
+        if step[0] == SEND:
+            out.append((SEND, step[1]))
+        elif step[0] == WAIT:
+            out.append((WAIT, step[2]))
+        elif step[0] == WRITE and step[1] in others:
+            out.append((SET, others[step[1]], step[2]))
+    return out
+
+
+def _control_state(record: dict, image: Image, others: dict) -> dict | None:
+    """One of a device's other states: ``{"count", "select": {value: steps}}`` when each
+    value is reached from any other, as Logitech's routes are, or ``{"count", "next":
+    steps}`` when values are stepped through, each pair's transition that many steps."""
+    count = record["limit"] + 1
+    direct = {item["to"]: _sequence(image, item, others) for item in record["transitions"]
+              if item["from"] in ANY and 0 <= item["to"] < count}
+    if direct:
+        return {"count": count, "select": {value: steps for value, steps in direct.items()
+                                           if steps}}
+    pairs = {(item["from"], item["to"]): _sequence(image, item, others)
+             for item in record["transitions"]}
+    unit = pairs.get((0, 1))
+    if unit and all(steps == unit * ((target - source) % count)
+                    for (source, target), steps in pairs.items()):
+        return {"count": count, "next": unit}
+    return {"count": count} if not pairs else None
+
+
+def _state(states: dict, record: dict, power, image: Image, gates=None, others=None):
     gates = gates or {}
+    others = others or {}
     transitions = {(item["from"], item["to"]): item for item in record["transitions"]}
 
     def sent(item):
@@ -438,15 +503,17 @@ def _state(states: dict, record: dict, power, image: Image, gates=None):
                 sum(step[2] for step in steps if step[0] == WAIT))
 
     def sequence(item):
-        """An input chosen in several steps - wake, step there, confirm - as its sends
-        and waits."""
-        return [(SEND, step[1]) if step[0] == SEND else (WAIT, step[2])
-                for step in image.steps(item["operand"]) if step[0] in (SEND, WAIT)]
+        """An input chosen in several steps - wake, step there, confirm, set another of
+        the device's states - as its sends, waits and writes."""
+        return _sequence(image, item, others)
     if power:
         on, delay = sent(transitions.get((0, 1)))
         off, _wait = sent(transitions.get((1, 0)))
         if on and off:
             states["power"] = {"on": on[0], "off": off[0], "delay_ms": delay}
+            # off in several codes, a Dutch 650's television's two
+            if len(off) > 1:
+                states["power"]["off_steps"] = off
         return
     count = record["limit"] + 1
     direct = [item for item in record["transitions"] if item["from"] in ANY]
@@ -456,7 +523,7 @@ def _state(states: dict, record: dict, power, image: Image, gates=None):
         for item in direct:
             if not 0 <= item["to"] < count:
                 continue
-            steps = sequence(item) if item["category"] == OBJECT else []
+            steps = sequence(item)
             gate = _gate(image, item["operand"], gates) if item["category"] == OBJECT else None
             if gate:
                 # an app: what waits before its first send belongs to the gate
@@ -488,7 +555,7 @@ def _state(states: dict, record: dict, power, image: Image, gates=None):
             if delay and steps and steps[-1] == (WAIT, delay):
                 steps = steps[:-1]
             sends = [step for step in steps if step[0] == SEND]
-            commands.append(None if not sends else sends[0][1] if steps == sends[:1]
+            commands.append(None if not steps else sends[0][1] if steps == sends[:1]
                             else steps)
         states["inputs"] = {"direct": commands}
         if delay:
@@ -527,6 +594,7 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
     named = variable_labels(image)
     pages = read_pages(image, named)
     states = read_states(image)
+    bound = activity_keys(image)
     out = []
     for device in native:
         index = device["native"]["harmony-one"]["device_index"]
@@ -544,7 +612,7 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
         same.update({command: twin for command, (twin, _ms) in holds.items()})
         copies = _press_copies(device["signals"], ids, known)
         names = _command_names({command: name for command, name in ids.items()
-                                if command not in same}, page, state, copies)
+                                if command not in same}, page, state, copies, bound)
         names.update({command: names[twin] for command, twin in same.items()})
         slots = defaultdict(list)
         for key, command in page["keys"].items():
@@ -653,8 +721,41 @@ def _held_copies(signals: dict, ids: dict[int, str], drawn: dict[int, str]) -> d
     return out
 
 
+def activity_keys(image: Image) -> dict[int, str]:
+    """What an activity calls each command, by command id: the key whose row sends that
+    one command and nothing else - PrevChannel's own code, on a Dutch 650, which no
+    device page shows - else the label of a button that does."""
+    out = {}
+    for context in image.contexts:
+        for row in sorted(context["rows"], key=lambda row: row["key_code"]):
+            name = keys.name_of(row["key_code"])
+            steps = image.row(row)
+            if name and len(steps) == 1 and steps[0][0] == SEND:
+                out.setdefault(steps[0][1], name)
+    # then the label of an activity's button that sends it alone - a Cisco box's Search,
+    # on a 700's activity screen and nowhere else
+    pages = {ordinal for ordinals in command_pages(image).values() for ordinal in ordinals}
+    for ordinal, screen in enumerate(image.screens):
+        if ordinal in pages:
+            continue
+        for slot in screen["slots"]:
+            places = button_positions(image, slot)
+            items = None
+            for entry in slot["entries"]:
+                position = places.get(entry["key_code"])
+                steps = image.row(entry) if position is not None else []
+                if len(steps) != 1 or steps[0][0] != SEND or steps[0][1] in out:
+                    continue
+                items = items if items is not None else image.page_text(slot["program_offset"])
+                lines = _button_label(items, position)
+                if lines:
+                    out[steps[0][1]] = image.join(lines) if isinstance(lines, list) else lines
+    return out
+
+
 def _command_names(ids: dict[int, str], page: dict, state: dict,
-                   copies: dict[int, str] | None = None) -> dict[int, str]:
+                   copies: dict[int, str] | None = None,
+                   bound: dict[int, str] | None = None) -> dict[int, str]:
     """Each command's name: its button's label, else the key it is bound to, else the
     command it is a press-only copy of, else the part it plays in the device's power or
     inputs, else its numbered name. Two commands never share one."""
@@ -668,15 +769,27 @@ def _command_names(ids: dict[int, str], page: dict, state: dict,
             roles[power["on"]] = "PowerToggle"
         else:
             roles[power["on"]], roles[power["off"]] = "PowerOn", "PowerOff"
+        for extra in (power.get("off_steps") or [])[1:]:
+            roles.setdefault(extra, "PowerOff")
     inputs = state.get("inputs") or {}
     if "next" in inputs:
         roles[inputs["next"]] = "InputNext"
+    # a command only another of the device's states sends is named for its place there:
+    # `Screen2`, `TVInputNext`
+    for other in state.get("control") or []:
+        for value, steps in sorted((other.get("select") or {}).items()):
+            sends = [step[1] for step in steps if step[0] == SEND]
+            if len(sends) == 1:
+                roles.setdefault(sends[0], f"{other['id']}{value + 1}")
+        sends = [step[1] for step in other.get("next") or [] if step[0] == SEND]
+        if len(sends) == 1:
+            roles.setdefault(sends[0], f"{other['id']}Next")
     for value, command in enumerate(inputs.get("direct") or []):
         if isinstance(command, int):
             roles.setdefault(command, f"Input{value + 1}")
     out, used = {}, set()
     # the drawn names first, so a key's or a role's name never takes a button's own
-    for source in (page["names"], by_key, copies or {}, roles, ids):
+    for source in (page["names"], by_key, copies or {}, roles, bound or {}, ids):
         for command in ids:
             if command in out or command not in source:
                 continue
@@ -699,6 +812,8 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
         else:
             out["power_on_cmd"], out["power_off_cmd"] = names[power["on"]], names[power["off"]]
         out["power_delay"] = power["delay_ms"]
+        if power.get("off_steps"):
+            out["power_off_steps"] = [names[command] for command in power["off_steps"]]
     inputs = state.get("inputs")
     if inputs and "direct" in inputs:
         out["inputs"] = []
@@ -706,10 +821,9 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
             if chosen is None:
                 out["inputs"].append([f"Input {value + 1}"])
             elif isinstance(chosen, list):
-                # a sequence, as the project's inputs take one: commands and waits
-                out["inputs"].append([f"Input {value + 1}", [
-                    names[item] if kind == SEND else {"delay_ms": item}
-                    for kind, item in chosen]])
+                # a sequence, as the project's inputs take one: commands, waits and the
+                # device's other states set
+                out["inputs"].append([f"Input {value + 1}", _project_steps(chosen, names)])
             else:
                 out["inputs"].append([names[chosen].removesuffix(" (press)"), names[chosen]])
         if inputs.get("delay_ms"):
@@ -721,6 +835,34 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
         out["input_cycle"] = {"next": names[inputs["next"]], "delay_ms": inputs["delay_ms"],
                               "values": [f"Input {value + 1}"
                                          for value in range(inputs["count"])]}
+    # the device's other states, as Logitech's database declares them (corpus_provider,
+    # `_archive_states`): values, a route to each, or the steps to the next
+    control = []
+    for other in state.get("control") or []:
+        entry = {"id": other["id"],
+                 "values": [str(value + 1) for value in range(other["count"])]}
+        if other.get("select"):
+            entry["select"] = {str(value + 1): {"steps": _project_steps(steps, names)}
+                               for value, steps in sorted(other["select"].items())}
+        if other.get("next"):
+            entry["next"] = _project_steps(other["next"], names)
+        control.append(entry)
+    if control:
+        out["control_states"] = control
+    return out
+
+
+def _project_steps(steps, names: dict[int, str]) -> list:
+    """Steps as a project's device-local ones: a command's name, ``{"delay_ms"}``, and
+    ``{"set", "to"}`` for another of the device's states, its values named 1 upwards."""
+    out = []
+    for step in steps:
+        if step[0] == SEND:
+            out.append(names[step[1]])
+        elif step[0] == WAIT:
+            out.append({"delay_ms": step[1]})
+        else:
+            out.append({"set": step[1], "to": str(step[2] + 1)})
     return out
 
 
@@ -758,6 +900,11 @@ class Activities:
         self.state = next((variable for variable, name in image.names.items()
                            if name.startswith("CurrentActivityState")), None)
         self.contexts = {context["ordinal"]: context for context in image.contexts}
+        # a device's own pages, which an activity's are not even when they share a name -
+        # a Dutch 650's fan, device and activity both "Ventilator."
+        self.device_pages = {ordinal for ordinals in command_pages(image).values()
+                             for ordinal in ordinals}
+        self.device_labels = {device.get("label") for device in devices}
 
     def hooks(self, context: dict) -> dict[int, list[tuple]]:
         """A context's rows, as what each does, by key code."""
@@ -950,7 +1097,12 @@ class Activities:
         whose buttons send and do nothing else."""
         buttons, favourites = [], []
         pages = 0                     # pages of buttons so far, for where a gap falls
-        for screen in self.image.screens:
+        for ordinal, screen in enumerate(self.image.screens):
+            # a device's own pages, when the activity has the device's name
+            if ordinal in self.device_pages and any(
+                    _same_title(label, device) or _same_title(device, label)
+                    for device in self.device_labels if device):
+                continue
             for slot in screen["slots"]:
                 items = self.image.page_text(slot["program_offset"])
                 if not any((item["x"], item["y"]) == TITLE_XY and item["text"] == label

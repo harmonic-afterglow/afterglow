@@ -43,8 +43,8 @@ def transition(source: int, target: int, operand: int, category: int) -> dict:
             "category": category}
 
 
-def device_state_records(device: dict, place_object,
-                         online: int | None = None) -> list[tuple[str, dict]]:
+def device_state_records(device: dict, place_object, online: int | None = None,
+                         states: dict[str, int] | None = None) -> list[tuple[str, dict]]:
     """A device's `<Label>_Power_2` and `<Label>_Input_<n>` variables, with transitions.
 
     As downstairs and upstairs build them: power going 1 to 0 sends the off command, 0 to
@@ -63,6 +63,22 @@ def device_state_records(device: dict, place_object,
     index = device["index"]
     objects = {command["command_id"]: command["object_index"]
                for command in device["commands"]}
+    states = states or {}
+
+    def atoms_of(steps):
+        """Steps as instructions: a send its command's object, a wait `7C`, another state
+        set a write of its variable (``states``, by id), the atoms given as they are."""
+        out_atoms = []
+        for step in steps:
+            if step[0] == "send":
+                out_atoms.append((objects[step[1]], OBJECT_ATOM))
+            elif step[0] == "wait":
+                out_atoms += waits(index, step[1])
+            elif step[0] == "set":
+                out_atoms.append((step[2], 0x80 | states[step[1]]))
+            else:
+                out_atoms += step[1]
+        return out_atoms
     out = []
     power = device.get("power")
     gate = device.get("online") if online is not None else None
@@ -72,9 +88,12 @@ def device_state_records(device: dict, place_object,
             on.append((0, 0x80 | online))
         on_operand = (place_object(object_body(on)) if len(on) > 1
                       else objects[power["on"]])
+        off_operand = (place_object(object_body(atoms_of(
+            [("send", command) for command in power["off_steps"]])))
+            if power.get("off_steps") else objects[power["off"]])
         out.append((f"{label}_Power_2", {
             "initial": 0, "limit": 1, "padding": 0, "transitions": [
-                transition(1, 0, objects[power["off"]], OBJECT_ATOM),
+                transition(1, 0, off_operand, OBJECT_ATOM),
                 transition(0, 1, on_operand, OBJECT_ATOM)]}))
     inputs = device.get("inputs")
     if inputs and len(inputs["values"]) > 0:
@@ -94,14 +113,16 @@ def device_state_records(device: dict, place_object,
                 if chosen is None:
                     transitions.append(transition(TRANSITION_FROM_ANY, value, 0, 0))
                 elif isinstance(chosen, list):
-                    # a sequence: its sends, and its waits before this device's next send
-                    atoms = []
-                    for kind, item in chosen:
-                        atoms += ([(objects[item], OBJECT_ATOM)] if kind == "send"
-                                  else item if kind == "atoms" else waits(index, item))
+                    # a sequence: its sends, its waits before this device's next send, and
+                    # the device's other states it sets
+                    atoms = atoms_of(chosen)
                     transitions.append(transition(TRANSITION_FROM_ANY, value,
                                                    place_object(object_body(atoms)),
-                                                   OBJECT_ATOM))
+                                                   OBJECT_ATOM)
+                                       if len(atoms) != 1 or atoms[0][1] == OBJECT_ATOM
+                                       or not atoms[0][1] & 0x80 else
+                                       # one state set alone is that write, as Logitech's is
+                                       transition(TRANSITION_FROM_ANY, value, *atoms[0]))
                 else:
                     transitions.append(transition(TRANSITION_FROM_ANY, value,
                                                    objects[chosen], OBJECT_ATOM))
@@ -124,6 +145,29 @@ def device_state_records(device: dict, place_object,
     if gate:
         out.append((f"{label}_Online_2", {
             "initial": 0, "limit": 1, "padding": 0, "transitions": []}))
+    # the device's other states, after its power, input and apps' gate: a route to each
+    # value from any other, or the steps to the next value, each pair that many
+    for state in device.get("states") or []:
+        count = state["count"]
+        transitions = []
+        if state.get("select"):
+            for value, steps in sorted(state["select"].items()):
+                atoms = atoms_of(steps)
+                transitions.append(transition(
+                    TRANSITION_FROM_ANY, value,
+                    *((place_object(object_body(atoms)), OBJECT_ATOM)
+                      if len(atoms) != 1 else atoms[0])))
+        elif state.get("next"):
+            step = atoms_of(state["next"])
+            for source in range(count):
+                for target in range(count):
+                    if source != target:
+                        body = step * ((target - source) % count)
+                        transitions.append(transition(source, target,
+                                                       place_object(object_body(body)),
+                                                       OBJECT_ATOM))
+        out.append((f"{label}_{state['id']}_{count}", {
+            "initial": 0, "limit": count - 1, "padding": 0, "transitions": transitions}))
     return out
 
 
@@ -299,31 +343,67 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
         return ids[name]
 
     out = {}
+    # the device's other states, Logitech's `Screen`, `TVInput` and the like
+    # (corpus_provider, `_archive_states`): a value's name to its number, by state
+    control = [state for state in device.get("control_states") or []
+               if state.get("id") and state.get("values")]
+    numbers = {state["id"]: {name: number for number, name in enumerate(state["values"])}
+               for state in control}
+
+    def steps_of(sequence, where):
+        """Project steps as sends, waits and other states set: `("send", id)`,
+        `("wait", ms)`, `("set", state, value number)`."""
+        out_steps = []
+        for step in sequence or []:
+            if isinstance(step, str):
+                out_steps.append(("send", command(step)))
+            elif "delay_ms" in step:
+                out_steps.append(("wait", int(step["delay_ms"])))
+            elif "command" in step:
+                if step.get("hold_ms"):
+                    raise ValueError(f"device {device.get('label')!r} holds "
+                                     f"{step['command']!r} in {where}, which these remotes "
+                                     "cannot do in a sequence")
+                out_steps.append(("send", command(step["command"])))
+            elif "set" in step:
+                values = numbers.get(step["set"])
+                if values is None or step.get("to") not in values:
+                    raise ValueError(f"device {device.get('label')!r} sets "
+                                     f"{step['set']}={step.get('to')!r} in {where}, which "
+                                     "its states do not have")
+                out_steps.append(("set", step["set"], values[step["to"]]))
+        return out_steps
+
     on, off = device.get("power_on_cmd"), device.get("power_off_cmd")
     toggle = device.get("power_cmd")
     if (on or toggle) and (off or toggle):
         out["power"] = {"on": command(on or toggle), "off": command(off or toggle),
                         "delay_ms": (POWER_DELAY_DEFAULT if device.get("power_delay") is None
                                      else device["power_delay"])}
+        # off in several codes - Exit, then PowerOff, as a Vizio's is
+        if len(device.get("power_off_steps") or []) > 1:
+            out["power"]["off_steps"] = [command(name) for name in device["power_off_steps"]]
+    if control:
+        out["states"] = []
+        for state in control:
+            lowered = {"id": state["id"], "count": len(state["values"])}
+            select = {numbers[state["id"]][name]: steps_of(route.get("steps"),
+                                                         f"{state['id']}={name}")
+                      for name, route in (state.get("select") or {}).items()
+                      if name in numbers[state["id"]]}
+            if select:
+                lowered["select"] = select
+            elif state.get("next"):
+                lowered["next"] = steps_of(state["next"], f"{state['id']}'s next")
+            out["states"].append(lowered)
+
     def selection(chosen):
         """What choosing an input sends: one command's id, or - when the project gives
         a sequence (`[name, [steps]]`, as the other remotes' builders take it) - its
         sends and waits, `("send", id)` and `("wait", ms)`."""
         if chosen is None or isinstance(chosen, str):
             return command(chosen)
-        steps = []
-        for step in chosen:
-            if isinstance(step, str):
-                steps.append(("send", command(step)))
-            elif "delay_ms" in step:
-                steps.append(("wait", int(step["delay_ms"])))
-            elif "command" in step:
-                if step.get("hold_ms"):
-                    raise ValueError(f"device {device.get('label')!r} holds "
-                                     f"{step['command']!r} to choose an input, which the "
-                                     "One cannot do in an input's sequence")
-                steps.append(("send", command(step["command"])))
-            # a step setting another state has nothing the One sends
+        steps = steps_of(chosen, "an input")
         if len(steps) == 1 and steps[0][0] == "send":
             return steps[0][1]
         return steps or None
@@ -389,7 +469,12 @@ def state_variables(devices: list[dict], place_object, first: int | None) -> Var
         if device.get("online") and device.get("power") and "direct" in device["inputs"]:
             online = out.first + len(out.records) + len(kinds)
             kinds.append("online")
-        records = device_state_records(device, place_object, online)
+        # its other states - `Screen`, `TVInput` - after those, which its inputs set
+        states = {}
+        for state in device.get("states") or []:
+            states[state["id"]] = out.first + len(out.records) + len(kinds)
+            kinds.append(f"state:{state['id']}")
+        records = device_state_records(device, place_object, online, states)
         out.slots.append({kind: out.add(name, record)
                           for kind, (name, record) in zip(kinds, records)})
     return out
