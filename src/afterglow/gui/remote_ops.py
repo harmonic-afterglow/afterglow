@@ -43,6 +43,9 @@ class RemoteWorker(QThread):
     progress = pyqtSignal(str, int, int)      # stage, current, total
     done = pyqtSignal(bool, str)              # succeeded, message
     result = pyqtSignal(object)               # operation-specific payload
+    # a write that stopped before anything was done, for the person to confirm: the
+    # remote is an unconfirmed revision of its model (concord.UnconfirmedRemote)
+    unconfirmed = pyqtSignal(list)
 
     def __init__(self, operation: str, parent=None, **kwargs):
         super().__init__(parent)
@@ -68,6 +71,9 @@ class RemoteWorker(QThread):
     def run(self):
         try:
             getattr(self, f"_{self.operation}")()
+        except concord.UnconfirmedRemote as exc:
+            self.unconfirmed.emit(list(exc.cautions))
+            self.done.emit(False, f"{exc} Waiting for your answer.")
         except concord.NotAvailable as exc:
             self.done.emit(False, str(exc))
         except (concord.RemoteError, hao.NotReachable) as exc:
@@ -116,8 +122,11 @@ class RemoteWorker(QThread):
     def _write(self):
         path = Path(self.kwargs["path"])
         backup = self.kwargs.get("backup")
+        accept = bool(self.kwargs.get("accept_unconfirmed"))
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            # whether it may be written at all, before a backup is taken for it
+            remote.check_write(path, identity, accept_unconfirmed=accept)
             if identity.get("safe_mode"):
                 self.log.emit(SAFE_MODE_NOTE)
             if backup and identity.get("config_valid") is False:
@@ -138,7 +147,7 @@ class RemoteWorker(QThread):
                         f"{exc}") from exc
                 self.log.emit(f"Backed up to {backup}")
             self.log.emit(f"Writing {path.name} to {identity['model']}...")
-            remote.write_config(path, self._on_progress)
+            remote.write_config(path, self._on_progress, accept_unconfirmed=accept)
             # The write succeeded or write_config would have raised. Only the restart
             # is in question, and on Linux the USB link is routinely torn down and
             # re-enumerated faster than libconcord can follow. Say so plainly rather

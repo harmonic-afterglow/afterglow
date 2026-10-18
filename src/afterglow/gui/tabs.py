@@ -758,7 +758,30 @@ class UpdateTab(QWidget):
         self._worker.log.connect(self.log_box.append)
         self._worker.progress.connect(self._on_remote_progress)
         self._worker.done.connect(self._on_remote_done)
+        self._worker.unconfirmed.connect(
+            lambda cautions, kwargs=dict(kwargs), operation=operation:
+            self._confirm_unconfirmed(operation, kwargs, cautions))
         return self._worker
+
+    def _confirm_unconfirmed(self, operation, kwargs, cautions):
+        """The remote is the model the file is for, but a revision of it Afterglow has not
+        seen: say how it differs and write it only if the person agrees."""
+        profile = self._profile()
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Unconfirmed remote")
+        box.setText(f"This {profile.model} differs from the ones Afterglow has been "
+                    "confirmed on:\n\n" + "\n".join(f"- {line}" for line in cautions))
+        box.setInformativeText(
+            "It is most likely a revision of the same remote - others like it have been "
+            "written and worked - but nobody has confirmed it yet. If you have not saved "
+            "its current configuration, cancel and use Read from Remote first.\n\n"
+            "Write it anyway? Telling us how it went (Discord or GitHub) is what makes "
+            "it confirmed.")
+        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        if box.exec() == QMessageBox.StandardButton.Yes:
+            self._run(operation, **kwargs, accept_unconfirmed=True).start()
 
     def _warn_if_the_link_is_down(self):
         """Say in the log that the Linux USB link is not up, then carry on regardless.
