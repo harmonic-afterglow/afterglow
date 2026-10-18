@@ -160,6 +160,9 @@ def _by_neighbours(characters: str, before: str, following: str) -> str:
     # among digits - "360" - or with no letter beside it, a look-alike is a digit
     if digits and (before.isdigit() or not (before.isalpha() or after.isalpha())):
         return digits[0]
+    # ending a name after a lowercase letter - "Sirius0", "Hdmi1" - it is a digit
+    if digits and not following and before.islower():
+        return digits[0]
     letters = [character for character in characters if character.isalpha()] or list(characters)
     if before.isalpha() or after.isalpha():
         upper = [character for character in letters if character.isupper()]
@@ -172,6 +175,32 @@ def _by_neighbours(characters: str, before: str, following: str) -> str:
     return letters[0]
 
 
+# Characters some of Logitech's faces draw alike, a plain bar in a size: a capital I and
+# a lowercase l, on a 665 and a Dutch 650.
+LOOK_ALIKES = ({"I", "l"},)
+
+
+def _untangle(candidates: list[dict[int, str]]) -> list[dict[int, str]]:
+    """Logitech numbers each character once across an image, so two codes read as one of
+    a look-alike pair are the pair between them: each may be either, and its neighbours
+    say which (``decode``)."""
+    owners: dict[str, set[int]] = defaultdict(set)
+    for table in candidates:
+        for code, characters in table.items():
+            if len(characters) == 1:
+                owners[characters].add(code)
+    tangled = {}
+    for pair in LOOK_ALIKES:
+        codes = set().union(*(owners.get(character, set()) for character in pair))
+        if any(len(owners.get(character, set())) > 1 for character in pair):
+            tangled.update({code: "".join(sorted(pair)) for code in codes})
+    if not tangled:
+        return candidates
+    return [{code: tangled.get(code, characters) if set(characters) <= set(
+                tangled.get(code, characters)) else characters
+             for code, characters in table.items()} for table in candidates]
+
+
 def read_fonts(candidates: list[dict[int, str]], *, image_wide: bool = True
                ) -> tuple[list[dict[int, str]], dict[int, str]]:
     """Each font's codes as characters, from the characters each code's shape may be.
@@ -181,6 +210,7 @@ def read_fonts(candidates: list[dict[int, str]], *, image_wide: bool = True
     if not image_wide:
         return [{code: characters for code, characters in table.items()
                  if len(characters) == 1} for table in candidates], {}
+    candidates = _untangle(candidates)
     votes: dict[int, Counter] = defaultdict(Counter)
     for table in candidates:
         for code, characters in table.items():

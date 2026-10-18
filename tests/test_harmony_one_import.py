@@ -352,3 +352,35 @@ def test_a_favourites_logo_is_imported_without_the_button_behind_it():
     other = [[(200, 200, 200, 255)] * width for _ in range(height)]
     assert without_frame(drawn, other) == drawn
     assert without_frame(drawn, None) == drawn
+
+
+def _state_tv(nec):
+    names = ("PowerOn", "PowerOff", "Exit", "TV", "Netflix", "Apps", "VolumeUp")
+    return {"id": "tv", "label": "TV", "type": "Television",
+            "signals": {name: nec(7, n + 1) for n, name in enumerate(names)},
+            "commands": [["VolumeUp", "", "", "", "VolumeUp"]],
+            "power_on_cmd": "PowerOn", "power_off_cmd": "Exit", "power_delay": 3000,
+            "power_off_steps": ["Exit", "PowerOff"],
+            "control_states": [
+                {"id": "Screen", "values": ["1", "2", "3"],
+                 "select": {"1": {"steps": ["TV", {"delay_ms": 2000}]},
+                            "2": {"steps": ["Netflix"]}, "3": {"steps": ["Apps"]}}},
+                {"id": "TVInput", "values": ["1", "2", "3"], "next": ["TV"]}],
+            "inputs": [["Input 1", [{"set": "Screen", "to": "1"}, {"set": "TVInput", "to": "1"}]],
+                       ["Input 2", [{"set": "Screen", "to": "1"}, {"set": "TVInput", "to": "3"}]],
+                       ["Input 3", [{"set": "Screen", "to": "2"}]]]}
+
+
+def test_a_devices_other_states_build_and_come_back(tmp_path):
+    """Logitech's two-level input, as a Dutch Harmony 650's television has it: its input
+    sets the device's `Screen` - a route to each value - and its `TVInput` - stepped
+    through - and power goes off in two codes. The One writes them as variables of their
+    own and reads them back as the project said them (corpus_provider's
+    `control_states`), as the 650 and 700 do."""
+    from test_harmony_one_activities import _nec
+    tv = _state_tv(_nec)
+    imported = _imported(generate.build({"devices": [tv]})["image"], tmp_path)
+    [read] = imported["devices"]
+    assert read["power_off_steps"] == ["Exit", "PowerOff"]
+    assert read["inputs"] == [[name, steps] for name, steps in tv["inputs"]]
+    assert read["control_states"] == tv["control_states"]

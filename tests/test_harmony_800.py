@@ -645,3 +645,16 @@ def test_a_toggling_command_is_written_with_both_of_its_states():
             other = lowered.alternate[0]
             assert image[second:second + len(other)] == other != lowered.press_waveform
     assert modes == {"Play": 1, "PowerToggle": 2}
+
+
+def test_a_devices_other_states_build_and_come_back(tmp_path):
+    """A television's `Screen` and `TVInput` states, the inputs that set them and power
+    off in two codes, as the One and the 650 and 700 build them, read back as the
+    project said them."""
+    from afterglow import remotes
+    from test_harmony_one_import import _state_tv
+    tv = _state_tv(_nec)
+    (tmp_path / "payload.bin").write_bytes(generate.build({"devices": [tv]})["image"])
+    [read] = backend.import_project(tmp_path, remotes.get("harmony-800"), {}).project["devices"]
+    for field in ("power_off_steps", "inputs", "control_states"):
+        assert read[field] == tv[field], field
