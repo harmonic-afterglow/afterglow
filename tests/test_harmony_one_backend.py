@@ -249,6 +249,7 @@ def test_native_command_ownership_is_derived_from_indexes_not_byte_scans():
         "devices": 1,
         "declared_commands": 1,
         "decoded_commands": 1,
+        "silent_commands": 0,
         "portable_waveform_commands": 1,
         "release_commands": 0,
         "command_objects": 1,

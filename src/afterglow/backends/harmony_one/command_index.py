@@ -83,6 +83,27 @@ def command_objects(payload: bytes) -> dict[int, list[dict]]:
     return dict(found)
 
 
+class SilentCommand(ValueError):
+    """A command whose press is silence: Logitech's stand-in for a device it does not
+    reach by infrared - a Sony PS4's power off, on a 650 - which sends nothing."""
+
+
+def _silent(payload: bytes, offset: int) -> bool:
+    """Whether a waveform is spaces only, up to the zero word that ends it: a hold that
+    sends nothing while the key is held."""
+    cursor = offset
+    for _ in range(MAX_WAVEFORM_WORDS):
+        if cursor + 2 > len(payload):
+            return False
+        word = struct.unpack_from("<H", payload, cursor)[0]
+        cursor += 2
+        if not word:
+            return cursor - 2 > offset
+        if word & 0x8000:
+            return False
+    return False
+
+
 def _decode_waveform(payload: bytes, offset: int, *, press: bool) -> dict:
     """Decode a bounded native waveform into signed portable durations."""
     words = []
@@ -94,6 +115,13 @@ def _decode_waveform(payload: bytes, offset: int, *, press: bool) -> dict:
         word = struct.unpack_from("<H", payload, cursor)[0]
         cursor += 2
         duration = word & 0x7FFF
+        if not word and len(words) >= 2 and words[-2] & 0x8000 \
+                and not words[-1] & 0x8000 and (words[-1] & 0x7FFF) < 200:
+            # the other ending, on a Dutch 650's long amplifier code: the last mark, a
+            # space of a microsecond, then a zero word - the space is the frame's last,
+            # and nothing closes it
+            words.append(0)
+            break
         if not duration:
             raise ValueError(f"waveform at {offset:#x} contains a zero-duration word")
         words.append(word)
@@ -105,7 +133,7 @@ def _decode_waveform(payload: bytes, offset: int, *, press: bool) -> dict:
         raise ValueError(f"waveform at {offset:#x} exceeds the bounded native word count")
     if not words or not seen_mark or not (
             len(words) >= 2 and not words[-1] & 0x8000
-            and not words[-2] & 0x8000 and (words[-1] & 0x7FFF) < 200):
+            and not words[-2] & 0x8000 and ((words[-1] & 0x7FFF) < 200 or not words[-1])):
         raise ValueError(f"waveform at {offset:#x} has no native terminator")
 
     body = words[:-1]
@@ -217,6 +245,11 @@ def _record(payload: bytes, offset: int) -> dict:
         if not 0 <= target < len(payload):
             raise ValueError(
                 f"command record {offset:#x} {name} waveform points outside the image")
+        if name == "press" and _silent(payload, target):
+            raise SilentCommand(f"command record {offset:#x} sends silence")
+        if name == "hold" and _silent(payload, target):
+            # a hold of nothing but silence repeats nothing
+            continue
         waveforms[name] = _decode_waveform(payload, target, press=index == 0)
     if pointers[2]:
         release_offset = pointers[2] - gspm.BASE
@@ -261,6 +294,7 @@ def inspect(payload: bytes) -> dict:
 
     objects = command_objects(payload)
     used_object_ids = set()
+    silent = 0
     rejected = Counter()
     devices = []
     seen_records = set()
@@ -298,6 +332,10 @@ def inspect(payload: bytes) -> dict:
                 rejected["object_device_mismatch"] += len(mismatched)
             try:
                 record = _record(payload, record_offset)
+            except SilentCommand:
+                # sends nothing, so it is no signal: counted, not rejected
+                silent += 1
+                continue
             except ValueError:
                 rejected["invalid_command_record"] += 1
                 continue
@@ -324,6 +362,7 @@ def inspect(payload: bytes) -> dict:
             "devices": device_count,
             "declared_commands": sum(item["declared_commands"] for item in devices),
             "decoded_commands": sum(len(item["commands"]) for item in devices),
+            "silent_commands": silent,
             "portable_waveform_commands": sum(
                 1 for item in devices for command in item["commands"]),
             "release_commands": sum(
