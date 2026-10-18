@@ -129,12 +129,15 @@ class Text:
             found = self.fonts[attribute].get(code)
             if found is not None:
                 return found
+        shaped = (self.candidates[attribute].get(code, "")
+                  if attribute is not None and 0 <= attribute < len(self.candidates) else "")
         found = self.shared.get(code) or self.layout.get(code)
-        if found is not None and found != glyph_codec.WIDE_BLANK:
+        # the layout's guess counts only as one of what the glyph's shape may be: a shape
+        # that is an I or an l is never a g, whatever the guess (a 700's "problem")
+        if found is not None and found != glyph_codec.WIDE_BLANK and (
+                not shaped or found in shaped):
             return found
-        if attribute is not None and 0 <= attribute < len(self.candidates):
-            return self.candidates[attribute].get(code, "")
-        return ""
+        return shaped
 
     def decode(self, glyphs: bytes, attribute: int | None) -> str:
         read = [self._read(code, attribute) for code in drawing.glyph_codes(bytes(glyphs))]
@@ -147,15 +150,19 @@ class Text:
                 out.append(UNKNOWN)
             else:
                 self.inferred += 1
-                out.append(_by_neighbours(characters, out[-1] if out else "",
+                out.append(_by_neighbours(characters, "".join(out),
                                           read[index + 1] if index + 1 < len(read) else ""))
         return "".join(out)
 
 
-def _by_neighbours(characters: str, before: str, following: str) -> str:
-    """Which of look-alike ``characters`` a glyph is, from the character read before it
+def _by_neighbours(characters: str, text: str, following: str) -> str:
+    """Which of look-alike ``characters`` a glyph is, from the ``text`` read before it
     and what the next glyph may be."""
+    before = text[-1:]
     after = following if len(following) == 1 else ""
+    # the word before this one's: Title Case - "Bad Image" - goes on in capitals
+    words = text.split()
+    title_case = before == " " and bool(words) and words[-1][:1].isupper()
     digits = [character for character in characters if character.isdigit()]
     # among digits - "360" - or with no letter beside it, a look-alike is a digit
     if digits and (before.isdigit() or not (before.isalpha() or after.isalpha())):
@@ -167,10 +174,11 @@ def _by_neighbours(characters: str, before: str, following: str) -> str:
     if before.isalpha() or after.isalpha():
         upper = [character for character in letters if character.isupper()]
         lower = [character for character in letters if character.islower()]
-        starts = not before.isalpha()
-        if starts and upper and (not after or after.islower() or after.isupper()):
+        # a capital starts a text - "Is the TV on?", "InputDock" - or comes before another
+        # capital - "IPTV"; within a text a word goes on in lower case - "Ready to learn"
+        if upper and (not before or after.isupper() or title_case):
             return upper[0]
-        if lower and not starts:
+        if lower:
             return lower[0]
     return letters[0]
 
