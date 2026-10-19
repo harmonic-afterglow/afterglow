@@ -340,7 +340,7 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
                 sends = [step for step in image.steps(entry["operand"]) if step[0] == SEND]
                 if len(sends) == 1 and sends[0][1] >> 8 == device:
                     bound.setdefault(name, sends[0][1])
-        out[device] = {"title": max(set(titles), key=titles.count) if titles else None,
+        out[device] = {"title": max(dict.fromkeys(titles), key=titles.count) if titles else None,
                        "names": names, "keys": bound, "buttons": buttons}
     return out
 
@@ -1065,7 +1065,7 @@ class Activities:
         volume = next((sends[name][0] for name in VOLUME_KEYS if name in sends), None)
         others = [device for name, (device, _command) in sends.items()
                   if name not in VOLUME_KEYS]
-        control = max(set(others), key=others.count) if others else volume
+        control = max(dict.fromkeys(others), key=others.count) if others else volume
         routed = self._routed(volume, control)
         out = {"control": control, "volume": volume, "display": control,
                "bound_keys": sorted(bound)}
