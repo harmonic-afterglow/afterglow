@@ -26,11 +26,12 @@ from pathlib import Path
 from . import ir_signal, paths
 
 SCHEMA = "afterglow-ir-protocol/1"
-# The application ships no protocol definitions: every protocol it uses is reconstructed
-# from the IrProto blocks of the configuration being imported, or generated from an
-# archive record. `AFTERGLOW_PROTOCOLS` points at a directory of them anyway - an external
-# database, or the suite's own fixtures - and is read at import so a subprocess inherits
-# the choice.
+# The application ships the basic protocols (library/protocols): NEC and its variants,
+# Samsung, JVC, Sony, RC5 and RC6 - what Flipper-IRDB and IRDB devices name, carrying no
+# timings of their own, and what the Logitech archive's commands map onto. Others are
+# reconstructed from the IrProto blocks of a configuration being imported, or come with
+# an archive record's Pronto. `AFTERGLOW_PROTOCOLS` points at another directory of them,
+# and is read at import so a subprocess inherits the choice.
 LIBRARY = Path(os.environ["AFTERGLOW_PROTOCOLS"]).expanduser() \
     if os.environ.get("AFTERGLOW_PROTOCOLS") else paths.library("protocols")
 ORDERS = ("lsb", "msb")

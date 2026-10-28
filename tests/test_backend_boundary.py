@@ -168,25 +168,18 @@ def test_portable_protocol_definitions_have_no_native_lowering_metadata():
         assert "native" not in json.loads(path.read_text()), path.name
 
 
-def test_no_protocol_catalogue_of_any_kind_is_shipped():
-    """The application carries no protocol definitions - native or portable.
-
-    Native blocks are an intermediate that importing produces and building consumes, and
-    the portable definitions do not ship either: every protocol comes from the IrProto
-    blocks of the configuration being imported, or is generated from an archive record.
-
-    The suite still needs definitions to build from, so it keeps twelve under
-    `tests/fixtures/protocols` and points `ir_protocol.LIBRARY` at them (see
-    `conftest.py`). This asserts the *product*, which is why it reads the package
-    directly rather than the active library.
-    """
+def test_only_the_basic_portable_protocols_are_shipped():
+    """Native blocks are an intermediate that importing produces and building consumes,
+    and are never shipped. The portable definitions are: the basic protocols that
+    Flipper-IRDB and IRDB devices name, which carry no timings of their own - without them
+    no such device could be used - and that the Logitech archive's commands map onto."""
     native = BACKENDS / "harmony_pk" / "protocols"
     assert not list(native.glob("*.json"))
 
-    shipped = PACKAGE / "library" / "protocols"
-    assert not list(shipped.glob("*.json")), (
-        "the application must not ship protocol definitions; the suite's live in "
-        "tests/fixtures/protocols")
+    shipped = {path.stem for path in (PACKAGE / "library" / "protocols").glob("*.json")}
+    assert shipped == {"nec1", "nec1-toshiba", "nec-ext", "nec2", "nec2-ext", "samsung32",
+                       "jvc16", "sony12", "sony15", "sony20", "rc5-13", "rc6-mce"}
+
 
 def test_project_devices_reject_native_builder_fields():
     from afterglow import ir_signal, project_devices

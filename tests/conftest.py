@@ -30,20 +30,14 @@ os.environ.setdefault("SOURCE_DATE_EPOCH", "1767225600")
 
 from afterglow import ezhex, ir_protocol  # noqa: E402
 
-# The application ships **no** protocol definitions: every protocol it uses is either
-# reconstructed from the IrProto blocks of the configuration being imported, or generated
-# from an archive record. That is the product, and
-# `test_a_configuration_imports_with_no_protocols_installed` covers it directly.
-#
-# Most tests still need definitions to have something to build *from* - they are checking
-# the compiler, the builder and the round-trip, not protocol discovery. Those live here as
-# fixtures rather than as shipped data, so the suite exercises the machinery without the
-# application carrying a catalogue it is not supposed to have.
-_FIXTURE_PROTOCOLS = ROOT / "tests" / "fixtures" / "protocols"
-ir_protocol.LIBRARY = _FIXTURE_PROTOCOLS
-# Exported so the tests that build in a subprocess inherit the same choice; without it
-# they run against the shipped (empty) library and cannot build anything.
-os.environ.setdefault("AFTERGLOW_PROTOCOLS", str(_FIXTURE_PROTOCOLS))
+# The suite builds with the protocol definitions the application ships (library/
+# protocols): the basic ones Flipper-IRDB, IRDB and the Logitech archive all name.
+# `test_a_configuration_imports_with_no_protocols_installed` points at an empty directory
+# to check that an import needs none. Exported so a test building in a subprocess uses the
+# same library.
+_PROTOCOLS = ROOT / "src" / "afterglow" / "library" / "protocols"
+ir_protocol.LIBRARY = _PROTOCOLS
+os.environ.setdefault("AFTERGLOW_PROTOCOLS", str(_PROTOCOLS))
 
 # Every real configuration the maintainer may have, in the order tests prefer them.
 # Dumps read off real remotes. Deliberately NOT any config Afterglow produced: a
