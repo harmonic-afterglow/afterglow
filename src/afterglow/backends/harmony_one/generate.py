@@ -36,7 +36,7 @@ from .layout import Layout
 from .options_screens import TUTORIAL, Options
 from .pages import BUTTON_POSITIONS, SOFTKEY_FONTS, labeller
 from .pages import frames as page_frames
-from .pictures import favourite_picture, row_icon, start_icon
+from .pictures import button_picture, favourite_picture, row_icon, start_icon
 from .firmware_screens import load_system
 from .scaffold import (
     DEFAULT_STAMP, HOUSEHOLD_BUTTONS, PLATFORM_TAIL_SIZE, engine_records, platform_tail,
@@ -375,6 +375,11 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
         activity["icon"] = row_icon(directory, manifest, pictures, "activities",
                                     activity["type"], frame)
         activity["start_icon"] = start_icon(directory, manifest, pictures, activity["type"])
+        activity["button_pictures"] = [
+            button_picture(directory, manifest, pictures, icon,
+                           number % len(BUTTON_POSITIONS), planned["skipped"],
+                           f"activity {activity['label']!r} button") if icon else None
+            for number, icon in enumerate(activity.get("button_icons") or [])]
         for number, favourite in enumerate(activity["favourites"]):
             favourite["picture"] = favourite_picture(
                 directory, manifest, pictures, favourite["image"],

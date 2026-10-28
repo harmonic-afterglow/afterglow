@@ -107,7 +107,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
     Each button is its frame and then its label, centred over the frame the way every
     donor page centres one: the label's x is the midpoint of the frame less half the
     text's width. A label wider than its button wraps onto a second line. A place whose
-    frame is None is a gap: nothing is drawn there.
+    frame is None is a gap: nothing is drawn there. A button with an icon has it drawn
+    on its frame (pictures.button_picture), and its label over it like any other's.
     """
     if len(labels) != len(frames):
         raise ValueError("a page needs one frame per label")

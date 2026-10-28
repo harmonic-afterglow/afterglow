@@ -115,10 +115,17 @@ class ScreenPreview(QGroupBox):
                 cell.setText("")
             else:
                 glyph = glyph_pixmap(icon, ICON) if icon else None
-                cell.setIcon(QIcon(glyph) if glyph is not None and not glyph.isNull()
-                             else QIcon())
-                cell.setIconSize(QSize(ICON, ICON))
-                cell.setText(text or "")
+                if glyph is not None and not glyph.isNull():
+                    # the icon filling the button and the label over it, as the
+                    # remote draws a button with one
+                    drawn = _over(cell, text or "", glyph_pixmap(icon, 64))
+                    cell.setIcon(QIcon(drawn))
+                    cell.setIconSize(drawn.size() / max(drawn.devicePixelRatio(), 1))
+                    cell.setText("")
+                else:
+                    cell.setIcon(QIcon())
+                    cell.setIconSize(QSize(ICON, ICON))
+                    cell.setText(text or "")
             cell.setToolTip("An empty place" if button is None else (text or icon or ""))
         self.count.setText(f"{self.page + 1}/{self.pages()}")
         self.back.setEnabled(self.pages() > 1)
@@ -132,3 +139,25 @@ class ScreenPreview(QGroupBox):
         index = self.page * self.per_page + slot
         self.select(index)
         self.picked.emit(index)
+
+
+def _over(cell, text: str, glyph: QPixmap) -> QPixmap:
+    """A button's face as the remote draws one with an icon: the icon filling it, the
+    label over it."""
+    from ..qt.QtCore import Qt
+    from ..qt.QtGui import QPainter
+
+    ratio = cell.devicePixelRatioF()
+    width, height = cell.width() - 10, cell.height() - 8
+    face = QPixmap(round(width * ratio), round(height * ratio))
+    face.setDevicePixelRatio(ratio)
+    face.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(face)
+    icon = glyph.scaled(width, height, Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation)
+    painter.drawPixmap((width - icon.width()) // 2, (height - icon.height()) // 2, icon)
+    painter.setPen(cell.palette().buttonText().color())
+    painter.drawText(0, 0, width, height,
+                     Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, text)
+    painter.end()
+    return face
