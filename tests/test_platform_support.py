@@ -661,7 +661,7 @@ def test_every_flash_tab_button_goes_past_the_link_check(qapp_or_skip, monkeypat
 
     class Worker:
         def __init__(self, *a, **k):
-            self.log = self.progress = self.done = _Signal()
+            self.log = self.progress = self.done = self.unconfirmed = _Signal()
 
         def start(self):
             pass
