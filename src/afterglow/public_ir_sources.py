@@ -91,6 +91,9 @@ def _byte(text: str, index: int = 0) -> int:
     return int(fields[index], 16)
 
 
+RAW_GAP_US = 40_000
+
+
 def _flipper_signal(record: dict) -> tuple[dict | None, str]:
     kind = str(record.get("type", "")).casefold()
     if kind == "raw":
@@ -103,6 +106,13 @@ def _flipper_signal(record: dict) -> tuple[dict | None, str]:
             provenance = {"kind": "flipper-irdb"}
             if duty is not None:
                 provenance["duty_cycle"] = duty
+            # Flipper keeps a capture to its last mark: the silence after it, which says
+            # where the code ends and when it may repeat, is not recorded. Without one a
+            # Harmony One cannot send it at all; RAW_GAP_US is longer than any gap inside
+            # the codes these captures hold.
+            if pulses and pulses[-1] > 0:
+                pulses.append(-RAW_GAP_US)
+                provenance["gap_added_us"] = RAW_GAP_US
             return ir_signal.waveform(
                 pulses, carrier_hz=frequency,
                 provenance=provenance), "raw capture"
@@ -143,9 +153,45 @@ def _flipper_signal(record: dict) -> tuple[dict | None, str]:
             return ir_signal.protocol_signal(
                 "jvc16", {"code": (address_low << 8) | command},
                 provenance=provenance), "parsed protocol"
+        if protocol in SONY:
+            command = _byte(record.get("command_bytes", record.get("command", "")), 0)
+            address = address_low | (address_high << 8)
+            return _sony(protocol, address, command, provenance), "parsed protocol"
+        if protocol in {"rc5", "rc5x"}:
+            return _rc5(address_low, command, provenance), "parsed protocol"
         return None, f"Flipper parsed protocol {record['protocol']!r} is not mapped yet"
     except (KeyError, TypeError, ValueError) as exc:
         return None, f"invalid Flipper parsed signal: {exc}"
+
+
+# Sony SIRC as Flipper and IRDB name it, and the width of each part: a 7-bit command,
+# then the address - 5 bits, 8, or 5 and an 8-bit extension for the 20-bit form.
+SONY = {"sirc": ("sony12", 5), "sony12": ("sony12", 5), "sirc15": ("sony15", 8),
+        "sony15": ("sony15", 8), "sirc20": ("sony20", 13), "sony20": ("sony20", 13)}
+
+
+def _sony(protocol: str, address: int, command: int, provenance: dict) -> dict:
+    """A SIRC command as the shipped definition takes it: one code sent highest bit
+    first, where the remote sends the command and then the address lowest bit first."""
+    portable, width = SONY[protocol]
+    if not 0 <= command < 0x80 or not 0 <= address < (1 << width):
+        raise ValueError(f"SIRC command {command} or address {address} out of range")
+    sent = [(command >> bit) & 1 for bit in range(7)] + \
+        [(address >> bit) & 1 for bit in range(width)]
+    code = 0
+    for bit in sent:
+        code = (code << 1) | bit
+    return ir_signal.protocol_signal(portable, {"code": code}, provenance=provenance)
+
+
+def _rc5(address: int, command: int, provenance: dict) -> dict:
+    """An RC5 command as the shipped definition takes it: the field bit - set for the
+    first 64 commands, clear for RC5X's next 64 - over the toggle's place, then 5
+    address bits and 6 command bits. The toggle itself is the definition's to send."""
+    if not 0 <= address < 32 or not 0 <= command < 128:
+        raise ValueError(f"RC5 address {address} or command {command} out of range")
+    code = ((0 if command >= 64 else 1) << 12) | (address << 6) | (command & 0x3F)
+    return ir_signal.protocol_signal("rc5-13", {"code": code}, provenance=provenance)
 
 
 def _irdb_signal(row: dict) -> tuple[dict | None, str]:
@@ -190,6 +236,13 @@ def _irdb_signal(row: dict) -> tuple[dict | None, str]:
             return ir_signal.protocol_signal(
                 "jvc16", {"code": (device << 8) | function},
                 provenance=provenance), "protocol tuple"
+        if protocol in {"sony12", "sony15"} and subdevice < 0:
+            return _sony(protocol, device, function, provenance), "protocol tuple"
+        if protocol == "sony20" and subdevice >= 0:
+            return _sony(protocol, device | (subdevice << 5), function,
+                         provenance), "protocol tuple"
+        if protocol == "rc5" and subdevice < 0:
+            return _rc5(device, function, provenance), "protocol tuple"
         return None, f"IRDB protocol {row['protocol']!r} is not mapped yet"
     except (KeyError, TypeError, ValueError) as exc:
         return None, f"invalid IRDB row: {exc}"

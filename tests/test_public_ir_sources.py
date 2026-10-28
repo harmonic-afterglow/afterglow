@@ -221,3 +221,86 @@ def test_a_record_naming_a_removed_catalogue_file_is_refused_with_guidance(tmp_p
     spec = json.loads(device_path.read_text())
     with pytest.raises(ValueError, match="open an issue"):
         device_json.to_project_device(spec, "40009001", library=root)
+
+
+# Sony SIRC and RC5, from what each protocol puts on the air - not from the definitions,
+# so a mistake in either the translation or a definition shows.
+def _merged(pulses):
+    out = []
+    for value in pulses:
+        if out and (out[-1] > 0) == (value > 0):
+            out[-1] += value
+        else:
+            out.append(value)
+    return out
+
+
+def _sirc(command, address, width):
+    """2.4 ms mark, then the command and the address lowest bit first, each bit a 0.6 ms
+    space and a mark of 0.6 ms for 0 or 1.2 ms for 1."""
+    bits = [(command >> i) & 1 for i in range(7)] + [(address >> i) & 1 for i in range(width)]
+    out = [2400]
+    for bit in bits:
+        out += [-600, 1200 if bit else 600]
+    return out
+
+
+def _rc5_air(address, command, toggle=0):
+    """Manchester at 889 us a half: start 1, field (clear past command 63), toggle, 5
+    address bits and 6 command bits highest first; a 1 is low then high."""
+    bits = [1, 0 if command >= 64 else 1, toggle] + \
+        [(address >> i) & 1 for i in range(4, -1, -1)] + \
+        [(command >> i) & 1 for i in range(5, -1, -1)]
+    out = []
+    for bit in bits:
+        out += [-889, 889] if bit else [889, -889]
+    return _merged(out)[1:] if out[0] < 0 else _merged(out)   # no leading silence
+
+
+@pytest.mark.parametrize("protocol, address, command, width", [
+    ("SIRC", 1, 0x15, 5), ("SIRC15", 0x97, 0x2A, 8), ("SIRC20", 0x1A3A, 0x33, 13)])
+def test_a_flipper_sony_command_sends_what_sirc_does(protocol, address, command, width):
+    from afterglow import ir_protocol
+    from afterglow.public_ir_sources import _flipper_signal
+    record = {"type": "parsed", "protocol": protocol,
+              "address": f"{address & 0xFF:02X} {address >> 8:02X} 00 00",
+              "command": f"{command:02X} 00 00 00"}
+    signal, _why = _flipper_signal(record)
+    air = ir_protocol.render(signal, frame_name="data")["pulses_us"]
+    expected = _sirc(command, address, width)
+    assert air[:len(expected)] == expected
+
+
+@pytest.mark.parametrize("address, command", [(0, 12), (5, 53), (20, 70)])
+def test_an_rc5_command_sends_what_rc5_does(address, command):
+    from afterglow import ir_protocol
+    from afterglow.public_ir_sources import _flipper_signal, _irdb_signal
+    flipper, _why = _flipper_signal({
+        "type": "parsed", "protocol": "RC5X" if command >= 64 else "RC5",
+        "address": f"{address:02X} 00 00 00", "command": f"{command:02X} 00 00 00"})
+    expected = _rc5_air(address, command)
+    air = _merged(ir_protocol.render(flipper, frame_name="data")["pulses_us"])
+    assert air[:len(expected) - 1] == expected[:-1]
+    if command < 64:
+        irdb, _why = _irdb_signal({"protocol": "RC5", "device": str(address),
+                                   "subdevice": "-1", "function": str(command)})
+        assert irdb["parameters"] == flipper["parameters"]
+
+
+def test_a_flipper_nec_device_resolves_with_what_is_shipped():
+    """The OSSC's commands: NEC, which nothing shipped could resolve."""
+    from afterglow import ir_protocol
+    from afterglow.public_ir_sources import _flipper_signal
+    signal, _why = _flipper_signal({"type": "parsed", "protocol": "NEC",
+                                    "address": "00 00 00 00", "command": "1C 00 00 00"})
+    assert ir_protocol.render(signal, library=ir_protocol.paths.library("protocols"))
+
+
+def test_a_flipper_capture_without_its_closing_gap_is_given_one():
+    from afterglow.public_ir_sources import RAW_GAP_US, _flipper_signal
+    signal, _why = _flipper_signal({"type": "raw", "frequency": "38000",
+                                    "data": "9000 4500 560 560 560"})
+    assert signal["pulses_us"][-1] == -RAW_GAP_US
+    whole, _why = _flipper_signal({"type": "raw", "frequency": "38000",
+                                   "data": "9000 4500 560 30000"})
+    assert whole["pulses_us"][-1] == -30000              # one it has is kept

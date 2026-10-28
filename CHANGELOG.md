@@ -30,6 +30,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Flipper-IRDB and IRDB devices could not be used**: their commands name a protocol -
+  NEC, Samsung, JVC - and no definition of one shipped, so a device such as the OSSC was
+  refused with "no IR protocol definitions are installed". The basic protocols ship now
+  (NEC and its variants, Samsung, JVC, Sony, RC5, RC6), which the Logitech archive's
+  commands map onto too. Flipper's and IRDB's Sony and RC5 commands are read as well, and
+  a Flipper raw capture missing the silence after its last mark is given one.
 - **Renaming a device's command lost its code**, and Save then did nothing at all - the
   reason, "missing signals", went only to the log. The code follows the rename, and so do
   the power choice, inputs, number keys, the device's page and the activities using it;
