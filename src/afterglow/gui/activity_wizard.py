@@ -141,7 +141,7 @@ class ActivityWizard(StepWizard):
         spec["properties"] = p7.values()
         # after the properties: an activity's tabs are switched on by properties of it
         p4.apply(spec)
-        apply_plan(spec, self.power_page.get_plan())
+        apply_plan(spec, self.power_page.get_plan(), self.power_page.leave())
         self._assets = p3.get_assets()
         return spec
 
@@ -692,6 +692,6 @@ class ActivityEditor(SectionDialog):
         spec["properties"] = p6.values()
         # after the properties: an activity's tabs are switched on by properties of it
         screen.apply(spec)
-        apply_plan(spec, self.power.get_plan())
+        apply_plan(spec, self.power.get_plan(), self.power.leave())
         self._assets = p3.get_assets()
         return spec

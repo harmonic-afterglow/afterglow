@@ -6,11 +6,13 @@ display, volume and control devices and switched everything else off. That is ri
 until it is not - a subwoofer on its own power, a projector that must be up before the
 receiver, a light that should stay as it is.
 
-Every device ends up in one list or the other: all 18 Logitech configurations measured
-list every device in every activity, and the builder adds any device left out to the
-off list. So the choice offered is on or off, never "leave alone"; a device the remote
-must never switch is marked AlwaysOn on its own Timing page, which the remote honours
-whatever an activity says.
+Every device ends up in one list or the other in all 18 Logitech configurations
+measured, and the builder adds any device left out to the off list. A device can also be
+left as it is - in neither list (`power_leave_devices`) - for one an activity must not
+touch, which a tester asked for: no Logitech configuration has one, and whether each
+remote then leaves it alone is for hardware to confirm. A device the remote must never
+switch at all is marked AlwaysOn in its Timing, which the remote honours whatever an
+activity says.
 """
 from __future__ import annotations
 
@@ -23,7 +25,7 @@ from ..qt.QtWidgets import (
 
 from .drag_rows import RowDragger, moved_list
 
-ON, OFF = "on", "off"
+ON, OFF, LEAVE = "on", "off", "leave"
 
 
 class ActivityPowerPage(QWizardPage):
@@ -31,7 +33,7 @@ class ActivityPowerPage(QWizardPage):
         super().__init__(parent)
         self.setTitle("Power")
         self.setSubTitle("Which devices this activity switches on - in the order they "
-                         "start - and which it switches off.")
+                         "start - which it switches off, and which it leaves as they are.")
         self.devices = {str(d["id"]): d for d in devices}
         self._participating: list[str] = []
         # The order an imported plan switches things off in is kept as it was.
@@ -41,11 +43,14 @@ class ActivityPowerPage(QWizardPage):
         self._original = (deepcopy(existing.get("power_on_devices")),
                           deepcopy(existing.get("power_off_devices")))
         self._touched = False
+        # Devices this activity leaves as they are, neither switched on nor off.
+        self._leave = {str(d) for d in existing.get("power_leave_devices") or []}
         layout = QVBoxLayout(self)
 
         self.follow = QCheckBox("Follow the roles: switch on the devices this activity "
                                 "uses, switch the rest off")
-        manual = bool(existing.get("power_on_devices") or existing.get("power_off_devices"))
+        manual = bool(existing.get("power_on_devices") or existing.get("power_off_devices")
+                      or existing.get("power_leave_devices"))
         self.follow.setChecked(not manual)
         self.follow.toggled.connect(self._follow_toggled)
         layout.addWidget(self.follow)
@@ -110,7 +115,10 @@ class ActivityPowerPage(QWizardPage):
             choice = QComboBox()
             choice.addItem("Switch on", ON)
             choice.addItem("Switch off", OFF)
-            choice.setCurrentIndex(0 if device_id in on else 1)
+            # neither: a device the activity does not touch, as it was before
+            choice.addItem("Leave as it is", LEAVE)
+            choice.setCurrentIndex(0 if device_id in on
+                                   else 2 if device_id in self._leave else 1)
             choice.currentIndexChanged.connect(self._regroup)
             self.table.setCellWidget(row, 1, choice)
         if hasattr(self, "dragger"):
@@ -124,6 +132,7 @@ class ActivityPowerPage(QWizardPage):
     def _regroup(self, *_):
         """Keep switched-on devices together at the top, in the order they had."""
         self._touched = True
+        self._leave = {device_id for device_id, state in self._rows() if state == LEAVE}
         self._fill([device_id for device_id, state in self._rows() if state == ON])
 
     def _orderable(self, row):
@@ -164,10 +173,24 @@ class ActivityPowerPage(QWizardPage):
                 [d for d, state in rows if state == OFF])
 
 
-def apply_plan(spec: dict, plan) -> None:
-    """Write a power plan into an activity spec, or clear it to follow the roles."""
+    def leave(self) -> list[str]:
+        """The devices this activity leaves as they are - with its plan, not the roles."""
+        if self.follow.isChecked():
+            return []
+        return [device_id for device_id, state in self._rows() if state == LEAVE]
+
+
+def apply_plan(spec: dict, plan, leave=()) -> None:
+    """Write a power plan into an activity spec, or clear it to follow the roles. The
+    devices it leaves as they are go in neither list, and in `power_leave_devices`."""
+    spec.pop("power_leave_devices", None)
     if plan is None:
         spec.pop("power_on_devices", None)
         spec.pop("power_off_devices", None)
         return
-    spec["power_on_devices"], spec["power_off_devices"] = plan
+    leave = [str(device) for device in leave or ()]
+    on, off = plan
+    spec["power_on_devices"] = [d for d in on if str(d) not in leave]
+    spec["power_off_devices"] = [d for d in off if str(d) not in leave]
+    if leave:
+        spec["power_leave_devices"] = leave

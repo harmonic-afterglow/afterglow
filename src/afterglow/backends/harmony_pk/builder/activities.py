@@ -420,7 +420,14 @@ def _gen_activity(act, by_id, remote=None):
     # list them in every activity - 96 times on, 132 off, never in neither - and the
     # remote's own `Activity.lua` is what declines to switch a device whose AlwaysOn is
     # true. Leaving them out made a rebuilt activity forget them entirely.
-    listed = set(power_devs) | set(off_devs)
+    #
+    # The one exception is a device the activity leaves as it is (`power_leave_devices`):
+    # in neither list. No Logitech configuration has one; the remote is then left to
+    # leave it alone.
+    left = {d for d in act.get("power_leave_devices") or [] if d in by_id}
+    power_devs = [d for d in power_devs if d not in left]
+    off_devs = [d for d in off_devs if d not in left]
+    listed = set(power_devs) | set(off_devs) | left
     off_devs += [d for d in by_id if d not in listed]
     power = ("".join(f'<On>{d}</On>' for d in power_devs)
              + "".join(f'<Off>{d}</Off>' for d in off_devs))

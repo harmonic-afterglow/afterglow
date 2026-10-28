@@ -73,7 +73,12 @@ def _activity(activity: dict, specs, devices, index_of, skipped) -> dict:
     # a device marked Always on is never switched by the remote, either way
     steady = {index for index, spec in enumerate(specs) if spec.get("always_on")}
     on = [index for index in dict.fromkeys(on) if index not in steady]
-    off = [index for index in range(len(devices)) if index not in on and index not in steady]
+    # and one the activity leaves as it is (`power_leave_devices`) neither way
+    left = {device(did) for did in activity.get("power_leave_devices") or []
+            if did in index_of}
+    on = [index for index in on if index not in left]
+    off = [index for index in range(len(devices))
+           if index not in on and index not in steady and index not in left]
 
     inputs, enter = [], []
     steps = list(activity.get("enter") or [])
