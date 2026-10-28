@@ -74,7 +74,9 @@ SCREEN_ZONES = {
     # on its commands
     "activity-both": (5, 7),
     "activity-both-paged": (1, 3, 5, 7),
-    "question": (),
+    # Help's questions: Yes and No are the two softkeys, and their bars lit nothing - a
+    # tester's Logitech remote lights them. As an activity's screen with both softkeys.
+    "question": (5, 7),
     "tutorial": (1, 3, 7),
 }
 # The firmware's own screens that light a zone or mark themselves shown.
