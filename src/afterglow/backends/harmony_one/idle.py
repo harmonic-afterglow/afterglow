@@ -28,8 +28,9 @@ BEEP = 0x75
 PAGE = 0x0F              # FFA0 / FFA1 previous / next page
 
 LOAD = 0xFB00
+ANY_STATE = 0xFFFE       # a transition's "from" that matches whatever the value was
 START_TIMER, STOP_TIMER = 0xEB, 0xEA
-EQUAL, NOT_EQUAL, AT_MOST = 0x00, 0x01, 0x04
+EQUAL, NOT_EQUAL, GREATER, AT_MOST = 0x00, 0x01, 0x03, 0x04
 INVERT = 0x80            # the test drops the next instruction when it holds
 PUSH_MODE, POP_MODE, SILENT = 0xFFFD, 0xFFFC, 0xFFFF
 STATUS = 0xFFFB          # stop every running timer (the firmware runs at most four)
@@ -58,6 +59,11 @@ OFF_DURATION, POLL_DURATION = 10, 2
 # starts charging, the battery stays up for BATTERY_SHOWN and each photo after it for
 # PHOTO_SHOWN; a charging problem's notice stays lit for PROBLEM_SHOWN.
 SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, PROBLEM_SHOWN = 5, 5, 1, 20
+# The ring goes round once and stops, and the screen goes dark DARK_DELAY later, as every
+# donor's does - when platform variable 10 is above 1. The firmware copies it from its
+# charge state machine (RAM 0xF10), which holds 2 to 7 while it looks after a charge.
+# Without it the backlight stays lit for as long as the remote sits on the cradle.
+CHARGE_STATE, DARK_DELAY = 10, 1
 
 # What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
 # the arrows light only where there are pages to turn, a softkey's bar only where the
@@ -126,6 +132,11 @@ class _Model:
         """A new 0/1 variable, as the model names one: ``{"variable": index}``."""
         self.variables.append({"initial": 0, "limit": 1, "transitions": []})
         return {"variable": len(self.variables) - 1}
+
+    def when(self, variable: dict, value: int, action: list):
+        """Run ``action`` whenever ``variable`` becomes ``value``."""
+        self.variables[variable["variable"]]["transitions"].append(
+            {"flags": 0, "from": ANY_STATE, "to": value, "action": action})
 
 
 def _timer(band: int, timer: int) -> list:
@@ -265,6 +276,19 @@ class _Machine:
         self.show_timer = m.timer(SHOW_DELAY)
         m.timers[self.show_timer]["action"] = m.object(
             [[PUSH_MODE, MODE_STACK], [{"exit": "charging-0"}, ENTER_MODE]])
+        # A lap: the battery clears the flag and the last picture sets it. Setting it
+        # stops the ring where it is and, a moment later, darkens the keypad, the zones
+        # and the screen - fading it - and arms the motion sensor only when HOLD is
+        # clear, as the donors do; lifting the remote off the cradle wakes it either way.
+        dark_timer = m.timer(DARK_DELAY)
+        m.timers[dark_timer]["action"] = m.object(
+            [_timer(STOP_TIMER, self.off_timer)] + [light(c, 0) for c in KEYPAD]
+            + [light(z, 0) for z in range(ZONES)]
+            + [light(SCREEN, 3, 1), light(SCREEN, 0, 1),
+               self.guarded(0, _test(EQUAL, HOLD), list(LIGHTS_OUT))])
+        self.lap = m.flag()
+        m.when(self.lap, 1, self.guarded(1, _test(GREATER, CHARGE_STATE), m.object(
+            [[STATUS, MODE_STACK], _timer(START_TIMER, dark_timer)])))
         self.problem_timer = m.timer(PROBLEM_SHOWN)
         m.timers[self.problem_timer]["action"] = self.lights_out
 
@@ -388,10 +412,15 @@ class _Machine:
         m = self.m
         usb = [{"charge": "usb", "band": CHARGE}, REGISTER]
         dark = [light(channel, 0) for channel in KEYPAD]
+        last = len(self.frame_timers) - 1
         return {f"charging-{index}": {
                     f"{ENTER:#04x}": m.object(
                         [[STATUS, MODE_STACK], light(SCREEN, SCREEN_LEVEL)] + dark
-                        + [usb, _write(self.charging_shown, 1), _timer(START_TIMER, timer)]),
+                        + [usb, _write(self.charging_shown, 1), _timer(START_TIMER, timer)]
+                        # a lap starts at the battery - a key on the cradle starts one
+                        # too - and ends at the last picture, after its timer starts
+                        + ([_write(self.lap, 0)] if index == 0 else [])
+                        + ([_write(self.lap, 1)] if index == last else [])),
                     f"{LEAVE:#04x}": m.object(
                         [_timer(STOP_TIMER, timer), _write(self.charging_shown, 0),
                          self.charge]),

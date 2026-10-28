@@ -30,6 +30,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony One: the charging screens never stopped**: on the cradle the battery and
+  photos went round for as long as the remote sat there, keeping the backlight lit for
+  hours. As every Logitech configuration does, the ring now goes round once and the screen
+  goes dark; a key shows it once more, and lifting the remote wakes it.
 - **Flipper-IRDB and IRDB devices could not be used**: their commands name a protocol -
   NEC, Samsung, JVC - and no definition of one shipped, so a device such as the OSSC was
   refused with "no IR protocol definitions are installed". The basic protocols ship now

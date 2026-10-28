@@ -1,8 +1,9 @@
 """A generated Harmony One while it charges: the battery and the photos, in a ring.
 
 Every donor does the same: when charging starts the remote wakes, and a moment later shows
-a battery, then photographs one after another, round again; a key starts the ring over
-from the battery, and when charging stops the remote goes back to what it was showing.
+a battery, then photographs one after another; after one round the screen goes dark. A key
+starts the ring over from the battery, and when charging stops the remote goes back to
+what it was showing.
 The interpreter here adds to the activities tests' what charging needs: timers, the mode
 stack, and leaving a screen before entering the next.
 """
@@ -131,6 +132,62 @@ def test_charging_shows_the_battery_a_moment_later_then_the_photos_round_again(b
         machine.fire(frame)
         seen.append(machine.mode)
     assert seen == ring + ring[:1]
+
+
+def _ring_open(image, charge_state):
+    machine = _on_home(image)
+    machine.variables[idle.CHARGE_STATE] = charge_state
+    machine.event(idle.CHARGING_STARTED)
+    machine.fire(next(t for t in machine.running if machine.timer(t)[0] == idle.SHOW_DELAY))
+    return machine
+
+
+def _round(machine, ring):
+    for _ in ring[1:]:
+        [frame] = machine.running
+        machine.fire(frame)
+
+
+def _screen_dark(machine):
+    return idle.light(idle.SCREEN, 0, 1) in [list(entry) for entry in machine.log]
+
+
+def test_after_one_round_on_the_cradle_the_screen_goes_dark(built):
+    """A tester's remote showed the ring for four hours on the cradle. Every donor stops
+    it after one round while the firmware is looking after a charge, and darkens it."""
+    ring = _pictures(built)
+    machine = _ring_open(built, charge_state=4)
+    _round(machine, ring)
+    assert machine.mode == ring[-1]
+    [dark] = machine.running                           # the ring's own timer is stopped
+    assert machine.timer(dark)[0] == idle.DARK_DELAY
+    machine.fire(dark)
+    assert _screen_dark(machine)
+    assert not machine.running
+    # lifted off the cradle, it goes back to what was shown
+    machine.event(idle.CHARGING_STOPPED)
+    assert machine.mode == scaffold.SYSTEM_SCREENS
+
+
+def test_a_key_on_the_dark_cradle_shows_one_more_round(built):
+    ring = _pictures(built)
+    machine = _ring_open(built, charge_state=4)
+    _round(machine, ring)
+    machine.fire(next(iter(machine.running)))
+    machine.press(keys.code(keys.SCANS["VolumeUp"]))
+    assert machine.mode == ring[0]
+    _round(machine, ring)
+    [dark] = machine.running
+    assert machine.timer(dark)[0] == idle.DARK_DELAY
+
+
+def test_without_a_charge_under_way_the_ring_goes_on(built):
+    ring = _pictures(built)
+    machine = _ring_open(built, charge_state=1)
+    _round(machine, ring)
+    [frame] = machine.running
+    machine.fire(frame)
+    assert machine.mode == ring[0]
 
 
 def test_a_key_on_the_cradle_starts_the_ring_again_from_the_battery(built):

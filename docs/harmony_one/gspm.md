@@ -1267,7 +1267,14 @@ battery for 5, then three photographs for 1 each, round again (upstairs' screens
 `07 FFFB` (which also stops the keypad's off timer, so the screen stays lit), pushes a
 context binding every key to "enter the battery again", puts the USB charge context under
 `0xFC`, and starts the timer that enters the next; its leave handler stops that timer and
-chooses the charge context again. External power connected (`0x1F`) - the remote set on
+chooses the charge context again. The last photo's enter handler also counts a lap
+(`1F F2xx`, a variable of limit 2 that the ring's opening clears); its first lap, when
+platform variable 10 is above 1, runs `07 FFFB` - the ring stops where it is - and a
+timer 1 later darkens the keypad and the zones, fades the screen out (`C117`, `C111`) and
+arms the motion sensor only when 13 is clear. Variable 10 is the firmware's charge state
+machine (3.4 copies RAM `0xF10` into `0x112`, platform variable N living at `0x108 + N`),
+which holds 2 to 7 while it looks after a charge, so on the cradle the ring is seen once.
+External power connected (`0x1F`) - the remote set on
 its cradle - opens the ring after timer 5 (5), over what was shown; removed (`0x1E`) goes
 back. Upstairs' USB-in handler
 also starts a timer into the ring when 13 is set (timer 7).
@@ -1278,7 +1285,8 @@ A build generates the same (`backends/harmony_one/charging.py`, `idle.py`): the 
 as bare owned screens straight after the screens carried behind Options, every key bound
 in the screen's own list to the battery's screen rather than in a pushed context, and a
 flag the enter and leave handlers keep so that `0x1E` pops the mode only while the ring is
-up. USB in does not open the ring: the USB screen's own flag would no longer be the one
+up. The lap is a flag the battery clears and the last picture sets, so a key pressed on the
+dark cradle shows one more round rather than a ring that never stops. USB in does not open the ring: the USB screen's own flag would no longer be the one
 shown, and unplugging would leave the ring up. A theme without `charging/battery` gets no
 charging screens and no `0x1E`/`0x1F`/`0x23` rows.
 
