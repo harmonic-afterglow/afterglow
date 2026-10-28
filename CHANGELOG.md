@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Leave a device as it is.** An activity's Power section offers *Leave as it is* beside
+  Switch on and Switch off, for a device the activity should not touch. No Logitech
+  configuration has one, so this is still to be confirmed on each remote.
+- **Copy a command from another device.** A device's Commands has *Copy from another
+  device...*: the commands picked come with their codes.
+- **Icons on an activity's screen buttons, on the Harmony One.** The editors let a button
+  carry an icon and the One drew its label alone; the icon now fills the button with the
+  label over it, as Logitech's builds draw one, and the preview shows it the same way.
+- A Harmony One project can start with the **Remote Assistant** hidden (Remote Settings),
+  rather than welcomed again after every write.
+
+### Changed
+
+- **A device's pages wrap round** on the One and the 800: past the last page to the
+  first, and back from the first to the last, as Logitech's configurations do. They went
+  back to the device list.
+- **Learn from remote takes each key twice** and keeps it only when the two presses
+  agree; learned codes can differ from press to press.
+- Help's Yes and No light their softkey bars on the One.
+
+### Fixed
+
+- **Renaming a device's command lost its code**, and Save then did nothing at all - the
+  reason, "missing signals", went only to the log. The code follows the rename, and so do
+  the power choice, inputs, number keys, the device's page and the activities using it;
+  a device that cannot be saved says why.
+- An output file named without `.ezhex` was built, and then could not be written: "no
+  such configuration".
+
 ## [0.3.0-beta.5] - 2026-10-18
 
 ### Added
