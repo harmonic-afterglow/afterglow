@@ -313,7 +313,7 @@ class Flow:
             for slot, entry in enumerate(chunk):
                 if entry is None:
                     continue
-                _label, steps, _picture = entry
+                steps = entry[1]
                 if len(steps) == 1 and steps[0][0] == "send":
                     target = actions.wrapper(steps[0][1], steps[0][2])
                 else:
@@ -335,8 +335,11 @@ class Flow:
                 zones.append(dict(SOFTKEY_LEFT_ZONE, tag=PAGE_ACTIVITIES_KEY & 0x7F))
                 rows.append((PAGE_ACTIVITIES_KEY, layout.navigation(other), OBJECT_ATOM))
                 softkeys.insert(0, other_key)
-            labels = [None if entry is None or entry[2] is not None else entry[0]
+            # A favourite's picture says it all; a button's icon has its label over it
+            iconed = [bool(entry is not None and len(entry) > 3 and entry[3])
                       for entry in chunk]
+            labels = [None if entry is None or (entry[2] is not None and not icon)
+                      else entry[0] for entry, icon in zip(chunk, iconed)]
             pictured = [None if entry is None else entry[2] for entry in chunk]
             gaps = [entry is None for entry in chunk]
 
@@ -363,8 +366,12 @@ class Flow:
                                      for item in act["favourites"]], ordinals["favourites"],
                                ordinals["pages"][0] if both else None, "commands", kind_name)
         if ordinals["pages"]:
-            self._button_pages(act, [None if button is None else (*button, None)
-                                     for button in act["buttons"]],
+            drawn = act.get("button_pictures") or []
+            self._button_pages(act, [
+                None if button is None else
+                (*button, drawn[number] if number < len(drawn) else None,
+                 bool(number < len(drawn) and drawn[number]))
+                for number, button in enumerate(act["buttons"])],
                                ordinals["pages"], ordinals["favourites"][0] if both else None,
                                "favourites", kind_name)
 

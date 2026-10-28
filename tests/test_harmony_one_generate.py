@@ -1522,3 +1522,42 @@ def test_the_remote_assistant_asks_after_an_input_by_the_name_a_person_reads():
     # "Is the TV set to the HDMI 1 input?", as Logitech's Help asks
     assert any(line.endswith("set to the HDMI 1") for line in drawn)
     assert not any("set to" in line and "InputHdmi1" in line for line in drawn)
+
+
+def test_an_activity_button_draws_its_icon_under_its_label():
+    """The editors let a button carry an icon, and the One drew the label alone."""
+    project = {
+        "devices": [{"id": "1", "label": "TV",
+                     "signals": {"Red": _nec(4, 1), "Blue": _nec(4, 2)}}],
+        "activities": [{"id": "1001", "label": "Watch", "display": "1", "control": "1",
+                        "soft_buttons": [
+                            {"label": "Rouge", "device": "1", "command": "Red",
+                             "icon": "teletext_red_default"},
+                            {"label": "Bleu", "device": "1", "command": "Blue",
+                             "icon": "no-such-icon"}]}]}
+    plain = dict(project, activities=[dict(project["activities"][0], soft_buttons=[
+        {key: value for key, value in button.items() if key != "icon"}
+        for button in project["activities"][0]["soft_buttons"]])])
+    from afterglow.backends.harmony_one import importing
+
+    def first_place(image):
+        """Every picture drawn in the first button place, by its pixels."""
+        found = set()
+        for screen in importing.Image(image).screens:
+            for slot in screen["slots"]:
+                try:
+                    program = ui_index.drawing_program(image, slot["program_offset"])
+                except ValueError:
+                    continue
+                for item in program["instructions"]:
+                    if item["opcode"] == "bitmap" \
+                            and (item["x"], item["y"]) == pages.BUTTON_POSITIONS[0]:
+                        rows = bitmap.decode(image, item["target"])["rows"]
+                        found.add(tuple(tuple(row) for row in rows))
+        return found
+
+    with_icon, without = generate.build(project), generate.build(plain)
+    assert with_icon["skipped"] == [
+        "activity 'Watch' button: no icon 'no-such-icon'; the label is drawn alone"]
+    # a frame with the red circle on it, which no plain build draws
+    assert first_place(with_icon["image"]) - first_place(without["image"])
