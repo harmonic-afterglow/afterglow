@@ -188,8 +188,17 @@ class OtherRemote(UnconfirmedRemote):
     ``accept_mismatched``: a yes to an unconfirmed revision is not a yes to this."""
 
 
+class UnknownSkin(UnconfirmedRemote):
+    """The remote reports a skin no profile of Afterglow's has, and otherwise agrees with
+    the file: most likely the same remote sold under a number nobody has told Afterglow
+    about (Logitech gave one remote several). Asked as such, and accepted by
+    ``accept_unknown_skin`` - or ``accept_mismatched``, which covers it. A skin another
+    profile claims is that other remote: OtherRemote."""
+
+
 # What an unconfirmed revision of a remote differs by: its board and its flash chip. A
-# different arch, skin or software type looks like another remote: OtherRemote.
+# different arch, skin or software type looks like another remote: OtherRemote - unless
+# the skin is one no profile knows, UnknownSkin.
 CAUTION_FIELDS = ("board", "flash")
 
 
@@ -727,7 +736,8 @@ class Remote:
 
     # writing
     def write_config(self, path, on_progress=None, reset=True,
-                     accept_unconfirmed=False, accept_mismatched=False) -> None:
+                     accept_unconfirmed=False, accept_unknown_skin=False,
+                     accept_mismatched=False) -> None:
         """Flash a `.ezhex` onto the attached remote.
 
         Stops before a file built for a different model unless ``accept_mismatched``.
@@ -743,14 +753,16 @@ class Remote:
             raise RemoteError(f"{identity['model']} does not support configuration "
                               "updates through libconcord")
         self._verify_intended_for(path, identity, accept_unconfirmed=accept_unconfirmed,
+                                  accept_unknown_skin=accept_unknown_skin,
                                   accept_mismatched=accept_mismatched)
         self._apply_config(path, on_progress=on_progress, reset=reset)
 
     def check_write(self, path, identity: dict, accept_unconfirmed=False,
-                    accept_mismatched=False) -> None:
+                    accept_unknown_skin=False, accept_mismatched=False) -> None:
         """What write_config checks before anything is written, on its own: so a backup
         is not taken for a write that then stops to ask."""
         self._verify_intended_for(Path(path), identity, accept_unconfirmed=accept_unconfirmed,
+                                  accept_unknown_skin=accept_unknown_skin,
                                   accept_mismatched=accept_mismatched)
 
     def flash_file(self, path, on_progress=None, force=False) -> None:
@@ -864,11 +876,13 @@ class Remote:
     @staticmethod
     def _verify_intended_for(
             path: Path, identity: dict, *, allow_experimental: bool = False,
-            accept_unconfirmed: bool = False, accept_mismatched: bool = False):
+            accept_unconfirmed: bool = False, accept_unknown_skin: bool = False,
+            accept_mismatched: bool = False):
         """Prove that the artifact, profile, and attached remote all agree. What looks
-        like a different remote raises OtherRemote unless ``accept_mismatched``; an
-        unconfirmed board revision or flash chip of the same one raises UnconfirmedRemote
-        unless ``accept_unconfirmed`` (or ``accept_mismatched``, which covers it). A file
+        like a different remote raises OtherRemote unless ``accept_mismatched``; a skin
+        no profile knows on a remote that otherwise agrees, UnknownSkin unless
+        ``accept_unknown_skin``; an unconfirmed board revision or flash chip of the same one raises UnconfirmedRemote
+        unless ``accept_unconfirmed`` (``accept_mismatched`` covers both). A file
         that is no configuration, or for no remote Afterglow writes, is always refused."""
         from . import ezhex, remotes
         try:
@@ -912,13 +926,30 @@ class Remote:
         problems = artifact_problems + remote_problems + disagreements
         cautions = [problem for problem in problems
                     if problem.split(" ", 1)[0] in CAUTION_FIELDS]
-        refusals = [problem for problem in problems if problem not in cautions]
+        # The remote's own skin, when no profile has it: said apart from the rest
+        skin = identity.get("skin")
+        known_skins = {remotes.comparable("skin", known)
+                       for each in remotes.load_all() for known in each.skins}
+        unknown_skin = [] if skin in (None, -1) or \
+            remotes.comparable("skin", skin) in known_skins else \
+            [problem for problem in remote_problems + disagreements
+             if problem.split(" ", 1)[0] == "skin"]
+        refusals = [problem for problem in problems
+                    if problem not in cautions and problem not in unknown_skin]
         if refusals and not accept_mismatched:
             raise OtherRemote(
                 f"{path.name} is not proven compatible with the attached "
                 f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
                 "Nothing was written.", problems)
-        if cautions and not (accept_unconfirmed or accept_mismatched):
+        if unknown_skin and not (accept_unknown_skin or accept_mismatched):
+            sold_as = remotes.models().get(str(skin), {}).get("model")
+            raise UnknownSkin(
+                f"{path.name} is for a {profile.model}, and the attached remote reports "
+                f"skin {skin}, which Afterglow has no profile for"
+                + (f" (Logitech's list names it a {sold_as})" if sold_as else "")
+                + f": {'; '.join(unknown_skin + cautions)}. Nothing was written.",
+                unknown_skin + cautions)
+        if cautions and not (accept_unconfirmed or accept_unknown_skin or accept_mismatched):
             raise UnconfirmedRemote(
                 f"{path.name} is for this {profile.model}, but this one has not been "
                 f"confirmed with Afterglow: {'; '.join(cautions)}. Nothing was written.",

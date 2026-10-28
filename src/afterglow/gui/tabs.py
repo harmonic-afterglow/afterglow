@@ -783,19 +783,34 @@ class UpdateTab(QWidget):
         self._worker.progress.connect(self._on_remote_progress)
         self._worker.done.connect(self._on_remote_done)
         self._worker.unconfirmed.connect(
-            lambda cautions, other, kwargs=dict(kwargs), operation=operation:
-            self._confirm_unconfirmed(operation, kwargs, cautions, other))
+            lambda cautions, kind, kwargs=dict(kwargs), operation=operation:
+            self._confirm_unconfirmed(operation, kwargs, cautions, kind))
         return self._worker
 
-    def _confirm_unconfirmed(self, operation, kwargs, cautions, other=False):
+    def _confirm_unconfirmed(self, operation, kwargs, cautions, kind="revision"):
         """The remote is the model the file is for, but a revision of it Afterglow has not
-        seen - or, `other`, does not look like the remote the file is for at all: say how
-        it differs and write it only if the person agrees."""
+        seen ("revision"); or it reports a skin Afterglow has no profile for ("skin"); or
+        it does not look like the remote the file is for at all ("other"): say how it
+        differs and write it only if the person agrees."""
         profile = self._profile()
+        other = kind == "other"
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Critical if other else QMessageBox.Icon.Warning)
         listed = "\n".join(f"- {line}" for line in cautions)
-        if other:
+        if kind == "skin":
+            box.setWindowTitle("Unknown skin")
+            box.setText(f"The attached remote reports a skin Afterglow has no profile "
+                        f"for:\n\n{listed}")
+            box.setInformativeText(
+                "Logitech sold some remotes under several skin numbers, so this may well "
+                f"be a {profile.model} that works the same - but Afterglow cannot tell. "
+                "If you have not saved its current configuration, cancel and use Read "
+                "from Remote first.\n\n"
+                "Write it anyway? If it works, tell us the skin number (Discord or "
+                "GitHub) so Afterglow knows it.")
+            yes = box.addButton("Write anyway", QMessageBox.ButtonRole.AcceptRole)
+            no = box.addButton(QMessageBox.StandardButton.Cancel)
+        elif other:
             box.setWindowTitle("Different remote")
             box.setText(f"The attached remote does not look like the {profile.model} this "
                         f"configuration was made for:\n\n{listed}")
@@ -824,7 +839,8 @@ class UpdateTab(QWidget):
         box.setEscapeButton(no)
         box.exec()
         if box.clickedButton() is yes:
-            accept = {"accept_mismatched": True} if other else {"accept_unconfirmed": True}
+            accept = {{"other": "accept_mismatched", "skin": "accept_unknown_skin"}.get(
+                kind, "accept_unconfirmed"): True}
             self._run(operation, **{**kwargs, **accept}).start()
 
     def _warn_if_the_link_is_down(self):

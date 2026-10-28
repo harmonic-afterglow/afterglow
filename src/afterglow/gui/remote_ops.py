@@ -44,9 +44,9 @@ class RemoteWorker(QThread):
     done = pyqtSignal(bool, str)              # succeeded, message
     result = pyqtSignal(object)               # operation-specific payload
     # a write that stopped before anything was done, for the person to confirm: what
-    # differs, and whether it looks like another remote (concord.OtherRemote) rather
-    # than an unconfirmed revision of its model (concord.UnconfirmedRemote)
-    unconfirmed = pyqtSignal(list, bool)
+    # differs, and which kind of question it is - "other" (concord.OtherRemote), "skin"
+    # (concord.UnknownSkin) or "revision" (concord.UnconfirmedRemote)
+    unconfirmed = pyqtSignal(list, str)
 
     def __init__(self, operation: str, parent=None, **kwargs):
         super().__init__(parent)
@@ -73,8 +73,9 @@ class RemoteWorker(QThread):
         try:
             getattr(self, f"_{self.operation}")()
         except concord.UnconfirmedRemote as exc:
-            self.unconfirmed.emit(list(exc.cautions),
-                                  isinstance(exc, concord.OtherRemote))
+            kind = ("other" if isinstance(exc, concord.OtherRemote) else
+                    "skin" if isinstance(exc, concord.UnknownSkin) else "revision")
+            self.unconfirmed.emit(list(exc.cautions), kind)
             self.done.emit(False, f"{exc} Waiting for your answer.")
         except concord.NotAvailable as exc:
             self.done.emit(False, str(exc))
@@ -124,8 +125,8 @@ class RemoteWorker(QThread):
     def _write(self):
         path = Path(self.kwargs["path"])
         backup = self.kwargs.get("backup")
-        accept = {"accept_unconfirmed": bool(self.kwargs.get("accept_unconfirmed")),
-                  "accept_mismatched": bool(self.kwargs.get("accept_mismatched"))}
+        accept = {key: bool(self.kwargs.get(key)) for key in (
+            "accept_unconfirmed", "accept_unknown_skin", "accept_mismatched")}
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
             # whether it may be written at all, before a backup is taken for it

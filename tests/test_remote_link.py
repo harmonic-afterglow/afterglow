@@ -1192,7 +1192,7 @@ def test_an_unconfirmed_remote_is_asked_about_before_any_backup(tmp_path, monkey
                                      backup=str(tmp_path / "before.ezhex"))
     worker.unconfirmed.connect(lambda cautions, other: asked.append((cautions, other)))
     worker.run()
-    assert asked == [(["board is 0.0.15"], False)] and saved == [] and wrote == []
+    assert asked == [(["board is 0.0.15"], "revision")] and saved == [] and wrote == []
 
 
 def test_another_remote_is_asked_about_as_such_and_written_on_its_own_yes(
@@ -1213,8 +1213,7 @@ def test_another_remote_is_asked_about_as_such_and_written_on_its_own_yes(
         def identity(self, *_a):
             return {"model": "Harmony 900"}
 
-        def check_write(self, path, identity, accept_unconfirmed=False,
-                        accept_mismatched=False):
+        def check_write(self, path, identity, accept_mismatched=False, **_k):
             if not accept_mismatched:
                 raise concord.OtherRemote("other", ["skin is 54 (expected 61)"])
 
@@ -1226,7 +1225,38 @@ def test_another_remote_is_asked_about_as_such_and_written_on_its_own_yes(
         worker = remote_ops.RemoteWorker("write", None, path="new.ezhex", **kwargs)
         worker.unconfirmed.connect(lambda cautions, other: asked.append((cautions, other)))
         worker.run()
-    assert asked == [(["skin is 54 (expected 61)"], True)] * 2 and wrote == []
+    assert asked == [(["skin is 54 (expected 61)"], "other")] * 2 and wrote == []
 
     remote_ops.RemoteWorker("write", None, path="new.ezhex", accept_mismatched=True).run()
-    assert wrote == [{"accept_unconfirmed": False, "accept_mismatched": True}]
+    assert wrote == [{"accept_unconfirmed": False, "accept_unknown_skin": False,
+                      "accept_mismatched": True}]
+
+
+def test_a_skin_no_profile_has_is_its_own_question(a_config):
+    """Logitech sold some remotes under several skin numbers: one Afterglow has no profile
+    for, on a remote that otherwise agrees with the file, is asked about as an unknown
+    skin - not as another remote - and written on that yes."""
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Harmony 900", skin=9999)
+    for accept in ({}, {"accept_unconfirmed": True}):
+        with pytest.raises(concord.UnknownSkin, match="skin 9999") as raised:
+            concord.Remote._verify_intended_for(Path(a_config), identity, **accept)
+        assert not isinstance(raised.value, concord.OtherRemote)
+        assert raised.value.cautions[0].startswith("skin")
+    for accept in ({"accept_unknown_skin": True}, {"accept_mismatched": True}):
+        assert concord.Remote._verify_intended_for(
+            Path(a_config), identity, **accept).id == "harmony-900"
+
+
+def test_an_unknown_skin_with_another_arch_is_another_remote(a_config):
+    from afterglow import ezhex, remotes
+
+    header, *_rest = ezhex._split(Path(a_config).read_bytes())
+    identity = remotes.identity_of(header)
+    identity.update(model="Other remote", skin=9999, arch=12)
+    with pytest.raises(concord.OtherRemote):
+        concord.Remote._verify_intended_for(Path(a_config), identity,
+                                            accept_unknown_skin=True)
