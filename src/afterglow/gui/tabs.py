@@ -767,29 +767,49 @@ class UpdateTab(QWidget):
         self._worker.progress.connect(self._on_remote_progress)
         self._worker.done.connect(self._on_remote_done)
         self._worker.unconfirmed.connect(
-            lambda cautions, kwargs=dict(kwargs), operation=operation:
-            self._confirm_unconfirmed(operation, kwargs, cautions))
+            lambda cautions, other, kwargs=dict(kwargs), operation=operation:
+            self._confirm_unconfirmed(operation, kwargs, cautions, other))
         return self._worker
 
-    def _confirm_unconfirmed(self, operation, kwargs, cautions):
+    def _confirm_unconfirmed(self, operation, kwargs, cautions, other=False):
         """The remote is the model the file is for, but a revision of it Afterglow has not
-        seen: say how it differs and write it only if the person agrees."""
+        seen - or, `other`, does not look like the remote the file is for at all: say how
+        it differs and write it only if the person agrees."""
         profile = self._profile()
         box = QMessageBox(self)
-        box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle("Unconfirmed remote")
-        box.setText(f"This {profile.model} differs from the ones Afterglow has been "
-                    "confirmed on:\n\n" + "\n".join(f"- {line}" for line in cautions))
-        box.setInformativeText(
-            "It is most likely a revision of the same remote - others like it have been "
-            "written and worked - but nobody has confirmed it yet. If you have not saved "
-            "its current configuration, cancel and use Read from Remote first.\n\n"
-            "Write it anyway? Telling us how it went (Discord or GitHub) is what makes "
-            "it confirmed.")
-        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        box.setDefaultButton(QMessageBox.StandardButton.No)
-        if box.exec() == QMessageBox.StandardButton.Yes:
-            self._run(operation, **kwargs, accept_unconfirmed=True).start()
+        box.setIcon(QMessageBox.Icon.Critical if other else QMessageBox.Icon.Warning)
+        listed = "\n".join(f"- {line}" for line in cautions)
+        if other:
+            box.setWindowTitle("Different remote")
+            box.setText(f"The attached remote does not look like the {profile.model} this "
+                        f"configuration was made for:\n\n{listed}")
+            box.setInformativeText(
+                "Writing a configuration made for another remote can leave this one "
+                "unable to start. Go ahead only if you are sure the remote is right and "
+                "Afterglow's records are wrong, and you have saved its current "
+                "configuration with Read from Remote.\n\n"
+                "Write it anyway, at your own risk?")
+            yes = box.addButton("Write anyway", QMessageBox.ButtonRole.DestructiveRole)
+            no = box.addButton(QMessageBox.StandardButton.Cancel)
+        else:
+            box.setWindowTitle("Unconfirmed remote")
+            box.setText(f"This {profile.model} differs from the ones Afterglow has been "
+                        f"confirmed on:\n\n{listed}")
+            box.setInformativeText(
+                "It is most likely a revision of the same remote - others like it have "
+                "been written and worked - but nobody has confirmed it yet. If you have "
+                "not saved its current configuration, cancel and use Read from Remote "
+                "first.\n\n"
+                "Write it anyway? Telling us how it went (Discord or GitHub) is what "
+                "makes it confirmed.")
+            yes = box.addButton(QMessageBox.StandardButton.Yes)
+            no = box.addButton(QMessageBox.StandardButton.No)
+        box.setDefaultButton(no)
+        box.setEscapeButton(no)
+        box.exec()
+        if box.clickedButton() is yes:
+            accept = {"accept_mismatched": True} if other else {"accept_unconfirmed": True}
+            self._run(operation, **{**kwargs, **accept}).start()
 
     def _warn_if_the_link_is_down(self):
         """Say in the log that the Linux USB link is not up, then carry on regardless.

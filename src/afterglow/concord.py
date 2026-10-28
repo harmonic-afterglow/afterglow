@@ -180,8 +180,16 @@ class UnconfirmedRemote(RemoteError):
         self.cautions = cautions
 
 
+class OtherRemote(UnconfirmedRemote):
+    """The file does not look made for the attached remote at all: its arch, skin or
+    software type differs, or the remote would not say. Still the person's call - a file
+    can be right where Afterglow's records are wrong, and the Harmony 900's Safe Mode
+    survives any configuration - but asked far more plainly, and accepted only by
+    ``accept_mismatched``: a yes to an unconfirmed revision is not a yes to this."""
+
+
 # What an unconfirmed revision of a remote differs by: its board and its flash chip. A
-# different arch, skin or software type is another remote, and is never written.
+# different arch, skin or software type looks like another remote: OtherRemote.
 CAUTION_FIELDS = ("board", "flash")
 
 
@@ -719,12 +727,12 @@ class Remote:
 
     # writing
     def write_config(self, path, on_progress=None, reset=True,
-                     accept_unconfirmed=False) -> None:
+                     accept_unconfirmed=False, accept_mismatched=False) -> None:
         """Flash a `.ezhex` onto the attached remote.
 
-        Refuses a file built for a different model. libconcord would likely refuse it
-        too, but not before invalidating flash, and a remote whose flash has been
-        invalidated and not rewritten does not boot.
+        Stops before a file built for a different model unless ``accept_mismatched``.
+        libconcord would likely refuse it too, but not before invalidating flash, and a
+        remote whose flash has been invalidated and not rewritten does not boot.
         """
         path = Path(path)
         if not path.is_file():
@@ -734,13 +742,16 @@ class Remote:
         if not identity["can_write"]:
             raise RemoteError(f"{identity['model']} does not support configuration "
                               "updates through libconcord")
-        self._verify_intended_for(path, identity, accept_unconfirmed=accept_unconfirmed)
+        self._verify_intended_for(path, identity, accept_unconfirmed=accept_unconfirmed,
+                                  accept_mismatched=accept_mismatched)
         self._apply_config(path, on_progress=on_progress, reset=reset)
 
-    def check_write(self, path, identity: dict, accept_unconfirmed=False) -> None:
+    def check_write(self, path, identity: dict, accept_unconfirmed=False,
+                    accept_mismatched=False) -> None:
         """What write_config checks before anything is written, on its own: so a backup
         is not taken for a write that then stops to ask."""
-        self._verify_intended_for(Path(path), identity, accept_unconfirmed=accept_unconfirmed)
+        self._verify_intended_for(Path(path), identity, accept_unconfirmed=accept_unconfirmed,
+                                  accept_mismatched=accept_mismatched)
 
     def flash_file(self, path, on_progress=None, force=False) -> None:
         """Write any configuration file, such as a backup, as `concordance -C` would.
@@ -853,10 +864,12 @@ class Remote:
     @staticmethod
     def _verify_intended_for(
             path: Path, identity: dict, *, allow_experimental: bool = False,
-            accept_unconfirmed: bool = False):
-        """Prove that the artifact, profile, and attached remote all agree. A different
-        remote is refused; an unconfirmed board revision or flash chip of the same one
-        raises UnconfirmedRemote unless ``accept_unconfirmed``."""
+            accept_unconfirmed: bool = False, accept_mismatched: bool = False):
+        """Prove that the artifact, profile, and attached remote all agree. What looks
+        like a different remote raises OtherRemote unless ``accept_mismatched``; an
+        unconfirmed board revision or flash chip of the same one raises UnconfirmedRemote
+        unless ``accept_unconfirmed`` (or ``accept_mismatched``, which covers it). A file
+        that is no configuration, or for no remote Afterglow writes, is always refused."""
         from . import ezhex, remotes
         try:
             header = ezhex.read(path.read_bytes()).header
@@ -900,12 +913,12 @@ class Remote:
         cautions = [problem for problem in problems
                     if problem.split(" ", 1)[0] in CAUTION_FIELDS]
         refusals = [problem for problem in problems if problem not in cautions]
-        if refusals:
-            raise RemoteError(
+        if refusals and not accept_mismatched:
+            raise OtherRemote(
                 f"{path.name} is not proven compatible with the attached "
                 f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
-                "Refusing to write it.")
-        if cautions and not accept_unconfirmed:
+                "Nothing was written.", problems)
+        if cautions and not (accept_unconfirmed or accept_mismatched):
             raise UnconfirmedRemote(
                 f"{path.name} is for this {profile.model}, but this one has not been "
                 f"confirmed with Afterglow: {'; '.join(cautions)}. Nothing was written.",
