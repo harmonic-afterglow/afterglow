@@ -75,10 +75,10 @@ def test_connected_identity_includes_every_write_constraint():
     assert identity["firmware"] == "7.8"
 
 
-def test_writing_refuses_a_config_for_another_remote(a_config):
+def test_writing_stops_before_a_config_for_another_remote(a_config):
     """The file says which remote it is for. Writing a Harmony 900 config to something
-    else would invalidate that remote's flash before failing."""
-    with pytest.raises(concord.RemoteError, match="Refusing to write"):
+    else would invalidate that remote's flash before failing: it stops and asks."""
+    with pytest.raises(concord.OtherRemote, match="Nothing was written"):
         concord.Remote._verify_intended_for(
             Path(a_config), {"skin": 54, "model": "Harmony One"})
 
@@ -1122,15 +1122,30 @@ def test_an_unconfirmed_board_of_the_same_remote_asks_rather_than_refuses(a_conf
 
 
 @pytest.mark.parametrize("field,replacement", [("arch", 12), ("skin", 54), ("software_type", 99)])
-def test_another_remote_is_refused_even_when_told_to_go_ahead(a_config, field, replacement):
+def test_another_remote_is_asked_about_more_plainly_and_written_only_on_that_yes(
+        a_config, field, replacement):
+    """What looks like another remote is the person's call too, but a yes to an
+    unconfirmed revision does not cover it: only its own, plainer question does."""
     from afterglow import ezhex, remotes
 
     header, *_rest = ezhex._split(Path(a_config).read_bytes())
     identity = remotes.identity_of(header)
     identity.update(model="Other remote", **{field: replacement})
-    with pytest.raises(concord.RemoteError, match="Refusing to write") as raised:
+    with pytest.raises(concord.OtherRemote, match="Nothing was written") as raised:
         concord.Remote._verify_intended_for(Path(a_config), identity,
                                             accept_unconfirmed=True)
+    assert any(line.startswith(field) for line in raised.value.cautions)
+    assert concord.Remote._verify_intended_for(
+        Path(a_config), identity, accept_mismatched=True).id == "harmony-900"
+
+
+def test_something_that_is_no_configuration_is_refused_even_when_told_to_go_ahead(
+        tmp_path):
+    junk = tmp_path / "notes.txt"
+    junk.write_text("this is not a configuration")
+    with pytest.raises(concord.RemoteError, match="not a configuration") as raised:
+        concord.Remote._verify_intended_for(junk, {"skin": 61, "model": "Harmony 900"},
+                                            accept_mismatched=True)
     assert not isinstance(raised.value, concord.UnconfirmedRemote)
 
 
@@ -1162,7 +1177,7 @@ def test_an_unconfirmed_remote_is_asked_about_before_any_backup(tmp_path, monkey
         def identity(self, *_a):
             return {"model": "Harmony 900"}
 
-        def check_write(self, path, identity, accept_unconfirmed=False):
+        def check_write(self, path, identity, accept_unconfirmed=False, **_k):
             if not accept_unconfirmed:
                 raise concord.UnconfirmedRemote("unconfirmed", ["board is 0.0.15"])
 
@@ -1175,6 +1190,43 @@ def test_an_unconfirmed_remote_is_asked_about_before_any_backup(tmp_path, monkey
     monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
     worker = remote_ops.RemoteWorker("write", None, path="new.ezhex",
                                      backup=str(tmp_path / "before.ezhex"))
-    worker.unconfirmed.connect(asked.append)
+    worker.unconfirmed.connect(lambda cautions, other: asked.append((cautions, other)))
     worker.run()
-    assert asked == [["board is 0.0.15"]] and saved == [] and wrote == []
+    assert asked == [(["board is 0.0.15"], False)] and saved == [] and wrote == []
+
+
+def test_another_remote_is_asked_about_as_such_and_written_on_its_own_yes(
+        tmp_path, monkeypatch):
+    from afterglow.gui import remote_ops
+
+    wrote, asked = [], []
+
+    class Remote:
+        last_restart_error = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def identity(self, *_a):
+            return {"model": "Harmony 900"}
+
+        def check_write(self, path, identity, accept_unconfirmed=False,
+                        accept_mismatched=False):
+            if not accept_mismatched:
+                raise concord.OtherRemote("other", ["skin is 54 (expected 61)"])
+
+        def write_config(self, path, *_a, **accept):
+            wrote.append(accept)
+
+    monkeypatch.setattr(remote_ops.concord, "Remote", Remote)
+    for kwargs in ({}, {"accept_unconfirmed": True}):
+        worker = remote_ops.RemoteWorker("write", None, path="new.ezhex", **kwargs)
+        worker.unconfirmed.connect(lambda cautions, other: asked.append((cautions, other)))
+        worker.run()
+    assert asked == [(["skin is 54 (expected 61)"], True)] * 2 and wrote == []
+
+    remote_ops.RemoteWorker("write", None, path="new.ezhex", accept_mismatched=True).run()
+    assert wrote == [{"accept_unconfirmed": False, "accept_mismatched": True}]
