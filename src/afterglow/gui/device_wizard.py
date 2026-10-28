@@ -125,7 +125,11 @@ class DeviceWizard(StepWizard):
         return self.page_identity.rf_combo.currentData()
 
     def accept(self):
-        self.result_spec = self._collect()
+        try:
+            self.result_spec = self._collect()
+        except ValueError as exc:
+            _cannot_save(self, exc)
+            return
         super().accept()
 
     def _collect(self):
@@ -822,6 +826,17 @@ class IdentityPage(QWizardPage):
         if t.get("model"): self.model_edit.setText(t["model"])
         self._existing = t
         self.proto_label.setText(self._protocol_text())
+def _cannot_save(parent, problem) -> None:
+    """Say why a device was not saved. Save used to do nothing at all: the reason went
+    only to the log."""
+    QMessageBox.warning(parent, "The device was not saved",
+                        f"{problem}\n\nNothing was changed. Put it right and save again.")
+
+
+# Where a command row keeps the name it was loaded with (CommandsPage.renames).
+ORIGINAL_NAME = Qt.ItemDataRole.UserRole + 1
+
+
 class CommandsPage(QWizardPage):
     learned = pyqtSignal()
 
@@ -930,6 +945,7 @@ class CommandsPage(QWizardPage):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked |
                                    QAbstractItemView.EditTrigger.SelectedClicked)
         self.table.cellClicked.connect(self._on_cell_clicked)
+        self.table.itemChanged.connect(self._name_edited)
         layout.addWidget(self.table)
         self._show_code_columns(False)
         self.view_choice.changed.connect(self._show_picture)
@@ -1070,6 +1086,10 @@ class CommandsPage(QWizardPage):
         captured = signal.get("kind") in ("waveform", "backend-opaque")
         for col, val in enumerate([str(name), str(label), str(addr), str(cmd)]):
             item = QTableWidgetItem(val)
+            if col == 0 and str(name) in self._signals:
+                # the name it came with, which its code is kept under: a rename keeps
+                # the code and is followed everywhere the command is named (renames)
+                item.setData(ORIGINAL_NAME, str(name))
             if captured and col in (2, 3):
                 item.setData(Qt.ItemDataRole.UserRole, val)      # keep the real value
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -1201,9 +1221,11 @@ class CommandsPage(QWizardPage):
             name = (self.table.item(r, 0) or QTableWidgetItem("")).text().strip()
             if name:
                 names.append(name)
+        renamed = self.renames()
         for wanted, combo in zip((on, off, select), (self.pwr_on_combo,
                                                      self.pwr_off_combo, self.pwr_combo)):
             previous = wanted if wanted is not None else combo.currentData()
+            previous = renamed.get(previous, previous)
             combo.blockSignals(True)
             combo.clear()
             combo.addItem("(none)", None)
@@ -1308,6 +1330,23 @@ class CommandsPage(QWizardPage):
                 cmds.append([name, label, addr, cmd, hard])
         return cmds
 
+    def renames(self) -> dict:
+        """{the name a command came with: the name it has now}, for every renamed one."""
+        out = {}
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, 0)
+            if item is None:
+                continue
+            original, now = item.data(ORIGINAL_NAME), item.text().strip()
+            if original and now and original != now:
+                out[original] = now
+        return out
+
+    def _name_edited(self, item):
+        """A command renamed: the power choices follow it."""
+        if item.column() == 0:
+            self._refresh_pwr_combo()
+
     def updated_signals(self, commands=None):
         """Return one portable signal for every command row."""
         import copy
@@ -1316,6 +1355,12 @@ class CommandsPage(QWizardPage):
 
         rows = commands if commands is not None else self.get_commands()
         updated = dict(self._signals)
+        # A renamed command keeps its own code. It was looked up by the new name, which
+        # had none - so a learned or imported code was dropped, and Save refused the
+        # device for "missing signals".
+        for original, now in self.renames().items():
+            if original in self._signals and now not in updated:
+                updated[now] = dict(copy.deepcopy(self._signals[original]), name=now)
         exemplars = [signal for signal in updated.values()
                      if signal.get("kind") == "protocol"]
         protocol_ids = {signal.get("protocol") for signal in exemplars}
@@ -1570,9 +1615,15 @@ class DeviceEditor(SectionDialog):
 
     def section_shown(self, name):
         if name == "inputs":
-            self.page_inputs.refresh_commands()
+            self.page_inputs.refresh_commands(self.page_cmds.renames())
         elif name == "screen":
+            self.page_screen.follow(self.page_cmds.renames())
             self.page_screen.refresh()
+
+    def renames(self) -> dict:
+        """{old: new} for the commands renamed in this editor, which the project's
+        activities have to follow (DevicesTab.edit_device)."""
+        return self.page_cmds.renames()
 
     def _on_learned(self):
         """Refresh the summary after a portable waveform was learned."""
@@ -1634,7 +1685,11 @@ class DeviceEditor(SectionDialog):
             self.show_section("inputs")
             QMessageBox.warning(self, "Inputs", problem)
             return
-        spec = self._collect()
+        try:
+            spec = self._collect()
+        except ValueError as exc:
+            _cannot_save(self, exc)
+            return
         # Replacing the model can take away a command an activity is built on. The
         # build does not fail for it - the activity simply loses that button, or a
         # macro step goes nowhere - so it has to be said out loud beforehand.
@@ -1686,11 +1741,16 @@ class DeviceEditor(SectionDialog):
             **tim.values(),
             "commands":          command_rows,
         })
+        renames = cmds.renames()
+        self.page_inputs.refresh_commands(renames)
         self.page_inputs.apply(spec)
         if "screen" in self.profile.device_pages:
+            self.page_screen.follow(renames)
             self.page_screen.apply(spec)
         spec["signals"] = cmds.updated_signals(command_rows)
         _attach_learned(spec, self._existing, cmds.learned_captures())
         from .. import project_devices
+        # and whatever else on the device still names a command by what it was called
+        project_devices.rename_commands(spec, renames)
         project_devices.validate(spec)
         return spec

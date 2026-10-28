@@ -176,6 +176,10 @@ class DevicesTab(QWidget):
             source_preferences=self.source_preferences)
         if wiz.exec() and wiz.result_spec:
             self.project["devices"][idx] = wiz.result_spec
+            # the activities' steps, keys and buttons follow a command renamed
+            from .. import project_devices
+            project_devices.rename_commands(wiz.result_spec, wiz.renames(),
+                                            self.project.get("activities") or [])
             rf_set(self.project, wiz.result_spec.get("id"), wiz.rf_token())
             self.refresh()
             self.changed.emit()

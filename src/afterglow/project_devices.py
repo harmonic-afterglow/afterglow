@@ -207,6 +207,94 @@ def rename_screen_command(device: dict, old: str, new: str | None) -> None:
         for entry in page if entry is None or entry[0] != old or new is not None]
 
 
+POWER_FIELDS = ("power_cmd", "power_on_cmd", "power_off_cmd")
+
+
+def rename_commands(device: dict, renames: dict, activities=()) -> None:
+    """Follow commands renamed in the editor - {old: new} - everywhere the device and
+    the project's activities name them: its power, inputs, number keys and page, and the
+    activities' steps, keys and buttons. Renaming one used to keep the old name in all of
+    them, and the device was refused on Save for commands with no code."""
+    renames = {old: new for old, new in (renames or {}).items() if old and new and old != new}
+    if not renames:
+        return
+
+    def name(value):
+        return renames.get(value, value) if isinstance(value, str) else value
+
+    for field in POWER_FIELDS:
+        if device.get(field):
+            device[field] = name(device[field])
+    if device.get("inputs"):
+        device["inputs"] = [[entry[0], name(entry[1]), *entry[2:]] if len(entry) > 1
+                            else list(entry) for entry in device["inputs"]]
+    cycle = device.get("input_cycle")
+    if isinstance(cycle, dict):
+        for key in ("next", "previous"):
+            if cycle.get(key):
+                cycle[key] = name(cycle[key])
+    numeric = device.get("numeric")
+    if isinstance(numeric, dict):
+        if numeric.get("finish"):
+            numeric["finish"] = name(numeric["finish"])
+        if isinstance(numeric.get("digits"), dict):
+            numeric["digits"] = {digit: name(command)
+                                 for digit, command in numeric["digits"].items()}
+    if isinstance(device.get("icons"), dict):
+        device["icons"] = {name(command): icon for command, icon in device["icons"].items()}
+    for old, new in renames.items():
+        rename_screen_command(device, old, new)
+
+    ours = str(device.get("id"))
+
+    def step(entry):
+        if isinstance(entry, (list, tuple)) and len(entry) >= 3 and entry[0] == "command" \
+                and str(entry[1]) == ours:
+            return [entry[0], entry[1], name(entry[2]), *entry[3:]]
+        return entry
+
+    def steps(entries):
+        return [step(entry) for entry in entries or []]
+
+    for activity in activities or []:
+        for field in ("enter", "leave"):
+            if activity.get(field):
+                activity[field] = steps(activity[field])
+        if activity.get("hard_macros"):
+            activity["hard_macros"] = {key: steps(macro)
+                                       for key, macro in activity["hard_macros"].items()}
+        buttons = []
+        for button in activity.get("soft_buttons") or []:
+            if isinstance(button, dict):
+                button = dict(button)
+                if str(button.get("device")) == ours:
+                    button["command"] = name(button.get("command"))
+                if button.get("macro"):
+                    button["macro"] = steps(button["macro"])
+            elif isinstance(button, (list, tuple)) and len(button) >= 3 \
+                    and str(button[1]) == ours:
+                button = [button[0], button[1], name(button[2]), *button[3:]]
+            buttons.append(button)
+        if "soft_buttons" in activity:
+            activity["soft_buttons"] = buttons
+        favourites = []
+        for favourite in activity.get("image_buttons") or []:
+            favourite = list(favourite)
+            if len(favourite) > 2 and favourite[1] == "command" \
+                    and isinstance(favourite[2], (list, tuple)) \
+                    and str(favourite[2][0]) == ours:
+                favourite[2] = [favourite[2][0], name(favourite[2][1]), *favourite[2][2:]]
+            elif len(favourite) > 2 and favourite[1] == "macro":
+                favourite[2] = steps(favourite[2])
+            favourites.append(favourite)
+        if "image_buttons" in activity:
+            activity["image_buttons"] = favourites
+        confirm = activity.get("channel_confirm")
+        if isinstance(confirm, (list, tuple)) and len(confirm) >= 2 \
+                and str(confirm[0]) == ours:
+            activity["channel_confirm"] = [confirm[0], name(confirm[1]), *confirm[2:]]
+
+
 def command_rows(device: dict) -> list[list]:
     """A device's command rows as lists, made so in place, for code that changes them.
 

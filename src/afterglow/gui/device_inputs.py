@@ -210,11 +210,27 @@ class DeviceInputsPage(QWizardPage):
         self._loading = False
         self._show_mode()
 
-    def refresh_commands(self) -> None:
-        """Offer the device's commands as they stand on the Commands page now."""
+    def follow(self, renames: dict) -> dict:
+        """{a name the choices here may still show: the command's name now}, for
+        commands renamed on the Commands page since they were last offered."""
+        applied = getattr(self, "_renamed", {})
+        current = {}
+        for original, now in (renames or {}).items():
+            last = applied.get(original, original)
+            if last != now:
+                current[last] = now
+            applied[original] = now
+        self._renamed = applied
+        return current
+
+    def refresh_commands(self, renames: dict | None = None) -> None:
+        """Offer the device's commands as they stand on the Commands page now - keeping
+        each choice on its command when that was renamed there."""
+        moved = self.follow(renames)
         names = list(dict.fromkeys(self._commands() or []))
         for combo in (self.next_combo, self.prev_combo, self.finish):
             current = combo.currentData()
+            current = moved.get(current, current)
             combo.blockSignals(True)
             combo.clear()
             combo.addItem(NO_COMMAND, None)
@@ -226,6 +242,7 @@ class DeviceInputsPage(QWizardPage):
             widget = self.table.cellWidget(row, 1)
             if isinstance(widget, QComboBox):
                 current = widget.currentData()
+                current = moved.get(current, current)
                 widget.blockSignals(True)
                 widget.clear()
                 widget.addItem(NO_COMMAND, None)
