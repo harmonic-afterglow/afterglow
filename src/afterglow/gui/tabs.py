@@ -802,8 +802,8 @@ class UpdateTab(QWidget):
             box.setText(f"The attached remote reports a skin Afterglow has no profile "
                         f"for:\n\n{listed}")
             box.setInformativeText(
-                "Logitech sold some remotes under several skin numbers, so this may well "
-                f"be a {profile.model} that works the same - but Afterglow cannot tell. "
+                "Logitech sold some remotes under several skin numbers, so it may well "
+                "work the same as one Afterglow knows - but Afterglow cannot tell. "
                 "If you have not saved its current configuration, cancel and use Read "
                 "from Remote first.\n\n"
                 "Write it anyway? If it works, tell us the skin number (Discord or "
