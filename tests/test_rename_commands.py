@@ -68,3 +68,21 @@ def test_save_says_why_a_device_cannot_be_saved(qapp_or_skip, monkeypatch):
     editor.accept()
     assert said and "missing signals" in said[0]
     assert editor.result_spec is None
+
+
+def test_a_command_is_copied_from_another_device_with_its_code(qapp_or_skip):
+    """A model's database entry lacked a button the tester's other device had."""
+    from afterglow.gui.device_wizard import DeviceEditor
+    other = dict(_device(), id="8", label="Old TV",
+                 commands=[["Picture", "Picture", "", "", None]],
+                 signals={"Picture": dict(WAVE, name="Picture")})
+    project = {"settings": {"remote": "harmony-one"}, "devices": [_device(), other],
+               "activities": []}
+    editor = DeviceEditor([], existing=project["devices"][0], project=project)
+    commands = editor.page_cmds
+    assert not commands.copy_btn.isHidden()
+    commands.copy_commands([("Picture", other["signals"]["Picture"]),
+                            ("Power", other["signals"]["Picture"])])   # a name it has
+    spec = editor._collect()
+    assert spec["signals"]["Picture"]["pulses_us"] == WAVE["pulses_us"]
+    assert "Power (2)" in spec["signals"] and spec["signals"]["Power"] == WAVE

@@ -53,7 +53,8 @@ class DeviceWizard(StepWizard):
             templates, self._existing, source_preferences=source_preferences,
             remote=self.profile)
         self.page_identity = IdentityPage(self._existing, project=project)
-        self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
+        self.page_cmds     = CommandsPage(self._existing, remote=self.profile,
+                                          others=(project or {}).get("devices"))
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
         self.page_timing   = TimingPage(self._existing,
                                         fields=self.profile.timing_fields)
@@ -840,9 +841,13 @@ ORIGINAL_NAME = Qt.ItemDataRole.UserRole + 1
 class CommandsPage(QWizardPage):
     learned = pyqtSignal()
 
-    def __init__(self, existing, parent=None, remote=None):
+    def __init__(self, existing, parent=None, remote=None, others=None):
         super().__init__(parent)
         self._remote = remote
+        # The project's other devices, whose commands can be copied in: a command a
+        # model's database entry lacks is often in another model's of the same make.
+        self._others = [device for device in others or []
+                        if device.get("id") != (existing or {}).get("id")]
         # Which commands already carry a captured code. For those the address and
         # command columns are not merely unused - `builder.devices.code_for` returns
         # the stored code and never looks at them - so showing them as editable 00s
@@ -888,7 +893,12 @@ class CommandsPage(QWizardPage):
         self.learn_btn.setToolTip(
             "Point the original remote at the Harmony and press a key. Needs "
             "libconcord and a connected remote.")
-        for b in (self.add_btn, self.remove_btn, self.learn_btn):
+        self.copy_btn = QPushButton("Copy from another device…")
+        self.copy_btn.setToolTip("Bring in a command another device in this project has, "
+                                 "with its code")
+        self.copy_btn.setVisible(bool(self._others))
+        self.copy_btn.clicked.connect(self._copy_command)
+        for b in (self.add_btn, self.copy_btn, self.remove_btn, self.learn_btn):
             btn_row.addWidget(b)
         # Only where Afterglow can learn on this remote: the button stood on the One,
         # which has no learning yet, and answered every press with "unknown error".
@@ -1330,6 +1340,57 @@ class CommandsPage(QWizardPage):
                 cmds.append([name, label, addr, cmd, hard])
         return cmds
 
+    def _copy_command(self):
+        """Copy commands, codes and all, from another device of the project."""
+        from ..qt.QtWidgets import QDialog, QDialogButtonBox, QTreeWidget, QTreeWidgetItem
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Copy commands from another device")
+        layout = QVBoxLayout(dialog)
+        tree = QTreeWidget()
+        tree.setHeaderHidden(True)
+        tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        for device in self._others:
+            parent = QTreeWidgetItem([device.get("label") or str(device.get("id"))])
+            parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            for row in device.get("commands") or []:
+                name = str(row[0])
+                signal = (device.get("signals") or {}).get(name)
+                if signal is None:
+                    continue
+                child = QTreeWidgetItem([name])
+                child.setData(0, Qt.ItemDataRole.UserRole, (name, signal))
+                parent.addChild(child)
+            if parent.childCount():
+                tree.addTopLevelItem(parent)
+        layout.addWidget(QLabel("Pick the commands to copy into this device:"))
+        layout.addWidget(tree)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.resize(420, 480)
+        if not dialog.exec():
+            return
+        self.copy_commands([item.data(0, Qt.ItemDataRole.UserRole)
+                            for item in tree.selectedItems()])
+
+    def copy_commands(self, picked):
+        """Add each ``(name, signal)``, renamed when this device has the name already."""
+        import copy
+        taken = {name for name, *_rest in self.get_commands()}
+        for name, signal in picked or []:
+            new, number = name, 2
+            while new in taken:
+                new, number = f"{name} ({number})", number + 1
+            taken.add(new)
+            self._signals[new] = dict(copy.deepcopy(signal), name=new)
+            self._add_row(new, new, "", "", None)
+        self._refresh_pwr_combo()
+        if self.picture.isVisible():
+            self.refresh_picture()
+
     def renames(self) -> dict:
         """{the name a command came with: the name it has now}, for every renamed one."""
         out = {}
@@ -1589,7 +1650,8 @@ class DeviceEditor(SectionDialog):
             templates, self._existing, source_preferences=source_preferences,
             remote=self.profile, replacing=True)
         self.page_identity = IdentityPage(self._existing, project=project)
-        self.page_cmds     = CommandsPage(self._existing, remote=self.profile)
+        self.page_cmds     = CommandsPage(self._existing, remote=self.profile,
+                                          others=(project or {}).get("devices"))
         self.page_screen   = DeviceScreenPage(self._existing, self.page_cmds.get_commands,
                                               remote=self.profile)
         self.page_inputs   = DeviceInputsPage(self._existing, self._command_names)
@@ -1619,6 +1681,57 @@ class DeviceEditor(SectionDialog):
         elif name == "screen":
             self.page_screen.follow(self.page_cmds.renames())
             self.page_screen.refresh()
+
+    def _copy_command(self):
+        """Copy commands, codes and all, from another device of the project."""
+        from ..qt.QtWidgets import QDialog, QDialogButtonBox, QTreeWidget, QTreeWidgetItem
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Copy commands from another device")
+        layout = QVBoxLayout(dialog)
+        tree = QTreeWidget()
+        tree.setHeaderHidden(True)
+        tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        for device in self._others:
+            parent = QTreeWidgetItem([device.get("label") or str(device.get("id"))])
+            parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            for row in device.get("commands") or []:
+                name = str(row[0])
+                signal = (device.get("signals") or {}).get(name)
+                if signal is None:
+                    continue
+                child = QTreeWidgetItem([name])
+                child.setData(0, Qt.ItemDataRole.UserRole, (name, signal))
+                parent.addChild(child)
+            if parent.childCount():
+                tree.addTopLevelItem(parent)
+        layout.addWidget(QLabel("Pick the commands to copy into this device:"))
+        layout.addWidget(tree)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.resize(420, 480)
+        if not dialog.exec():
+            return
+        self.copy_commands([item.data(0, Qt.ItemDataRole.UserRole)
+                            for item in tree.selectedItems()])
+
+    def copy_commands(self, picked):
+        """Add each ``(name, signal)``, renamed when this device has the name already."""
+        import copy
+        taken = {name for name, *_rest in self.get_commands()}
+        for name, signal in picked or []:
+            new, number = name, 2
+            while new in taken:
+                new, number = f"{name} ({number})", number + 1
+            taken.add(new)
+            self._signals[new] = dict(copy.deepcopy(signal), name=new)
+            self._add_row(new, new, "", "", None)
+        self._refresh_pwr_combo()
+        if self.picture.isVisible():
+            self.refresh_picture()
 
     def renames(self) -> dict:
         """{old: new} for the commands renamed in this editor, which the project's
