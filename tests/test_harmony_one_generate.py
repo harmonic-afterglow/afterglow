@@ -968,12 +968,12 @@ def test_a_device_with_more_than_six_commands_pages_and_the_pages_link_back():
 
     device_pages = sorted({binding["screen"] for binding in bindings})
     assert len(device_pages) == 3          # 6 + 6 + 2
-    # every command page reaches the next by its side strip, the last back to the menu
-    menu = MENU
+    # every command page reaches the next by its side strip, and they wrap round - the
+    # last to the first, the first back to the last - as Logitech's own do
     for index, ordinal in enumerate(device_pages):
-        following = _screen_navigations(image, ordinal)[pages.SIDE_NEXT_KEY]
-        expected = device_pages[index + 1] if index + 1 < len(device_pages) else menu
-        assert following == expected
+        navigation = _screen_navigations(image, ordinal)
+        assert navigation[pages.SIDE_NEXT_KEY] == device_pages[(index + 1) % 3]
+        assert navigation[pages.SIDE_PREV_KEY] == device_pages[(index - 1) % 3]
     # and no command is lost: 14 across the three pages
     assert len(bindings) == 14
 
