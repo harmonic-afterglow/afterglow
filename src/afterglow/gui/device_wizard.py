@@ -827,6 +827,21 @@ class IdentityPage(QWizardPage):
         if t.get("model"): self.model_edit.setText(t["model"])
         self._existing = t
         self.proto_label.setText(self._protocol_text())
+def same_capture(first: dict, second: dict, *, share: float = 0.2,
+                 slack_us: int = 150) -> bool:
+    """Whether two learned captures are the same code: the same carrier within 5%, as
+    many marks and spaces, and each within ``share`` of the other or ``slack_us``. The
+    gap after the last frame is left out, since it is only how long the key was held."""
+    a, b = list(first.get("pulses_us") or []), list(second.get("pulses_us") or [])
+    if not a or len(a) != len(b):
+        return False
+    carriers = first.get("carrier_hz") or 0, second.get("carrier_hz") or 0
+    if max(carriers) and abs(carriers[0] - carriers[1]) > 0.05 * max(carriers):
+        return False
+    return all(abs(abs(x) - abs(y)) <= max(slack_us, share * max(abs(x), abs(y)))
+               for x, y in zip(a[:-1], b[:-1]))
+
+
 def _cannot_save(parent, problem) -> None:
     """Say why a device was not saved. Save used to do nothing at all: the reason went
     only to the log."""
@@ -1288,15 +1303,32 @@ class CommandsPage(QWizardPage):
         if not ok or not name:
             return
 
-        ok, message, capture = run_with_progress(
-            self, "learn", "Learning",
-            f"Point the original remote at the front of the Harmony and press "
-            f"\u2018{name}\u2019\u2026",
-            name=name)
-        if not ok or not capture:
-            QMessageBox.warning(self, "Learning failed",
-                                message or "Nothing was received.")
-            return
+        # Twice, and the two compared: one capture is not always the code - a tester
+        # comparing learned codes found them differ from press to press.
+        while True:
+            captures = []
+            for attempt in ("press", "press again"):
+                ok, message, capture = run_with_progress(
+                    self, "learn", "Learning",
+                    f"Point the original remote at the front of the Harmony and "
+                    f"{attempt} \u2018{name}\u2019 - briefly\u2026",
+                    name=name)
+                if not ok or not capture:
+                    QMessageBox.warning(self, "Learning failed",
+                                        message or "Nothing was received.")
+                    return
+                captures.append(capture)
+            if same_capture(*captures):
+                capture = captures[0]
+                break
+            again = QMessageBox.question(
+                self, "The two presses differ",
+                f"\u2018{name}\u2019 came out differently the second time, so either "
+                "could be wrong. Point the remote straight at the Harmony, a hand's width "
+                "away, press the key briefly, and try again?",
+                QMessageBox.StandardButton.Retry | QMessageBox.StandardButton.Cancel)
+            if again != QMessageBox.StandardButton.Retry:
+                return
 
         self._learned = getattr(self, "_learned", {})
         self._learned[name] = capture
