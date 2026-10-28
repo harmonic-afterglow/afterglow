@@ -5,7 +5,7 @@ from pathlib import Path
 from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
     QSpinBox, QFileDialog, QMessageBox, QTextEdit, QListWidget,
-    QListWidgetItem, QAbstractItemView,
+    QListWidgetItem, QAbstractItemView, QCheckBox,
     QProgressBar
 )
 from ..qt.QtCore import Qt, pyqtSignal
@@ -403,6 +403,15 @@ class SettingsTab(QWidget):
         self.theme_row = theme_row
         form.addRow("Theme:", theme_row)
 
+        # The Remote Assistant's notes after an activity starts and after Off. Every
+        # write starts them again from the welcome, which someone flashing often tires of.
+        self.assistant = QCheckBox("Show the Remote Assistant's notes after an activity "
+                                   "starts and after Off")
+        self.assistant.setChecked(True)
+        self.assistant.toggled.connect(
+            lambda _on: None if self._loading else self.changed.emit())
+        form.addRow("Remote Assistant:", self.assistant)
+
         # Blasters are paired with the remote, not with a device, so this lives here
         # rather than on a device's Edit page: pairing must not require a device first.
         blaster_row = QHBoxLayout()
@@ -447,7 +456,8 @@ class SettingsTab(QWidget):
         shown = profile.settings_fields if profile else ()
         for widget, field in ((self.first_name, "owner"), (self.last_name, "owner"),
                               (self.locale, "language"), (self.blaster_row, "rf_blasters"),
-                              (self.theme_row, "theme"), (self.prefs_box, "preferences")):
+                              (self.theme_row, "theme"), (self.assistant, "assistant"),
+                              (self.prefs_box, "preferences")):
             self.form.setRowVisible(widget, field in shown)
         if profile is None or profile.id == self._profile_id:
             return
@@ -550,6 +560,11 @@ class SettingsTab(QWidget):
                 settings["theme_folder"] = theme
             else:
                 settings.pop("theme_folder", None)
+        if "assistant" in shown:
+            if self.assistant.isChecked():
+                settings.pop("remote_assistant", None)
+            else:
+                settings["remote_assistant"] = False
         for key, widget in self.prefs.items():
             settings[key] = (widget.currentData() if isinstance(widget, QComboBox)
                              else str(widget.value()))
@@ -586,6 +601,7 @@ class SettingsTab(QWidget):
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
         self._fill_themes(profile, s.get("theme_folder", ""))
+        self.assistant.setChecked(s.get("remote_assistant", True) is not False)
         idx = self.locale.findData(s.get("locale", "enu"))
         self.locale.setCurrentIndex(idx if idx >= 0 else 0)
         self._refresh_blasters()

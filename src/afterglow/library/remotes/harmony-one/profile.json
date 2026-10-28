@@ -277,7 +277,8 @@
     "settings": [
       "output_file",
       "language",
-      "theme"
+      "theme",
+      "assistant"
     ],
     "languages": [
       [

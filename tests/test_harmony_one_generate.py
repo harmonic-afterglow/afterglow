@@ -1561,3 +1561,19 @@ def test_an_activity_button_draws_its_icon_under_its_label():
         "activity 'Watch' button: no icon 'no-such-icon'; the label is drawn alone"]
     # a frame with the red circle on it, which no plain build draws
     assert first_place(with_icon["image"]) - first_place(without["image"])
+
+
+def test_the_remote_assistant_can_start_hidden():
+    """It welcomes again after every write; a project can start it hidden instead."""
+    project = {"devices": [{"id": "1", "label": "TV", "signals": {"Power": _nec(4, 1)}}],
+               "activities": [{"id": "1001", "label": "Watch", "display": "1"}]}
+    fields = (0, 0, 12, 0, 0, 2026)
+
+    def starts(image):
+        return [(record["initial"], record["limit"])
+                for record in activity_index.engine_records(image)]
+    shown = starts(generate.configuration(project, stamp_fields=fields))
+    project["settings"] = {"remote_assistant": False}
+    hidden = starts(generate.configuration(project, stamp_fields=fields))
+    # one variable apart: the Assistant's, never shown (0) or hidden (3), of four states
+    assert [(a, b) for a, b in zip(shown, hidden) if a != b] == [((0, 3), (3, 3))]

@@ -72,7 +72,8 @@ TABS = ("devices", "activities", "settings", "flash")
 DEVICE_PAGES = ("search", "identity", "commands", "screen", "inputs", "timing", "advanced")
 ACTIVITY_PAGES = ("identity", "roles", "favourites", "screen_buttons", "hard_buttons",
                   "startup", "power", "advanced")
-SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme", "preferences")
+SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme",
+                   "assistant", "preferences")
 # The device Timing page's fields, by the project key each one sets.
 TIMING_FIELDS = ("always_on", "power_delay", "press_presilence", "press_interkey",
                  "hold_presilence", "hold_interkey", "input_delay", "app_power_delay")
