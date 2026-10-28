@@ -153,8 +153,10 @@ class Hub:
 
     def command_pages(self):
         """Command pages, device by device. A device with more than six commands spans
-        several pages; the side strips move between them, and the last one leads back to
-        the menu (or, when there is no menu, wraps to the device's first page)."""
+        several pages; the side strips move between them and wrap round - past the last
+        page to the first, before the first to the last - as Logitech's own do. Leading
+        back to the device list from either end, as they once did here, is what three
+        testers reported as broken; Devices is the way back."""
         screens, layout, ordinals = self.screens, self.layout, self.ordinals
         running = self.flow is not None and bool(self.flow.acts)
         frames = self.frames
@@ -165,8 +167,8 @@ class Hub:
                 rows = [(FIRST_BUTTON_KEY + index, command["wrapper_index"], OBJECT_ATOM)
                         for index, command in enumerate(chunk) if command is not None]
                 if len(chunks) > 1:
-                    previous = pages[page_index - 1] if page_index else home
-                    following = pages[page_index + 1] if page_index + 1 < len(chunks) else home
+                    previous = pages[(page_index - 1) % len(chunks)]
+                    following = pages[(page_index + 1) % len(chunks)]
                     rows.append((SIDE_PREV_KEY, layout.navigation(previous), OBJECT_ATOM))
                     rows.append((SIDE_NEXT_KEY, layout.navigation(following), OBJECT_ATOM))
                 elif ordinals.menu_of_device:

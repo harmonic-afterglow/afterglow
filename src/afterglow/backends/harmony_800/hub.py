@@ -171,8 +171,9 @@ class Hub:
                 rows = [(FIRST_BUTTON_KEY + index, command["wrapper_index"], OBJECT_ATOM)
                         for index, command in enumerate(chunk) if command is not None]
                 if len(chunks) > 1:
-                    previous = pages[page_index - 1] if page_index else home
-                    following = pages[page_index + 1] if page_index + 1 < len(chunks) else home
+                    # round, as the One's: past the last page to the first
+                    previous = pages[(page_index - 1) % len(chunks)]
+                    following = pages[(page_index + 1) % len(chunks)]
                     rows.append((SIDE_PREV_KEY, layout.navigation(previous), OBJECT_ATOM))
                     rows.append((SIDE_NEXT_KEY, layout.navigation(following), OBJECT_ATOM))
                 elif ordinals.menu_of_device:
