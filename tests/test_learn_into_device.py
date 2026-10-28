@@ -72,3 +72,33 @@ def test_learning_without_libconcord_says_why_instead_of_greying_out(qapp_or_ski
     page.learn_btn.click()
     assert told == ["Learning needs libconcord"]
     assert page.learned_captures() == {}
+
+
+def test_a_key_is_learned_twice_and_the_two_compared():
+    from afterglow.gui.device_wizard import same_capture
+    one = {"carrier_hz": 38000, "pulses_us": [9000, -4500, 560, -560, 560, -40000]}
+    near = {"carrier_hz": 38500, "pulses_us": [8900, -4450, 600, -540, 590, -90000]}
+    other = {"carrier_hz": 38000, "pulses_us": [9000, -4500, 560, -1690, 560, -40000]}
+    assert same_capture(one, near)                      # the trailing gap is not compared
+    assert not same_capture(one, other)                 # a different bit
+    assert not same_capture(one, dict(one, pulses_us=one["pulses_us"][:4]))
+
+
+def test_two_presses_that_differ_are_not_kept(qapp_or_skip, monkeypatch):
+    from afterglow.gui import device_wizard, remote_ops
+    from afterglow.qt.QtWidgets import QInputDialog, QMessageBox
+    device = _device()
+    editor = device_wizard.DeviceEditor([], existing=device, project={"devices": [device]})
+    first = concord.learned_capture(38000, [900, 450] * 16 + [900, 20000], "X")
+    second = concord.learned_capture(38000, [900, 1350] * 16 + [900, 20000], "X")
+    presses = iter([first, second])
+    monkeypatch.setattr(concord, "available", lambda: True)
+    monkeypatch.setattr(QInputDialog, "getText", staticmethod(lambda *a, **k: ("X", True)))
+    monkeypatch.setattr(remote_ops, "run_with_progress",
+                        lambda *a, **k: (True, "", next(presses)))
+    asked = []
+    monkeypatch.setattr(QMessageBox, "question", staticmethod(
+        lambda *a, **k: asked.append(a[1]) or QMessageBox.StandardButton.Cancel))
+    editor.page_cmds._learn_command()
+    assert asked == ["The two presses differ"]
+    assert "X" not in [row[0] for row in editor.page_cmds.get_commands()]
