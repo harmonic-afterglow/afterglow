@@ -942,12 +942,9 @@ class Remote:
                 f"{identity.get('model') or 'remote'}: {'; '.join(problems)}. "
                 "Nothing was written.", problems)
         if unknown_skin and not (accept_unknown_skin or accept_mismatched):
-            sold_as = remotes.models().get(str(skin), {}).get("model")
             raise UnknownSkin(
-                f"{path.name} is for a {profile.model}, and the attached remote reports "
-                f"skin {skin}, which Afterglow has no profile for"
-                + (f" (Logitech's list names it a {sold_as})" if sold_as else "")
-                + f": {'; '.join(unknown_skin + cautions)}. Nothing was written.",
+                f"The attached remote reports skin {skin}, which Afterglow has no "
+                f"profile for: {'; '.join(unknown_skin + cautions)}. Nothing was written.",
                 unknown_skin + cautions)
         if cautions and not (accept_unconfirmed or accept_unknown_skin or accept_mismatched):
             raise UnconfirmedRemote(
