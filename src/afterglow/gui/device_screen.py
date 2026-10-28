@@ -112,6 +112,28 @@ class DeviceScreenPage(QWizardPage):
         self.refresh()
 
     # - What is shown --------------------------------------------------
+    def follow(self, renames: dict):
+        """Keep the page's buttons on commands renamed on the Commands page - {the name
+        each came with: its name now}. The page named them by the old name, and a button
+        whose command it could not find was dropped."""
+        applied = getattr(self, "_renamed", {})
+        current = {}
+        for original, now in (renames or {}).items():
+            last = applied.get(original, original)
+            if last != now:
+                current[last] = now
+            applied[original] = now
+        self._renamed = applied
+        if not current:
+            return
+        self._loaded = [entry if entry is None or entry[0] not in current
+                        else [current[entry[0]], *entry[1:]] for entry in self._loaded]
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 1)
+            entry = item.data(Qt.ItemDataRole.UserRole) if item else None
+            if entry and entry[0] in current:
+                item.setData(Qt.ItemDataRole.UserRole, [current[entry[0]], *entry[1:]])
+
     def _device(self) -> dict:
         """The device as far as its page goes: its commands now, and its own buttons
         if it has been given any."""
