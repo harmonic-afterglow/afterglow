@@ -22,7 +22,7 @@ def _header(skin=63, board="0.5.0"):
 
 
 @pytest.mark.parametrize("skin", [62, 63, 64])
-@pytest.mark.parametrize("board", ["0.3.0", "0.4.0", "0.5.0"])
+@pytest.mark.parametrize("board", ["0.0.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0"])
 def test_every_1100_is_the_1100(skin, board):
     profile = remotes.identify(_header(skin, board))
     assert profile.id == "harmony-1100"
@@ -95,3 +95,17 @@ def test_the_900_still_needs_its_action_lists():
     payload = _pk(["userconfig/UserConfiguration.xml", "userconfig/SsIr.bin"])
     with pytest.raises(ValueError, match="ActionLists.xml"):
         backend.validate_payload(payload, remotes.get("harmony-900"))
+
+
+@pytest.mark.parametrize("board", ["0.0.15", "0.2.14"])
+def test_the_older_1100_boards_take_a_write(tmp_path, board):
+    """Firmware 7.6 remotes report board 0.0 (a 2010 skin 62) and 0.2 (issue #13), and
+    were refused - "board is 0.2.14 (expected 0.3.0)". A new project's build goes on."""
+    path = tmp_path / "built.ezhex"
+    path.write_bytes(_header(63, "0.3.0") + b"PK\x03\x04" + bytes(32))
+    live = {"arch": 11, "skin": 63, "flash": "0x01:0x49", "board": board,
+            "software_type": 0}
+    assert concord.file_mismatches(path, live) == []
+    assert concord.Remote._verify_intended_for(path, live, allow_experimental=True).id \
+        == "harmony-1100"
+

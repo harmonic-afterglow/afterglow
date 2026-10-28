@@ -277,7 +277,8 @@ class ActivityTabsPage(QWizardPage):
         opens.addStretch()
         layout.addLayout(opens)
 
-        self._on = {tab["group"]: self._is_shown(tab) for tab in self.model["tabs"]}
+        self._on = {tab["group"]: bool(tab.get("required")) or self._is_shown(tab)
+                    for tab in self.model["tabs"]}
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
         self._shown: dict[str, QCheckBox] = {}
@@ -325,6 +326,14 @@ class ActivityTabsPage(QWizardPage):
         layout = QVBoxLayout(page)
         shown = QCheckBox("Show this screen")
         shown.setChecked(self._on[tab["group"]])
+        if tab.get("required"):
+            # The remote shows no activity screen at all without it (the profile's
+            # `_required`); buttons the devices do not have are dimmed instead.
+            shown.setChecked(True)
+            shown.setEnabled(False)
+            shown.setToolTip("The remote needs this screen: without it the activity can "
+                             "stay a blank blue screen. Buttons your devices do not have "
+                             "are dimmed.")
         shown.toggled.connect(lambda on, tab=tab: self._set_on(tab["group"], on))
         self._shown[tab["group"]] = shown
         layout.addWidget(shown)
