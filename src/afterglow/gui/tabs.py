@@ -700,6 +700,10 @@ class UpdateTab(QWidget):
         out = str(self.project.get("settings", {}).get("out_file") or "").strip()
         name = out or f"{self._profile().id}.ezhex"
         path = Path(name)
+        # A name typed without its extension: the build wrote it as typed, and writing
+        # it to the remote then failed - the remote's writer goes by the extension.
+        if path.suffix.lower() != ".ezhex":
+            path = path.with_name(path.name + ".ezhex")
         return path if path.is_absolute() else user_folder("generated") / path
 
     def _ready_to_build(self) -> bool:

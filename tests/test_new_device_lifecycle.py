@@ -148,3 +148,18 @@ def test_flash_retirement_is_saved_when_the_project_has_a_path():
     assert new_device_ids(project) == ("40009002",)
     assert refreshed == [True]
     assert saved == ["project.json"]
+
+
+def test_an_output_name_without_its_extension_gets_one(qapp_or_skip):
+    """It was built as "name.EZHex" and then written as "name", which did not exist."""
+    from afterglow.gui.tabs import UpdateTab
+    project = {"settings": {"remote": "harmony-one", "out_file": "fromscratch"},
+               "devices": [], "activities": []}
+    class Settings:
+        def save(self):
+            pass
+
+    tab = UpdateTab(project, Settings())
+    assert tab.out_path().name == "fromscratch.ezhex"
+    project["settings"]["out_file"] = "mine.EZHex"
+    assert tab.out_path().name == "mine.EZHex"
