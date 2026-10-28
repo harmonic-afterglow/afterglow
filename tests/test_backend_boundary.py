@@ -153,17 +153,11 @@ def test_pre_rename_backend_names_remain_read_aliases():
 
 
 def test_portable_protocol_definitions_have_no_native_lowering_metadata():
-    """Nothing shipped may carry a remote's native encoding.
-
-    Skips when nothing is shipped. The library is empty by design - protocols are
-    generated from an imported configuration - so this guards anything added later
-    rather than anything present now, and a green tick would misrepresent that.
-    """
+    """Nothing shipped may carry a remote's native encoding."""
     import json
 
     definitions = sorted((PACKAGE / "library" / "protocols").glob("*.json"))
-    if not definitions:
-        pytest.skip("no protocols are shipped; the library is generated on import")
+    assert definitions
     for path in definitions:
         assert "native" not in json.loads(path.read_text()), path.name
 

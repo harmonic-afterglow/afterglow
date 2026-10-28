@@ -401,6 +401,7 @@ def test_generic_builder_compiles_constants_with_the_named_default_alphabet():
         ]}},
     }
 
+    assert ir_protocol.frame(definition, {}) == [100, -300, 100, -100]
     ir_emit.emit_generic(definition, parameters={})
 
 
