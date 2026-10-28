@@ -30,6 +30,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **A Harmony 1100 activity could stay a blank blue screen**, with red boxes where its
+  corner buttons go, when its number pad screen was switched off. The remote falls back
+  to the number pad whenever the screen it should open is not there, and Logitech never
+  turns it off. The number pad is now always on, also for activities read back from an
+  earlier build; a device without number keys gets them dimmed, as on Logitech's.
+- **Harmony 1100s on boards 0.0 and 0.2 were "not supported yet"** when read - two
+  firmware-7.6 remotes, one of them issue #13. Their configurations read like any other
+  1100's; they are recognised now, and written without asking.
+- **Favourites that send a command or run a macro came back as channels** when a
+  configuration was imported again - a streaming app favourite then tuned to a channel
+  named "Netflix" and did nothing. They import as they were built.
+- **Keyboard shortcuts such as Win+1 from a Media Center keyboard did nothing on the
+  Harmony 1100.** The keyboard needs a "keys released" signal after each key, which the
+  1100 did not send; it does now, at the end of every press, as a 900 does.
 - **Harmony One: the charging screens never stopped**: on the cradle the battery and
   photos went round for as long as the remote sat there, keeping the backlight lit for
   hours. As every Logitech configuration does, the ring now goes round once and the screen

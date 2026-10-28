@@ -248,6 +248,7 @@ def build(devices: list[list[Sequence]]) -> bytes:
 
 # from portable signals
 _MAX_VARIANTS = 4                  # toggle states a protocol may cycle through
+_RELEASE_GAP_US = 40_000           # after a release frame that ends on a mark
 
 
 def _words(pulses) -> list[int]:
@@ -295,11 +296,16 @@ def _renders(signal: dict, library) -> tuple[int, list[tuple[list[int], list[int
         carrier = press["carrier_hz"] if press else carrier
         pair = (press["pulses_us"] if press else [],
                 hold["pulses_us"] if hold else [])
-        if release and not any(pulse > 0 for pulse in release["pulses_us"]):
-            # A release that is only silence is a wait after the command (Logitech's PS3
-            # adapter: 6 s after Stop). The 1100 stores no release, so the press ends
-            # with it, as a tap on a 900 does.
-            pair = (list(pair[0]) + list(release["pulses_us"]), pair[1])
+        if release:
+            # The 1100 stores no release, so a press ends with it, as a tap on a 900
+            # sends it: Microsoft's keyboard protocol releases every key with a frame of
+            # its own (without it, Win+1 from an MCE keyboard was held and never fired),
+            # and Logitech's PS3 adapter waits 6 s of silence after Stop. A release that
+            # ends on a mark gets a gap after it, as every press does.
+            tail = list(release["pulses_us"])
+            if tail[-1] > 0:
+                tail.append(-_RELEASE_GAP_US)
+            pair = (list(pair[0]) + tail, pair[1])
         if variants and pair == variants[0]:
             break                                   # the toggle state has cycled back
         variants.append(pair)

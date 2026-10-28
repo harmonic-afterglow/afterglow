@@ -14,6 +14,8 @@
     "software_type": 0,
     "safe_mode_software_type": 4,
     "other_boards": [
+      "0.0.0",
+      "0.2.0",
       "0.4.0",
       "0.5.0"
     ]
@@ -21,7 +23,7 @@
   "payload": "pk",
   "backend": "harmony-pk",
   "status": "experimental",
-  "notes": "Identity from a Logitech-generated configuration (skin 62) and firmware 62.7.7/63.7.7/64.7.7, which are byte-identical but for the skin: the same remote sold under three model numbers (64 confirmed by a Logitech-written configuration from a tester's remote, issue #10; no firmware exists for 65). Its board is 0.3.0, 0.4.0 or 0.5.0 by configuration; all run that firmware. Every command is a recorded device sequence (docs/harmony_pk/ssir-sequences.md). Configurations can be read, imported and built; built ones have been written by testers. Writing one backs the remote up first. Its Safe Mode software type (4) is the 900's, the same firmware family; not yet seen on an 1100.",
+  "notes": "Identity from a Logitech-generated configuration (skin 62) and firmware 62.7.7/63.7.7/64.7.7, which are byte-identical but for the skin: the same remote sold under three model numbers (64 confirmed by a Logitech-written configuration from a tester's remote, issue #10; no firmware exists for 65). Its board is 0.3.0, 0.4.0 or 0.5.0 by configuration, and 0.0.0 and 0.2.x as two firmware-7.6 remotes report it (a 2010 US skin 62 whose Logitech configuration reads as any other 1100's; a skin 63, issue #13, written by force without trouble); all run that firmware. Every command is a recorded device sequence (docs/harmony_pk/ssir-sequences.md). Configurations can be read, imported and built; built ones have been written by testers. Writing one backs the remote up first. Its Safe Mode software type (4) is the 900's, the same firmware family; not yet seen on an 1100.",
   "capabilities": {
     "rf_blaster": false,
     "touchscreen": true,
@@ -942,6 +944,7 @@
         "Transport",
         "Numbers"
       ],
+      "_required": "A tab marked required is always on: Numbers. The remote's activity screen (main-ui-group.swf) falls back to numeric-group-1 whenever the screen it should open is not there, so with Numbers off it opens a screen it never loaded and the activity stays a blank blue screen; a corner switched off is also loaded as undefined.swf, which never completes. Logitech turns Numbers on for every activity in both 1100 configurations, Transport for all but radio. Buttons a tab lacks are dimmed.",
       "_start_prefers": "The screen a new activity opens on: the first of these it shows. Every activity in both 1100 configurations that shows Transport opens on it; the two radio activities, which do not, open on Numbers.",
       "side_bars": [
         "SideBarLeft1",
@@ -1007,6 +1010,7 @@
         {
           "group": "Numbers",
           "flag": "ControlGroup_Numbers",
+          "required": true,
           "corner": 2,
           "layout": [
             [

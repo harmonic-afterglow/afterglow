@@ -333,3 +333,38 @@ def test_a_side_bar_offers_only_the_icons_it_can_draw(qapp_or_skip):
     assert offered and offered <= set(available())
     assert {name.lower() for name in offered} <= {name.lower() for name in small}
     assert len(offered) < len(available())
+
+
+def test_the_number_pad_is_always_on():
+    """The remote's activity screen falls back to the number pad whenever the screen it
+    should open is not there; with Numbers off that is a screen it never loaded, and a
+    tester's Watch Roku and Play Xbox 360 stayed a blank blue screen. Logitech never
+    turns it off - so it is on, also for an activity read back from an older build."""
+    switched_off = {"type": "VirtualGeneric",
+                    "properties": {"ControlGroup_Numbers": "False"}}
+    assert "Numbers" in _tabs(_props(switched_off))
+    imported = {"type": "VirtualGeneric", "properties_complete": True,
+                "properties": {"ControlGroup_HardButtons": "True",
+                               "ControlGroup_Numbers": "False",
+                               "ControlGroup_Transport": "False",
+                               "ControlGroup_GameController": "True"}}
+    assert _tabs(_props(imported)) == ["GameController", "Numbers"]
+
+
+def test_the_editor_does_not_offer_to_hide_the_number_pad(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.activity_screens import ActivityTabsPage
+    page = ActivityTabsPage([_device("2", ["Play"])],
+                            {"type": "VirtualGeneric", "control": "2",
+                             "properties": {"ControlGroup_Numbers": "False"}},
+                            remote=remotes.get("harmony-1100"))
+    try:
+        box = page._shown["Numbers"]
+        assert box.isChecked() and not box.isEnabled()
+        assert page._shown["Transport"].isEnabled(), "Transport stays the owner's choice"
+    finally:
+        # Gone before Qt is: a parentless page left for the end of the session was
+        # torn down after the application and crashed the run.
+        from afterglow.qt.QtWidgets import QApplication
+        page.deleteLater()
+        QApplication.processEvents()

@@ -296,6 +296,12 @@ class RemoteProfile:
         flags |= {tab["flag"] for tab in screens["tabs"] if tab["group"] in groups}
         return {flag: "True" for flag in sorted(flags)}
 
+    def required_tabs(self) -> dict:
+        """{property: "True"} for the tabs an activity screen cannot do without (the
+        1100's Transport and Numbers - see the profile's `_required`)."""
+        return {tab["flag"]: "True" for tab in (self.activity_screens or {}).get("tabs") or []
+                if tab.get("required")}
+
     def start_screen(self, shown: list[str]) -> str | None:
         """The screen a new activity opens on, of the groups it shows: the first the
         profile's `start_prefers` lists, as Logitech set them."""

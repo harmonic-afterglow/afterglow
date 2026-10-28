@@ -56,6 +56,12 @@ def _act_props(act, remote=None):
     defaults = {} if act.get("properties_complete") else {
         **_defaults_for(remote), **_screen_tabs(act, remote)}
     props = {**defaults, **(act.get("properties") or {})}
+    # A tab the remote cannot do without (the 1100's Numbers) is on, whatever the
+    # activity says - also for one imported from an older build that switched it off,
+    # which left a tester's activities a blank blue screen.
+    required = getattr(vocabulary_profile(remote), "required_tabs", None)
+    if required and props.get("ControlGroup_HardButtons") is not None:
+        props.update(required())
     return ("<Properties>"
             + "".join(f'<Property name="{esc(k)}">{esc(str(v))}</Property>'
                       for k, v in props.items())

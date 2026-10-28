@@ -141,3 +141,22 @@ def test_the_1100_ends_a_press_with_a_silent_release(tmp_path):
                                                         {"test-stop-spacer": definition})
     assert sum(map(abs, press)) == 4000 + 4500 + 400 + 50_000 + 6_000_000
     assert sum(map(abs, hold)) == 4000 + 4500 + 400 + 50_000
+
+
+def test_the_1100_ends_a_press_with_a_keyboard_release(tmp_path):
+    """An MCE keyboard key is a key frame, then a frame that releases every key. The
+    1100 played only the key, so Win+1 was held and never fired; it works on a 900."""
+    definition = {
+        "schema": "afterglow-ir-protocol/1", "id": "test-key-up",
+        "modulation": {"kind": "carrier", "carrier_hz": 36_000}, "parameters": {},
+        "bursts": {"key": [2795, -270, 606, -74500], "up": [2795, -270, 303]},
+        "alphabets": {},
+        "frames": {"key": {"segments": [{"burst": "key"}]},
+                   "up": {"segments": [{"burst": "up"}]}},
+        "transmission": {"press": [{"frame": "key"}], "hold": [{"frame": "key"}],
+                         "release": [{"frame": "up"}]},
+    }
+    signal = ir_signal.protocol_signal("test-key-up", {})
+    _carrier, ((press, hold),) = ssir_sequence._renders(signal, {"test-key-up": definition})
+    assert press == [2795, -270, 606, -74500, 2795, -270, 303, -40_000]
+    assert hold == [2795, -270, 606, -74500]

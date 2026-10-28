@@ -295,3 +295,32 @@ def test_a_build_for_the_skin_it_was_imported_from(tmp_path):
     with pytest.raises(ValueError, match="skin 61"):
         _build(project, tmp_path / "61.ezhex")
 
+
+
+def test_command_and_macro_favourites_survive_an_import(tmp_path, unpacked):
+    """A favourite that sends a command (a streaming app) or runs a macro was read back
+    as a channel to dial, numbered by its label: a tester's 21 app favourites all came
+    back as channels named Netflix, Hulu and so on, sending nothing."""
+    from afterglow import importer
+    nec = {name: ir_signal.protocol_signal("nec1", {"address": 4, "command": n})
+           for n, name in enumerate(["PowerToggle", "Netflix", "DirectionRight", "OK",
+                                     "1", "2", "Select"])}
+    project = {"settings": {}, "devices": [_device("40009003", nec)], "activities": [{
+        "id": "50000001", "label": "Watch Roku", "type": "VirtualGeneric",
+        "display": "40009003", "control": "40009003",
+        "image_buttons": [
+            ["Netflix", "command", ["40009003", "Netflix"], None],
+            ["Apple TV", "macro", [["command", "40009003", "DirectionRight"],
+                                   ["command", "40009003", "OK"]], None],
+            ["BBC", "channel", "12", None]],
+        "channel_confirm": "Select"}]}
+    _build(project, tmp_path / "favourites.ezhex")
+    with contextlib.redirect_stdout(io.StringIO()):
+        imported = importer.build_project(str(unpacked(tmp_path / "favourites.ezhex")))
+    (activity,) = imported["activities"]
+    assert activity["image_buttons"] == [
+        ["Netflix", "command", ["40009003", "Netflix"], None],
+        ["Apple TV", "macro", [["command", "40009003", "DirectionRight"],
+                               ["command", "40009003", "OK"]], None],
+        ["BBC", "channel", "12", None]]
+    assert activity["channel_confirm"] == "Select"

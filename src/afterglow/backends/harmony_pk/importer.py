@@ -23,6 +23,11 @@ def parse_action_id(action_id):
         return parts[0], '_'.join(parts[1:-1])
     return None, None
 
+def _is_digit_key(command: str, digit: str) -> bool:
+    """Whether `command` is the key for `digit`, by either name devices give it."""
+    return command in (digit, f"Number{digit}")
+
+
 def parse_action(action_elem):
     """One <Action> -> an action step, or None if it is not one we can express.
 
@@ -910,22 +915,34 @@ class _HarmonyPkImport:
                     name = html.unescape(ch.find('Station').text)
                     num = ch.find('Number').text
                     img = ch.find('Image').text
-                    act["image_buttons"].append(
-                        [name, "channel", num, img]
-                    )
-                    # Many receivers need the channel number confirmed with OK/Select. It
-                    # is the trailing action after the digits, and reading only the number
-                    # dropped it - the favourite then typed the digits and sat there.
                     steps = [parse_action(x) for x in ch.findall('Actions/Action')]
-                    commands = [step[2] for step in steps
-                                if step and step[0] == "command"]
-                    digits = list(str(num))
-                    if len(commands) == len(digits) + 1 and commands[:-1] == digits:
-                        act["channel_confirm"] = commands[-1]
-                    elif not steps:
-                        # No explicit digits at all: the remote dials through the control
-                        # device's own <Numeric> block.
-                        act["channels_via_numeric"] = True
+                    steps = [step for step in steps if step]
+                    commands = [step[2] for step in steps if step[0] == "command"]
+                    digits = list(str(num or ""))
+                    dialled = (len(commands) == len(steps)
+                               and len(commands) in (len(digits), len(digits) + 1)
+                               and all(_is_digit_key(command, digit) for command, digit
+                                       in zip(commands, digits)))
+                    if not steps or dialled:
+                        act["image_buttons"].append([name, "channel", num, img])
+                        # Many receivers need the channel number confirmed with OK/Select.
+                        # It is the trailing action after the digits, and reading only the
+                        # number dropped it - the favourite then typed the digits and sat
+                        # there.
+                        if dialled and len(commands) == len(digits) + 1:
+                            act["channel_confirm"] = commands[-1]
+                        elif not steps:
+                            # No explicit digits at all: the remote dials through the
+                            # control device's own <Numeric> block.
+                            act["channels_via_numeric"] = True
+                    elif len(steps) == 1 and steps[0][0] == "command":
+                        # A favourite that sends one command - an app on a streaming box.
+                        # It was read as a channel to dial whose "number" is its label, so
+                        # an imported configuration lost every one (a tester's 21 apps).
+                        act["image_buttons"].append(
+                            [name, "command", [steps[0][1], steps[0][2]], img])
+                    else:
+                        act["image_buttons"].append([name, "macro", steps, img])
             if not act["image_buttons"]: del act["image_buttons"]
 
             for xml_tag, json_key in [('EnterActions', 'enter'), ('LeaveActions', 'leave')]:
