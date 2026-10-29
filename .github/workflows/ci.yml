@@ -129,15 +129,17 @@ jobs:
           )
           missing = [name for name in required if name not in names]
           assert not missing, f"critical package data missing from {wheel}: {missing}"
-          # No protocol definitions ship, of either kind. Every protocol comes from the
-          # IrProto blocks of the configuration being imported, or is generated from an
-          # archive record. This used to require twelve portable ones *and* forbid
-          # anything at that path, which became a contradiction the moment the library
-          # was emptied - the two checks were written years apart and never read together.
-          protocols = [name for name in names
-                       if name.endswith(".json")
-                       and ("/library/protocols/" in name
-                            or "/backends/harmony_pk/protocols/" in name)]
-          assert not protocols, f"protocol definitions leaked into wheel: {protocols}"
+          # The basic portable protocols ship - Flipper-IRDB and IRDB devices name them
+          # and carry no timings of their own - and nothing else: no native harmony_pk
+          # definitions, which an imported configuration's IrProto blocks provide. The
+          # same set as tests/test_backend_boundary.py checks in the source tree.
+          basic = {"jvc16", "nec1", "nec1-toshiba", "nec2-ext", "nec2", "nec-ext",
+                   "rc5-13", "rc6-mce", "samsung32", "sony12", "sony15", "sony20"}
+          portable = {name.rsplit("/", 1)[1][:-len(".json")] for name in names
+                      if name.endswith(".json") and "/library/protocols/" in name}
+          assert portable == basic, f"protocol definitions in wheel: {sorted(portable)}"
+          native = [name for name in names
+                    if name.endswith(".json") and "/backends/harmony_pk/protocols/" in name]
+          assert not native, f"native protocol definitions leaked into wheel: {native}"
           print(f"{wheel}: {len(names)} entries, package data present")
           PY
