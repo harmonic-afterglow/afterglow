@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.6] - 2026-10-29
+
 ### Added
 
 - **Leave a device as it is.** An activity's Power section offers *Leave as it is* beside
