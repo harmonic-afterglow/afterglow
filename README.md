@@ -49,8 +49,9 @@ Nothing needs installing: no Python, no Logitech software, no driver.
   file pointing the remote at it, which is not signed, comes from Afterglow.
 - **macOS 11 and later** - nothing to do. For an Intel Mac on 10.13 to 10.15, download
   `afterglow-macos-x86_64-legacy.dmg`.
-- **Linux** (64-bit, Ubuntu 20.04, Debian 11, Fedora 32 or newer) - the first time, Afterglow
-  offers direct access, which asks for your password once.
+- **Linux** (x86_64 or ARM64; Ubuntu 20.04, Debian 11, Fedora 32 or newer) - download the
+  AppImage for your machine, make it executable (`chmod +x`) and run it. The first time,
+  Afterglow offers direct access, which asks for your password once.
 
 ## Using it
 

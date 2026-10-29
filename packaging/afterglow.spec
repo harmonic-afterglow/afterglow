@@ -146,7 +146,32 @@ if os.environ.get("AFTERGLOW_BINARIES_LIST"):
     Path(os.environ["AFTERGLOW_BINARIES_LIST"]).write_text(
         "".join(f"{entry[1]}\n" for entry in analysis.binaries))
 
-if sys.platform != "darwin":
+if sys.platform.startswith("linux"):
+    # ## Linux: a folder, wrapped as an AppImage
+    #
+    # A one-folder build, which packaging/linux/build-appimage.sh puts in an AppDir and
+    # packs. The AppImage is mounted where it is, not unpacked on every start as a
+    # one-file executable was, and it carries a menu entry and an icon.
+    exe = EXE(                            # noqa: F821
+        pyz,
+        analysis.scripts,
+        [],
+        exclude_binaries=True,
+        name="afterglow",
+        debug=False,
+        strip=False,
+        upx=False,
+        console=False,
+    )
+    collected = COLLECT(                  # noqa: F821
+        exe,
+        analysis.binaries,
+        analysis.datas,
+        strip=False,
+        upx=False,
+        name="afterglow",
+    )
+elif sys.platform != "darwin":
     exe = EXE(                            # noqa: F821
         pyz,
         analysis.scripts,
