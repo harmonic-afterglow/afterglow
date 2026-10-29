@@ -550,8 +550,18 @@ jobs:
           mkdir -p dmg
           cp -R dist/Afterglow.app dmg/
           ln -s /Applications dmg/Applications
-          hdiutil create -volname Afterglow -srcfolder dmg -ov -format UDZO \
-            "afterglow-macos-${{ matrix.name }}.dmg"
+          # On GitHub's Intel runners hdiutil fails with "Resource busy" while XProtect
+          # still scans the freshly copied app - both Intel builds of beta.6. Stop it and
+          # try again a few times before giving up.
+          for attempt in 1 2 3 4 5; do
+            if hdiutil create -volname Afterglow -srcfolder dmg -ov -format UDZO \
+                "afterglow-macos-${{ matrix.name }}.dmg"; then
+              break
+            fi
+            if [ "$attempt" = 5 ]; then exit 1; fi
+            sudo pkill -9 XProtect || true
+            sleep $((attempt * 10))
+          done
 
       - uses: actions/upload-artifact@v7
         with:
