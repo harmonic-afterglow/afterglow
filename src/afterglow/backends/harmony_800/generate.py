@@ -40,7 +40,7 @@ from .layout import Layout
 from .options_screens import TUTORIAL, TUTORIAL_ROW_ICON, Options
 from .pages import BUTTON_POSITIONS, SOFTKEY_FONTS, labeller, picture_size
 from .pages import frames as page_frames
-from .pictures import favourite_picture, row_icon, start_icon
+from .pictures import button_picture, favourite_picture, row_icon, start_icon
 from .firmware_screens import load_system
 from .scaffold import (
     DEFAULT_STAMP, HOUSEHOLD_BUTTONS, PLATFORM_TAIL_SIZE, engine_records, platform_tail,
@@ -102,7 +102,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     running = hub and carried is not None and carried.idle and engine
     acts = list((activities or {}).get("activities") or []) if running else []
     if running and activities is not None:
-        _activity_variables(variables, acts)
+        _activity_variables(variables, acts,
+                            hidden=bool(activities.get("assistant_hidden")))
 
     # The object every owned page's fragment queues to draw status overlays 3 and 0.
     status_object = (layout.object(object_body([(3, DRAW_OVERLAY), (0, DRAW_OVERLAY)]))
@@ -226,16 +227,17 @@ def _command_objects(layout, devices):
             command["object_index"] = wrapper - 1
 
 
-def _activity_variables(variables, acts):
+def _activity_variables(variables, acts, hidden=False):
     """`CurrentActivityState`: each activity is a value, and the one past them is nothing
     running, the value it starts at - section 0 names it, as the donors do. Then the
     Remote Assistant's state, as upstairs keeps it: 0 never shown, 1 welcomed, 2 shown
-    before, 3 hidden (activity_screens.Flow._notes)."""
+    before, 3 hidden (activity_screens.Flow._notes) - hidden from the start when the
+    project's settings say `remote_assistant: false`."""
     variables.state = variables.add(f"CurrentActivityState_0_{len(acts) + 1}", {
         "initial": len(acts), "limit": len(acts), "padding": 0, "transitions": []})
     if acts:
         variables.assistant = variables.add("RemoteAssistant_4", {
-            "initial": 0, "limit": 3, "padding": 0, "transitions": []})
+            "initial": 3 if hidden else 0, "limit": 3, "padding": 0, "transitions": []})
 
 
 def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
@@ -384,6 +386,8 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     for device, spec in zip(devices, project.get("devices") or []):
         device["icon"] = row_icon(directory, manifest, pictures, "devices", spec.get("type"))
     planned = activity_plan.plan(project, devices)
+    planned["assistant_hidden"] = (project.get("settings") or {}).get(
+        "remote_assistant") is False
     held_commands(project, devices, planned, library=library)
     frame = "activity/row-frame" if "activity/row-frame" in pictures else "row-frame"
     # the Watch TV row the Tutorial pictures, on the activities' own frame
@@ -395,6 +399,11 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
         activity["icon"] = row_icon(directory, manifest, pictures, "activities",
                                     activity["type"], frame)
         activity["start_icon"] = start_icon(directory, manifest, pictures, activity["type"])
+        activity["button_pictures"] = [
+            button_picture(directory, manifest, pictures, icon,
+                           number % len(BUTTON_POSITIONS), planned["skipped"],
+                           f"activity {activity['label']!r} button") if icon else None
+            for number, icon in enumerate(activity.get("button_icons") or [])]
         for number, favourite in enumerate(activity["favourites"]):
             favourite["picture"] = favourite_picture(
                 directory, manifest, pictures, favourite["image"],
