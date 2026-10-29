@@ -264,7 +264,8 @@
     ],
     "settings": [
       "output_file",
-      "language"
+      "language",
+      "assistant"
     ],
     "languages": [
       [

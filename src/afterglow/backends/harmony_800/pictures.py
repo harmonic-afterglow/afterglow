@@ -92,6 +92,39 @@ def favourite_picture(directory, manifest, pictures, image, position, skipped,
     return role
 
 
+# A button's icon - one of the glyphs the editors offer (icons/buttons), the 900's own -
+# fills its frame, clear of the bevel, and the label is drawn over it, as on Logitech's
+# builds.
+BUTTON_ICON_BOX = (73, 44)
+
+
+def button_picture(directory, manifest, pictures, icon, position, skipped,
+                   where) -> str | None:
+    """An activity button's frame with its icon on it, for the place it is in - its label
+    is drawn over it; None, and a note, when there is no such icon."""
+    from ... import imaging, paths
+    from . import assets, bitmap, row_icons
+
+    path = paths.icons("buttons", f"{icon}.png") if icon else None
+    if path is None or not path.is_file():
+        if icon:
+            skipped.append(f"{where}: no icon {icon!r}; the label is drawn alone")
+        return None
+    frame = f"activity/button-frame/{position}"
+    if frame not in manifest["pictures"]:
+        frame = f"button-frame/{position}"
+    role = f"button-icon/{icon}/{position}"
+    if role not in pictures:
+        under = imaging.decode((Path(directory) / manifest["pictures"][frame]["file"])
+                               .read_bytes())["rows"]
+        glyph = imaging.decode(path.read_bytes())["rows"]
+        size = (len(under[0]), len(under))
+        rows = row_icons.compose(under, (0, 0), size, glyph, BUTTON_ICON_BOX)
+        image_ = {"width": size[0], "height": size[1], "rows": rows}
+        pictures[role] = bitmap.encode(assets.to_rows(image_)[0], mode=assets.MODES["shorter"])
+    return role
+
+
 def _composed(directory, manifest, frame, at, size, kind, name, box=None) -> bytes:
     from ... import imaging
     from . import assets, bitmap, row_icons

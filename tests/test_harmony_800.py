@@ -658,3 +658,52 @@ def test_a_devices_other_states_build_and_come_back(tmp_path):
     [read] = backend.import_project(tmp_path, remotes.get("harmony-800"), {}).project["devices"]
     for field in ("power_off_steps", "inputs", "control_states"):
         assert read[field] == tv[field], field
+
+
+def test_the_remote_assistant_can_start_hidden():
+    """It welcomes again after every write; a project can start it hidden instead."""
+    from afterglow.backends.harmony_800 import activity_index
+    project = {"devices": [{"id": "1", "label": "TV", "signals": {"Power": _nec(4, 1)}}],
+               "activities": [{"id": "1001", "label": "Watch", "display": "1"}]}
+
+    def starts(image):
+        return [(record["initial"], record["limit"])
+                for record in activity_index.engine_records(image)]
+    fields = (0, 0, 12, 0, 0, 2026)
+    shown = starts(generate.configuration(project, stamp_fields=fields))
+    project["settings"] = {"remote_assistant": False}
+    hidden = starts(generate.configuration(project, stamp_fields=fields))
+    # one variable apart: the Assistant's, never shown (0) or hidden (3), of four states
+    assert [(a, b) for a, b in zip(shown, hidden) if a != b] == [((0, 3), (3, 3))]
+
+
+def test_an_activity_button_draws_its_icon_under_its_label():
+    """The editors let a button carry an icon, and the 800 drew the label alone."""
+    import json
+
+    from afterglow import paths
+    from afterglow.backends.harmony_800 import pictures
+    project = {
+        "devices": [{"id": "1", "label": "TV",
+                     "signals": {"Red": _nec(4, 1), "Blue": _nec(4, 2)}}],
+        "activities": [{"id": "1001", "label": "Watch", "display": "1", "control": "1",
+                        "soft_buttons": [
+                            {"label": "Rouge", "device": "1", "command": "Red",
+                             "icon": "teletext_red_default"},
+                            {"label": "Bleu", "device": "1", "command": "Blue",
+                             "icon": "no-such-icon"}]}]}
+    plain = dict(project, activities=[dict(project["activities"][0], soft_buttons=[
+        {key: value for key, value in button.items() if key != "icon"}
+        for button in project["activities"][0]["soft_buttons"]])])
+    directory = paths.scaffolds("harmony-800")
+    manifest = json.loads((directory / "assets.json").read_text())
+    composed = {}
+    role = pictures.button_picture(directory, manifest, composed, "teletext_red_default",
+                                   0, [], "")
+    red = composed[role]
+
+    with_icon, without = generate.build(project), generate.build(plain)
+    assert "activity 'Watch' button: no icon 'no-such-icon'; the label is drawn alone" in \
+        with_icon["skipped"]
+    # the frame with the red circle on it, which no plain build carries
+    assert red in with_icon["image"] and red not in without["image"]

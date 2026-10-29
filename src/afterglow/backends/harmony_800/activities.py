@@ -114,18 +114,20 @@ def _activity(activity: dict, specs, devices, index_of, skipped) -> dict:
             continue
         hard[code] = value
 
-    buttons = []
+    buttons, icons = [], []
     for button in _buttons(activity):
         if button is None:
             buttons.append(None)
+            icons.append(None)
             continue
-        label_, macro = button
+        label_, macro, icon = button
         buttons.append((label_, _steps(macro, specs, devices, index_of,
                                        f"{where} button {label_!r}", skipped)))
+        icons.append(icon)
     favourites = _favourites(activity, specs, devices, index_of, where, skipped)
     return {"label": label, "type": activity.get("type"), "on": on, "off": off,
             "inputs": inputs, "enter": enter, "leave": leave, "keys": hard,
-            "buttons": buttons, "favourites": favourites,
+            "buttons": buttons, "button_icons": icons, "favourites": favourites,
             "numbers": _numbers(activity, devices, index_of)}
 
 
@@ -277,9 +279,9 @@ def _numbers(activity: dict, devices, index_of) -> list[tuple]:
     return []
 
 
-def _buttons(activity: dict) -> list[tuple[str, list] | None]:
-    """An activity's on-screen buttons, in order, each with the steps it runs - None for
-    a gap, a place on its page left empty."""
+def _buttons(activity: dict) -> list[tuple[str, list, str | None] | None]:
+    """An activity's on-screen buttons, in order, each with the steps it runs and its
+    icon - None for a gap, a place on its page left empty."""
     out = []
     groups = activity.get("screen_groups")
     entries = ([button for _name, buttons in groups for button in buttons] if groups
@@ -294,9 +296,11 @@ def _buttons(activity: dict) -> list[tuple[str, list] | None]:
             label = entry.get("label") or ""
             macro = entry.get("macro") or [["command", entry.get("device"),
                                             entry.get("command")]]
+            icon = entry.get("icon")
         else:
             label, macro = entry[0], [["command", entry[1], entry[2]]]
-        out.append((label, macro))
+            icon = entry[3] if len(entry) > 3 else None
+        out.append((label, macro, icon or None))
     while out and out[-1] is None:          # nothing after the last button
         out.pop()
     return out

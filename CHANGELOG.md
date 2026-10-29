@@ -13,10 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   configuration has one, so this is still to be confirmed on each remote.
 - **Copy a command from another device.** A device's Commands has *Copy from another
   device...*: the commands picked come with their codes.
-- **Icons on an activity's screen buttons, on the Harmony One.** The editors let a button
-  carry an icon and the One drew its label alone; the icon now fills the button with the
+- **Icons on an activity's screen buttons, on the Harmony One and the 800.** The editors
+  let a button carry an icon and the remote drew its label alone; the icon now fills the button with the
   label over it, as Logitech's builds draw one, and the preview shows it the same way.
-- A Harmony One project can start with the **Remote Assistant** hidden (Remote Settings),
+- A Harmony One or 800 project can start with the **Remote Assistant** hidden (Remote Settings),
   rather than welcomed again after every write.
 
 ### Changed
@@ -26,7 +26,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   back to the device list.
 - **Learn from remote takes each key twice** and keeps it only when the two presses
   agree; learned codes can differ from press to press.
-- Help's Yes and No light their softkey bars on the One.
+- Help's Yes and No light their softkey bars on the One and the 800.
 
 ### Fixed
 
