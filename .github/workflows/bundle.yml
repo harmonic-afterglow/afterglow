@@ -631,39 +631,34 @@ jobs:
           MACOS_LIBCONCORD: ${{ needs.macos.outputs.libconcord }}
         run: |
           set -euo pipefail
-          # Only what is specific to THIS build. Setup instructions live in the README
-          # and repeating them here means two copies that drift - the first version of
-          # this file was already a release behind it.
-          cat > notes.md <<'EOF'
-          | File | Platform |
-          |---|---|
-          | `afterglow-windows-x86_64.exe` | Windows 10 and 11 |
-          | `afterglow-windows7-x86.exe` | Windows 7 SP1 and 8, or 32-bit Windows (when present) |
-          | `afterglow-linux-x86_64` | Linux - `chmod +x` it first |
-          | `afterglow-macos-arm64.dmg` | macOS 11 and later, Apple Silicon |
-          | `afterglow-macos-x86_64.dmg` | macOS 11 and later, Intel (when present) |
-          | `afterglow-macos-x86_64-legacy.dmg` | macOS 10.13 to 10.15, Intel (when present) |
-
-          Standalone; no Python needed, and no driver to install. **Windows and
-          Linux** offer *direct access* the first time a remote is connected, which
-          asks for administrator permission (Windows) or your password (Linux) once.
-          **macOS** needs nothing; the app is not notarized, so the first time, open
-          it, then allow it in System Settings > Privacy & Security ("Open Anyway").
-          See the
-          [README](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#before-you-start).
-
-          ```
-          sha256sum -c SHA256SUMS --ignore-missing
-          ```
-          EOF
+          # The version's own section of CHANGELOG.md, then the checksums and the
+          # libconcord each bundle was built from - nothing else. How to install, and
+          # what each platform needs, is the README's; a change there belongs in the
+          # changelog. A tag with no changelog section is not released.
+          version="${GITHUB_REF_NAME#v}"
+          awk -v head="## [${version}]" '
+            index($0, head) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no section for ${version}"; exit 1
+          fi
           {
             echo
-            echo "Bundled libconcord, built from source at:"
+            echo "### Checksums (SHA-256)"
             echo
-            echo "- Linux \`${LINUX_LIBCONCORD}\`"
-            echo "- Windows \`${WINDOWS_LIBCONCORD}\`"
-            echo "- Windows 7 \`${WINDOWS_LEGACY_LIBCONCORD}\`"
-            echo "- macOS \`${MACOS_LIBCONCORD}\`"
+            echo '```'
+            sed 's# \./# #' release/SHA256SUMS
+            echo '```'
+            echo
+            if [ "$(printf '%s\n' "$LINUX_LIBCONCORD" "$WINDOWS_LIBCONCORD" \
+                    "$WINDOWS_LEGACY_LIBCONCORD" "$MACOS_LIBCONCORD" | sort -u | wc -l)" = 1 ]; then
+              echo "libconcord \`${LINUX_LIBCONCORD:0:7}\`"
+            else
+              echo "libconcord: Linux \`${LINUX_LIBCONCORD:0:7}\`, Windows \`${WINDOWS_LIBCONCORD:0:7}\`," \
+                   "Windows 7 \`${WINDOWS_LEGACY_LIBCONCORD:0:7}\`, macOS \`${MACOS_LIBCONCORD:0:7}\`"
+            fi
           } >> notes.md
           cat notes.md
 
@@ -677,7 +672,3 @@ jobs:
           # "latest" and nobody downloads it by accident.
           prerelease: ${{ contains(github.ref_name, '-') }}
           fail_on_unmatched_files: true
-          # Appends GitHub's own "What's Changed" list to the body above. That is the
-          # part worth reading in a release and the part no hand-written file can keep
-          # current.
-          generate_release_notes: true

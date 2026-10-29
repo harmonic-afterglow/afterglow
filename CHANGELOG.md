@@ -16,10 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Copy a command from another device.** A device's Commands has *Copy from another
   device...*: the commands picked come with their codes.
 - **Icons on an activity's screen buttons, on the Harmony One and the 800.** The editors
-  let a button carry an icon and the remote drew its label alone; the icon now fills the button with the
-  label over it, as Logitech's builds draw one, and the preview shows it the same way.
-- A Harmony One or 800 project can start with the **Remote Assistant** hidden (Remote Settings),
-  rather than welcomed again after every write.
+  let a button carry an icon and the remote drew its label alone; the icon now fills the
+  button with the label over it, as Logitech's builds draw one, and the preview shows it
+  the same way.
+- A Harmony One or 800 project can start with the **Remote Assistant** hidden (Remote
+  Settings), rather than welcomed again after every write.
 
 ### Changed
 
@@ -29,6 +30,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Learn from remote takes each key twice** and keeps it only when the two presses
   agree; learned codes can differ from press to press.
 - Help's Yes and No light their softkey bars on the One and the 800.
+- **Writing to a remote Afterglow is unsure of asks instead of refusing.** A board
+  revision or flash chip not yet confirmed for that model (two Harmony 900s on board 0.0
+  were refused, and work), a configuration that looks made for another remote, and a
+  skin number no profile knows each get their own question - *Write anyway* or *Cancel*,
+  Cancel the default - before anything is backed up or written. A file that is not a
+  configuration, or for no remote Afterglow writes, is still refused.
+- **Importing a Harmony One or 800 configuration keeps more of it**: a device's other
+  states (Logitech's Screen, TVInput and the like), power off in several steps, commands
+  only an activity's key or button sends, and commands that send nothing (Logitech's
+  stand-in for a device it does not reach by infrared).
 
 ### Fixed
 
@@ -60,6 +71,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   reason, "missing signals", went only to the log. The code follows the rename, and so do
   the power choice, inputs, number keys, the device's page and the activities using it;
   a device that cannot be saved says why.
+- **Imported labels read wrong letters**: "problem" as "probgem", "Is" as ".s", and a
+  capital I and a lowercase l mixed up. They are told apart by their shape and their
+  neighbours now.
+- An import could name a device's pages or an activity's control device differently from
+  one run to the next when two candidates tied.
 - An output file named without `.ezhex` was built, and then could not be written: "no
   such configuration".
 
