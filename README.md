@@ -27,47 +27,35 @@ Nothing is sent anywhere.
 
 ## Which remotes are supported?
 
-- Harmony 900
-- Harmony 1100 - experimental: configurations are read, imported, built and written.
-  Before writing, Afterglow saves what is on the remote to the `Dumps` folder, so it
-  can be put back with **Settings › Flash a Configuration File**.
-- Harmony One - experimental, the same way: its configuration is built from scratch
-  from your devices and activities, the one already on it can be imported, and the
-  remote is backed up before each write. Its screens can be restyled with a
-  [theme](#themes).
+- **Supported**
+  - Harmony 900
+- **Experimental** - configurations are read, imported, built and written, but not yet
+  confirmed on every remote. Before each write Afterglow saves what is on the remote to
+  the `Dumps` folder, and **Settings › Flash a Configuration File** puts it back.
+  - Harmony 1100
+  - Harmony One
+  - Harmony 800 - a prototype Logitech never sold
 
 ## Before you start
 
-**Windows** needs nothing installed first. The first time a Harmony 900, 1000 or 1100
-is connected, Afterglow offers to turn on **direct access**: it then talks to the remote
-over USB itself, through a driver that comes with Windows, and Windows asks for
-administrator permission once. That is faster and more reliable than Logitech's driver,
-which is no longer maintained and is refused by many current PCs. Logitech's Harmony
-Remote Software is not needed; where its driver is installed and loads, Afterglow can
-still use it. Settings > Remote connection switches either way.
+Nothing needs installing: no Python, no Logitech software, no driver.
 
-**Windows 7 and 8, and 32-bit Windows** have their own download,
-`afterglow-windows7-x86.exe`, which runs on Windows 7 SP1 and everything after. Windows 7
-needs its updates (at least KB2533623, or its replacement KB3063858). Direct access works
-there too, with one extra step: Windows says it cannot verify the driver's publisher, and
-you choose **Install this driver software anyway**. The driver is Windows' own WinUSB;
-only the small file that points the remote at it comes from Afterglow, and it is not
-signed.
-
-**macOS** needs nothing: Afterglow's macOS build talks to the remote over USB itself.
-(Logitech's own Mac driver does not work on current macOS.) The regular builds run on
-macOS 11 Big Sur and later; for an Intel Mac on 10.13 High Sierra to 10.15 Catalina,
-download `afterglow-macos-x86_64-legacy.dmg`.
-
-**Linux** needs nothing, on a 64-bit Ubuntu 20.04, Debian 11, Fedora 32 or anything
-newer (glibc 2.31 and up). The first time you run it, Afterglow offers to turn on
-**direct access**, so it talks to the remote over USB itself; that asks for your password
-once. Settings > Remote connection has it, and the old network link, at any time.
+- **Windows 10 and 11** - the first time a remote is connected, Afterglow offers
+  **direct access**, talking to it over USB itself; Windows asks for administrator
+  permission once. **Settings › Remote connection** switches back to Logitech's driver.
+- **Windows 7, 8 and 32-bit Windows** - download `afterglow-windows7-x86.exe`. Windows 7
+  needs update KB2533623 (or KB3063858). When turning direct access on, choose **Install
+  this driver software anyway**: the driver is Windows' own WinUSB, and only the small
+  file pointing the remote at it, which is not signed, comes from Afterglow.
+- **macOS 11 and later** - nothing to do. For an Intel Mac on 10.13 to 10.15, download
+  `afterglow-macos-x86_64-legacy.dmg`.
+- **Linux** (64-bit, Ubuntu 20.04, Debian 11, Fedora 32 or newer) - the first time, Afterglow
+  offers direct access, which asks for your password once.
 
 ## Using it
 
 Download the build for your platform from
-[Releases](https://github.com/harmonic-afterglow/afterglow/releases). They are standalone - no Python installation needed.
+[Releases](https://github.com/harmonic-afterglow/afterglow/releases).
 
 On macOS, open the `.dmg` and drag Afterglow to Applications. The app is not notarized,
 so the first time macOS will refuse to open it: open it once, then go to
@@ -100,38 +88,21 @@ Importing takes your devices and activities and leaves the other remote's state 
 
 **Your files** are all in `Documents/Afterglow`, a folder for each kind:
 
-| Folder | What is in it |
-|---|---|
-| `Projects` | your projects, and shareable projects you open |
-| `Dumps` | configurations read from a remote, ones you import, and the backup taken before writing an experimental remote |
-| `Generated` | configurations Afterglow builds - what **Flash** writes |
-| `Themes` | themes, a folder per remote that takes them (see [Themes](#themes)) |
-| `Backups` | earlier versions of each project, kept every time it is saved (**File > Show Earlier Versions**) |
-| `Library` | your own devices, and what you learn from the original remote |
-| `Logos` | favourite-channel logos; an import keeps the pictures it brings in `Logos/Imported` |
+- `Projects` - your projects, and shareable projects you open
+- `Dumps` - configurations read from a remote, ones you import, and the backup taken
+  before writing an experimental remote
+- `Generated` - configurations Afterglow builds, which **Flash** writes
+- `Themes` - looks for the remotes whose screens can be restyled; each comes with an
+  `Example` and a `README.md` saying what to change
+- `Backups` - earlier versions of each project, kept every time it is saved (**File > Show
+  Earlier Versions**)
+- `Library` - your own devices, and what you learn from the original remote
+- `Logos` - favourite-channel logos; an import keeps the pictures it brings in
+  `Logos/Imported`
 
 Each dialog opens in its own folder. To send someone a project, use **File > Export
 Shareable Project**: the `.afterglow` file it writes holds everything needed to build
 it, and **File > Open** reads it.
-
-### Themes
-
-A Harmony One's screens - its backgrounds, button frames, icons, fonts and colours -
-come from a theme. Themes live in **`Documents/Afterglow/Themes/harmony-one/`**, one
-folder each. Afterglow puts an `Example` there the first time it starts: it is the look
-Afterglow ships, to start from.
-
-1. Copy `Example` and give the copy a name of your own - `Example` itself is never
-   offered, is put back if it goes missing, and is replaced whenever Afterglow's own look
-   changes, so anything changed in it is lost.
-2. Change its pictures (PNG files under `images/`), its font (save a TrueType font as
-   `fonts/font.ttf`; a letter it lacks comes from the default font) and its text colours
-   (`assets.json`). Its own `README.md` says what each file is.
-3. Choose it under **Remote Settings > Theme** - the **Open folder** button there opens
-   the themes folder - and build.
-
-A project keeps its theme by name, so a shared project uses the theme of the same name
-on the other computer, and the default look if there is none.
 
 ## Something went wrong
 
