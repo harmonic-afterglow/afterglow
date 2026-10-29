@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **Linux downloads are AppImages**, for x86_64 and, new, ARM64 (`afterglow-linux-x86_64.AppImage`,
+  `afterglow-linux-aarch64.AppImage`): they start without unpacking themselves first, and
+  carry a menu entry and an icon for AppImage tools such as Gear Lever to install. They run on the same systems as before.
+
 ## [0.3.0-beta.6] - 2026-10-29
 
 ### Added
