@@ -185,9 +185,11 @@ def _decode_release_waveform(payload: bytes, offset: int) -> dict:
             f"release waveform at {offset:#x} exceeds the bounded native word count")
     if cursor > len(payload) or not words or payload[cursor - 2:cursor] != b"\x00\x00":
         raise ValueError(f"release waveform at {offset:#x} has no zero terminator")
-    if not words[0] & 0x8000 or not words[-1] & 0x8000:
-        raise ValueError(
-            f"release waveform at {offset:#x} must begin and end with a mark")
+    # It begins with a mark; it may end in a space - the gap after an Apple TV's last
+    # frame on a 650, 19.3 ms of it before the zero word, which the 800's firmware plays
+    # like any other space (FUN_080161a0)
+    if not words[0] & 0x8000:
+        raise ValueError(f"release waveform at {offset:#x} must begin with a mark")
 
     pulses: list[int] = []
     for word in words:
