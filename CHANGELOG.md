@@ -12,6 +12,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `afterglow-linux-aarch64.AppImage`): they start without unpacking themselves first, and
   carry a menu entry and an icon for AppImage tools such as Gear Lever to install. They run on the same systems as before.
 
+### Fixed
+
+- **Linux could not open a Harmony One or 800** without running as root: direct access
+  gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now; anyone
+  who turned it on before is asked to turn it on again.
+
 ## [0.3.0-beta.6] - 2026-10-29
 
 ### Added
