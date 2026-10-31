@@ -17,6 +17,8 @@ HERE = Path(__file__).parent
 # `tabs` - putting the keys in either one would make that import circular.
 USB_LINK_ASK_KEY = "ui/usb_link_never_ask"
 USB_LINK_CHOICE_KEY = "ui/usb_link_choice"      # "udev", "session" or "declined"
+# The shipped rules (usb_link.shipped_version) last asked about as an update.
+USB_LINK_UPDATE_SEEN_KEY = "ui/usb_link_update_seen"
 # The offer to put a remote on Windows' own WinUSB driver (`usb_driver`).
 USB_DRIVER_ASK_KEY = "ui/usb_driver_never_ask"
 def user_files() -> Path:

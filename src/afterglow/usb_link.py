@@ -130,6 +130,30 @@ def direct_state() -> str:
     return CURRENT
 
 
+def outdated() -> str | None:
+    """Which installed rule an earlier Afterglow left that this one ships differently -
+    `direct` or `link` - or None. An outdated rule can stop a remote being found (the
+    direct-access rule once let the signed-in user open only the 900/1000/1100), so it is
+    asked about even by someone who said not to be asked again: see `shipped_version`."""
+    if not applicable():
+        return None
+    if direct_state() == STALE:
+        return "direct"
+    if rule_state() == STALE:
+        return "link"
+    return None
+
+
+def shipped_version() -> str:
+    """A fingerprint of the rules and helper this Afterglow ships, so a question about an
+    outdated one is asked once for each change rather than at every start."""
+    import hashlib
+    digest = hashlib.sha256()
+    for name in ("70-afterglow-harmony.rules", "99-harmony-usbnet.rules", "harmony_net.sh"):
+        digest.update(_shipped(name))
+    return digest.hexdigest()[:16]
+
+
 INSTANCE_LOCK = "instances.lock"
 _instance_lock = None
 
