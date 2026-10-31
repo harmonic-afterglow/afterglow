@@ -1,3 +1,7 @@
-# Direct access for Afterglow: lets the signed-in user open a Harmony 900/1000/1100 over USB,
-# so no network link or DHCP server is needed. Installed by install_harmony_udev.sh direct.
-SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="046d", ATTR{idProduct}=="c11f", TAG+="uaccess"
+# Direct access for Afterglow: lets the signed-in user open a Harmony remote over USB, so no
+# network link or DHCP server is needed. Installed by install_harmony_udev.sh direct.
+# Every Harmony libconcord talks to, 046d:c110 to c14f - the 900/1000/1100 (c11f), the One
+# (c121), the 800 (c127) and the rest - both as a USB device and as a HID device, since
+# libconcord opens a HID remote through either, depending on how it was built.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="046d", ATTR{idProduct}=="c1[1-4][0-9a-f]", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c1[1-4][0-9a-f]", TAG+="uaccess"

@@ -1064,11 +1064,24 @@ def test_with_direct_access_possible_the_offer_is_about_direct_access(monkeypatc
 def test_the_direct_access_rule_gives_the_seat_user_the_remote():
     from afterglow import paths
 
+    import fnmatch
+    import re
+
     rule = paths.helper("70-afterglow-harmony.rules").read_text()
-    [line] = [line for line in rule.splitlines() if line and not line.startswith("#")]
-    assert 'ATTR{idVendor}=="046d"' in line and 'ATTR{idProduct}=="c11f"' in line
-    assert 'TAG+="uaccess"' in line, "the signed-in user, not everyone"
-    assert "MODE" not in line
+    lines = [line for line in rule.splitlines() if line and not line.startswith("#")]
+    # the remote as a USB device and as a HID device, since libconcord opens either
+    assert {re.search(r'SUBSYSTEM=="(\w+)"', line).group(1) for line in lines} == \
+        {"usb", "hidraw"}
+    for line in lines:
+        assert '{idVendor}=="046d"' in line
+        product = re.search(r'\{idProduct\}=="([^"]+)"', line).group(1)
+        # every Harmony libconcord talks to - the 900 (c11f), the One (c121), the 800
+        # (c127) - and nothing outside its range
+        assert all(fnmatch.fnmatch(pid, product) for pid in ("c110", "c11f", "c121", "c127",
+                                                              "c14f"))
+        assert not any(fnmatch.fnmatch(pid, product) for pid in ("c10f", "c150", "c52b"))
+        assert 'TAG+="uaccess"' in line, "the signed-in user, not everyone"
+        assert "MODE" not in line
 
 
 def test_direct_access_has_a_terminal_command_too(monkeypatch, tmp_path):
