@@ -404,3 +404,22 @@ def test_an_incomplete_configuration_imports_and_says_what_it_left_out(
     assert f"{command} has no code" in said
     assert "a role with no device" in said
     assert len(result.warnings) == 3
+
+
+def test_a_favourite_with_no_picture_is_written_with_no_image_as_logitech_writes_it():
+    """Logitech's own files leave <Image> out for a favourite without a picture; an
+    empty one names no file, and a configuration written so differs from every real
+    one."""
+    from afterglow import remotes
+    from afterglow.backends.harmony_pk.builder.activities import _gen_activity
+
+    tv = {"id": "2", "label": "TV", "model": "",
+          "commands": [[d, d, "00", "00", None] for d in "0123456789"]}
+    xml, _lists = _gen_activity(
+        {"id": "7", "label": "Radio", "type": "VirtualGeneric", "control": "2", "display": "2",
+         "image_buttons": [["NDR2", "channel", "202", None],
+                           ["ARD", "channel", "1", "ard.png"]]},
+        {"2": tv}, remotes.get("harmony-900"))
+    channels = ET.fromstring(xml).findall("Presentation/ChannelList/Channel")
+    assert [c.find("Image") is None for c in channels] == [True, False]
+    assert channels[1].findtext("Image") == "ard.png"
