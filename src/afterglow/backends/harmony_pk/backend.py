@@ -629,6 +629,12 @@ def import_project(extracted_dir, out_file=None) -> dict:
     return importer._build_project_harmony_pk(extracted_dir, out_file=out_file)
 
 
+def import_with_notes(extracted_dir, out_file=None) -> tuple[dict, list[str]]:
+    """import_project, and what it left out and why, for Import Complete to say."""
+    from . import importer
+    return importer._import_with_notes(extracted_dir, out_file=out_file)
+
+
 def validate_payload(payload: bytes, profile) -> dict:
     """Validate the PK carrier independently of the builder that produced it."""
     # A remote that plays stored sequences (the 1100) keeps its action lists inside

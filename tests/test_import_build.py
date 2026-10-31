@@ -4,6 +4,8 @@ The failures this guards against all look the same from outside: the build succe
 config verifies, and something is quietly missing or wrong. Each test below is a thing
 that was silently lost at least once.
 """
+import contextlib
+import io
 import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -352,3 +354,53 @@ def test_an_import_leaves_nothing_beside_the_file_and_keeps_its_pictures(configs
         assert build(project).is_file()
     finally:
         shutil.rmtree(kept, ignore_errors=True)
+
+
+def _incomplete(a_config, unpacked):
+    """A real configuration's tree with what Logitech may leave out, left out: a favourite
+    with no <Image>, as its own files write a radio station - and with what identifies
+    an element missing: a device with no Id, a command with no Code, a role with no
+    device."""
+    import xml.etree.ElementTree as ET
+
+    tree = unpacked(a_config)
+    path = tree / "userconfig" / "UserConfiguration.xml"
+    xml = ET.parse(path)
+    root = xml.getroot()
+    command = next(c for d in root.findall("Device") for c in d.findall("Commands/Command"))
+    command.find("Data").remove(command.find("Data/Code"))
+    nameless = ET.Element("Device")
+    ET.SubElement(ET.SubElement(nameless, "Presentation"), "Label").text = "Radio"
+    root.insert(list(root).index(root.find("Device")), nameless)
+    activity = ET.Element("Activity")
+    ET.SubElement(activity, "Id").text = "70000001"
+    ET.SubElement(activity, "Type").text = "WatchTV"
+    presentation = ET.SubElement(activity, "Presentation")
+    ET.SubElement(presentation, "Label").text = "Radio"
+    ET.SubElement(ET.SubElement(activity, "Role"), "Name").text = "PASSTHROUGH"
+    channel = ET.SubElement(ET.SubElement(presentation, "ChannelList"), "Channel")
+    for tag, text in (("Station", "NDR2"), ("Number", "202"), ("Slot", "1")):
+        ET.SubElement(channel, tag).text = text
+    root.insert(list(root).index(root.find("Activity")), activity)
+    xml.write(path, encoding="utf-8", xml_declaration=True)
+    return tree, activity.findtext("Id"), command.findtext("Name")
+
+
+def test_an_incomplete_configuration_imports_and_says_what_it_left_out(
+        a_config, unpacked):
+    """A favourite with no picture failed the whole import with "'NoneType' object has
+    no attribute 'text'" (a Harmony 900 whose radio favourites have none). What may be
+    left out is read as absent; an element missing what identifies it is left out, and
+    each one is said."""
+    from afterglow import importer
+
+    tree, activity_id, command = _incomplete(a_config, unpacked)
+    with contextlib.redirect_stdout(io.StringIO()):
+        result = importer.import_result(str(tree))
+    activity = next(a for a in result.project["activities"] if a["id"] == activity_id)
+    assert ["NDR2", "channel", "202", None] in activity["image_buttons"]
+    said = "\n".join(result.warnings)
+    assert "a device with no Id" in said
+    assert f"{command} has no code" in said
+    assert "a role with no device" in said
+    assert len(result.warnings) == 3

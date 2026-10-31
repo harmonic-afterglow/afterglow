@@ -36,6 +36,11 @@ class Backend:
         # the built file is named after the configuration, not the folder it was read from
         name = context.get("name")
         out_file = context.get("out_file") or (f"{name}_mod.ezhex" if name else None)
+        # A v1 module may also say what its import left out (optional)
+        with_notes = getattr(self.module, "import_with_notes", None)
+        if with_notes is not None:
+            project, notes = with_notes(source, out_file=out_file)
+            return ImportResult(project=project, warnings=tuple(notes))
         project = self.module.import_project(source, out_file=out_file)
         return ImportResult(project=project)
 

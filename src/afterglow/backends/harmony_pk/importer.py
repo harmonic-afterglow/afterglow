@@ -23,6 +23,13 @@ def parse_action_id(action_id):
         return parts[0], '_'.join(parts[1:-1])
     return None, None
 
+def _unescaped(element, path) -> str:
+    """The text at `path`, unescaped; "" when the element or its text is absent. For what
+    a configuration may leave out - a label, a favourite's picture - and Logitech's own
+    files do."""
+    return html.unescape(element.findtext(path) or "")
+
+
 def _is_digit_key(command: str, digit: str) -> bool:
     """Whether `command` is the key for `digit`, by either name devices give it."""
     return command in (digit, f"Number{digit}")
@@ -39,7 +46,7 @@ def parse_action(action_elem):
     """
     op = action_elem.find('Operation')
     if op is None: return None
-    op_name = op.find('Name').text
+    op_name = op.findtext('Name')
 
     def param(name):
         found = op.find(f'Parameter[@name="{name}"]')
@@ -323,6 +330,9 @@ class _HarmonyPkImport:
         # from SsIr.bin, which then has a different layout altogether.
         self._sequences = None
         self.sequence_rejects: dict[str, str] = {}
+        # Elements left out for lacking what identifies them - a device with no Id, a
+        # command with no Code - each said, for the import to report.
+        self.skipped: list[str] = []
         if self._root.findtext("Controller/Type") == "Device Sequence":
             from . import ssir_sequence
             with open(ssir_path, "rb") as handle:
@@ -348,7 +358,18 @@ class _HarmonyPkImport:
                   "from their recorded sequences and were left out:")
             for name, why in sorted(self.sequence_rejects.items()):
                 print(f"  {name}: {why}")
+        if self.skipped:
+            print(f"Warning: {len(self.skipped)} item(s) were incomplete and left out:")
+            for why in self.skipped:
+                print(f"  {why}")
         return self._project
+
+    def notes(self) -> list[str]:
+        """What this import left out, and why, for the person importing."""
+        notes = list(self.skipped)
+        notes += [f"{name}: left out, its recorded sequence could not be read ({why})"
+                  for name, why in sorted(self.sequence_rejects.items())]
+        return notes
 
     def _sequence_signal(self, command, device_label: str):
         """A Press/Hold sequence command as a portable waveform.
@@ -508,16 +529,22 @@ class _HarmonyPkImport:
     def _read_devices(self):
         # 3. Extract Devices
         for d in self._root.findall('Device'):
-            did = d.find('Id').text
+            did = d.findtext('Id')
+            if not did:
+                self.skipped.append(
+                    f"a device with no Id ({_unescaped(d, 'Presentation/Label') or 'unnamed'})"
+                    " was left out")
+                continue
             dev = {
                 "id": did,
-                "type": d.find('Type').text,
-                "mfr": html.unescape(d.find('Manufacturer').text),
-                "model": html.unescape(d.find('Model').text),
-                "label": html.unescape(d.find('Presentation/Label').text) if d.find('Presentation/Label') is not None else "",
+                "type": d.findtext('Type') or "",
+                "mfr": _unescaped(d, 'Manufacturer'),
+                "model": _unescaped(d, 'Model'),
+                "label": _unescaped(d, 'Presentation/Label'),
                 "raw_codes": {},
                 "commands": []
             }
+            shown = dev["label"] or dev["model"] or did
         
             # Absent is not false. The remote powers a device from an activity only when
             # AlwaysOn is exactly false; a device with no AlwaysOn at all - a camera, a
@@ -566,16 +593,26 @@ class _HarmonyPkImport:
             if cmds is not None:
                 props = cmds.find('Properties')
                 if props is not None:
+                    timing = {"PressPreSilence": "press_presilence",
+                              "PressInterKey": "press_interkey",
+                              "HoldPreSilence": "hold_presilence",
+                              "HoldInterKey": "hold_interkey"}
                     for p in props.findall('Property'):
-                        pname = p.attrib['name']
+                        pname = p.attrib.get('name')
                         # Map to the keys build_config expects
-                        if pname == "PressPreSilence": dev["press_presilence"] = int(p.text)
-                        if pname == "PressInterKey": dev["press_interkey"] = int(p.text)
-                        if pname == "HoldPreSilence": dev["hold_presilence"] = int(p.text)
-                        if pname == "HoldInterKey": dev["hold_interkey"] = int(p.text)
+                        if pname in timing:
+                            try:
+                                dev[timing[pname]] = int(p.text)
+                            except (TypeError, ValueError):
+                                self.skipped.append(
+                                    f"{shown}: its {pname} ({p.text!r}) is not a number "
+                                    "and was left out")
             
                 for c in cmds.findall('Command'):
-                    cname = c.find('Name').text
+                    cname = c.findtext('Name')
+                    if not cname:
+                        self.skipped.append(f"{shown}: a command with no name was left out")
+                        continue
                     if self._sequences is not None:
                         signal = self._sequence_signal(c, dev["label"] or did)
                         if signal is not None:
@@ -585,10 +622,18 @@ class _HarmonyPkImport:
                     # <Protocol>-1</Protocol> marks a raw command: it has no protocol block,
                     # its Code indexes SsIr.bin instead. Taking the device's protocol from
                     # one of those loses the protocol its other commands really use.
-                    this_proto = int(c.find('Data/Protocol').text)
+                    code = c.findtext('Data/Code')
+                    try:
+                        this_proto = int(c.findtext('Data/Protocol'))
+                    except (TypeError, ValueError):
+                        this_proto = None
+                    if code is None or this_proto is None:
+                        self.skipped.append(
+                            f"{shown}: {cname} has no "
+                            f"{'code' if code is None else 'protocol'} and was left out")
+                        continue
                     if this_proto >= 0:
                         command_protocol_indexes[cname] = this_proto
-                    code = c.find('Data/Code').text
                     dev["raw_codes"][cname] = code
                     dev["commands"].append([cname, cname, "00", "00", None])
                 
@@ -620,8 +665,8 @@ class _HarmonyPkImport:
             for cg in d.findall('Presentation/ControlGroup'):
                 if cg.attrib.get('name') == 'Misc':
                     for btn in cg.findall('Button'):
-                        label = html.unescape(btn.find('Label').text or "")
-                        _, cmd = parse_action_id(btn.find('ActionId').text)
+                        label = _unescaped(btn, 'Label')
+                        _, cmd = parse_action_id(btn.findtext('ActionId'))
                         if cmd:
                             soft_map.setdefault(cmd, label)
                             icon = btn.find('Icon')
@@ -638,7 +683,7 @@ class _HarmonyPkImport:
                 elif cg.attrib.get('name') == 'HardButtons':
                     for btn in cg.findall('Button'):
                         hname = btn.attrib.get('name')
-                        _, cmd = parse_action_id(btn.find('ActionId').text)
+                        _, cmd = parse_action_id(btn.findtext('ActionId'))
                         # One command may sit on several keys - a set-top box that puts
                         # Menu on both Menu and Exit, or PlayPause on both Play and Pause.
                         # Assigning rather than collecting kept whichever came last in the
@@ -754,8 +799,10 @@ class _HarmonyPkImport:
                 entry["label"] = html.unescape(btn.findtext('Label') or "")
                 if btn.findtext('Icon'):
                     entry["icon"] = btn.findtext('Icon')
-                if btn.findtext('Position') is not None:
+                try:
                     entry["position"] = int(btn.findtext('Position'))
+                except (TypeError, ValueError):
+                    pass                    # no place of its own: it goes in list order
                 if action_id in self._macros:
                     entry["macro"] = self._macros[action_id]
                 else:
@@ -770,7 +817,12 @@ class _HarmonyPkImport:
     def _read_activities(self):
         # 4. Extract Activities
         for a in self._root.findall('Activity'):
-            aid = a.find('Id').text
+            aid = a.findtext('Id')
+            if not aid:
+                self.skipped.append(
+                    f"an activity with no Id ({_unescaped(a, 'Presentation/Label') or 'unnamed'})"
+                    " was left out")
+                continue
             if aid == "-1":
                 # The "all off" pseudo-activity. Its list is the owner's, not something to
                 # infer: it may include a device with no power command of its own (a shade
@@ -785,8 +837,8 @@ class _HarmonyPkImport:
             
             act = {
                 "id": aid,
-                "type": a.find('Type').text,
-                "label": html.unescape(a.find('Presentation/Label').text),
+                "type": a.findtext('Type') or "",
+                "label": _unescaped(a, 'Presentation/Label'),
                 "soft_buttons": [],
                 "image_buttons": [],
                 "hard_macros": {},
@@ -816,8 +868,12 @@ class _HarmonyPkImport:
             # through an amplifier); dropping it also dropped that device from the
             # activity's power-on list, so the amp stayed silent.
             for r in a.findall('Role'):
-                rname = r.find('Name').text
-                rdid = r.find('DeviceId').text
+                rname, rdid = r.findtext('Name'), r.findtext('DeviceId')
+                if not (rname and rdid):
+                    self.skipped.append(
+                        f"{act['label'] or aid}: a role with no "
+                        f"{'name' if not rname else 'device'} was left out")
+                    continue
                 if rname == 'DISPLAY': act['display'] = rdid
                 elif rname == 'VOLUME': act['volume'] = rdid
                 elif rname == 'DEFAULT': act['control'] = rdid
@@ -860,9 +916,9 @@ class _HarmonyPkImport:
                         if btn is None:
                             act["soft_buttons"].append(None)
                             continue
-                        label = html.unescape(btn.find('Label').text or "")
-                        did, cmd = parse_action_id(btn.find('ActionId').text)
-                        action_id = btn.find('ActionId').text or ""
+                        label = _unescaped(btn, 'Label')
+                        action_id = btn.findtext('ActionId') or ""
+                        did, cmd = parse_action_id(action_id)
                         icon = btn.find('Icon')
                         icon_name = icon.text if icon is not None and icon.text else None
                         if did and cmd:
@@ -880,7 +936,7 @@ class _HarmonyPkImport:
                 elif cg.attrib.get('name') == 'HardButtons':
                     for btn in cg.findall('Button'):
                         hname = btn.attrib.get('name')
-                        action_id = btn.find('ActionId').text
+                        action_id = btn.findtext('ActionId')
                         if not hname:
                             continue
                         if hname not in act["bound_keys"]:
@@ -912,9 +968,11 @@ class _HarmonyPkImport:
             ch_list = a.find('Presentation/ChannelList')
             if ch_list is not None:
                 for ch in ch_list.findall('Channel'):
-                    name = html.unescape(ch.find('Station').text)
-                    num = ch.find('Number').text
-                    img = ch.find('Image').text
+                    # A favourite may have no picture: Logitech's own files leave
+                    # <Image> out for one (a radio station) rather than write it empty.
+                    name = _unescaped(ch, 'Station')
+                    num = ch.findtext('Number')
+                    img = ch.findtext('Image') or None
                     steps = [parse_action(x) for x in ch.findall('Actions/Action')]
                     steps = [step for step in steps if step]
                     commands = [step[2] for step in steps if step[0] == "command"]
@@ -955,6 +1013,12 @@ class _HarmonyPkImport:
                     if macro: act[json_key] = macro
 
             self._project["activities"].append(act)
+
+
+def _import_with_notes(extracted_dir, out_file=None):
+    """The project, and what the import left out and why."""
+    reader = _HarmonyPkImport(extracted_dir, out_file)
+    return reader.project(), reader.notes()
 
 
 def _build_project_harmony_pk(extracted_dir, out_file=None):
