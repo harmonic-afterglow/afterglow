@@ -1,4 +1,4 @@
-<img src="src/afterglow/branding/afterglow-icon.svg" alt="" width="100" align="right">
+<a href="https://harmonic-afterglow.github.io/"><img src="src/afterglow/branding/afterglow-icon.svg" alt="Afterglow website" width="100" align="right"></a>
 
 
 [![Discord](https://img.shields.io/badge/-updates-5865f2?logo=discord&logoColor=white&labelColor=gray)](https://discord.gg/GEUdc2FfRH)
