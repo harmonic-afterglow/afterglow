@@ -16,6 +16,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
+- **A command whose release ends in a pause was refused** on the One and the 800, both
+  reading a configuration and building one - Logitech writes an Apple TV's that way. The
+  800's firmware plays the pause like any other, so it is kept.
 - **An outdated USB rule is offered as an update**, also to anyone who ticked "Don't ask
   again": when the rule an earlier Afterglow installed differs from the one it ships now,
   Afterglow says so at startup, once for each change.

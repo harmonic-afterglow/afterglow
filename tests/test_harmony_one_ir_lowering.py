@@ -321,3 +321,15 @@ def test_a_held_command_still_ends_with_the_wait(tmp_path):
     assert lowered.release_waveform is None
     assert _seconds(lowered.press_waveform) > 6.5
     assert words(lowered.press_waveform)[-3:-2] != [0x8000 | 400], "it ends on the wait"
+
+
+@pytest.mark.parametrize("backend", ["harmony_one", "harmony_800"])
+def test_a_release_may_end_in_a_space_and_reads_back(backend):
+    """Logitech's 650 writes an Apple TV's release ending in 19.3 ms of silence before
+    the zero word; the reader refused it and so did the writer. The 800's firmware plays
+    a closing space like any other (checked in its emulator)."""
+    import importlib
+    lowering = importlib.import_module(f"afterglow.backends.{backend}.ir_lowering")
+    index = importlib.import_module(f"afterglow.backends.{backend}.command_index")
+    encoded = lowering.encode_release_waveform([9000, -2250, 560, -19300])
+    assert index._decode_release_waveform(encoded, 0)["pulses_us"] == [9000, -2250, 560, -19300]

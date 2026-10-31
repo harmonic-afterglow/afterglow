@@ -108,12 +108,11 @@ def encode_waveform(pulses_us, *, entry_us: int | None) -> bytes:
 
 
 def encode_release_waveform(pulses_us) -> bytes:
-    """Encode the measured mark-ending release form and its zero sentinel."""
+    """Encode a release waveform and its zero sentinel."""
     pulses = _normalise_pulses(pulses_us)
     if not pulses or pulses[0] < 0:
         raise ValueError("Harmony One release waveforms must begin with a mark")
-    if pulses[-1] < 0:
-        raise ValueError("Harmony One release waveforms must end with a mark")
+    # it may end in a space, as Logitech's 650 writes an Apple TV's (command_index)
     return _bytes(encode_pulses(pulses) + [0])
 
 
