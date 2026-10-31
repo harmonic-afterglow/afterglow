@@ -30,6 +30,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- A saved or shared project records the Afterglow version that wrote it (`saved_by`), and
+  any recordings it had repaired (`repairs`), so a later fix to how a remote plays commands
+  can repair the projects an older version left.
+
 - **Linux downloads are AppImages**, for x86_64 and, new, ARM64 (`afterglow-linux-x86_64.AppImage`,
   `afterglow-linux-aarch64.AppImage`): they start without unpacking themselves first, and
   carry a menu entry and an icon for AppImage tools such as Gear Lever to install. They run on the same systems as before.
@@ -43,6 +47,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony 1100 commands an older Afterglow got wrong are repaired.** The 1100 keeps no
+  protocols: importing one reads back what the build sent as recordings, and those were
+  replayed as they were through every later fix - an MCE keyboard's Win+1 built by
+  0.3.0-beta.5 still never released. Opening, importing or receiving a project now turns
+  each such recording back into its protocol, from the same device saved with its
+  protocols in your library or another project, when it is exactly what an earlier
+  release rendered. Your own recordings and Logitech's are left as they are. The project
+  is saved repaired, the previous version in Backups.
 - **The One's softkeys cut a longer word short**, and its titles had less room than the
   top line leaves them: a softkey's label is centred on its half of the bar and may use
   all of it, as on the 800, and a title has the room up to the status icons.

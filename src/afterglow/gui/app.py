@@ -339,10 +339,11 @@ class MainWindow(QMainWindow):
     def _load_project_file(self, path):
         """Show the project saved at `path`. Raises if it cannot be read; on failure the
         window is left on an empty project rather than half of a broken one."""
-        from .. import project_devices
+        from .. import project_devices, recording_repair
         raw = drop_retired_fields(json.loads(Path(path).read_text(encoding="utf-8")))
         native = project_devices.native_only(raw)
         data = project_devices.normalise_project(raw)
+        repaired = recording_repair.repair(data)
         try:
             self.project.clear()
             self.project.update(data)
@@ -358,14 +359,21 @@ class MainWindow(QMainWindow):
             raise
         _remember_project(self._project_path)
         converted = native - project_devices.native_only(self.project)
-        if converted > 0:
+        if converted > 0 or repaired > 0:
             # Commands kept in a remote's own code (an older Afterglow left RC5/RC6 that
-            # way) were made portable on reading; keep that, so the file says what the
-            # window does. The save backs the old file up first, as every save does.
+            # way) were made portable on reading, and recordings an older Afterglow
+            # rendered wrongly became their protocols again; keep that, so the file says
+            # what the window does. The save backs the old file up first, as every save does.
             self._write_project(path)
+            done = []
+            if converted > 0:
+                done.append(f"Converted {converted} command(s) to portable protocols, so "
+                            "they work on every remote.")
+            if repaired > 0:
+                done.append(f"Repaired {repaired} command(s) recorded from an older "
+                            "Afterglow build; they are protocols again.")
             self.status.showMessage(
-                f"Converted {converted} command(s) to portable protocols, so they work on "
-                f"every remote. Saved; the previous version is in Backups.", 15000)
+                " ".join(done) + " Saved; the previous version is in Backups.", 15000)
 
     def reopen_last_project(self) -> bool:
         """Open the project worked on last time. Never raises: a project that was moved,
@@ -431,6 +439,8 @@ class MainWindow(QMainWindow):
             folder, n = parent / f"{stem}-{n}", n + 1
         try:
             data = project_bundle.open_bundle(path, folder)
+            from .. import recording_repair
+            repaired = recording_repair.repair(data)
         except Exception as exc:
             QMessageBox.critical(self, "Open Failed", str(exc))
             return
@@ -442,7 +452,9 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self, "Shareable project",
             f"Opened {Path(path).name}. It is saved as its own project in\n{folder}\n"
-            "so the file you were sent is left as it was.")
+            "so the file you were sent is left as it was."
+            + (f"\n\n{repaired} command(s) recorded from an older Afterglow build were "
+               "repaired; they are protocols again." if repaired else ""))
 
     def export_bundle(self):
         """One file holding the project and everything it needs to build anywhere."""
@@ -500,6 +512,11 @@ class MainWindow(QMainWindow):
             from ..importer import import_file
             imported = import_file(path)
             data = imported.project
+            # A remote that keeps no protocols hands back what Afterglow built for it as
+            # recordings; the ones an older release rendered wrongly become their
+            # protocols again, from where this computer still has them.
+            from .. import recording_repair
+            repaired = recording_repair.repair(data)
             # Rebuild on the imported tree and keep its (possibly exotic) IrProto verbatim;
             # The imported devices and activities are kept; the config is rebuilt from
             # the scaffold rather than from the imported tree, so nothing unmodelled
@@ -535,6 +552,9 @@ class MainWindow(QMainWindow):
                     "picker now lists them." if n_rec else
                     "No RF blaster base was configured; all devices emit from the remote's "
                     "front IR.")
+            if repaired:
+                parts.append(f"Repaired {repaired} command(s) an older Afterglow build had "
+                             "recorded into this remote; they are protocols again.")
             if learned:
                 parts.append(learned.strip())
             # what could not be carried over, as the backend said it
@@ -563,6 +583,8 @@ class MainWindow(QMainWindow):
         from .. import project_backups
         self.settings_tab.save()
         project_backups.back_up(path)        # the version this save replaces
+        from .. import recording_repair
+        recording_repair.stamp(self.project)
         Path(path).write_text(json.dumps(self.project, indent=2), encoding="utf-8")
         self._mark_clean()
         _remember_project(str(path))

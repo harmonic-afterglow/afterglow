@@ -22,7 +22,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-from . import ir_protocol, project_devices
+from . import ir_protocol, project_devices, recording_repair
 
 SUFFIX = ".afterglow"
 SCHEMA = "afterglow-project-bundle/1"
@@ -48,7 +48,7 @@ def export(project: dict, target, *, base_dir=None) -> list[str]:
     """
     target = Path(target)
     base = Path(base_dir) if base_dir else Path.cwd()
-    out = deepcopy(project)
+    out = recording_repair.stamp(deepcopy(project))
     notes: list[str] = []
     settings = out.setdefault("settings", {})
     for key in MACHINE_SETTINGS:

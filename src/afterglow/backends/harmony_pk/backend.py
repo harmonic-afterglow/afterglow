@@ -298,6 +298,55 @@ def promote_native_signals(device: dict) -> int:
     return changed
 
 
+def _same_device_key(device: dict) -> tuple:
+    def squash(text):
+        return "".join(ch for ch in str(text or "").lower() if ch.isalnum())
+    return squash(device.get("mfr") or device.get("manufacturer")), squash(device.get("model"))
+
+
+def repair_recorded_signals(device: dict, sources: list[dict]) -> dict[str, int]:
+    """Commands a remote handed back as recordings that an older Afterglow rendered from
+    a protocol, made that protocol again; {render generation: commands} (in place).
+
+    The protocol comes from the same device elsewhere - the user's library, their other
+    projects - by manufacturer and model, else by label, and the same command name. It is
+    taken only if a known rendering of it (`render_history`) is exactly the recording, so
+    Logitech's own recordings and learned codes are never touched.
+    """
+    from . import render_history
+    recordings = {name: signal for name, signal in (device.get("signals") or {}).items()
+                  if signal.get("kind") == "waveform"
+                  and (_native_evidence(signal).get("format") == "device-sequence")}
+    if not recordings:
+        return {}
+    key, label = _same_device_key(device), (device.get("label") or "").strip().lower()
+    alike = [other for other in sources if other is not device and (
+        (all(key) and _same_device_key(other) == key)
+        or (label and (other.get("label") or "").strip().lower() == label))]
+    if not alike:
+        return {}
+    installed = ir_protocol.catalog()
+    repaired: dict[str, int] = {}
+    for name, recording in recordings.items():
+        for other in alike:
+            candidate = (other.get("signals") or {}).get(name)
+            if not candidate or candidate.get("kind") != "protocol":
+                continue
+            definitions = other.get("portable_protocol_definitions") or {}
+            library = {**installed, **definitions}
+            generation = render_history.rendered_by(recording, candidate, library)
+            if generation is None:
+                continue
+            device["signals"][name] = deepcopy(candidate)
+            own = definitions.get(candidate["protocol"])
+            if own is not None:
+                device.setdefault("portable_protocol_definitions", {})[
+                    candidate["protocol"]] = deepcopy(own)
+            repaired[generation.id] = repaired.get(generation.id, 0) + 1
+            break
+    return repaired
+
+
 def migrate_legacy_device(source: dict, *, device_id: str = "",
                           library: Path | None = None) -> dict:
     """Convert a legacy Harmony device/library record to a portable project device."""
