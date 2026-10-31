@@ -15,8 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - **Linux could not open a Harmony One or 800** without running as root: direct access
-  gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now; anyone
-  who turned it on before is asked to turn it on again.
+  gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
+- **An outdated USB rule is offered as an update**, also to anyone who ticked "Don't ask
+  again": when the rule an earlier Afterglow installed differs from the one it ships now,
+  Afterglow says so at startup, once for each change.
 
 ## [0.3.0-beta.6] - 2026-10-29
 

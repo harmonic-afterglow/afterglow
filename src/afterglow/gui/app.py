@@ -16,7 +16,7 @@ from ..qt.QtSvg import QSvgRenderer
 from .project import new_project as empty_project
 
 from .constants import (EZHEX_OPEN_FILTER, USB_LINK_ASK_KEY, USB_LINK_CHOICE_KEY,
-                        user_files, user_folder)
+                        USB_LINK_UPDATE_SEEN_KEY, user_files, user_folder)
 from .project import drop_retired_fields, retire_new_devices
 from .rf_routing import rf_receivers
 from .source_settings import SourcePreferences, SourceSettingsDialog
@@ -743,22 +743,33 @@ def _usb_link_offer(parent, forced: bool = False) -> None:
     `forced` is the Settings menu entry, which asks regardless of both - it is the way
     back for anyone who declined, dismissed a password prompt, or ticked the box.
 
+    A rule an earlier Afterglow installed and this one ships changed is the exception to
+    "Don't ask again": it is asked about once for each change, since an outdated rule can
+    stop the remote being found at all.
+
     Never blocks authoring. Declining is a supported answer and is remembered.
     """
     from .. import usb_link
 
     settings = QSettings("Afterglow", "Afterglow")
+    outdated = usb_link.outdated()
     if not forced:
         if not usb_link.should_ask():
             return
-        if settings.value(USB_LINK_ASK_KEY, False, type=bool):
+        update_unasked = bool(outdated) and settings.value(
+            USB_LINK_UPDATE_SEEN_KEY, "", type=str) != usb_link.shipped_version()
+        if settings.value(USB_LINK_ASK_KEY, False, type=bool) and not update_unasked:
             return
 
     dialog = QDialog(parent)
     dialog.setWindowTitle("Remote connection")
     layout = QVBoxLayout(dialog)
     direct_possible = usb_link.direct_possible()
-    if direct_possible and usb_link.direct_state() == usb_link.CURRENT:
+    if outdated == "direct":
+        headline = ("Direct access was set up by an earlier version of Afterglow, and its "
+                    "rule has changed since. Without the update Afterglow may not be able "
+                    "to open your remote. Updating asks for your password once.")
+    elif direct_possible and usb_link.direct_state() == usb_link.CURRENT:
         headline = ("Direct access is already on. You can set it up again if the remote "
                     "is not found.")
     elif direct_possible:
@@ -794,6 +805,9 @@ def _usb_link_offer(parent, forced: bool = False) -> None:
     buttons.accepted.connect(dialog.accept)
     layout.addWidget(buttons)
     dialog.exec()
+    if outdated:
+        # Asked about this change; the next one is asked about again.
+        settings.setValue(USB_LINK_UPDATE_SEEN_KEY, usb_link.shipped_version())
 
     # Recorded before acting: someone who ticks the box and then has the password prompt
     # fail has still said they do not want to be asked, and asking again next launch

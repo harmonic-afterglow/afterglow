@@ -567,6 +567,61 @@ def test_the_offer_is_skipped_when_it_would_be_pointless(qapp_or_skip, monkeypat
     assert shown == [], "the preference outranks a standing offer"
 
 
+def test_an_outdated_rule_is_asked_about_once_for_each_change(qapp_or_skip, monkeypatch,
+                                                             tmp_path):
+    """"Don't ask again" covers the question, not a rule an earlier Afterglow installed
+    that this one ships differently: the direct-access rule once covered only the 900,
+    1000 and 1100, so a Harmony One was never found. Asked once for each change."""
+    from afterglow.qt.QtCore import QSettings
+
+    from afterglow import usb_link
+    from afterglow.gui import app as gui_app
+
+    texts = []
+    monkeypatch.setattr(gui_app.QDialog, "exec", lambda self: texts.append(
+        [label.text() for label in self.findChildren(gui_app.QLabel)]))
+    settings = QSettings(str(tmp_path / "s.ini"), QSettings.Format.IniFormat)
+    monkeypatch.setattr(gui_app, "QSettings", lambda *a, **k: settings)
+    settings.setValue(gui_app.USB_LINK_ASK_KEY, True)
+    monkeypatch.setattr(usb_link, "should_ask", lambda: True)
+    monkeypatch.setattr(usb_link, "direct_possible", lambda: True)
+    monkeypatch.setattr(usb_link, "outdated", lambda: "direct")
+    monkeypatch.setattr(usb_link, "direct_state", lambda: usb_link.STALE)
+    monkeypatch.setattr(usb_link, "shipped_version", lambda: "one")
+    # never the real installer, nor a box waiting for a click
+    installs = []
+    monkeypatch.setattr(usb_link, "install_direct",
+                        lambda: installs.append(1) or (False, "dismissed"))
+    for kind in ("information", "warning"):
+        monkeypatch.setattr(gui_app.QMessageBox, kind, staticmethod(lambda *a, **k: None))
+
+    gui_app._usb_link_offer(None)
+    assert len(texts) == 1 and "earlier version" in texts[0][0]
+    gui_app._usb_link_offer(None)
+    assert len(texts) == 1, "this change was asked about already"
+    monkeypatch.setattr(usb_link, "shipped_version", lambda: "two")
+    gui_app._usb_link_offer(None)
+    assert len(texts) == 2, "a newer change is asked about again"
+    assert len(installs) == 2, "updating is the answer offered first"
+
+
+def test_outdated_names_the_rule_an_earlier_afterglow_installed(monkeypatch):
+    from afterglow import usb_link
+
+    monkeypatch.setattr(usb_link.sys, "platform", "linux")
+    monkeypatch.setattr(usb_link, "direct_state", lambda: usb_link.STALE)
+    monkeypatch.setattr(usb_link, "rule_state", lambda: usb_link.ABSENT)
+    assert usb_link.outdated() == "direct"
+    monkeypatch.setattr(usb_link, "direct_state", lambda: usb_link.ABSENT)
+    monkeypatch.setattr(usb_link, "rule_state", lambda: usb_link.STALE)
+    assert usb_link.outdated() == "link"
+    monkeypatch.setattr(usb_link, "rule_state", lambda: usb_link.CURRENT)
+    assert usb_link.outdated() is None
+    monkeypatch.setattr(usb_link.sys, "platform", "win32")
+    monkeypatch.setattr(usb_link, "direct_state", lambda: usb_link.STALE)
+    assert usb_link.outdated() is None
+
+
 def test_the_link_warning_reaches_the_log_and_stops_nobody(qapp_or_skip, monkeypatch):
     """Someone who asked for the link and does not have it gets told, on every button.
 
