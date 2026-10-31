@@ -373,8 +373,11 @@ def _gen_activity(act, by_id, remote=None):
             # Slot is 1-BASED + contiguous: convertChannelList gap-fills missing slots with blank
             # channels seeding "previous"=0, so slot+1 avoids 7 ghost favorites being prepended.
             number_txt = numbers[slot]
+            # One with no picture has no <Image> at all, as Logitech's own files write it -
+            # not an empty one, which names no file
+            picture = f'<Image>{esc(image)}</Image>' if image else ""
             head = (f'<Channel><Station>{esc(label)}</Station><Number>{esc(number_txt)}</Number>'
-                    f'<Slot>{slot + 1}</Slot><Image>{esc(image or "")}</Image>')
+                    f'<Slot>{slot + 1}</Slot>{picture}')
             
             if atype == "channel":
                 if via_numeric:
