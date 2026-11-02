@@ -217,6 +217,7 @@ LC_FILE_TYPE_CONFIGURATION = 2
 # said who it is, but its configuration area does not start with its model's cookie - an
 # interrupted or a bad write, or none yet. Concordance itself only warns about it, since a
 # remote in that state is exactly the one that needs a configuration written.
+LC_ERROR_UNSUPP = 15
 LC_ERROR_INVALID_CONFIG = 16
 IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
 
@@ -729,6 +730,24 @@ class Remote:
         identity["model"] = _model_name(identity)
         return identity
 
+    def _read_blob(self, on_progress):
+        """`read_config_from_remote`: the blob, to be freed with `delete_blob`, and
+        its size."""
+        blob = ctypes.POINTER(ctypes.c_uint8)()
+        size = ctypes.c_uint32()
+        err = self.lib.read_config_from_remote(
+            ctypes.byref(blob), ctypes.byref(size), self._callback(on_progress), None)
+        if err == LC_ERROR_UNSUPP:
+            # "Model or configuration or operation unsupported" says nothing a person
+            # can use. What happened: the remote answered, and would not hand over the
+            # region its configuration is read from (a Harmony 1000 lists no Region 4).
+            raise RemoteError(
+                "The remote would not hand over its configuration: it refused the "
+                "region libconcord reads it from. Nothing on it was changed. The log "
+                "lists the regions it does have; please send it with your report.")
+        self._check(err, "reading the configuration")
+        return blob, size
+
     def save_config(self, path, on_progress=None) -> int:
         """Read the configuration off the remote and save it as a `.ezhex`.
 
@@ -738,11 +757,7 @@ class Remote:
         Writing the blob unwrapped produces a file nothing can read back, including
         Afterglow's own importer.
         """
-        blob = ctypes.POINTER(ctypes.c_uint8)()
-        size = ctypes.c_uint32()
-        self._check(self.lib.read_config_from_remote(
-            ctypes.byref(blob), ctypes.byref(size),
-            self._callback(on_progress), None), "reading the configuration")
+        blob, size = self._read_blob(on_progress)
         try:
             with staged_file("remote.ezhex") as staged:
                 self._check(self.lib.write_config_to_file(
@@ -757,11 +772,7 @@ class Remote:
 
         Use `save_config()` to write a file - see the note there about the header.
         """
-        blob = ctypes.POINTER(ctypes.c_uint8)()
-        size = ctypes.c_uint32()
-        self._check(self.lib.read_config_from_remote(
-            ctypes.byref(blob), ctypes.byref(size),
-            self._callback(on_progress), None), "reading the configuration")
+        blob, size = self._read_blob(on_progress)
         try:
             return bytes(bytearray(blob[i] for i in range(size.value)))
         finally:

@@ -605,6 +605,23 @@ def test_a_long_trace_keeps_its_end_and_whole_lines(caplog):
     assert "line 0\n" not in logged
 
 
+def test_a_remote_that_refuses_its_config_region_says_so():
+    """A Harmony 1000 (skin 53) lists no Region 4, where libconcord reads a usbnet
+    remote's configuration, and refuses it. libconcord's own words for that are "Model
+    or configuration or operation unsupported"; the person is told what happened."""
+    class Library:
+        def read_config_from_remote(self, *_args):
+            return concord.LC_ERROR_UNSUPP
+
+    remote = object.__new__(concord.Remote)
+    remote.lib = Library()
+    remote._callback = lambda _progress: None
+    for read in (remote.read_config, lambda: remote.save_config("unused.ezhex")):
+        with pytest.raises(concord.RemoteError, match="would not hand over") as caught:
+            read()
+        assert "Nothing on it was changed" in str(caught.value)
+
+
 def test_a_libconcord_without_the_trace_still_works(caplog):
     """An older or distribution libconcord has no lc_get_trace: nothing is logged."""
     class Library:
