@@ -179,13 +179,6 @@ class RemoteError(RuntimeError):
     """The library refused an operation. Carries libconcord's own message."""
 
 
-class ConfigRegionRefused(RemoteError):
-    """The remote answered but would not hand over the region libconcord reads a
-    configuration from. On a Harmony 1000 this is normal: its config is not region 4,
-    where the 900 and 1100 keep theirs, so the read is retried over the remote's
-    filesystem regions (see Remote.save_config)."""
-
-
 class UnconfirmedRemote(RemoteError):
     """The file is for this model of remote, but this remote differs from every one of
     the model Afterglow knows in its board revision or flash chip - a Harmony 900 on
@@ -620,25 +613,6 @@ class Remote:
             lib.set_learning_mode.restype = ctypes.c_int
             lib.set_learning_mode.argtypes = [ctypes.c_int, ctypes.c_uint32]
         self.can_learn = hasattr(lib, "learn_from_remote")
-        # Per-region read/write (Afterglow's fork): how the Harmony 1000's config is
-        # reached, since it is not in region 4 where the 900 and 1100 keep theirs. A
-        # distribution libconcord does not have these; `has_regions` gates their use.
-        self.has_regions = hasattr(lib, "read_region_from_remote")
-        if self.has_regions:
-            for name, restype, argtypes in (
-                ("get_region_count", ctypes.c_int, []),
-                ("get_region_id", ctypes.c_int, [ctypes.c_int]),
-                ("get_region_version", ctypes.c_char_p, [ctypes.c_int]),
-                ("read_region_from_remote", ctypes.c_int,
-                 [ctypes.c_uint8, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)),
-                  ctypes.POINTER(ctypes.c_uint32), LC_CALLBACK, ctypes.c_void_p]),
-                ("write_region_to_remote", ctypes.c_int,
-                 [ctypes.c_uint8, ctypes.POINTER(ctypes.c_uint8), ctypes.c_uint32,
-                  LC_CALLBACK, ctypes.c_void_p]),
-            ):
-                function = getattr(lib, name)
-                function.restype = restype
-                function.argtypes = argtypes
 
     def _check(self, err, what):
         if err:
@@ -766,11 +740,16 @@ class Remote:
         if err == LC_ERROR_UNSUPP:
             # "Model or configuration or operation unsupported" says nothing a person
             # can use. What happened: the remote answered, and would not hand over the
-            # region its configuration is read from (a Harmony 1000 refuses region 4).
-            # save_config catches this and reads the 1000's filesystem regions instead.
-            raise ConfigRegionRefused(
-                "The remote would not hand over its configuration from the usual "
-                "region.")
+            # region a configuration is read from. On a Harmony 1000 that is its
+            # firmware's rule, not a fault: its region manager lets only the Z-Wave
+            # regions (7 and 10) be read. Logitech's software never read a 1000's
+            # configuration back either - it kept it on its servers and only wrote one,
+            # to region 4, which the 1000 accepts.
+            raise RemoteError(
+                "This remote does not let its configuration be read back over USB. A "
+                "Harmony 1000's firmware only hands over its Z-Wave regions, and "
+                "Logitech's own software never read a 1000's configuration either. "
+                "Nothing on it was changed.")
         self._check(err, "reading the configuration")
         return blob, size
 
@@ -783,17 +762,7 @@ class Remote:
         Writing the blob unwrapped produces a file nothing can read back, including
         Afterglow's own importer.
         """
-        try:
-            blob, size = self._read_blob(on_progress)
-        except ConfigRegionRefused:
-            # The usual region is not where this remote keeps its config. A Harmony
-            # 1000 keeps it in a filesystem region; read it from there instead.
-            if self.has_regions:
-                return self._save_config_via_regions(path, on_progress)
-            raise RemoteError(
-                "The remote would not hand over its configuration: it refused the "
-                "region libconcord reads it from, and this libconcord cannot read "
-                "the remote's other regions. Nothing on it was changed.")
+        blob, size = self._read_blob(on_progress)
         try:
             with staged_file("remote.ezhex") as staged:
                 self._check(self.lib.write_config_to_file(
@@ -802,52 +771,6 @@ class Remote:
         finally:
             self.lib.delete_blob(blob)
         return size.value
-
-    # the config of a remote (a Harmony 1000) that keeps it in a filesystem region
-    # rather than region 4. The firmware calls the file Config.EzHex and loads it from
-    # /usr/appl/config; on the remote a filesystem region reads back as a ZIP, so the
-    # file is pulled out of whichever readable region holds it.
-    CONFIG_MEMBER = "Config.EzHex"
-
-    def _save_config_via_regions(self, path, on_progress=None) -> int:
-        import io
-        import zipfile
-        regions = self.dump_regions(on_progress)
-        # Keep the raw regions beside the target whatever happens: a zip of
-        # Region_<id>.EzHex, the shape of a Logitech firmware package, so it can be
-        # inspected (fw-tools/compare_regions.py) and the config located if the search
-        # below misses it on a remote we have not seen.
-        dump_path = Path(path).with_suffix(".regions.zip")
-        with staged_file("regions.zip") as staged:
-            with zipfile.ZipFile(staged, "w", zipfile.ZIP_DEFLATED) as zf:
-                for rid, data in sorted(regions.items()):
-                    zf.writestr(f"Region_{rid}.EzHex", data)
-            _place(staged, dump_path)
-        # Find Config.EzHex inside whichever region is a ZIP that holds it.
-        found = None
-        members = {}
-        for rid, data in sorted(regions.items()):
-            try:
-                with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                    names = zf.namelist()
-                    members[rid] = names
-                    for name in names:
-                        if name.rsplit("/", 1)[-1].lower() == self.CONFIG_MEMBER.lower():
-                            found = zf.read(name)
-                            break
-            except zipfile.BadZipFile:
-                continue
-            if found is not None:
-                break
-        if found is None:
-            where = "; ".join(f"region {rid}: {len(names)} files"
-                              for rid, names in members.items()) or "no readable regions"
-            raise RemoteError(
-                f"Read the remote's regions but found no {self.CONFIG_MEMBER} in them "
-                f"({where}). The raw regions were saved to {dump_path.name}; please "
-                f"send it so the configuration can be located. Nothing was changed.")
-        Path(path).write_bytes(found)
-        return len(found)
 
     def read_config(self, on_progress=None) -> bytes:
         """The raw configuration blob, with no envelope around it.
@@ -859,51 +782,6 @@ class Remote:
             return bytes(bytearray(blob[i] for i in range(size.value)))
         finally:
             self.lib.delete_blob(blob)
-
-    # regions - how the Harmony 1000 is read and written, since its config is not in
-    # region 4 (REGION_USER_CONFIG) where the 900 and 1100 keep theirs.
-    def regions(self) -> list[tuple[int, str]]:
-        """The remote's regions as identify read them: (id, version), id order.
-        Empty on a remote without regions, or a libconcord without the calls."""
-        if not self.has_regions:
-            return []
-        out = []
-        for index in range(self.lib.get_region_count()):
-            rid = self.lib.get_region_id(index)
-            ver = self.lib.get_region_version(index)
-            out.append((rid, ver.decode(errors="replace") if ver else ""))
-        return sorted(out)
-
-    def read_region(self, region: int, on_progress=None) -> bytes:
-        """One region, whole. RemoteError if the remote will not hand it over."""
-        if not self.has_regions:
-            raise RemoteError("this libconcord cannot read individual regions")
-        blob = ctypes.POINTER(ctypes.c_uint8)()
-        size = ctypes.c_uint32()
-        err = self.lib.read_region_from_remote(
-            region, ctypes.byref(blob), ctypes.byref(size),
-            self._callback(on_progress), None)
-        if err == LC_ERROR_UNSUPP:
-            raise RemoteError(f"the remote would not hand over region {region}")
-        self._check(err, f"reading region {region}")
-        try:
-            return bytes(bytearray(blob[i] for i in range(size.value)))
-        finally:
-            self.lib.delete_blob(blob)
-
-    def dump_regions(self, on_progress=None) -> dict[int, bytes]:
-        """Every region the remote will hand over, {id: bytes}. A region it refuses
-        (the 1000's region 4, say) is left out, not an error."""
-        out = {}
-        regions = self.regions()
-        for n, (rid, _ver) in enumerate(regions):
-            if on_progress:
-                on_progress(f"Reading region {rid}", n, len(regions))
-            try:
-                out[rid] = self.read_region(rid)
-            except RemoteError:
-                continue                      # refused: skip, keep the rest
-        return out
 
     # writing
     def write_config(self, path, on_progress=None, reset=True,
