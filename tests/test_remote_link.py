@@ -605,21 +605,74 @@ def test_a_long_trace_keeps_its_end_and_whole_lines(caplog):
     assert "line 0\n" not in logged
 
 
-def test_a_remote_that_refuses_its_config_region_says_so():
-    """A Harmony 1000 (skin 53) lists no Region 4, where libconcord reads a usbnet
-    remote's configuration, and refuses it. libconcord's own words for that are "Model
-    or configuration or operation unsupported"; the person is told what happened."""
+def test_a_refused_config_region_is_told_apart_as_its_own_error():
+    """A Harmony 1000 refuses region 4, where a usbnet remote's config is read from.
+    libconcord returns LC_ERROR_UNSUPP; _read_blob raises ConfigRegionRefused so
+    save_config can read the 1000's filesystem regions instead."""
     class Library:
         def read_config_from_remote(self, *_args):
             return concord.LC_ERROR_UNSUPP
 
     remote = object.__new__(concord.Remote)
     remote.lib = Library()
+    remote.has_regions = False
     remote._callback = lambda _progress: None
-    for read in (remote.read_config, lambda: remote.save_config("unused.ezhex")):
-        with pytest.raises(concord.RemoteError, match="would not hand over") as caught:
-            read()
-        assert "Nothing on it was changed" in str(caught.value)
+    with pytest.raises(concord.ConfigRegionRefused):
+        remote.read_config()
+    # Without per-region reads there is nothing else to try: say so, and that nothing
+    # was changed.
+    with pytest.raises(concord.RemoteError, match="would not hand over") as caught:
+        remote.save_config("unused.ezhex")
+    assert "Nothing on it was changed" in str(caught.value)
+
+
+def test_a_1000_config_is_read_from_its_filesystem_region(tmp_path):
+    """The 1000 keeps Config.EzHex in a filesystem region, which reads back as a ZIP.
+    save_config dumps the readable regions, finds Config.EzHex in whichever region
+    holds it, saves it, and keeps the raw regions beside it for inspection."""
+    import io
+    import zipfile
+
+    config = b"PK\x03\x04 pretend 1000 Config.EzHex payload"
+    region13 = io.BytesIO()
+    with zipfile.ZipFile(region13, "w") as zf:
+        zf.writestr("config/Config.EzHex", config)
+        zf.writestr("config/other.bin", b"...")
+    regions = {3: b"not a zip", 13: region13.getvalue()}
+
+    remote = object.__new__(concord.Remote)
+    remote.lib = SimpleNamespace(); remote.has_regions = True
+    remote.dump_regions = lambda on_progress=None: regions
+
+    target = tmp_path / "remote.ezhex"
+    size = remote._save_config_via_regions(str(target))
+    assert target.read_bytes() == config
+    assert size == len(config)
+    # the raw regions are kept beside it, as a firmware-package-shaped zip
+    dump = tmp_path / "remote.regions.zip"
+    with zipfile.ZipFile(dump) as zf:
+        assert set(zf.namelist()) == {"Region_3.EzHex", "Region_13.EzHex"}
+
+
+def test_a_1000_with_no_config_in_its_regions_saves_the_dump(tmp_path):
+    """If no region holds Config.EzHex, the dump is kept and the error says so, so the
+    config can be located on a remote we have not seen - nothing is lost."""
+    import io
+    import zipfile
+
+    empty = io.BytesIO()
+    with zipfile.ZipFile(empty, "w") as zf:
+        zf.writestr("photon/x", b"x")
+    remote = object.__new__(concord.Remote)
+    remote.lib = SimpleNamespace(); remote.has_regions = True
+    remote.dump_regions = lambda on_progress=None: {13: empty.getvalue()}
+
+    target = tmp_path / "remote.ezhex"
+    with pytest.raises(concord.RemoteError, match="found no Config.EzHex") as caught:
+        remote._save_config_via_regions(str(target))
+    assert "regions.zip" in str(caught.value)
+    assert (tmp_path / "remote.regions.zip").exists()
+    assert not target.exists()
 
 
 def test_a_libconcord_without_the_trace_still_works(caplog):

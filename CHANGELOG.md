@@ -24,9 +24,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **A Harmony 1000 could not be identified** ("identifying the remote: Unknown error"):
   libconcord asked it for details only Logitech's website ever used, and the 1000 never
   answers one of them. They are no longer asked for, which also makes connecting to any
-  900, 1000 or 1100 quicker. A 1000 sold as skin 53 is named a Harmony 1000. A remote
-  that will not hand over its configuration is told apart from a failed read. A
-  remote's reply can no longer be copied past the end of the buffer it is read into.
+  900, 1000 or 1100 quicker. A 1000 sold as skin 53 is named a Harmony 1000. A remote's
+  reply can no longer be copied past the end of the buffer it is read into.
+- **A Harmony 1000 is read from where it actually keeps its configuration.** The 1000 is
+  a different platform from the 900 and 1100 and does not keep its configuration in the
+  region those do - it keeps it in a file inside one of its filesystem regions, which the
+  older tools never handled, so reading one failed. Afterglow now reads the 1000's
+  regions and takes the configuration out of the one that holds it, and saves the raw
+  regions alongside it. (Writing a built configuration to a 1000 still needs work only a
+  1000 and its owner can finish.)
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
 - **With the Remote Assistant hidden, the screen of a Harmony One or 800 stayed lit** for
