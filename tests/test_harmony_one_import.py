@@ -371,6 +371,33 @@ def _state_tv(nec):
                        ["Input 3", [{"set": "Screen", "to": "2"}]]]}
 
 
+def _menu_tv(nec):
+    """A television whose inputs are a menu, as Logitech's database says a Soniq's are
+    (`InputType` 4) and a 650's configuration writes them: Source opens it, Up and Down
+    move through it, OK chooses, each code a second apart."""
+    names = ("PowerToggle", "Source", "DirectionUp", "DirectionDown", "OK")
+    return {"id": "tv", "label": "Soniq TV", "type": "Television",
+            "signals": {name: nec(3, number) for number, name in enumerate(names)},
+            "commands": [[name, name, "", "", None] for name in names],
+            "power_cmd": "PowerToggle", "power_delay": 3000,
+            "input_cycle": {"values": ["DTV", "AV", "HDMI 1", "HDMI 2", "Media"],
+                            "start": ["Source"], "next": ["DirectionUp"],
+                            "previous": ["DirectionDown"], "finish": ["OK"],
+                            "delay_ms": 1000}}
+
+
+def test_a_menu_input_builds_and_comes_back(tmp_path):
+    """Its way in and out and both directions survive a build and an import."""
+    from test_harmony_one_activities import _nec
+    imported = _imported(generate.build({"devices": [_menu_tv(_nec)]})["image"], tmp_path)
+    [read] = imported["devices"]
+    cycle = read["input_cycle"]
+    def listed(value):          # a step, or a list of them: the format takes either
+        return value if isinstance(value, list) else [value]
+    assert (cycle["start"], listed(cycle["next"]), listed(cycle["previous"]),
+            cycle["finish"], cycle["delay_ms"], len(cycle["values"])) == (
+        ["Source"], ["DirectionUp"], ["DirectionDown"], ["OK"], 1000, 5)
+
 def test_a_devices_other_states_build_and_come_back(tmp_path):
     """Logitech's two-level input, as a Dutch Harmony 650's television has it: its input
     sets the device's `Screen` - a route to each value - and its `TVInput` - stepped

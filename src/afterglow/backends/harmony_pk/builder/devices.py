@@ -217,6 +217,11 @@ def _gen_device(spec):
                 for v, cn in inputs)
             body += f"<DiscreteActions>{sa}</DiscreteActions>"
         elif cycle:
+            # a menu's way in and out - a Soniq's Source, then OK - as Logitech writes a
+            # stepping state's: bare, before its RelativeActions (states.build_control_states)
+            for key, kind in (("start", "StartAction"), ("finish", "FinishAction")):
+                if cycle.get(key):
+                    body += f"<{kind}>{_input_steps(cycle[key])}</{kind}>"
             rel = ""
             if cycle.get("next"):
                 rel += f"<NextAction>{_input_steps(cycle['next'])}</NextAction>"

@@ -132,6 +132,19 @@ def test_a_device_that_can_only_cycle_its_inputs_boots(remote_lua, build, tmp_pa
     assert_answers(boot(remote_lua, build(_cycling(values)), tmp_path), "cycling device")
 
 
+def test_a_device_whose_inputs_are_a_menu_boots(remote_lua, build, tmp_path):
+    """A menu input - Source, then Up, then OK - written with Logitech's StartAction and
+    FinishAction around its NextAction, as a Soniq television's."""
+    from afterglow import ir_signal
+    project = _cycling(["DTV", "HDMI 1", "HDMI 2"])
+    device = project["devices"][0]
+    for number, name in enumerate(("Up", "OK"), 3):
+        device["commands"].append([name, name, "", "", None])
+        device["signals"][name] = ir_signal.protocol_signal(
+            "nec1", {"address": 1, "command": number})
+    device["input_cycle"].update(start=["Source"], next=["Up"], finish=["OK"], delay_ms=1000)
+    assert_answers(boot(remote_lua, build(project), tmp_path), "menu input device")
+
 def test_help_asks_after_each_device_and_input_an_activity_sets(remote_lua, build, tmp_path):
     """The 900's Help is the firmware's: it reads the activity's power-on list and the
     states its start sets, re-sends them and asks about each. A project made here gives

@@ -564,11 +564,65 @@ def _state(states: dict, record: dict, power, image: Image, gates=None, others=N
             states["inputs"]["online"] = sorted(online)
             states["inputs"]["app_delay_ms"] = app
         return
-    step = transitions.get((0, 1))
-    if step is not None:
-        commands, delay = sent(step)
-        if commands:
-            states["inputs"] = {"next": commands[0], "delay_ms": delay, "count": count}
+    stepping = _stepping(transitions, image, count)
+    if stepping:
+        states["inputs"] = stepping
+
+
+def _stepping(transitions: dict, image: Image, count: int) -> dict | None:
+    """Inputs reached by stepping, from the transitions between them: "next" as many times
+    as it takes, or "previous" where that is the shorter way round, between a "start"
+    and a "finish" - Logitech's menu inputs (`InputType` 4): a 650's Soniq television
+    goes from its first input to its seventh with Source, Down three times, OK. The
+    plainest reading that fits every transition: no start or finish, then one, then more.
+    The input delay is how long each code is held (`7C` in tenths, as Logitech writes
+    it) or the wait after it (as a build does)."""
+    sends, waited = {}, {}
+    for (source, target), item in transitions.items():
+        if source == target or item["category"] != OBJECT:
+            continue
+        steps = image.steps(item["operand"])
+        sends[(source, target)] = [step for step in steps if step[0] == SEND]
+        waited[(source, target)] = sum(step[2] for step in steps if step[0] == WAIT)
+    if not sends or not all(sends.values()):
+        return None
+    codes = {pair: [step[1] for step in steps] for pair, steps in sends.items()}
+    shortest = min(len(sequence) for sequence in codes.values())
+    for around in range(shortest):
+        for begin in range(around + 1):
+            end = around - begin
+            start = codes[next(iter(codes))][:begin]
+            finish = codes[next(iter(codes))][len(codes[next(iter(codes))]) - end:]
+            ahead, behind = Counter(), Counter()
+            for (source, target), sequence in codes.items():
+                middle = sequence[begin:len(sequence) - end]
+                if (sequence[:begin] != start or sequence[len(sequence) - end:] != finish
+                        or not middle or len(set(middle)) != 1):
+                    break
+                if len(middle) == (target - source) % count:
+                    ahead[middle[0]] += 1
+                elif len(middle) == (source - target) % count:
+                    behind[middle[0]] += 1
+                else:
+                    break
+            else:
+                if not ahead:
+                    continue
+                forward = ahead.most_common(1)[0][0]
+                held = Counter(step[2] for steps in sends.values() for step in steps)
+                pressed = sum(len(steps) for steps in sends.values())
+                delay = (held.most_common(1)[0][0] * 100 if held.most_common(1)[0][0] > 1
+                         else round(sum(waited.values()) / pressed))
+                out = {"next": forward, "delay_ms": delay, "count": count}
+                backward = [code for code in behind if code != forward]
+                if backward:
+                    out["previous"] = backward[0]
+                if start:
+                    out["start"] = start
+                if finish:
+                    out["finish"] = finish
+                return out
+    return None
 
 
 def variable_labels(image: Image) -> dict[int, str]:
@@ -835,6 +889,11 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
         out["input_cycle"] = {"next": names[inputs["next"]], "delay_ms": inputs["delay_ms"],
                               "values": [f"Input {value + 1}"
                                          for value in range(inputs["count"])]}
+        if inputs.get("previous") is not None:
+            out["input_cycle"]["previous"] = names[inputs["previous"]]
+        for key in ("start", "finish"):
+            if inputs.get(key):
+                out["input_cycle"][key] = [names[code] for code in inputs[key]]
     # the device's other states, as Logitech's database declares them (corpus_provider,
     # `_archive_states`): values, a route to each, or the steps to the next
     control = []

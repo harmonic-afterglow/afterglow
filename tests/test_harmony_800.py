@@ -660,6 +660,19 @@ def test_a_devices_other_states_build_and_come_back(tmp_path):
         assert read[field] == tv[field], field
 
 
+def test_a_menu_input_builds_and_comes_back(tmp_path):
+    """Source, Up or Down, OK - a Soniq's menu inputs - as the One builds and reads them."""
+    from afterglow import remotes
+    from test_harmony_one_import import _menu_tv
+    (tmp_path / "payload.bin").write_bytes(generate.build({"devices": [_menu_tv(_nec)]})["image"])
+    [read] = backend.import_project(tmp_path, remotes.get("harmony-800"), {}).project["devices"]
+    cycle = read["input_cycle"]
+    def listed(value):          # a step, or a list of them: the format takes either
+        return value if isinstance(value, list) else [value]
+    assert (cycle["start"], listed(cycle["next"]), listed(cycle["previous"]),
+            cycle["finish"], cycle["delay_ms"]) == (
+        ["Source"], ["DirectionUp"], ["DirectionDown"], ["OK"], 1000)
+
 def test_the_remote_assistant_can_start_hidden():
     """It welcomes again after every write; a project can start it hidden instead."""
     from afterglow.backends.harmony_800 import activity_index

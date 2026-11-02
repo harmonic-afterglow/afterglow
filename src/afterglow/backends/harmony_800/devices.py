@@ -127,14 +127,31 @@ def device_state_records(device: dict, place_object, online: int | None = None,
                     transitions.append(transition(TRANSITION_FROM_ANY, value,
                                                    objects[chosen], OBJECT_ATOM))
         elif count > 1:
-            step = [(objects[inputs["next"]], OBJECT_ATOM)] + waits(index,
-                                                                     inputs["delay_ms"])
+            # Stepping: "next" as many times as it takes - or "previous", where it is the
+            # shorter way round - between the device's "start" and "finish", as Logitech's
+            # menu inputs go (`InputType` 4): a Soniq's Source, Up or Down, then OK. Each
+            # code is followed by the input delay, which Logitech holds every one of them.
+            delay = waits(index, inputs["delay_ms"])
+
+            def spaced(sequence):
+                out_atoms = []
+                for item in sequence:
+                    out_atoms += atoms_of([item])
+                    if item[0] == "send":
+                        out_atoms += delay
+                return out_atoms
+            step = [(objects[inputs["next"]], OBJECT_ATOM)] + delay
+            back = ([(objects[inputs["previous"]], OBJECT_ATOM)] + delay
+                    if inputs.get("previous") is not None else None)
+            start = spaced(inputs.get("start") or [])
+            finish = spaced(inputs.get("finish") or [])
             for source in range(count):
                 for target in range(count):
                     if source == target:
                         continue
-                    steps = (target - source) % count
-                    body = step * steps
+                    ahead, behind = (target - source) % count, (source - target) % count
+                    body = start + (back * behind if back and behind < ahead
+                                    else step * ahead) + finish
                     if len(body) > 0xFF:
                         raise ValueError(f"{device['label']!r} steps too far between inputs")
                     transitions.append(transition(source, target,
@@ -433,10 +450,22 @@ def device_states(device: dict, ids: dict[str, int]) -> dict:
         if values and app_delay and out.get("power"):
             out["online"] = {"values": values, "delay_ms": app_delay}
     elif cycle.get("next") and cycle.get("values"):
-        step = cycle["next"]
-        step = step[0] if isinstance(step, list) else step
-        out["inputs"] = {"values": list(cycle["values"]), "next": command(step),
+        def sequence(key):
+            field = cycle.get(key)
+            return steps_of(field if isinstance(field, list) else [field],
+                            f"its input cycle's {key}") if field else []
+
+        def first(key):
+            sends = [item[1] for item in sequence(key) if item[0] == "send"]
+            return sends[0] if sends else None
+        out["inputs"] = {"values": list(cycle["values"]), "next": first("next"),
                          "delay_ms": cycle.get("delay_ms") or 0}
+        if first("previous") is not None:
+            out["inputs"]["previous"] = first("previous")
+        # a menu's way in and out - a Soniq's Source, then OK - around the steps
+        for key in ("start", "finish"):
+            if sequence(key):
+                out["inputs"][key] = sequence(key)
     return out
 
 

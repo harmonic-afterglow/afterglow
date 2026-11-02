@@ -439,7 +439,8 @@ def _archive_numeric(tuning, names) -> bool | dict:
 
 
 def _archive_input_cycle(inputs, names, timing=None) -> dict:
-    """Stepping actions for a device whose inputs cannot be selected directly.
+    """Stepping actions for a device whose inputs cannot be selected directly: `next`,
+    `previous`, and a menu's `start` and `finish`.
 
     The archive names 1,089,512 inputs across 209,010 devices, but only 680,091 of those
     name a command that selects them; the rest belong to devices that can only cycle.
@@ -459,6 +460,12 @@ def _archive_input_cycle(inputs, names, timing=None) -> dict:
         if steps:
             out[key] = steps
     if out:
+        # a menu's way in and out (`InputType` 4): a Soniq's Source before the steps and
+        # OK after them, which the archive keeps as `StartActions` and `FinishActions`
+        for key in ("start", "finish"):
+            steps = _steps(inputs.get(key), names)
+            if steps:
+                out[key] = steps
         values = [entry.get("name") for entry in inputs.get("list") or []
                   if isinstance(entry, dict) and entry.get("name")]
         if values:
