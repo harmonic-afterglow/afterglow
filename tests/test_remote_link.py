@@ -1158,8 +1158,9 @@ def test_a_whole_configuration_stays_valid():
     assert concord.Remote.identity(remote)["config_valid"] is True
 
 
-def _damaged_remote(monkeypatch, saved, wrote):
+def _damaged_remote(monkeypatch, saved, wrote, identity=None):
     from afterglow.gui import remote_ops
+    identity = identity or {"model": "Harmony 650", "config_valid": False}
 
     class Remote:
         last_restart_error = None
@@ -1171,7 +1172,7 @@ def _damaged_remote(monkeypatch, saved, wrote):
             return False
 
         def identity(self, *_a):
-            return {"model": "Harmony 650", "config_valid": False}
+            return dict(identity)
 
         def check_write(self, *_a, **_k):
             pass
@@ -1214,6 +1215,54 @@ def test_a_damaged_configuration_is_not_read(tmp_path, monkeypatch):
     worker.run()
     assert said["ok"] is False and "damaged or missing" in said["text"]
     assert saved == []
+
+
+# A Harmony 1000 takes a configuration and never hands one back: libconcord's
+# is_config_dump_supported() says no once identify has seen it refuse region 4.
+UNREADABLE_1000 = {"mfg": "Logitech", "model": "Harmony 1000", "skin": 53,
+                   "firmware": "5.0", "config_valid": True, "can_read": False,
+                   "can_write": True, "config_used": 0, "config_total": 1}
+
+
+def test_a_remote_that_cannot_be_read_is_written_without_a_backup(tmp_path, monkeypatch):
+    """A backup that cannot be made must not stop the write - Logitech's software wrote
+    1000s without one - but the person is told none was taken, and why."""
+    saved, wrote = [], []
+    remote_ops = _damaged_remote(monkeypatch, saved, wrote, UNREADABLE_1000)
+    said, logged = {}, []
+    worker = remote_ops.RemoteWorker("write", None, path="new.ezhex",
+                                     backup=str(tmp_path / "before.ezhex"))
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.log.connect(logged.append)
+    worker.run()
+    assert said["ok"] is True, said
+    assert saved == [] and wrote == [Path("new.ezhex")]
+    assert any("No backup was taken" in line for line in logged)
+    assert any("does not let one be read back" in line for line in logged)
+
+
+def test_a_remote_that_cannot_be_read_is_not_asked_to_be(tmp_path, monkeypatch):
+    saved, wrote = [], []
+    remote_ops = _damaged_remote(monkeypatch, saved, wrote, UNREADABLE_1000)
+    worker = remote_ops.RemoteWorker("read", None, path=str(tmp_path / "dump.ezhex"))
+    said = {}
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.run()
+    assert said["ok"] is False and "does not let one be read back" in said["text"]
+    assert "Nothing was changed" in said["text"]
+    assert saved == []
+
+
+def test_identify_says_when_a_remote_cannot_be_read(monkeypatch):
+    saved, wrote = [], []
+    remote_ops = _damaged_remote(monkeypatch, saved, wrote, UNREADABLE_1000)
+    said, logged = {}, []
+    worker = remote_ops.RemoteWorker("identify", None)
+    worker.done.connect(lambda ok, text: said.update(ok=ok, text=text))
+    worker.log.connect(logged.append)
+    worker.run()
+    assert said["ok"] is True, said
+    assert any("It can be written; it cannot be backed up" in line for line in logged)
 
 
 def test_an_unconfirmed_board_of_the_same_remote_asks_rather_than_refuses(a_config):
