@@ -497,6 +497,34 @@ def test_options_turns_the_remote_assistant_off(remote):
     assert pages.FIRST_BUTTON_KEY in _answers(machine)
 
 
+
+def test_with_the_assistant_hidden_a_start_and_off_still_let_the_screen_go_dark():
+    """A start and Off stop every timer - the one that darkens the screen too. A Remote
+    Assistant note then waited for OK, and that key press woke the keys and armed the
+    timer again; hidden, nothing did, and a tester's screen stayed lit for as long as an
+    activity ran. The hidden case wakes them itself."""
+    from afterglow.backends.harmony_one import idle
+    hidden = generate.build({**PROJECT, "settings": {"remote_assistant": False}})
+    lit = tuple(idle.light(idle.SCREEN, idle.SCREEN_LEVEL))
+    machine = _fresh(hidden)
+    machine.log.clear()
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
+    assert pages.FIRST_BUTTON_KEY in _answers(machine)    # straight to the activity
+    assert lit in machine.log, "the keys are woken, so the off timer runs again"
+    machine.log.clear()
+    machine.press(keys.code(keys.OFF))
+    assert machine.mode == scaffold.SYSTEM_SCREENS
+    assert lit in machine.log
+
+    # shown, the note's OK is what wakes them, as before: the start itself does not
+    machine = _fresh(_built())
+    machine.log.clear()
+    machine.enter(scaffold.SYSTEM_SCREENS)
+    machine.touch(pages.MENU_ROW_KEYS[0])
+    assert _answers(machine) == {OK} and lit not in machine.log
+
+
 FAVOURITES = {**PROJECT, "activities": [dict(
     PROJECT["activities"][0], image_buttons=[["BBC One", "channel", "12", None],
                                              ["News", "channel", "2", None]],

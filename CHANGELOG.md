@@ -16,6 +16,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
+- **With the Remote Assistant hidden, the screen of a Harmony One or 800 stayed lit** for
+  as long as an activity ran, and after Off: starting one stops the timer that darkens it,
+  and the Assistant's note was what a key press then woke it from. Hidden, the remote
+  wakes the keys itself and the screen goes dark as before.
 - **A command whose release ends in a pause was refused** on the One and the 800, both
   reading a configuration and building one - Logitech writes an Apple TV's that way. The
   800's firmware plays the pause like any other, so it is kept.

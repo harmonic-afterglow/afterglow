@@ -249,9 +249,11 @@ def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
     layout = screens.layout
     flow = None
     if variables.state is not None:
+        wake = (carried.atoms([carried.idle["key_light"]])[0]
+                if carried is not None and carried.idle else None)
         flow = Flow(screens, numbers, variables, devices, acts,
                     Actions(layout, devices, variables.slots), frames=frames,
-                    geometry=geometry, all_off=all_off)
+                    geometry=geometry, all_off=all_off, wake=wake)
     owned = Hub(screens, numbers, devices, pages, frames=frames, geometry=geometry, hub=hub,
                 flow=flow, options=carried is not None)
     if hub and acts:

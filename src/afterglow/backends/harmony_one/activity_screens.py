@@ -43,8 +43,12 @@ class Flow:
     the Remote Assistant asks. ``all_off`` is the plan's Off."""
 
     def __init__(self, screens, ordinals, variables, devices, acts, actions, *, frames,
-                 geometry, all_off=None):
+                 geometry, all_off=None, wake=None):
         self.screens = screens
+        # The idle machine's wake, (operand, category): lights the keys and arms the timer
+        # that darkens them. A start or Off stops every timer, and a Remote Assistant's
+        # note was what a key press then answered, waking it; hidden, nothing else does.
+        self.wake = wake
         self.layout = screens.layout
         self.ordinals = ordinals
         self.variables = variables
@@ -274,11 +278,22 @@ class Flow:
         Off, the welcome or again note, or nothing."""
         layout = self.layout
         if off:
-            cases = [(0, notes["welcome"]), (1, notes["welcome"]), (2, notes["again"])]
+            cases = [(0, notes["welcome"]), (1, notes["welcome"]), (2, notes["again"]),
+                     (3, None)]
         else:
             cases = [(0, notes["first"]), (1, notes["set-up"]), (2, notes["again"]),
                      (3, home)]
-        group = layout.group([(value, layout.block(_enter(ordinal))) for value, ordinal in cases])
+        # Hidden, no note waits for a key, so the keys are woken here: without it the
+        # screen stayed lit after every start and Off until a key was pressed.
+        wake = ([{"opcode": "atom", "operand": self.wake[0], "category": self.wake[1]}]
+                if self.wake else [])
+
+        def block(value, ordinal):
+            if value != 3:
+                return _enter(ordinal)
+            return wake + (_enter(ordinal) if ordinal is not None else [{"opcode": "end"}])
+        group = layout.group([(value, layout.block(block(value, ordinal)))
+                              for value, ordinal in cases])
         return ((group << 8) | self.variables.assistant, 0x72)
 
     def _start_screen(self, act):
