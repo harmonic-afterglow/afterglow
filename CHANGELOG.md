@@ -22,10 +22,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - **A Harmony 1000 could not be identified** ("identifying the remote: Unknown error"):
-  libconcord stopped at the first of the extra details only Logitech's website ever
-  used, which the 1000's older firmware may not give. A remote that will not give them
-  is identified without them, and a remote's reply can no longer be copied past the end of the
-  buffer it is read into.
+  libconcord asked it for details only Logitech's website ever used, and the 1000 never
+  answers one of them. They are no longer asked for, which also makes connecting to any
+  900, 1000 or 1100 quicker. A 1000 sold as skin 53 is named a Harmony 1000. A remote
+  that will not hand over its configuration is told apart from a failed read. A
+  remote's reply can no longer be copied past the end of the buffer it is read into.
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
 - **With the Remote Assistant hidden, the screen of a Harmony One or 800 stayed lit** for
