@@ -12,8 +12,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `afterglow-linux-aarch64.AppImage`): they start without unpacking themselves first, and
   carry a menu entry and an icon for AppImage tools such as Gear Lever to install. They run on the same systems as before.
 
+### Added
+
+- **The log says what libconcord did** in every session with the remote, so a log sent with
+  a bug report shows which request a remote turned down instead of "Unknown error". It is
+  kept short: the last 200 lines, none per packet, no serial numbers, and the log file
+  still stops at two of a megabyte.
+
 ### Fixed
 
+- **A Harmony 1000 could not be identified** ("identifying the remote: Unknown error"):
+  libconcord stopped at the first of the extra details only Logitech's website ever
+  used, which the 1000's older firmware may not give. A remote that will not give them
+  is identified without them, and a remote's reply can no longer be copied past the end of the
+  buffer it is read into.
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
 - **With the Remote Assistant hidden, the screen of a Harmony One or 800 stayed lit** for
