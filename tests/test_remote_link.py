@@ -526,6 +526,100 @@ def test_failing_to_connect_says_what_to_do_about_it():
     assert remote._open is False
 
 
+class _TracingLibrary:
+    """libconcord with its trace: what it did, until cleared."""
+
+    def __init__(self, connects=0, trace=b"init_concord: connected\n"):
+        self.connects, self.text, self.clears = connects, trace, 0
+
+    def init_concord(self):
+        return self.connects
+
+    def deinit_concord(self):
+        pass
+
+    def lc_strerror(self, _error):
+        return b"Error connecting or finding the remote"
+
+    def lc_get_trace(self):
+        return self.text
+
+    def lc_clear_trace(self):
+        self.clears += 1
+        self.text = b""
+
+
+def _tracing_remote(library):
+    remote = object.__new__(concord.Remote)
+    remote.lib = library
+    remote._open = False
+    return remote
+
+
+def test_each_session_logs_what_libconcord_did(caplog):
+    """"Unknown error" from get_identity was all a Harmony 1000's owner could send: which
+    of its dozen requests the remote refused was never written anywhere. Every session
+    now ends with libconcord's own lines in the log - one that worked as well, since a
+    remote nobody here owns can only be learned from what its owner sends back."""
+    library = _TracingLibrary(trace=b"left over from the session before\n")
+    caplog.set_level("INFO", logger="afterglow.libconcord")
+    with _tracing_remote(library):
+        library.text = (b"GetIdentity: request 61, 4 bytes\n"
+                        b"GetIdentity: reply, 9 bytes: 06 61 01\n")
+    assert "libconcord, session:" in caplog.text
+    assert "    GetIdentity: request 61, 4 bytes\n    GetIdentity: reply" in caplog.text
+    assert "left over" not in caplog.text
+    # cleared when the session started and again once logged, so no session repeats
+    # the one before it
+    assert library.clears == 2
+
+    caplog.clear()
+    with pytest.raises(RuntimeError), _tracing_remote(library):
+        library.text = b"GetIdentity: no reply to request 62\n"
+        raise RuntimeError
+    assert "libconcord, session failed:" in caplog.text
+
+
+def test_a_failed_connect_logs_what_libconcord_tried(caplog):
+    library = _TracingLibrary(connects=11, trace=b"FindRemote: Testing: 046D, C11F\n")
+    caplog.set_level("INFO", logger="afterglow.libconcord")
+    with pytest.raises(concord.RemoteError):
+        library.lc_clear_trace = lambda: None       # what the attempt itself traced
+        _tracing_remote(library).__enter__()
+    assert "libconcord, could not connect:\n    FindRemote: Testing: 046D, C11F" \
+        in caplog.text
+
+
+def test_a_long_trace_keeps_its_end_and_whole_lines(caplog):
+    """The end is where it went wrong; the log file is a bug report's attachment."""
+    lines = [f"ReadRegion: line {n}" for n in range(5000)]
+    library = _TracingLibrary()
+    caplog.set_level("INFO", logger="afterglow.libconcord")
+    with _tracing_remote(library):
+        library.text = "\n".join(lines).encode()
+    logged = caplog.records[-1].getMessage()
+    kept = logged.split("\n", 1)[1].replace("\n    ", "\n").removeprefix("    ")
+    assert len(kept) <= len("...\n") + concord.TRACE_LIMIT     # before the indent
+    assert logged.endswith("    ReadRegion: line 4999")
+    assert "\n    ...\n    ReadRegion: line " in logged
+    assert "line 0\n" not in logged
+
+
+def test_a_libconcord_without_the_trace_still_works(caplog):
+    """An older or distribution libconcord has no lc_get_trace: nothing is logged."""
+    class Library:
+        def init_concord(self):
+            return 0
+
+        def deinit_concord(self):
+            pass
+
+    caplog.set_level("INFO", logger="afterglow.libconcord")
+    with _tracing_remote(Library()):
+        pass
+    assert "libconcord," not in caplog.text
+
+
 def test_a_missed_reboot_is_reported_as_written_and_not_as_a_linux_chore(qapp_or_skip,
                                                                         monkeypatch):
     """The reboot is the last step of a flash and the one that looks most like a failure.

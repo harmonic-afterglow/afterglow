@@ -41,6 +41,7 @@ from __future__ import annotations
 import contextlib
 import ctypes
 import ctypes.util
+import logging
 import os
 import queue
 import shutil
@@ -89,6 +90,15 @@ STAGES = {
 LC_CALLBACK = ctypes.CFUNCTYPE(
     None, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32,
     ctypes.c_uint32, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32))
+
+
+# libconcord's own account of each session, in the log file (applog). Not all of it: a
+# libconcord with lc_get_trace() keeps its last 200 debug lines, leaving out the ones a
+# transfer repeats for every packet, and a session is cut to its last TRACE_LIMIT
+# characters here as well, so a user who connects all evening still sends a log that
+# fits in a bug report. The file itself rotates at a megabyte.
+TRACE_LOG = logging.getLogger("afterglow.libconcord")
+TRACE_LIMIT = 16_000
 
 
 class NotAvailable(RuntimeError):
@@ -588,6 +598,8 @@ class Remote:
               ctypes.POINTER(ctypes.POINTER(ctypes.c_uint32)),
               ctypes.POINTER(ctypes.c_uint32), LC_CALLBACK, ctypes.c_void_p]),
             ("delete_ir_signal", None, [ctypes.POINTER(ctypes.c_uint32)]),
+            ("lc_get_trace", ctypes.c_char_p, []),
+            ("lc_clear_trace", None, []),
         ):
             function = getattr(lib, name, None)
             if function is None:
@@ -622,10 +634,30 @@ class Remote:
         return holder
 
     # lifetime
+    def _trace(self, function):
+        """Call libconcord's trace function `function`, if this build has it."""
+        call = getattr(self.lib, function, None)
+        return call() if call is not None else None
+
+    def _log_trace(self, outcome):
+        """Put what libconcord did this session in the log, as it ended."""
+        text = self._trace("lc_get_trace")
+        if not text:
+            return
+        lines = text.decode(errors="replace").rstrip("\n")
+        if len(lines) > TRACE_LIMIT:
+            lines = "...\n" + lines[-TRACE_LIMIT:].split("\n", 1)[-1]
+        TRACE_LOG.info("libconcord, %s:\n%s", outcome,
+                       "\n".join(f"    {line}" for line in lines.split("\n")))
+        self._trace("lc_clear_trace")
+
     def __enter__(self):
+        # What is logged when the session ends is this session's, not the last one's.
+        self._trace("lc_clear_trace")
         try:
             self._check(self.lib.init_concord(), "connecting to the remote")
         except RemoteError as exc:
+            self._log_trace("could not connect")
             # libconcord says "Error connecting or finding the remote", which reads as
             # "this remote is not supported" when the usual cause is that it is supported
             # and simply is not ready yet. A Harmony enumerates on USB in stages and only
@@ -640,10 +672,11 @@ class Remote:
         self._open = True
         return self
 
-    def __exit__(self, *_exc):
+    def __exit__(self, kind=None, *_exc):
         if self._open:
             self.lib.deinit_concord()
             self._open = False
+        self._log_trace("session failed" if kind else "session")
 
     # reading
     def identity(self, on_progress=None) -> dict:
