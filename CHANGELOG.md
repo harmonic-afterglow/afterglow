@@ -26,10 +26,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   answers one of them. They are no longer asked for, which also makes connecting to any
   900, 1000 or 1100 quicker. A 1000 sold as skin 53 is named a Harmony 1000. A remote's
   reply can no longer be copied past the end of the buffer it is read into.
-- **Reading a Harmony 1000's configuration says why it cannot be done**, instead of
-  "Model or configuration or operation unsupported". The 1000's firmware hands over only
-  its Z-Wave regions, never its configuration, and Logitech's own software never read
-  one back either. Nothing on the remote is changed.
+- **A Harmony 1000 can be written, and says up front that it cannot be read.** Its
+  firmware takes a configuration but never hands one back, in Safe Mode too - Logitech's
+  own software never read one either. Identify now says so, Read stops before asking
+  instead of answering "Model or configuration or operation unsupported", and Write
+  goes ahead without the backup it cannot take, saying none was taken. A written 1000
+  recovers through its Safe Mode. The concordance command line says the same.
 - **Linux could not open a Harmony One or 800** without running as root: direct access
   gave the signed-in user only the 900, 1000 and 1100. It covers every Harmony now.
 - **With the Remote Assistant hidden, the screen of a Harmony One or 800 stayed lit** for

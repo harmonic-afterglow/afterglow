@@ -22,6 +22,12 @@ DAMAGED_CONFIG_NOTE = (
     "not finish - so there is nothing on it to read or back up. Writing a configuration "
     "repairs it: your backup (Settings > Flash a configuration file), or a build with "
     "Flash to Remote.")
+# libconcord learns this in identify: the remote refused its config region (a Harmony
+# 1000, whose firmware reads out only its Z-Wave regions, in Safe Mode too).
+UNREADABLE_CONFIG_NOTE = (
+    "This remote takes a configuration but does not let one be read back - a Harmony "
+    "1000's firmware never hands its configuration over, and Logitech's own software "
+    "never read one either. It can be written; it cannot be backed up.")
 SAFE_MODE_NOTE = ("The remote is in Safe Mode. It can still be read, and writing a "
                   "configuration to it - Flash, or Settings › Flash a Configuration File "
                   "with a backup - is how it is brought back.")
@@ -96,6 +102,8 @@ class RemoteWorker(QThread):
             self.log.emit(SAFE_MODE_NOTE)
         if identity.get("config_valid") is False:
             self.log.emit(DAMAGED_CONFIG_NOTE)
+        if identity.get("can_read") is False:
+            self.log.emit(UNREADABLE_CONFIG_NOTE)
         used, total = identity["config_used"], identity["config_total"]
         # libconcord cannot learn the size of the configuration region on the usbnet
         # remotes (900, 1000, 1100) and reports 1 for it.
@@ -116,6 +124,8 @@ class RemoteWorker(QThread):
                 self.log.emit(SAFE_MODE_NOTE)
             if identity.get("config_valid") is False:
                 raise concord.RemoteError(DAMAGED_CONFIG_NOTE)
+            if identity.get("can_read") is False:
+                raise concord.RemoteError(f"{UNREADABLE_CONFIG_NOTE} Nothing was changed.")
             self.log.emit(f"Reading from {identity['model']}...")
             size = remote.save_config(target, self._on_progress)
         self.log.emit(f"Saved {target}")
@@ -138,6 +148,13 @@ class RemoteWorker(QThread):
                 self.log.emit(DAMAGED_CONFIG_NOTE)
                 self.log.emit("No backup was taken: there is no whole configuration on "
                               "the remote to save.")
+                backup = None
+            if backup and identity.get("can_read") is False:
+                # nothing can be saved first: say so, and write anyway, as Logitech's
+                # software did - a written 1000 recovers through its Safe Mode
+                self.log.emit(UNREADABLE_CONFIG_NOTE)
+                self.log.emit("No backup was taken: this remote's configuration cannot "
+                              "be read.")
                 backup = None
             if backup:
                 # Same connection, before anything is changed. No backup, no write.
