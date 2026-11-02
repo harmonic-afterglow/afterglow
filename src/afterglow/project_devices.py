@@ -230,8 +230,13 @@ def rename_commands(device: dict, renames: dict, activities=()) -> None:
                             else list(entry) for entry in device["inputs"]]
     cycle = device.get("input_cycle")
     if isinstance(cycle, dict):
-        for key in ("next", "previous"):
-            if cycle.get(key):
+        for key in ("next", "previous", "start", "finish"):
+            if isinstance(cycle.get(key), list):
+                cycle[key] = [name(step) if isinstance(step, str)
+                              else {**step, "command": name(step["command"])}
+                              if isinstance(step, dict) and "command" in step else step
+                              for step in cycle[key]]
+            elif cycle.get(key):
                 cycle[key] = name(cycle[key])
     numeric = device.get("numeric")
     if isinstance(numeric, dict):

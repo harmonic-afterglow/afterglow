@@ -1577,3 +1577,25 @@ def test_the_remote_assistant_can_start_hidden():
     hidden = starts(generate.configuration(project, stamp_fields=fields))
     # one variable apart: the Assistant's, never shown (0) or hidden (3), of four states
     assert [(a, b) for a, b in zip(shown, hidden) if a != b] == [((0, 3), (3, 3))]
+
+
+def test_a_menu_input_opens_its_menu_steps_the_shorter_way_and_chooses():
+    """Logitech's menu inputs (`InputType` 4), as a 650's Soniq television has them:
+    Source, then Up or Down whichever is fewer presses, then OK - each code followed by
+    the device's input delay, which Logitech holds every one of them."""
+    from test_harmony_one_import import _menu_tv
+    project = {"devices": [_menu_tv(_nec)]}
+    image = generate.configuration(project)
+    names = {r["name"]: r["id"] for r in named_index.inspect(image)["records"]}
+    variables = activity_index.engine_records(image)
+    ids = {command["name"]: command["command_id"]
+           for command in devices.lowered_devices(project)[0]["commands"]}
+    moves = {(t["from"], t["to"]): t["operand"]
+             for t in variables[names["Soniq_TV_Input_5"]]["transitions"]}
+    source, up, down, ok = (ids[name] for name in ("Source", "DirectionUp",
+                                                   "DirectionDown", "OK"))
+    assert _command_ids(image, moves[(0, 1)]) == [source, up, ok]
+    assert _command_ids(image, moves[(0, 2)]) == [source, up, up, ok]
+    assert _command_ids(image, moves[(0, 4)]) == [source, down, ok]
+    assert _command_ids(image, moves[(3, 1)]) == [source, down, down, ok]
+    assert _waits(image, moves[(0, 1)]) == [(0 << 8) | 10] * 3

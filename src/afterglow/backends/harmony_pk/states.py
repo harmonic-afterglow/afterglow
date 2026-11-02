@@ -334,7 +334,8 @@ def input_list(states: list[dict]) -> list[list]:
 
 
 def input_cycle(states: list[dict]) -> dict:
-    """`{"values", "next", "previous", "delay_ms"}` for an Input state that steps.
+    """`{"values", "next", "previous", "start", "finish", "delay_ms"}` for an Input state
+    that steps.
 
     The counterpart of `input_list` for a device whose input is cycled rather than
     chosen: the interface needs the order of the values and the command that steps,
@@ -350,7 +351,12 @@ def input_cycle(states: list[dict]) -> dict:
                 out["next"] = [command]
             elif command and action["kind"] == "PrevAction":
                 out["previous"] = [command]
-        if not out:
+            elif action["kind"] in ("StartAction", "FinishAction"):
+                # a menu's way in and out, every command of it
+                commands = [c for c in map(_command_of, action["actions"]) if c]
+                if commands:
+                    out["start" if action["kind"] == "StartAction" else "finish"] = commands
+        if not out.get("next") and not out.get("previous"):
             return {}
         out["values"] = list(state.get("values", []))
         if "delay" in state:

@@ -1311,3 +1311,15 @@ def test_a_catalogue_device_is_the_kind_logitech_says_it_is():
     for remote in ("harmony-900", "harmony-1100"):
         assert set(corpus_provider.DEVICE_TYPES.values()) <= set(
             remotes.get(remote).device_types)
+
+
+def test_a_menu_input_keeps_its_way_in_and_out():
+    """Logitech's menu inputs (`InputType` 4) name a start and a finish around the steps -
+    a Soniq television's Source and OK - which a device made from the archive keeps."""
+    from afterglow import corpus_provider
+    inputs = {"list": [{"name": "DTV"}, {"name": "HDMI 1"}], "start": ["Source"],
+              "next": ["DirectionDown"], "previous": ["DirectionUp"], "finish": ["OK"]}
+    names = corpus_provider._Commands({"Source", "DirectionDown", "DirectionUp", "OK"})
+    assert corpus_provider._archive_input_cycle(inputs, names, {"inputDelay": 1000}) == {
+        "next": ["DirectionDown"], "previous": ["DirectionUp"], "start": ["Source"],
+        "finish": ["OK"], "values": ["DTV", "HDMI 1"], "delay_ms": 1000}
