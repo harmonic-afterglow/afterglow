@@ -69,3 +69,7 @@ dist/
 # A TrueType font an owner drops into the Harmony One scaffold is theirs, not the project's.
 src/afterglow/scaffolds/harmony-one/fonts/font.ttf
 src/afterglow/scaffolds/harmony-one/fonts/font-small.ttf
+src/afterglow/scaffolds/harmony-one/fonts/font-bold.ttf
+src/afterglow/scaffolds/harmony-800/fonts/font.ttf
+src/afterglow/scaffolds/harmony-800/fonts/font-small.ttf
+src/afterglow/scaffolds/harmony-800/fonts/font-bold.ttf

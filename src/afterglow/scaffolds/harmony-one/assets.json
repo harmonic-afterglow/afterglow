@@ -35,7 +35,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-02": {
@@ -50,7 +51,8 @@
           0,
           12,
           0
-        ]
+        ],
+        "bold": true
       }
     },
     "font-03": {
@@ -65,7 +67,8 @@
           8,
           4,
           0
-        ]
+        ],
+        "bold": true
       }
     },
     "font-04": {
@@ -95,7 +98,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-06": {
@@ -110,7 +114,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-07": {
@@ -140,7 +145,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-09": {
@@ -155,7 +161,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-10": {
@@ -170,7 +177,8 @@
           16,
           28,
           32
-        ]
+        ],
+        "bold": true
       }
     },
     "font-11": {
@@ -185,7 +193,8 @@
           0,
           0,
           0
-        ]
+        ],
+        "bold": true
       }
     },
     "font-12": {
@@ -215,7 +224,8 @@
           49,
           52,
           49
-        ]
+        ],
+        "bold": true
       }
     },
     "font-14": {
@@ -230,7 +240,8 @@
           0,
           0,
           0
-        ]
+        ],
+        "bold": true
       }
     },
     "font-15": {
@@ -241,7 +252,8 @@
           255,
           255
         ],
-        "shadow": null
+        "shadow": null,
+        "bold": true
       }
     },
     "font-16": {
@@ -256,7 +268,8 @@
           0,
           0,
           0
-        ]
+        ],
+        "bold": true
       }
     },
     "font-17": {
@@ -786,6 +799,7 @@
   "source": "extracted from a Harmony One configuration; artwork only",
   "typeface": {
     "regular": "fonts/galmuri/Galmuri9.bdf.gz",
-    "small": "fonts/galmuri/Galmuri7.bdf.gz"
+    "small": "fonts/galmuri/GalmuriAfterglow7.bdf.gz",
+    "bold": "fonts/galmuri/GalmuriAfterglow9-Bold.bdf.gz"
   }
 }

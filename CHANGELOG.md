@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **Bold text on the Harmony One and 800, where Logitech's own One draws it**: every
+  label, title and softkey but the message text. Galmuri has no bold at the One's size,
+  so each bold letter - Latin with its accents, Greek, Cyrillic - was drafted and then
+  checked and corrected by hand; the 800 uses Galmuri 11 Bold, its designer's own, with
+  the letters it lacks drawn the same way. The fonts are Galmuri Afterglow
+  (`tools/galmuri/`, built by `tools/galmuri_afterglow.py`), under the OFL.
+- **Long labels wrap onto a second line in Options** - rows and the date, time and
+  sensitivity buttons - on the One and the 800, as buttons already did, before anything
+  is cut.
 - **Bulgarian on the Harmony One and 800.** A remote's languages are now the translations
   beside it: putting a `locale/<language>.po` there makes the language appear in Remote
   Settings, named in its own language.
@@ -27,6 +36,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **The One's softkeys cut a longer word short**, and its titles had less room than the
+  top line leaves them: a softkey's label is centred on its half of the bar and may use
+  all of it, as on the 800, and a title has the room up to the status icons.
+- **The One's clock and page counters had no Cyrillic or Greek of their own**: Galmuri 7
+  has neither. Galmuri Afterglow 7 draws them in its style.
+- **The 800's number pad was drawn blocky**, its digits Galmuri's doubled pixel for
+  pixel. They are drawn for the pad's size, smooth where Galmuri curves.
+- **The 800's Help wrote its questions over the device's picture.** They are under it.
+- **The 800's key and light test screens were part of every build**, past the last page
+  of devices. They are only built when a project asks for them (`"key_test": true` in
+  its settings, set by hand).
 - **The One's clock and page counters could not draw Greek or Cyrillic**: their small
   face has neither, so a translation failed to build. A character it lacks now comes from
   the regular face, as a theme's own font already did.

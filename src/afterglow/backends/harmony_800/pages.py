@@ -362,19 +362,23 @@ HELP_SENDING_XY = (SENDING_XY[0], 120)
 QUESTION_TOP = 100
 LINE_SPACING = 18          # the 800's 18-pixel text
 # Help's questions and the Remote Assistant's notes, as upstairs lays them out: the
-# activity's icon where its starting screen has it, a question under it, Help's first
-# question higher with its explanation below; the Remote Assistant's heading and note in
-# the middle of an otherwise empty screen.
-HELP_QUESTION_Y, HELP_PROMPT_Y, ASSISTANT_Y = 137, 119, 99
+# activity's icon where its starting screen has it and a question under it - clear of it,
+# where the One's measurements, carried over, drew the text over the icon - Help's first
+# question with its explanation below; the Remote Assistant's heading and note in the
+# middle of an otherwise empty screen.
+HELP_QUESTION_Y = HELP_PROMPT_Y = START_ICON_XY[1] + START_ICON_SIZE[1] + 12
+ASSISTANT_Y = 99
 
 
 def labeller(fonts: list[dict]):
     """``label(text, attribute, room)``: one line of text in the image's font of that
-    attribute, as glyph codes (hex) and its width, cut to ``room`` pixels."""
-    def label(text, attribute, room):
-        [glyphs] = fit_label(text, fonts[attribute], room, lines=1)
+    attribute, as glyph codes (hex) and its width, cut to ``room`` pixels; with ``lines``,
+    the text wrapped onto that many at most, a (codes, width) pair for each."""
+    def label(text, attribute, room, lines=1):
+        found = fit_label(text, fonts[attribute], room, lines=lines)
         widths, _codes = measure(fonts[attribute])
-        return glyphs.hex(), sum(widths[code] for code in glyphs)
+        out = [(glyphs.hex(), sum(widths[code] for code in glyphs)) for glyphs in found]
+        return out[0] if lines == 1 else out
     return label
 
 

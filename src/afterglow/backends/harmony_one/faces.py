@@ -16,6 +16,8 @@ from __future__ import annotations
 # slot, and optionally a smaller one for the 11-pixel slots (the clock, page counters).
 TYPEFACE = "fonts/font.ttf"
 SMALL_TYPEFACE = "fonts/font-small.ttf"
+# and for the slots drawn bold (a font entry's look says `bold`), as Logitech's own are
+BOLD_TYPEFACE = "fonts/font-bold.ttf"
 SMALL_SLOT = 11
 INK = 0.5            # a pixel at least this covered is drawn; the display cannot blend
 
