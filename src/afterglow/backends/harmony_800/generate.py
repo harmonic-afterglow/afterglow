@@ -118,7 +118,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     ordinals.screens(numbers, hub=hub, system=system is not None, device_pages=pages,
                      keypads=keypads,
                      acts=acts, device_slots=variables.slots, tutorial_pages=len(TUTORIAL),
-                     off_devices=((activities or {}).get("all_off") or {}).get("off", []))
+                     off_devices=((activities or {}).get("all_off") or {}).get("off", []),
+                     key_test=bool((activities or {}).get("key_test")))
 
     owned = platform.owned
     screens = Screens(
@@ -398,6 +399,8 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     for device, spec in zip(devices, project.get("devices") or []):
         device["icon"] = row_icon(directory, manifest, pictures, "devices", spec.get("type"))
     planned = activity_plan.plan(project, devices)
+    # the key and light test, for looking at a remote: never offered, set by hand
+    planned["key_test"] = (project.get("settings") or {}).get("key_test") is True
     planned["assistant_hidden"] = (project.get("settings") or {}).get(
         "remote_assistant") is False
     held_commands(project, devices, planned, library=library)

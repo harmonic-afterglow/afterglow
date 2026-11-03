@@ -283,7 +283,6 @@ def test_a_truetype_font_in_the_scaffold_draws_what_it_has_and_galmuri_the_rest(
     (scaffold / faces.TYPEFACE).write_bytes(_table_font(outline, cap=701))
     manifest = json.loads((scaffold / assets.MANIFEST).read_text("utf-8"))
     loaded = assets.load(scaffold)
-    default = assets.default_typeface(scaffold)
     for role, entry in manifest["fonts"].items():
         colour = tuple(entry["look"]["colour"])
         chars = {item["char"]: code for code, item in loaded["fonts"][role]["glyphs"].items()}
@@ -296,7 +295,9 @@ def test_a_truetype_font_in_the_scaffold_draws_what_it_has_and_galmuri_the_rest(
         # and the e it lacks is the default face's
         if entry["height"] > faces.SMALL_SLOT:
             e = loaded["fonts"][role]["glyphs"][chars["e"]]
-            assert e["rows"] == faces.face_glyph(default, "e", entry["height"], colour,
+            # (a bold slot's from the default bold face, the theme having no bold)
+            face = assets.default_typeface(scaffold, bold=bool(entry["look"].get("bold")))
+            assert e["rows"] == faces.face_glyph(face, "e", entry["height"], colour,
                                                  entry["look"].get("shadow"))["rows"], role
     generate.configuration({"devices": []}, directory=scaffold)
     # a character neither face has (a rune) is still refused by name
@@ -329,3 +330,99 @@ def test_a_pixel_truetype_font_is_drawn_at_its_own_size_not_scaled():
         rows = faces.typeface_glyph(face, "H", height, white)["rows"]
         inked = [y for y, line in enumerate(rows) if white in line]
         assert len(inked) == 7 and {line.count(white) for line in rows if white in line} == {5}
+
+
+def _holes(glyph: dict) -> int:
+    """How many enclosed spaces a BDF glyph has - an A's, an e's, a B's two - counted as
+    the blank regions of its box no edge reaches."""
+    rows = [list(line) for line in glyph["rows"]]
+    height, width = len(rows), max((len(line) for line in rows), default=0)
+    seen, holes = set(), 0
+    for start in ((y, x) for y in range(height) for x in range(width)):
+        y, x = start
+        if start in seen or (x < len(rows[y]) and rows[y][x]):
+            continue
+        stack, edge = [start], False
+        seen.add(start)
+        while stack:
+            y, x = stack.pop()
+            edge |= y in (0, height - 1) or x in (0, width - 1)
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < height and 0 <= nx < width and (ny, nx) not in seen \
+                        and not (nx < len(rows[ny]) and rows[ny][nx]):
+                    seen.add((ny, nx))
+                    stack.append((ny, nx))
+        holes += not edge
+    return holes
+
+
+def test_the_bold_keeps_every_letter_open():
+    """Galmuri has no bold at the One's size, so each letter was drawn: a stroke widened
+    blindly closes an A's or an e's counter at nine pixels. Every enclosed space a letter
+    has in Galmuri 9 is still there in its bold."""
+    from afterglow import bdf
+    regular = bdf.Bitmap.read(SCAFFOLD / "fonts/galmuri/Galmuri9.bdf.gz")
+    bold = bdf.Bitmap.read(SCAFFOLD / "fonts/galmuri/GalmuriAfterglow9-Bold.bdf.gz")
+    # (not @: its bold keeps the bowl and lets the inner a's two slivers meet, as a
+    # two-pixel @ only stays nine wide that way)
+    letters = "ABDOPQRaebdgopqАБВДОРЯЮабвдеоряюΑΒΔΘΟΡαβδθορ0689"
+    closed = [char for char in letters if _holes(bold.glyph(char)) < _holes(regular.glyph(char))]
+    assert not closed, f"bold closes a counter in {closed}"
+
+
+def test_the_slots_logitech_draws_bold_are_bold():
+    """Measured on two of Logitech's own One configurations: every 14- to 16-pixel slot
+    draws two-pixel strokes but the message font, slot 0; the 11-pixel ones one pixel."""
+    manifest = json.loads((SCAFFOLD / "assets.json").read_text())
+    bold = {name for name, entry in manifest["fonts"].items() if entry["look"].get("bold")}
+    expected = {name for name, entry in manifest["fonts"].items()
+                if entry["height"] > faces.SMALL_SLOT and name != "font-00"}
+    assert bold == expected
+
+
+def test_the_small_slots_draw_cyrillic_and_greek_in_their_own_size():
+    from afterglow import bdf
+    small = bdf.Bitmap.read(SCAFFOLD / "fonts/galmuri/GalmuriAfterglow7.bdf.gz")
+    wanted = [chr(c) for c in [*range(0x410, 0x450), 0x401, 0x451, *range(0x391, 0x3AA),
+                               *range(0x3B1, 0x3CA)] if c != 0x3A2]
+    assert [char for char in wanted if small.glyph(char) is None] == []
+    # in Galmuri 7's height: a capital seven pixels, as its Latin ones are
+    assert small.glyph("Ж")["height"] == small.glyph("H")["height"] == 7
+
+
+def test_galmuri_afterglow_is_built_from_its_drawings():
+    """The fonts are the pixel art in tools/galmuri/, built by tools/galmuri_afterglow.py:
+    a letter changed in one and not the other would draw on the remote unreviewed."""
+    import importlib.util
+    from afterglow import bdf
+    spec = importlib.util.spec_from_file_location(
+        "galmuri_afterglow", paths.root().parent.parent / "tools" / "galmuri_afterglow.py")
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    regular = bdf.Bitmap.read(SCAFFOLD / "fonts/galmuri/Galmuri9.bdf.gz")
+    built = bdf.Bitmap.read(SCAFFOLD / "fonts/galmuri/GalmuriAfterglow9-Bold.bdf.gz")
+    for char, glyph in tool.additions(regular, tool.BOLD).items():
+        assert tool.Glyph.of(built, char).pixels == glyph.pixels, char
+
+
+def test_the_800_draws_bold_where_the_one_does():
+    """The 800's slots are the One's, larger: the same ones are bold."""
+    one = json.loads((SCAFFOLD / "assets.json").read_text())["fonts"]
+    eight = json.loads((paths.scaffolds("harmony-800") / "assets.json").read_text())["fonts"]
+    assert {name for name, entry in eight.items() if entry["look"].get("bold")} == \
+        {name for name, entry in one.items() if entry["look"].get("bold")}
+
+
+def test_the_800s_number_pad_is_drawn_at_its_own_size():
+    """Its 30-pixel slot doubled Galmuri 11, every pixel a block; its digits are drawn
+    for it, its curves' steps filled, and drawn as they are."""
+    from afterglow import bdf
+    from afterglow.backends.harmony_800 import faces as faces_800
+    folder = paths.scaffolds("harmony-800") / "fonts/galmuri"
+    keypad = bdf.Bitmap.read(folder / "GalmuriAfterglowKeypad.bdf.gz")
+    assert all(keypad.glyph(char) for char in "0123456789+E")
+    drawn = faces_800.face_glyph(keypad, "8", 30, (255, 255, 255))
+    doubled = faces_800.face_glyph(bdf.Bitmap.read(folder / "Galmuri11-Bold.bdf.gz"), "8", 30,
+                                   (255, 255, 255))
+    assert len(drawn["rows"]) == len(doubled["rows"]) == 30
+    assert drawn["rows"] != doubled["rows"]

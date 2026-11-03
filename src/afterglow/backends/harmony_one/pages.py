@@ -191,11 +191,26 @@ def picture_size(body: bytes) -> tuple[int, int]:
     return struct.unpack_from("<HH", body, 1)
 
 
+SOFTKEY_HALF = 88           # half the One's 176-pixel display
+
+
+def softkey_x(width: int, x: int) -> int:
+    """A softkey's label centred over its half of the bar - the left half for a label
+    Logitech starts in it, else the right - which is where Logitech's own English sits,
+    and lets a longer word use the whole half, as on the 800."""
+    start = 0 if x < SOFTKEY_HALF else SOFTKEY_HALF
+    return start + max(0, (SOFTKEY_HALF - width) // 2)
+
+
 def softkey_label(text: str, font: dict, attribute: int, xy) -> list[dict]:
-    """A softkey's label: one line in its own font, cut to the half-strip it sits in."""
-    lines = fit_label(text, font, SCREEN_WIDTH - xy[0], lines=1)
+    """A softkey's label: one line in its own font, cut to the half-strip it sits in and
+    centred on it."""
+    lines = fit_label(text, font, SOFTKEY_HALF - 4, lines=1)
+    widths, _codes = measure(font)
+    width = sum(widths[code] for code in lines[0])
     return [{"opcode": "attribute", "value": attribute},
-            {"opcode": "inline_text", "x": xy[0], "y": xy[1], "glyphs": lines[0].hex()}]
+            {"opcode": "inline_text", "x": softkey_x(width, xy[0]), "y": xy[1],
+             "glyphs": lines[0].hex()}]
 
 
 # A screen's title and page counter, as every donor draws them: the title at (6,4) in a
@@ -204,7 +219,9 @@ def softkey_label(text: str, font: dict, attribute: int, xy) -> list[dict]:
 # Which fonts follow the screen: cyan for Activities, green for Options, orange for the
 # device screens.
 TITLE_XY = (6, 4)
-TITLE_ROOM = 96          # what the status bar's clock and battery leave of the top line
+# what the status bar leaves of the top line: its icons start at x 128 (gspm.md, "the
+# status bar"), the clock is on the line below
+TITLE_ROOM = 120
 PAGE_COUNTER_Y = 18
 PAGE_TOTAL_XY = (23, 18)
 PAGE_SLASH_XY = (18, 18)
@@ -289,11 +306,13 @@ HELP_QUESTION_Y, HELP_PROMPT_Y, ASSISTANT_Y = 137, 119, 99
 
 def labeller(fonts: list[dict]):
     """``label(text, attribute, room)``: one line of text in the image's font of that
-    attribute, as glyph codes (hex) and its width, cut to ``room`` pixels."""
-    def label(text, attribute, room):
-        [glyphs] = fit_label(text, fonts[attribute], room, lines=1)
+    attribute, as glyph codes (hex) and its width, cut to ``room`` pixels; with ``lines``,
+    the text wrapped onto that many at most, a (codes, width) pair for each."""
+    def label(text, attribute, room, lines=1):
+        found = fit_label(text, fonts[attribute], room, lines=lines)
         widths, _codes = measure(fonts[attribute])
-        return glyphs.hex(), sum(widths[code] for code in glyphs)
+        out = [(glyphs.hex(), sum(widths[code] for code in glyphs)) for glyphs in found]
+        return out[0] if lines == 1 else out
     return label
 
 

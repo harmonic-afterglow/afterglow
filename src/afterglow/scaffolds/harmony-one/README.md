@@ -83,7 +83,8 @@ Each slot in `assets.json` is a height and a `look`:
 
 Change `colour` or `shadow` (`null` for none) to recolour a slot. To draw all text from a
 font of your own, put a TrueType file at `fonts/font.ttf` (and optionally
-`fonts/font-small.ttf` for the small slots) - see `fonts/README.md`.
+`fonts/font-small.ttf` for the small slots and `fonts/font-bold.ttf` for the bold ones) -
+see `fonts/README.md`. `"bold": true` in a look draws that slot from the bold face.
 
 A slot may still be a sheet instead - a PNG with its glyphs side by side and each glyph's
 `x`, `width`, `code` and `char` in the manifest, as `tools/harmony_one_extract_assets.py`

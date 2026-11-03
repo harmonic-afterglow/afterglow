@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from . import keys, structures
 from .pages import (
-    MENU_ACTIVITIES_KEY, MENU_FRAME_XY, MENU_LABEL_XY, MENU_ROW_KEYS, OPTIONS_FONT,
+    MENU_ACTIVITIES_KEY, MENU_FRAME_XY, MENU_LABEL_XY, MENU_LINE_OFFSETS, MENU_ROW_KEYS, OPTIONS_FONT,
     OPTIONS_FRAME_WIDTH, OPTIONS_LABEL_ROOM, PAGE_DEVICES_KEY, SCREEN_WIDTH, SIDE_NEXT_KEY,
-    SIDE_PREV_KEY, SOFTKEY_RIGHT_ZONE, TITLE_FONTS, fit_label, measure)
+    SIDE_PREV_KEY, SOFTKEY_RIGHT_ZONE, TITLE_FONTS, fit_label, line_ys, measure)
 from .scaffold import menu_template
 from .structures import ENTER_MODE, OBJECT_ATOM, object_body
 
@@ -129,18 +129,21 @@ class Options:
         row_frames = self.carried.model["row_frames"]
 
         def centred(text, row):
-            [glyphs] = fit_label(text, row_font, OPTIONS_LABEL_ROOM, lines=1)
-            width = sum(widths[code] for code in glyphs)
-            return {"opcode": "inline_text",
-                    "x": MENU_FRAME_XY[row][0] + (OPTIONS_FRAME_WIDTH - width) // 2,
-                    "y": MENU_LABEL_XY[row][1], "glyphs": glyphs.hex()}
+            # on two lines when one has not the room, as a menu row's label is
+            lines = fit_label(text, row_font, OPTIONS_LABEL_ROOM, lines=2)
+            return [{"opcode": "inline_text",
+                     "x": MENU_FRAME_XY[row][0]
+                     + (OPTIONS_FRAME_WIDTH - sum(widths[code] for code in glyphs)) // 2,
+                     "y": y, "glyphs": glyphs.hex()}
+                    for glyphs, y in zip(lines, line_ys(MENU_LABEL_XY[row][1], len(lines),
+                                                        MENU_LINE_OFFSETS))]
         switch = None
         for row, entry in enumerate(entries):
             if entry[0] == "switch":
                 switch = {"opcode": "switch", "selector": entry[1], "ranges": [],
                           "cases": [(value, layout.block([
                               {"opcode": "attribute", "value": OPTIONS_FONT},
-                              centred(text, row), {"opcode": "end"}]))
+                              *centred(text, row), {"opcode": "end"}]))
                               for value, text in sorted(entry[2].items())]}
 
         def program(picture, prologue):
@@ -149,8 +152,8 @@ class Options:
                 out.append({"opcode": "bitmap", "x": MENU_FRAME_XY[row][0],
                             "y": MENU_FRAME_XY[row][1], "target": picture(row_frames[row])})
             out.append({"opcode": "attribute", "value": OPTIONS_FONT})
-            out += [centred(entry[1], row) for row, entry in enumerate(entries)
-                    if entry[0] == "open"]
+            out += [item for row, entry in enumerate(entries) if entry[0] == "open"
+                    for item in centred(entry[1], row)]
             out = screens.softkeys(out + [{"opcode": "end"}], ["activities"])[:-1]
             return out + ([switch] if switch else []) + [{"opcode": "end"}]
         screens.owned(rows, menu_template(), program, "options", screens.words("options.title"),

@@ -72,7 +72,7 @@ QUESTION = ("ask", "now", "again", "fixed")
 
 def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, list],
             acts: list[dict], device_slots: list[dict], tutorial_pages: int,
-            off_devices: list[int] = (), keypads=()) -> Ordinals:
+            off_devices: list[int] = (), keypads=(), key_test: bool = False) -> Ordinals:
     """Number every other owned screen, after the hub's. ``device_pages`` is each
     device's command pages, in menu order; ``device_slots`` which of power and input each
     device has a variable for; ``system`` whether the image has the firmware's screens;
@@ -136,8 +136,10 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
         # Options' second page, with the Remote Assistant's switch.
         out.options_more = take(1)[0]
         out.tutorial = take(tutorial_pages)
-    # The 800's key test comes last, so nothing numbered before it moves (key_test.py).
-    if hub:
+    # The 800's key test comes last, so nothing numbered before it moves (key_test.py) -
+    # only when a project asks for it (`settings.key_test`), to look at a remote's keys and
+    # lights: not a screen to come across past the last page of devices.
+    if hub and key_test:
         from . import key_test
         out.key_test = take(key_test.screen_count())
     # The idle layer's contexts are 1 and 2, then its charge contexts; each activity's

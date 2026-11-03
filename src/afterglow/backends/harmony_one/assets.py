@@ -120,26 +120,31 @@ def slot_font(role: str, entry: dict, face, characters=None, fallback=None) -> d
 _TYPEFACES: dict = {}
 
 
-def typeface(directory, small: bool = False):
+def typeface(directory, small: bool = False, bold: bool = False):
     """The face a scaffold's text is drawn from, read once: the owner's own TrueType font
     (faces.TYPEFACE) if they put one there, else the scaffold's default face (the
     manifest's ``typeface``), else None. With ``small``, the face for the 11-pixel slots
-    where one is given."""
-    from .faces import SMALL_TYPEFACE, TYPEFACE
+    where one is given; with ``bold``, the bold one - the owner's own (faces.BOLD_TYPEFACE),
+    else their regular font, so a theme's own look is kept, else the scaffold's bold."""
+    from .faces import BOLD_TYPEFACE, SMALL_TYPEFACE, TYPEFACE
 
     directory = Path(directory)
+    if bold and (directory / BOLD_TYPEFACE).is_file():
+        return typeface_file(directory / BOLD_TYPEFACE)
     own = directory / (SMALL_TYPEFACE if small else TYPEFACE)
     if small and not own.is_file():
         own = directory / TYPEFACE
     if own.is_file():
         return typeface_file(own)
-    return default_typeface(directory, small)
+    return default_typeface(directory, small, bold)
 
 
-def default_typeface(directory, small: bool = False):
-    """The scaffold's own face (the manifest's ``typeface``), whatever an owner adds."""
+def default_typeface(directory, small: bool = False, bold: bool = False):
+    """The scaffold's own face (the manifest's ``typeface``), whatever an owner adds: its
+    `small`, `bold` or `regular` font, the regular where it names no other."""
     default = read_manifest(directory).get("typeface") or {}
-    name = default.get("small" if small else "regular") or default.get("regular")
+    kind = "bold" if bold else "small" if small else "regular"
+    name = default.get(kind) or default.get("regular")
     return typeface_file(Path(directory) / name) if name else None
 
 
@@ -173,9 +178,11 @@ def load_font(directory, role: str, entry: dict, characters=None) -> dict:
     if "look" in entry:
         from .faces import SMALL_SLOT
         small = entry["height"] <= SMALL_SLOT
-        face = typeface(directory, small=small)
+        bold = bool(entry["look"].get("bold")) and not small
+        face = typeface(directory, small=small, bold=bold)
         fallbacks = []
-        for candidate in (default_typeface(directory, small),
+        for candidate in (default_typeface(directory, small, bold),
+                          default_typeface(directory, small),
                           default_typeface(directory) if small else None):
             if candidate is not None and candidate is not face and candidate not in fallbacks:
                 fallbacks.append(candidate)

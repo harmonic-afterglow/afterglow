@@ -122,8 +122,19 @@ def test_it_starts_on_the_hub_and_reaches_every_device(image):
     targets = set().union(*(_entered(image, o, c, objects)
                             for _t, o, c in _rows(image, screens[menu]["keys"])))
     assert len(targets & {s for s in range(len(screens))}) >= 3   # two devices and back
-    # past the last device page is the light test - a page for each LED, a touch moving on -
-    # then the key test, which names every code it answers
+    # nothing past the last device page: the key test is only built when asked for
+    assert not [r for r in _rows(image, screens[menu]["keys"]) if r[0] == 0xC02F]
+
+
+def test_a_project_can_ask_for_the_key_and_light_test():
+    """`settings.key_test`, set by hand to look at a remote's keys and lights: past the
+    last device page, the light test - a page for each LED, a touch moving on - then the
+    key test, which names every code it answers."""
+    image = generate.build({**PROJECT, "settings": {"key_test": True}})["image"]
+    objects, screens = _objects(image), _screens(image)
+    devices_softkey = [r for r in _rows(image, screens[40]["keys"]) if r[0] == 0xC031]
+    [(_tag, menu_object, _c)] = devices_softkey
+    [menu] = _entered(image, menu_object, lists.OBJECT, objects)
     [(_tag, strip, _c)] = [r for r in _rows(image, screens[menu]["keys"]) if r[0] == 0xC02F]
     [light] = _entered(image, strip, lists.OBJECT, objects)
     page = light

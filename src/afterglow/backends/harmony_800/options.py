@@ -108,14 +108,21 @@ class _Model:
         self.modes.append(None)
         return len(self.modes) - 1
 
-    def text(self, text, attribute, x, y, room=SCREEN_WIDTH, centre=None) -> list[dict]:
+    def text(self, text, attribute, x, y, room=SCREEN_WIDTH, centre=None,
+             offsets=None) -> list[dict]:
+        """``text`` at ``y``, from ``x`` or centred on ``centre`` (x, width); with
+        ``offsets``, wrapped onto two lines that far above and below ``y`` when one line
+        has not the room, as a button's label is (pages.line_ys)."""
+        from .pages import line_ys
         if centre is None:
             room = min(room, SCREEN_WIDTH - x)    # text placed from x stops at the edge
-        glyphs, width = self.label(text, attribute, room)
-        if centre is not None:
-            x = max(0, centre[0] + (centre[1] - width) // 2)
-        return [{"opcode": "attribute", "value": attribute},
-                {"opcode": "inline_text", "x": x, "y": y, "glyphs": glyphs}]
+        lines = ([self.label(text, attribute, room)] if offsets is None
+                 else self.label(text, attribute, room, lines=2))
+        out = [{"opcode": "attribute", "value": attribute}]
+        for (glyphs, width), line_y in zip(lines, line_ys(y, len(lines), offsets or (0, 0))):
+            line_x = x if centre is None else max(0, centre[0] + (centre[1] - width) // 2)
+            out.append({"opcode": "inline_text", "x": line_x, "y": line_y, "glyphs": glyphs})
+        return out
 
 
 def _register(band: int, variable) -> list:
@@ -256,8 +263,12 @@ class _Screens:
         items = [{"opcode": "call", "target": {"block": head}}]
         for (x, y, width), (frame, text) in zip(places, labels):
             items.append({"opcode": "bitmap", "x": x, "y": y, "target": {"picture": frame}})
-            drop = ROW_LABEL_DROP if width == ROW_FRAME[0] else LABEL_DROP
-            items += m.text(text, LABEL_FONT, x, y + drop, width - 8, centre=(x, width))
+            from .pages import BUTTON_LINE_OFFSETS, MENU_LINE_OFFSETS
+            row = width == ROW_FRAME[0]
+            drop = ROW_LABEL_DROP if row else LABEL_DROP
+            # wrapped onto a second line when one has not the room, as a button's is
+            items += m.text(text, LABEL_FONT, x, y + drop, width - 8, centre=(x, width),
+                            offsets=MENU_LINE_OFFSETS if row else BUTTON_LINE_OFFSETS)
         if back:
             items += m.text(self.words("options.back"), BACK_FONT, 0, BACK_XY[1],
                             centre=(0, SCREEN_WIDTH // 2))          # over its softkey

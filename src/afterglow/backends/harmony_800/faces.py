@@ -16,6 +16,8 @@ from __future__ import annotations
 # slot, and optionally a smaller one for the 11-pixel slots (the clock, page counters).
 TYPEFACE = "fonts/font.ttf"
 SMALL_TYPEFACE = "fonts/font-small.ttf"
+# and for the slots drawn bold (a font entry's look says `bold`), as the One's are
+BOLD_TYPEFACE = "fonts/font-bold.ttf"
 # The 800's slots: its pixels are about the One's size and its screen is bigger, so its
 # text is drawn from Galmuri 11 (regular) and Galmuri 9 (small) at their own sizes -
 # never scaled - in slots tall enough for their lines (assets.json gives each slot's).
@@ -55,7 +57,10 @@ def bitmap_glyph(face, char: str, height: int, colour, shadow=None) -> dict | No
     glyph = face.glyph(char)
     if glyph is None or height not in SLOTS:
         return None
-    scale = SLOTS[height].get("scale", 1)
+    # a slot drawn large doubles a face drawn at half its size - Galmuri 11 in the number
+    # pad's - and takes one drawn for it as it is
+    scale = max(1, round(SLOTS[height]["cap"] / face.cap_height())) \
+        if SLOTS[height].get("scale", 1) > 1 else 1
     top = SLOTS[height]["baseline"] - (glyph["y"] + glyph["height"]) * scale
     cells = [(top + r * scale + dy, (glyph["x"] + c) * scale + dx)
              for r, line in enumerate(glyph["rows"]) for c, on in enumerate(line) if on
