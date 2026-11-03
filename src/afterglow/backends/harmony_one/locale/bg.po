@@ -54,7 +54,7 @@ msgid_plural "pages"
 msgstr[0] "страница"
 msgstr[1] "страници"
 
-#. While an activity starts, under its icon; {activity} is its name. One line of about 164 pixels, cut to fit
+#. While an activity starts, under its icon; {activity} is its name. Two lines at most, of about 164 pixels, then cut
 #, python-brace-format
 msgctxt "activity.starting"
 msgid "Starting {activity}"
@@ -220,7 +220,7 @@ msgstr "Изход"
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.1"
 msgid "Welcome to your Harmony One touch-screen remote. Touch the screen to learn more."
-msgstr "Добре дошли в сензорното дистанционно Harmony One. Докоснете екрана, за да научите повече."
+msgstr "Добре дошли в тъч дистанционното Harmony One. Докоснете екрана, за да научите повече."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.2"

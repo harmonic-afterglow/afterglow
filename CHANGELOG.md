@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   checked and corrected by hand; the 800 uses Galmuri 11 Bold, its designer's own, with
   the letters it lacks drawn the same way. The fonts are Galmuri Afterglow
   (`tools/galmuri/`, built by `tools/galmuri_afterglow.py`), under the OFL.
+- **An activity's name wraps onto a second line while it starts** ("Starting ..."), on
+  the One and the 800, in every language, before it is cut.
 - **Long labels wrap onto a second line in Options** - rows and the date, time and
   sensitivity buttons - on the One and the 800, as buttons already did, before anything
   is cut.

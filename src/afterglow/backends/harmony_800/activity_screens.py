@@ -307,8 +307,9 @@ class Flow:
             if act.get("start_icon"):
                 out.append({"opcode": "bitmap", "x": START_ICON_XY[0],
                             "y": START_ICON_XY[1], "target": picture(act["start_icon"])})
+            # on a second line when one has not the room, then cut
             out += screens.lines(screens.words("activity.starting", activity=act["label"]),
-                                 START_FONT, START_TEXT_Y, room=SCREEN_WIDTH - 12, lines=1)
+                                 START_FONT, START_TEXT_Y, room=SCREEN_WIDTH - 12, lines=2)
             out += screens.lines(screens.words("activity.keep-pointed"), HELP_FONT,
                                  START_KEEP_TOP)
             return out + [{"opcode": "end"}]

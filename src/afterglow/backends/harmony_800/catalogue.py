@@ -111,8 +111,8 @@ def _messages() -> list[po.Message]:
         po.Message("pages", "page", "After a screen's page total, e.g. '1/3 pages', in the "
                    "small counter font; about 40 pixels", plural="pages"),
         po.Message("activity.starting", "Starting {activity}",
-                   "While an activity starts, under its icon; {activity} is its name. One "
-                   "line of about 164 pixels, cut to fit", brace_format=True),
+                   "While an activity starts, under its icon; {activity} is its name. Two "
+                   "lines at most, of about 164 pixels, then cut", brace_format=True),
         po.Message("activity.keep-pointed", "Keep the remote pointed at your system.",
                    "While an activity starts or Help is fixing it, at the bottom: "
                    + MESSAGE + "; two lines at most"),

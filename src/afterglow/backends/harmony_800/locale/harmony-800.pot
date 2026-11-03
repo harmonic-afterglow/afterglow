@@ -95,7 +95,7 @@ msgid_plural "pages"
 msgstr[0] ""
 msgstr[1] ""
 
-#. While an activity starts, under its icon; {activity} is its name. One line of about 164 pixels, cut to fit
+#. While an activity starts, under its icon; {activity} is its name. Two lines at most, of about 164 pixels, then cut
 #, python-brace-format
 msgctxt "activity.starting"
 msgid "Starting {activity}"
