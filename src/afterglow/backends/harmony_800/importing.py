@@ -442,21 +442,18 @@ def read_states(image: Image) -> dict[int, dict]:
                     {"id": kind.split(":", 1)[1], **state})
             continue
         _state(out[device], record, kind == "power", image, gates, others)
-    # the device's inter-key delay, as Logitech writes it: how long each code Help's
-    # answers send is held
-    for device, tenths in help_holds(image).items():
-        if tenths != 1:
-            out[device]["interkey_ms"] = tenths * 100
     return dict(out)
 
 
-def help_holds(image: Image) -> dict[int, int]:
-    """Each device's inter-key delay in tenths, the commonest hold (`7C`'s low byte) of
-    the codes an answer sends before it shows the next screen - Help's "No" sending a
-    device's power or input again. MyHarmony's setting, 0 to 1000 ms: a 650's Soniq
-    television dumped at 200, 100 and 0 ms holds them 2, 1 and 0; One dumps hold 0, 3
-    or 5 for some devices. 1 is an ordinary press."""
-    holds: dict[int, Counter] = defaultdict(Counter)
+def help_holds(image: Image) -> dict[int, dict[int, Counter]]:
+    """How long each code an answer sends before it shows the next screen is held
+    (`7C`'s low byte, in tenths), by device and command: Help's "No" sending a device's
+    power or input again. The commonest over a device's own commands is its inter-key
+    delay, MyHarmony's 0 to 1000 ms - Grim Leaper's 650 Soniq television dumped at 200,
+    100 and 0 ms holds them 2, 1 and 0; 1 is an ordinary press. Logitech's help
+    placeholder, which every first question sends and which is no device's, is filed
+    under one device: the caller counts only the device's real commands."""
+    holds: dict[int, dict[int, Counter]] = defaultdict(lambda: defaultdict(Counter))
     for item in image.objects:
         atoms = item["atoms"]
         if not atoms or atoms[-1][1] != ENTER_MODE:
@@ -468,8 +465,8 @@ def help_holds(image: Image) -> dict[int, int]:
             commands = [value for value, kind in inner if kind == COMMAND]
             held = [value for value, kind in inner if kind == DEVICE_OR_WAIT]
             if len(commands) == 1 and held:
-                holds[commands[0] >> 8][held[-1] & 0xFF] += 1
-    return {device: counts.most_common(1)[0][0] for device, counts in holds.items()}
+                holds[commands[0] >> 8][commands[0]][held[-1] & 0xFF] += 1
+    return holds
 
 
 def _sequence(image: Image, item: dict, others: dict) -> list[tuple]:
@@ -668,6 +665,7 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
     named = variable_labels(image)
     pages = read_pages(image, named)
     states = read_states(image)
+    helped = help_holds(image)
     bound = activity_keys(image)
     out = []
     for device in native:
@@ -676,6 +674,13 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
         state = states.get(index, {})
         ids = {signal["native"]["harmony-one"]["command_id"]: name
                for name, signal in device["signals"].items()}
+        # its inter-key delay: how long Help's answers hold its own codes
+        held = Counter()
+        for command, counts in helped.get(index, {}).items():
+            if command in ids:
+                held.update(counts)
+        if held and held.most_common(1)[0][0] != 1:
+            state = {**state, "interkey_ms": held.most_common(1)[0][0] * 100}
         # A command a button or a key names is one of the device's own; the copies of
         # one that Logitech keeps for power, inputs and held steps are found against them.
         known = dict(page["names"])
