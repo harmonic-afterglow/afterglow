@@ -304,6 +304,12 @@ class Words:
 ENGLISH = Words()            # the catalogue's own text; a build reads en.po (load)
 
 
+def translations() -> list[str]:
+    """Every language a catalogue here translates into, by its gettext code; English is
+    the base every build falls back to, so it is not one of them."""
+    return sorted(path.stem for path in LOCALE_DIR.glob("*.po") if path.stem != "en")
+
+
 def load(language: str | None, directory: Path | None = None) -> Words:
     """The words for ``language`` - a gettext code (``fi``) or the project's Logitech
     code (``fin``) - from its catalogue; English when there is none."""

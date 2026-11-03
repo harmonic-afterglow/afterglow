@@ -8,10 +8,11 @@ To translate:
 
 1. Copy `harmony-800.pot` to `<language>.po` (or start from `en.po`, which holds the
    English), named by the gettext language code:
-   `fi.po`, `de.po`, `es.po`, `ru.po`, `nl.po`, `da.po`, `it.po`, `sv.po`.
+   `fi.po`, `de.po`, `bg.po`, `es.po`, `ru.po` and so on.
 2. Fill in the `msgstr` lines with Poedit, Weblate or any text editor, and set the
    `Language` and `Plural-Forms` headers for your language.
-3. Choose the language in the app's Remote Settings (the project's `settings.locale`).
+3. Put the file here. The language then appears in the app's Remote Settings, named in
+   its own language (the project's `settings.locale`); no other file needs changing.
 
 Each entry's `#.` comment says where the text is drawn and roughly how many pixels it
 has; the remote's screen is 240 pixels wide, and a title is cut, a button label wraps

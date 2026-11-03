@@ -75,9 +75,11 @@ def slot_font(role: str, entry: dict, face, characters=None, fallback=None) -> d
     """Draw a font slot from ``face`` (faces.py): the characters it is given - printable
     ASCII unless the build says which - numbered from 1, in the slot's colour over its
     shadow (the manifest entry's ``look``). A character the face lacks comes from
-    ``fallback`` - the scaffold's default face, under an owner's own font - so a theme's
-    font need not have every character the remote draws; one neither has is left out,
-    and a label using it is refused by name when it is laid out."""
+    ``fallback`` - a face, or faces tried in turn: the scaffold's default face, under an
+    owner's own font, and for the small slots its regular face too, which may draw a
+    script the small one lacks - so a face need not have every character the remote draws; one
+    none has is left out, and a label using it is refused by name when it is laid
+    out."""
     from . import faces
 
     if face is None:
@@ -88,11 +90,13 @@ def slot_font(role: str, entry: dict, face, characters=None, fallback=None) -> d
     height = entry["height"]
     glyphs = {}
     wanted = sorted(set(faces.REPERTOIRE if characters is None else characters) | {" "})
+    fallbacks = (fallback if isinstance(fallback, (list, tuple))
+                 else [fallback] if fallback is not None else [])
+
     def source(char):
-        if face.glyph(char) is not None:
-            return face
-        if fallback is not None and fallback.glyph(char) is not None:
-            return fallback
+        for candidate in (face, *fallbacks):
+            if candidate.glyph(char) is not None:
+                return candidate
         return None
     wanted = [char for char in wanted if source(char) is not None]
     if len(wanted) > MAX_CODES:
@@ -170,9 +174,12 @@ def load_font(directory, role: str, entry: dict, characters=None) -> dict:
         from .faces import SMALL_SLOT
         small = entry["height"] <= SMALL_SLOT
         face = typeface(directory, small=small)
-        fallback = default_typeface(directory, small)
-        return slot_font(role, entry, face, characters,
-                         fallback if fallback is not face else None)
+        fallbacks = []
+        for candidate in (default_typeface(directory, small),
+                          default_typeface(directory) if small else None):
+            if candidate is not None and candidate is not face and candidate not in fallbacks:
+                fallbacks.append(candidate)
+        return slot_font(role, entry, face, characters, fallbacks)
     path = Path(directory) / entry["file"]
     if not path.is_file():
         raise FileNotFoundError(f"font {role!r} names {path}, which does not exist")
