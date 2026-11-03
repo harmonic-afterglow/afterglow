@@ -1,7 +1,8 @@
 # The Harmony 800's number pad, at its 30-pixel slot's own size, drawn by hand from
 # Galmuri 11 Bold's digits, + and E doubled: where Galmuri rounds a corner (a corner
 # pixel left out) it has one pixel at 45 degrees, where it draws a slant in steps (2's, 4's
-# and 7's strokes) an even slant a pixel a row; square corners, inside corners and
+# and 7's strokes) an even slant a pixel a row, where its bowls meet (3's and 8's
+# waists) a pinch a pixel deep; square corners, inside corners and
 # straight strokes are Galmuri's, doubled. The format is galmuri7-additions.txt's; a
 # row's numbers count from the baseline, 0.
 
@@ -64,8 +65,8 @@
           ####
     ##########
     ##########
-    ########
-    ########
+    #########
+    #########
           ####
           ####
           ####
@@ -184,8 +185,8 @@
 ####      ####
 ##############
 ##############
-  ##########
-  ##########
+ ############
+ ############
 ####      ####
 ####      ####
 ####      ####
