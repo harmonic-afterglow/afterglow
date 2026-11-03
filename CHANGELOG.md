@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Long labels wrap onto a second line in Options** - rows and the date, time and
   sensitivity buttons - on the One and the 800, as buttons already did, before anything
   is cut.
+- **The One and the 800 can be translated into any of the European languages written in
+  Latin, Greek or Cyrillic**: every face, in every size and weight, now draws their
+  letters - Romanian's ș ț, Azerbaijani's ə, Greek capitals with tonos - and the
+  punctuation they set: typographic quotes and dashes, the ellipsis, €, №, and the narrow
+  no-break space French puts before : ; ! ?
 - **Bulgarian on the Harmony One and 800.** A remote's languages are now the translations
   beside it: putting a `locale/<language>.po` there makes the language appear in Remote
   Settings, named in its own language.

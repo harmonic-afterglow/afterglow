@@ -832,3 +832,17 @@
 #  #
 #  #
  ##
+
+# the tonos marks alone, the ano teleia, and French's thin and narrow no-break spaces
+΄ 6
+ #
+#
+
+΅ 7
+  #
+# # #
+
+· = ·
+
+  space 2
+  space 2

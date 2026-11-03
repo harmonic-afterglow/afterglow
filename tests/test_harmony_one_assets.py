@@ -426,3 +426,31 @@ def test_the_800s_number_pad_is_drawn_at_its_own_size():
                                    (255, 255, 255))
     assert len(drawn["rows"]) == len(doubled["rows"]) == 30
     assert drawn["rows"] != doubled["rows"]
+
+
+# What a translation may use: Latin with the accents of the Western and Central European
+# languages, Romanian's comma below, Turkish's and Azerbaijani's letters, Greek with its
+# tonos, Cyrillic for Russian, Ukrainian, Belarusian, Serbian, Macedonian and Bulgarian,
+# and the punctuation they set: quotes, dashes, ellipsis, euro, numero, and the thin and
+# narrow no-break spaces French puts before : ; ! ?
+TRANSLATABLE = (
+    [chr(c) for c in range(0x20, 0x7F)] + [chr(c) for c in range(0xA0, 0x180)]
+    + [chr(c) for c in (0x18F, 0x259, 0x218, 0x219, 0x21A, 0x21B)]
+    + [chr(c) for c in range(0x384, 0x3CF) if c not in (0x38B, 0x38D, 0x3A2)]
+    + [chr(c) for c in range(0x400, 0x460)] + ["Ґ", "ґ"]
+    + [chr(c) for c in (0x2009, 0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2018,
+                        0x2019, 0x201A, 0x201C, 0x201D, 0x201E, 0x2020, 0x2021, 0x2022,
+                        0x2026, 0x2030, 0x2039, 0x203A, 0x202F, 0x20AC, 0x2116, 0x2122)])
+
+
+@pytest.mark.parametrize("remote", ["harmony-one", "harmony-800"])
+def test_every_face_draws_every_letter_a_translation_may_use(remote):
+    """Each face the remote's slots draw from - small, regular and bold - has them all,
+    so no translation into those languages falls back to another weight or fails."""
+    from afterglow import bdf
+    scaffold = paths.scaffolds(remote)
+    faces_named = json.loads((scaffold / "assets.json").read_text())["typeface"]
+    for kind in ("small", "regular", "bold"):
+        face = bdf.Bitmap.read(scaffold / faces_named[kind])
+        missing = "".join(char for char in TRANSLATABLE if face.glyph(char) is None)
+        assert not missing, f"{remote} {kind} lacks {missing!r}"

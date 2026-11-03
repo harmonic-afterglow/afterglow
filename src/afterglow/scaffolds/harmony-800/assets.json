@@ -783,8 +783,8 @@
   "schema": "afterglow-scaffold-assets/1",
   "source": "extracted from a Harmony One configuration; artwork only",
   "typeface": {
-    "regular": "fonts/galmuri/Galmuri11.bdf.gz",
-    "small": "fonts/galmuri/Galmuri9.bdf.gz",
+    "regular": "fonts/galmuri/GalmuriAfterglow11.bdf.gz",
+    "small": "fonts/galmuri/GalmuriAfterglow9.bdf.gz",
     "bold": "fonts/galmuri/GalmuriAfterglow11-Bold.bdf.gz"
   }
 }

@@ -1,0 +1,96 @@
+# What Galmuri 9 lacks for Greek and for French's spacing, drawn in its style:
+# the capitals with tonos - the tonos a two-pixel stroke at the capital's top left,
+# the capital moved over for it, as Greek sets it - the tonos marks alone, the ano
+# teleia, and the thin and narrow no-break spaces. tools/galmuri_afterglow.py adds
+# them to Galmuri 9 as Galmuri Afterglow 9; the format is galmuri7-additions.txt's,
+# and `CHAR space N` an empty character N wide.
+
+Ά 8
+ #   #
+#    #
+    # #
+    # #
+    # #
+   #####
+   #   #
+   #   #
+   #   #
+
+Έ 8
+ # ####
+#  #
+   #
+   #
+   ####
+   #
+   #
+   #
+   ####
+
+Ή 8
+ # #   #
+#  #   #
+   #   #
+   #   #
+   #####
+   #   #
+   #   #
+   #   #
+   #   #
+
+Ί 8
+ # #
+#  #
+   #
+   #
+   #
+   #
+   #
+   #
+   #
+
+Ό 8
+ #  ###
+#  #   #
+   #   #
+   #   #
+   #   #
+   #   #
+   #   #
+   #   #
+    ###
+
+Ύ 8
+ # #   #
+#  #   #
+    # #
+    # #
+     #
+     #
+     #
+     #
+     #
+
+Ώ 8
+ #   ###
+#   #   #
+   #     #
+   #     #
+   #     #
+   #     #
+    #   #
+     # #
+   ### ###
+
+΄ 8
+ #
+#
+
+΅ 9
+  #
+# # #
+
+· = ·
+
+  space 2
+  space 2

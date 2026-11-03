@@ -1,0 +1,5 @@
+# What Galmuri 11 lacks for French's spacing: the thin and narrow no-break spaces.
+# tools/galmuri_afterglow.py adds them to Galmuri 11 as Galmuri Afterglow 11.
+
+  space 3
+  space 3
