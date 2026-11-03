@@ -46,6 +46,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **The 800's number pad was drawn blocky**, its digits Galmuri's doubled pixel for
   pixel. They are drawn for the pad's size, smooth where Galmuri curves.
 - **The 800's Help wrote its questions over the device's picture.** They are under it.
+- **The 800's transmitting waves were cut off at the top**: the outermost arc was drawn
+  past the picture's edge. The arcs are a little smaller and whole.
 - **The 800's key and light test screens were part of every build**, past the last page
   of devices. They are only built when a project asks for them (`"key_test": true` in
   its settings, set by hand).
