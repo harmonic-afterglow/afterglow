@@ -218,14 +218,16 @@ def indicator(sending: bool) -> str:
 
 def sending() -> str:
     """The waves over a starting activity's icon: four arcs spreading up from the remote's
-    window, brightest nearest it, on the black backdrop."""
+    window, brightest nearest it, on the black backdrop - the outermost's top, at
+    cy - 1.15 r less half its stroke, inside the picture: with a radius of 29 it was 3
+    pixels above it, and the arc was drawn cut off."""
     w, h = pages.SENDING_SIZE
     cx, cy = w / 2, h - 2
     arcs = "".join(
         f'\n  <path d="M{cx - r:.2f} {cy - r * 0.2:.2f} A{r} {r * 0.95:.2f} 0 0 1 '
         f'{cx + r:.2f} {cy - r * 0.2:.2f}" fill="none" stroke="{colour}" '
         f'stroke-width="3" stroke-linecap="round"/>'
-        for r, colour in ((8, "#f4f4f4"), (15, "#c9d8e4"), (22, "#8fb3cf"), (29, "#5a88ad")))
+        for r, colour in ((7, "#f4f4f4"), (13, "#c9d8e4"), (19, "#8fb3cf"), (24.5, "#5a88ad")))
     return svg(w, h, "", f"""
   <rect width="{w}" height="{h}" fill="#000000"/>
   <circle cx="{cx}" cy="{cy}" r="3" fill="#ffffff"/>{arcs}""")
