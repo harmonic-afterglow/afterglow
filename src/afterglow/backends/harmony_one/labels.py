@@ -344,7 +344,8 @@ def _mark(rows: list[bytes]) -> str | None:
 
 
 def screen_text(payload: bytes, program: int, text: Text, *, depth: int = 6) -> list[dict]:
-    """What a page program draws as text, in drawing order: ``{x, y, attribute, text}``.
+    """What a page program draws as text, in drawing order: ``{x, y, attribute, text,
+    codes}``, ``codes`` being the glyphs the text was read from.
 
     Calls are followed, as the remote runs them - a page's title is drawn by the
     prologue it calls - and the font attribute carries across them as the drawing VM's
@@ -361,9 +362,10 @@ def screen_text(payload: bytes, program: int, text: Text, *, depth: int = 6) -> 
             if opcode == "attribute":
                 state["attribute"] = item["value"]
             elif opcode in ("text", "inline_text"):
+                glyphs = bytes.fromhex(item["glyphs"])
                 out.append({"x": item["x"], "y": item["y"], "attribute": state["attribute"],
-                            "text": text.decode(bytes.fromhex(item["glyphs"]),
-                                                state["attribute"])})
+                            "text": text.decode(glyphs, state["attribute"]),
+                            "codes": list(drawing.glyph_codes(glyphs))})
             elif opcode == "call":
                 walk(item["target"], level + 1)
             elif opcode == "jump":

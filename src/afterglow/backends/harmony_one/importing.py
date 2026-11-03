@@ -26,8 +26,8 @@ from functools import lru_cache
 from pathlib import Path
 
 from . import (
-    activity_index, bitmap, command_index, gspm, ir_lowering, keys, labels, named_index,
-    ui_index)
+    activity_index, bitmap, command_index, font_index, gspm, ir_lowering, keys, labels,
+    named_index, ui_index)
 from .pages import (
     BUTTON_POSITIONS, FRAME_WIDTH, MENU_FRAME_XY, MENU_ICON_XY, TITLE_XY)
 
@@ -75,6 +75,9 @@ class Image:
                       if record.get("type") == 1 and record.get("name")}
         self.screens = part("screens", ui_index.screen_slots, [])
         self.text = part("text", labels.Text, None) or labels.Text.empty()
+        self.glyph_widths = part("fonts", lambda data: [
+            {code: glyph["width"] for code, glyph in font["glyphs"].items()}
+            for font in font_index.fonts(data)], [])
         self.groups = part("switch tables", switch_tables, [])
         self.templates = part("touch templates", ui_index.touch_templates, {})
         self.contexts = part("contexts", activity_index.contexts, [])
@@ -146,18 +149,39 @@ class Image:
         except ValueError:
             return []
 
-    def join(self, lines: list[str]) -> str:
-        """A label's lines as the name they were split from."""
-        out = ""
-        for line in lines:
+    def join(self, lines: list[dict]) -> str:
+        """A button label's lines, as ``_button_label`` finds them, as the name they were
+        split from."""
+        out, before = "", None
+        for item in lines:
+            line = item["text"]
             if not out:
                 out = line
-            elif (self.text.logitech and out[-1:].isalnum() and line[:1].isupper()
-                  and " " not in line):
-                out += line
+            elif self.text.logitech:
+                split = out[-1:].isalnum() and line[:1].isupper() and " " not in line
+                out += line if split else " " + line
             else:
-                out += " " + line
+                # This builder wraps at spaces and splits a word only where it stops
+                # fitting, so a line its next line's first letter would still have fit
+                # on ended at a space.
+                out += line if self._split(before, item) else " " + line
+            before = item
         return out
+
+    def _split(self, before: dict, after: dict) -> bool:
+        """Whether the line ``after`` goes on a word the line ``before`` split, as this
+        builder splits one: ``before`` fills its frame so that ``after``'s first letter
+        would not have fit on it."""
+        if " " in before["text"] or not after.get("codes") or not before.get("codes"):
+            return False
+        widths = (self.glyph_widths[before["attribute"]]
+                  if before["attribute"] is not None
+                  and before["attribute"] < len(self.glyph_widths) else {})
+        try:
+            width = sum(widths[code] for code in before["codes"] + after["codes"][:1])
+        except KeyError:
+            return False
+        return width > FRAME_WIDTH
 
 
 def switch_tables(payload: bytes) -> list[dict]:
@@ -188,12 +212,13 @@ def switch_tables(payload: bytes) -> list[dict]:
     return out
 
 
-def _button_label(items: list[dict], slot: int) -> str | None:
-    """The text drawn on button ``slot``'s frame, top line first."""
+def _button_label(items: list[dict], slot: int) -> list[dict] | None:
+    """The text drawn on button ``slot``'s frame, top line first, as ``screen_text``
+    reads it."""
     left, top = BUTTON_POSITIONS[slot]
     inside = [item for item in items
               if left <= item["x"] < left + FRAME_WIDTH and top <= item["y"] < top + BUTTON_HEIGHT]
-    return [item["text"] for item in sorted(inside, key=lambda item: item["y"])] or None
+    return sorted(inside, key=lambda item: item["y"]) or None
 
 
 # Where the six buttons' touch zones sit, in the panel's raw units (y counts upwards):
@@ -835,7 +860,7 @@ def activity_keys(image: Image) -> dict[int, str]:
                 items = items if items is not None else image.page_text(slot["program_offset"])
                 lines = _button_label(items, position)
                 if lines:
-                    out[steps[0][1]] = image.join(lines) if isinstance(lines, list) else lines
+                    out[steps[0][1]] = image.join(lines)
     return out
 
 
@@ -1220,7 +1245,7 @@ class Activities:
                     macro = self.macro(steps)
                     if not macro:
                         continue
-                    text = " ".join(lines) if lines else None
+                    text = " ".join(item["text"] for item in lines) if lines else None
                     # a button that dials a channel is a favourite, named or with a logo;
                     # one with a logo and no name is too
                     if self._channel(macro) or text is None:
