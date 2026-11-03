@@ -465,6 +465,15 @@ class SettingsTab(QWidget):
         self.locale.clear()
         for name, code in profile.languages:
             self.locale.addItem(name, code)
+        # and every translation of a remote whose words Afterglow writes, as its files
+        # say, each named in its own language
+        from .. import backends
+        from ..qt.QtCore import QLocale
+        listed = {code for _name, code in profile.languages}
+        for code in backends.translations(profile):
+            if code not in listed:
+                name = QLocale(code).nativeLanguageName() or code
+                self.locale.addItem(name[:1].upper() + name[1:], code)
         self._build_preferences(profile)
 
     def _build_preferences(self, profile):

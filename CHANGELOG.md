@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Bulgarian on the Harmony One and 800.** A remote's languages are now the translations
+  beside it: putting a `locale/<language>.po` there makes the language appear in Remote
+  Settings, named in its own language.
+
 ### Changed
 
 - **Linux downloads are AppImages**, for x86_64 and, new, ARM64 (`afterglow-linux-x86_64.AppImage`,
@@ -21,6 +27,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **The One's clock and page counters could not draw Greek or Cyrillic**: their small
+  face has neither, so a translation failed to build. A character it lacks now comes from
+  the regular face, as a theme's own font already did.
 - **A Harmony 1000 could not be identified** ("identifying the remote: Unknown error"):
   libconcord asked it for details only Logitech's website ever used, and the 1000 never
   answers one of them. They are no longer asked for, which also makes connecting to any

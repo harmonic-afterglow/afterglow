@@ -153,3 +153,9 @@ def capability(signal: dict, profile, *, library=None) -> dict:
     strategy = "waveform" if signal["kind"] == "waveform" else "protocol"
     return {"supported": True, "strategy": strategy,
             "reason": "lowered to the 800's waveform records (the One's)"}
+
+
+def translations() -> list[str]:
+    """The languages this remote's words are translated into (catalogue.translations)."""
+    from . import catalogue
+    return catalogue.translations()

@@ -434,3 +434,22 @@ def test_an_imported_configs_settings_are_kept(qapp_or_skip, a_config, unpacked)
     tab.save()
     for key, value in original.items():
         assert project["settings"][key] == value, f"{key} changed on save"
+
+
+@pytest.mark.parametrize("remote", ["harmony-one", "harmony-800"])
+def test_a_translation_is_offered_because_its_file_is_there(remote):
+    """No list to keep in step: a remote whose words Afterglow writes offers every
+    `locale/<language>.po` beside its backend, and builds in it - Cyrillic included,
+    which the small slots' face lacks and its regular face draws."""
+    import importlib
+
+    from afterglow import backends, remotes
+    from test_harmony_one_activities import PROJECT
+
+    profile = remotes.get(remote)
+    assert "bg" in backends.translations(profile)
+    assert "en" not in backends.translations(profile), "English is the base, not a choice"
+    assert backends.translations(remotes.get("harmony-900")) == ()
+    generate = importlib.import_module(f"afterglow.backends.{profile.backend.replace('-', '_')}.generate")
+    built = generate.build({**PROJECT, "settings": {"locale": "bg"}})
+    assert built["image"] and not built["skipped"]

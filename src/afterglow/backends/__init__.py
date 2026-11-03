@@ -68,6 +68,18 @@ def for_profile(profile):
     return get(name)
 
 
+def translations(profile) -> tuple[str, ...]:
+    """The languages `profile`'s remote has a translation in, as gettext codes, found by
+    its backend (`translations()`: the `locale/<language>.po` files beside it) - so adding
+    a file adds the language. None for a remote whose languages are its firmware's, which
+    its profile lists."""
+    try:
+        found = getattr(for_profile(profile), "translations", None)
+    except LookupError:
+        return ()
+    return tuple(found()) if callable(found) else ()
+
+
 def screen_gaps(profile) -> bool:
     """Whether `profile`'s remote can leave a place on a page of buttons empty. A
     backend's format says so (`SCREEN_GAPS`): one whose pages fill their places in turn
