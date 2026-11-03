@@ -16,16 +16,31 @@ class Actions:
     objects numbered) whose variables are ``slots``: per device, the variable index of
     its power and input."""
 
-    def __init__(self, layout, devices: list[dict], slots: list[dict]):
+    def __init__(self, layout, devices: list[dict], slots: list[dict], held=None):
         self.layout = layout
         self.devices = devices
         self.slots = slots
+        # ``held(device, command id, tenths)`` numbers a copy of a command's object held
+        # that long, as Logitech sends the codes Help resends to fix a device
+        self.held = held
+        self._held = {}
         self.commands = {(device["index"], command["command_id"]): command
                          for device in devices for command in device["commands"]}
 
     def command(self, device: int, command_id: int) -> int:
         """The object that sends a command."""
         return self.commands[(device, command_id)]["object_index"]
+
+    def fixing(self, device: int, command_id: int) -> int:
+        """The object Help sends to fix a device: the command held its inter-key delay,
+        or the command's own object for a device with none, or the ordinary press."""
+        tenths = self.devices[device].get("interkey")
+        if tenths is None or tenths == 1 or self.held is None:
+            return self.command(device, command_id)
+        key = (device, command_id, tenths)
+        if key not in self._held:
+            self._held[key] = self.held(device, command_id, tenths)
+        return self._held[key]
 
     def wrapper(self, device: int, command_id: int) -> int:
         """The object a touch key binds for a command: it clicks, then sends."""
@@ -68,8 +83,8 @@ class Actions:
             power = self.devices[index].get("power")
             if not power or (power["on"] == power["off"] and not toggles):
                 continue
-            out.append((self.command(index, power["on"] if on else power["off"]),
-                        OBJECT_ATOM))
+            send = self.fixing if toggles else self.command
+            out.append((send(index, power["on"] if on else power["off"]), OBJECT_ATOM))
             if on:
                 out += waits(index, power["delay_ms"])
         return out
@@ -85,8 +100,17 @@ class Actions:
             if isinstance(chosen, list):
                 out = []
                 for kind, item in chosen:
-                    out += ([(self.command(index, item), OBJECT_ATOM)] if kind == "send"
+                    out += ([(self.fixing(index, item), OBJECT_ATOM)] if kind == "send"
                             else waits(index, item))
                 return out
-            return [(self.command(index, chosen), OBJECT_ATOM)]
-        return [(self.command(index, inputs["next"]), OBJECT_ATOM)]
+            return [(self.fixing(index, chosen), OBJECT_ATOM)]
+
+        # one step, inside a menu input's way in and out: a Soniq's Source, Up, OK
+        def around(key):
+            out = []
+            for item in inputs.get(key) or []:
+                out += ([(self.fixing(index, item[1]), OBJECT_ATOM)] if item[0] == "send"
+                        else waits(index, item[1]) if item[0] == "wait" else [])
+            return out
+        return (around("start") + [(self.fixing(index, inputs["next"]), OBJECT_ATOM)]
+                + around("finish"))

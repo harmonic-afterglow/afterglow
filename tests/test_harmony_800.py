@@ -673,6 +673,15 @@ def test_a_menu_input_builds_and_comes_back(tmp_path):
             cycle["finish"], cycle["delay_ms"]) == (
         ["Source"], ["DirectionUp"], ["DirectionDown"], ["OK"], 1000)
 
+def test_a_devices_inter_key_delay_holds_the_codes_help_sends(tmp_path):
+    """The codes Help sends to fix a device held its inter-key delay, as the One's."""
+    from afterglow import remotes
+    from test_harmony_one_import import _interkey_project
+    (tmp_path / "payload.bin").write_bytes(generate.build(_interkey_project(_nec))["image"])
+    devices = backend.import_project(tmp_path, remotes.get("harmony-800"), {}).project["devices"]
+    assert {device["label"]: device.get("press_interkey") for device in devices} == {
+        "Soniq TV": 300, "Receiver": 0}
+
 def test_the_remote_assistant_can_start_hidden():
     """It welcomes again after every write; a project can start it hidden instead."""
     from afterglow.backends.harmony_800 import activity_index

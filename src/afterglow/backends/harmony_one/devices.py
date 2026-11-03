@@ -339,6 +339,9 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
             screen.pop()
         out.append({"index": index, "label": label, "commands": commands,
                     **({"screen": screen} if screen is not None else {}),
+                    # the hold of the codes Help sends to fix it, in tenths (actions)
+                    **({"interkey": round(device["press_interkey"] / 100)}
+                       if device.get("press_interkey") is not None else {}),
                     **device_states(device, ids)})
     return out
 

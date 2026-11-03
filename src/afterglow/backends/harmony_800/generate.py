@@ -212,6 +212,15 @@ def _carried(layout, model, numbers, platform, system, engine, household) -> Car
     return carried
 
 
+def _held_command(layout):
+    """A command's object held ``tenths`` - as Logitech writes the codes Help sends to fix
+    a device, its inter-key delay - numbered when first asked for."""
+    from . import records
+
+    return lambda device, command_id, tenths: layout.object(
+        records.command_object(command_id, (device << 8) | tenths))
+
+
 def _command_objects(layout, devices):
     """Each command gets the object naming it and the wrapper a key binds to, laid out the
     way every donor lays them out: command object, then its wrapper, command by command."""
@@ -252,7 +261,8 @@ def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
         wake = (carried.atoms([carried.idle["key_light"]])[0]
                 if carried is not None and carried.idle else None)
         flow = Flow(screens, numbers, variables, devices, acts,
-                    Actions(layout, devices, variables.slots), frames=frames,
+                    Actions(layout, devices, variables.slots, held=_held_command(layout)),
+                    frames=frames,
                     geometry=geometry, all_off=all_off, wake=wake)
     owned = Hub(screens, numbers, devices, pages, frames=frames, geometry=geometry, hub=hub,
                 flow=flow, options=carried is not None)
