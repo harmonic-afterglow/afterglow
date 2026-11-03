@@ -27,23 +27,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Bulgarian on the Harmony One and 800.** A remote's languages are now the translations
   beside it: putting a `locale/<language>.po` there makes the language appear in Remote
   Settings, named in its own language.
+- **The log says what libconcord did** in every session with the remote, so a log sent with
+  a bug report shows which request a remote turned down instead of "Unknown error". It is
+  kept short: the last 200 lines, none per packet, no serial numbers, and the log file
+  still stops at two of a megabyte.
 
 ### Changed
 
 - A saved or shared project records the Afterglow version that wrote it (`saved_by`), and
   any recordings it had repaired (`repairs`), so a later fix to how a remote plays commands
   can repair the projects an older version left.
-
 - **Linux downloads are AppImages**, for x86_64 and, new, ARM64 (`afterglow-linux-x86_64.AppImage`,
   `afterglow-linux-aarch64.AppImage`): they start without unpacking themselves first, and
   carry a menu entry and an icon for AppImage tools such as Gear Lever to install. They run on the same systems as before.
-
-### Added
-
-- **The log says what libconcord did** in every session with the remote, so a log sent with
-  a bug report shows which request a remote turned down instead of "Unknown error". It is
-  kept short: the last 200 lines, none per packet, no serial numbers, and the log file
-  still stops at two of a megabyte.
 
 ### Fixed
 
