@@ -398,6 +398,30 @@ def test_a_menu_input_builds_and_comes_back(tmp_path):
             cycle["finish"], cycle["delay_ms"], len(cycle["values"])) == (
         ["Source"], ["DirectionUp"], ["DirectionDown"], ["OK"], 1000, 5)
 
+def _interkey_project(nec):
+    """A television that needs 300 ms between codes and a receiver that takes them as
+    fast as they come, both in an activity whose Help can resend their power."""
+    tv = {**_menu_tv(nec), "press_interkey": 300}
+    names = ("PowerOn", "PowerOff", "InputCd")
+    amp = {"id": "amp", "label": "Receiver", "type": "Amplifier",
+           "signals": {name: nec(9, number) for number, name in enumerate(names)},
+           "commands": [[name, name, "", "", None] for name in names],
+           "power_on_cmd": "PowerOn", "power_off_cmd": "PowerOff", "press_interkey": 0,
+           "inputs": [["CD", "InputCd"]]}
+    return {"devices": [tv, amp], "activities": [{
+        "id": "1", "label": "Listen", "power_on_devices": ["tv", "amp"],
+        "input": ["amp", "CD"], "volume": "amp", "control": "tv"}]}
+
+
+def test_a_devices_inter_key_delay_holds_the_codes_help_sends(tmp_path):
+    """MyHarmony's inter-key delay, 0 to 1000 ms, is how long each code Help's answers
+    send to fix a device is held - Logitech's 650s and Ones alike; a build holds them so
+    and an import reads it back."""
+    from test_harmony_one_activities import _nec
+    imported = _imported(generate.build(_interkey_project(_nec))["image"], tmp_path)
+    assert {device["label"]: device.get("press_interkey")
+            for device in imported["devices"]} == {"Soniq TV": 300, "Receiver": 0}
+
 def test_a_devices_other_states_build_and_come_back(tmp_path):
     """Logitech's two-level input, as a Dutch Harmony 650's television has it: its input
     sets the device's `Screen` - a route to each value - and its `TVInput` - stepped

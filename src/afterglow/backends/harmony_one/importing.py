@@ -449,7 +449,34 @@ def read_states(image: Image) -> dict[int, dict]:
                     {"id": kind.split(":", 1)[1], **state})
             continue
         _state(out[device], record, kind == "power", image, gates, others)
+    # the device's inter-key delay, as Logitech writes it: how long each code Help's
+    # answers send is held
+    for device, tenths in help_holds(image).items():
+        if tenths != 1:
+            out[device]["interkey_ms"] = tenths * 100
     return dict(out)
+
+
+def help_holds(image: Image) -> dict[int, int]:
+    """Each device's inter-key delay in tenths, the commonest hold (`7C`'s low byte) of
+    the codes an answer sends before it shows the next screen - Help's "No" sending a
+    device's power or input again. MyHarmony's setting, 0 to 1000 ms: a 650's Soniq
+    television dumped at 200, 100 and 0 ms holds them 2, 1 and 0; One dumps hold 0, 3
+    or 5 for some devices. 1 is an ordinary press."""
+    holds: dict[int, Counter] = defaultdict(Counter)
+    for item in image.objects:
+        atoms = item["atoms"]
+        if not atoms or atoms[-1][1] != ENTER_MODE:
+            continue
+        for operand, opcode in atoms:
+            if opcode != OBJECT or not 0 <= operand < len(image.objects):
+                continue
+            inner = image.objects[operand]["atoms"]
+            commands = [value for value, kind in inner if kind == COMMAND]
+            held = [value for value, kind in inner if kind == DEVICE_OR_WAIT]
+            if len(commands) == 1 and held:
+                holds[commands[0] >> 8][held[-1] & 0xFF] += 1
+    return {device: counts.most_common(1)[0][0] for device, counts in holds.items()}
 
 
 def _sequence(image: Image, item: dict, others: dict) -> list[tuple]:
@@ -859,6 +886,8 @@ def _state_fields(state: dict, names: dict[int, str]) -> dict:
     """A device's power and inputs in the project's fields (generate.device_states reads
     them back)."""
     out = {}
+    if state.get("interkey_ms") is not None:
+        out["press_interkey"] = state["interkey_ms"]
     power = state.get("power")
     if power:
         if power["on"] == power["off"]:
