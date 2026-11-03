@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draw the Harmony 800's own look as vector artwork, and export it into its scaffold.
 
-    python3 tools/harmony_800_art.py
+    python3 tools/harmony_800_art.py [--rewrite]
     python3 tools/harmony_800_art.py --remote-showing SCREEN.png OUT.svg
 
 The 800's scaffold began as the One's pictures, widened (harmony_800_fit_artwork.py). The
@@ -22,6 +22,12 @@ capture of the 800's screen in its display.
 
 Rendering needs `rsvg-convert` (librsvg). Colours are reduced to the display's RGB565
 here, so the loader reports nothing to change; every picture is opaque.
+
+A picture is written only when it changed (same_picture): rendered on another machine, the
+committed scaffold comes out the same - only zlib's bytes and librsvg's rounding of a few
+edge pixels differ, which are not changes. `--rewrite` writes every picture regardless.
+In assets.json the tool owns each picture's `file`, `mode` and `size`; every other field,
+such as a font slot's `bold` or `typeface`, stays as it is, in its place.
 """
 
 from __future__ import annotations
@@ -435,7 +441,7 @@ def inlined(text: str, folder: Path) -> str:
     return text.replace("<defs>", f'<defs><g id="remote-drawing">{inner}</g>', 1)
 
 
-def render(source: Path, target: Path) -> tuple[int, int]:
+def render(source: Path) -> list[list[tuple]]:
     """``source`` rendered at its own size, made opaque over black and reduced to RGB565."""
     with tempfile.TemporaryDirectory() as scratch:
         drawn = Path(scratch) / "drawn.png"
@@ -451,9 +457,34 @@ def render(source: Path, target: Path) -> tuple[int, int]:
             colour = tuple(round(channel * share) for channel in (red, green, blue))
             row.append((*bitmap.from_rgb565(bitmap.to_rgb565(colour)), 255))
         rows.append(row)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(imaging.encode(rows))
-    return image["width"], image["height"]
+    return rows
+
+
+def _steps(pixel: tuple) -> tuple[int, int, int]:
+    """A pixel's channels in the display's own units: 5 bits of red, 6 of green, 5 of blue."""
+    packed = bitmap.to_rgb565(pixel[:3])
+    return packed >> 11, (packed >> 5) & 0x3F, packed & 0x1F
+
+
+def same_picture(target: Path, rows: list[list[tuple]]) -> bool:
+    """Whether ``target`` already holds ``rows``, up to how librsvg rounds.
+
+    The PNG's bytes are no test: zlib versions deflate the same pixels differently. Nor is
+    exact equality: librsvg and cairo releases differ in anti-aliasing, and where an edge's
+    colour falls on the boundary between two RGB565 values one release rounds it up and
+    another down - a handful of pixels, one display step apart. A picture that differs only
+    by that is the same picture, and is left as it is; any wider change is a change."""
+    if not target.is_file():
+        return False
+    held = imaging.decode(target.read_bytes())["rows"]
+    if len(held) != len(rows) or any(len(a) != len(b) for a, b in zip(held, rows)):
+        return False
+    for line, drawn in zip(held, rows):
+        for old, new in zip(line, drawn):
+            if old != new and (old[3] != new[3] or any(
+                    abs(a - b) > 1 for a, b in zip(_steps(old), _steps(new)))):
+                return False
+    return True
 
 
 def remote_showing(screen: Path) -> str:
@@ -485,22 +516,32 @@ def main(argv: list[str]) -> int:
     if len(argv) == 3 and argv[0] == "--remote-showing":
         Path(argv[2]).write_text(remote_showing(Path(argv[1])))
         return 0
+    rewrite = "--rewrite" in argv
     if shutil.which("rsvg-convert") is None:
         print("needs rsvg-convert (librsvg)", file=sys.stderr)
         return 1
     manifest_path = SCAFFOLD / "assets.json"
     manifest = json.loads(manifest_path.read_text())
-    for role, text in pictures().items():
+    drawn = pictures()
+    written = []
+    for role, text in drawn.items():
         source = ART / f"{role}.svg"
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text(text)
         file = f"images/{role}.png"
-        size = render(source, SCAFFOLD / file)
-        # opaque, so stored whole: `raw`, as every frame is
-        manifest["pictures"][role] = {"file": file, "mode": "raw", "size": list(size)}
+        rows = render(source)
+        if rewrite or not same_picture(SCAFFOLD / file, rows):
+            (SCAFFOLD / file).parent.mkdir(parents=True, exist_ok=True)
+            (SCAFFOLD / file).write_bytes(imaging.encode(rows))
+            written.append(role)
+        # Only these three fields are this tool's: anything else an entry holds stays, and
+        # so does the order of the manifest's keys. Opaque, so stored whole: `raw`.
+        entry = manifest["pictures"].setdefault(role, {})
+        entry.update({"file": file, "mode": "raw", "size": [len(rows[0]), len(rows)]})
     manifest["pictures"] = dict(sorted(manifest["pictures"].items()))
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    print(f"drew {len(pictures())} pictures into {SCAFFOLD.relative_to(ROOT)}")
+    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    print(f"drew {len(drawn)} pictures; {len(written)} changed and written into "
+          f"{SCAFFOLD.relative_to(ROOT)}" + "".join(f"\n  {role}" for role in written))
     return 0
 
 
