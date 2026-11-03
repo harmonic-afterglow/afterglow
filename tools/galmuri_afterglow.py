@@ -40,15 +40,30 @@ FOLDER = ROOT / "src" / "afterglow" / "scaffolds" / "harmony-one" / "fonts" / "g
 # Bold, the 800's, which has no Latin Extended-A, Greek or Cyrillic - whose letters stand
 # and to which the drawn ones are added.
 BOLDS = {
-    9: {"folder": FOLDER, "regular": "Galmuri9.bdf.gz", "drawn": BOLD, "official": None},
+    9: {"folder": FOLDER, "regular": "GalmuriAfterglow9.bdf.gz", "drawn": BOLD,
+        "official": None},
     11: {"folder": ROOT / "src" / "afterglow" / "scaffolds" / "harmony-800" / "fonts"
-         / "galmuri", "regular": "Galmuri11.bdf.gz",
+         / "galmuri", "regular": "GalmuriAfterglow11.bdf.gz",
          "drawn": ROOT / "tools" / "galmuri" / "galmuri11-bold.txt",
          "official": "Galmuri11-Bold.bdf.gz"},
 }
 # The letters a bold is drawn for: Latin with its accents, Greek and Cyrillic.
-BOLD_RANGES = ((0x21, 0x7F), (0xA1, 0x100), (0x100, 0x180), (0x384, 0x3CF),
-               (0x400, 0x460), (0x490, 0x492))
+BOLD_RANGES = ((0x21, 0x7F), (0xA1, 0x100), (0x100, 0x180), (0x18F, 0x190), (0x259, 0x25A),
+               (0x218, 0x21C), (0x384, 0x3CF), (0x400, 0x460), (0x490, 0x492),
+               # typographic punctuation: dashes, quotes, daggers and bullet, ellipsis,
+               # per mille, single guillemets, euro, numero, trade mark
+               (0x2010, 0x2016), (0x2018, 0x201F), (0x2020, 0x2023), (0x2026, 0x2027),
+               (0x2030, 0x2031), (0x2039, 0x203B), (0x20AC, 0x20AD), (0x2116, 0x2117),
+               (0x2122, 0x2123))
+# The regular faces, each Galmuri with what it lacks for the languages Afterglow is
+# translated into (Latin's, Greek, Cyrillic): Galmuri 9 has no Greek capital with tonos,
+# and none has the thin spaces French sets before : ; ! ? - written beside Galmuri as
+# GalmuriAfterglow<size>.bdf.gz, in each scaffold that draws from that size.
+ONE_800 = ROOT / "src" / "afterglow" / "scaffolds" / "harmony-800" / "fonts" / "galmuri"
+REGULARS = ((7, FOLDER, ROOT / "tools" / "galmuri" / "galmuri7-additions.txt"),
+            (9, FOLDER, ROOT / "tools" / "galmuri" / "galmuri9-additions.txt"),
+            (9, ONE_800, ROOT / "tools" / "galmuri" / "galmuri9-additions.txt"),
+            (11, ONE_800, ROOT / "tools" / "galmuri" / "galmuri11-additions.txt"))
 # Where a mark comes from: Galmuri7's own accented letter over the letter it accents.
 MARKS = {"acute": ("é", "e", "É", "E"), "grave": ("è", "e", "È", "E"),
          "diaeresis": ("ë", "e", "Ë", "E"), "breve": ("ă", "a", "Ă", "A")}
@@ -142,11 +157,15 @@ def additions(font, path=ADDITIONS) -> dict[str, Glyph]:
         # a glyph is one character then its top row, or `= ...`; so `# 8` draws `#`, and
         # any other line opening with `#` is a comment
         char, _, rest = line.partition(" ")
-        header = len(char) == 1 and (rest.startswith("= ") or rest.lstrip("-").isdigit())
+        header = len(char) == 1 and (rest.startswith(("= ", "space "))
+                                     or rest.lstrip("-").isdigit())
         if not line.strip() or not header:
             continue
         if rest.startswith("= "):
             copies.append((char, rest[2:]))
+            continue
+        if rest.startswith("space "):          # an empty character that wide
+            out[char] = Glyph(set(), int(rest.split()[1]))
             continue
         top, body = int(rest), []
         while at < len(lines) and lines[at].strip():
@@ -285,13 +304,14 @@ def main() -> int:
             draft(size)
         return 0
 
-    small = FOLDER / "Galmuri7.bdf.gz"
-    font = bdf.Bitmap.read(small)
-    glyphs = every_glyph(font)
-    glyphs.update({char: glyph for char, glyph in additions(font).items()
-                   if font.glyph(char) is None})
-    write(small, FOLDER / "GalmuriAfterglow7.bdf.gz", glyphs, "Galmuri Afterglow7",
-          "Regular")
+    for size, folder, path in REGULARS:
+        source = folder / f"Galmuri{size}.bdf.gz"
+        font = bdf.Bitmap.read(source)
+        glyphs = every_glyph(font)
+        glyphs.update({char: glyph for char, glyph in additions(font, path).items()
+                       if font.glyph(char) is None})
+        write(source, folder / f"GalmuriAfterglow{size}.bdf.gz", glyphs,
+              f"Galmuri Afterglow{size}", "Regular")
     for size in BOLDS:
         build_bold(size)
     # the 800's number pad, at its slot's own size

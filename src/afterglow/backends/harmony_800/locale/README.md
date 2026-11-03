@@ -24,5 +24,10 @@ builds. English is `en.po`: edit it to reword the English remote. After adding o
 changing a message in `catalogue.py`, bring the template and `en.po` in step with
 `python3 tools/harmony_800_pot.py`.
 
-The remote's typeface, Galmuri, draws Latin with accents, Greek, Cyrillic, Japanese and
-Korean. One font slot holds at most 127 different characters in one image.
+The remote draws, in every slot and weight, what translations into these need: the
+Latin of the Western and Central European languages (Romanian's ș ț, Turkish,
+Azerbaijani's ə, the Baltic languages, Maltese, Welsh, Esperanto), Greek with its tonos,
+and the Cyrillic of Russian, Ukrainian, Belarusian, Serbian, Macedonian and Bulgarian -
+with their quotes, dashes, ellipsis, €, №, and the thin and narrow no-break spaces French
+sets before : ; ! ? (U+202F). Japanese, Korean and Chinese do not fit: one font slot
+holds at most 127 different characters in one image.

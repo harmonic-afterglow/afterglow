@@ -9,7 +9,9 @@ and shadow (`assets.json`, each slot's `look`).
 `galmuri/` holds gzipped BDF bitmap fonts under the SIL Open Font License
 (`galmuri/OFL.txt`), named in `assets.json` under `typeface`:
 
-- **Galmuri 9** (Lee Minseo) for the 14- to 16-pixel slots;
+- **Galmuri Afterglow 9** for the 14- to 16-pixel slots: Lee Minseo's Galmuri 9, with the
+  Greek capitals with tonos and the thin spaces it lacked
+  (`tools/galmuri/galmuri9-additions.txt`);
 - **Galmuri Afterglow 9 Bold** for the slots Logitech's own One draws bold - every 14- to
   16-pixel slot but the message font, each with `"bold": true` in its `look`. Galmuri has
   no bold at this size, so each letter was drafted and then checked and corrected by hand
@@ -20,7 +22,8 @@ and shadow (`assets.json`, each slot's `look`).
   (`tools/galmuri/galmuri7-additions.txt`).
 
 `tools/galmuri_afterglow.py` builds the two Afterglow fonts from those files. Together they
-draw Latin with accents, Greek and Cyrillic in every slot. Each built image carries only
+draw, in every slot and weight, the Latin, Greek and Cyrillic of the languages listed in
+`backends/harmony_one/locale/README.md`. Each built image carries only
 the glyphs its own text uses, at most 127 different characters in one slot.
 
 ## Your own font

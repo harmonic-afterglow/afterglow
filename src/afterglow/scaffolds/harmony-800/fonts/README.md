@@ -6,11 +6,13 @@ and shadow (`assets.json`, each slot's `look`).
 
 ## The default: Galmuri
 
-`galmuri/` holds Galmuri 11 (the 18-pixel slots: labels, rows, titles, softkeys) and
-Galmuri 9 (the 13-pixel slots: the clock, page counters), drawn at their own sizes on the
+`galmuri/` holds Galmuri Afterglow 11 (the 18-pixel slots: labels, rows, titles, softkeys)
+and Galmuri Afterglow 9 (the 13-pixel slots: the clock, page counters) - Lee Minseo's
+Galmuri 11 and 9 with what translations need that they lack, from
+`tools/galmuri/galmuri11-additions.txt` and `galmuri9-additions.txt` - drawn at their own sizes on the
 Harmony 800's 240 x 320 screen, as gzipped BDF bitmap fonts, under the SIL Open Font License
-(`galmuri/OFL.txt`). Galmuri 7 is the Harmony One's small face, kept with them. `assets.json` names them under `typeface`. They cover Latin with
-accents, Greek and Cyrillic. Each built image carries only the glyphs its own text uses,
+(`galmuri/OFL.txt`). Galmuri 7 is the Harmony One's small face, kept with them. `assets.json` names them under `typeface`. They draw the Latin, Greek
+and Cyrillic of the languages listed in `backends/harmony_800/locale/README.md`. Each built image carries only the glyphs its own text uses,
 at most 127 different characters in one slot.
 
 The slots the Harmony One draws bold - every regular-size slot but the message font, each
