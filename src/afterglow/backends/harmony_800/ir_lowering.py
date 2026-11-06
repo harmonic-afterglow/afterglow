@@ -3,7 +3,7 @@
 This module stops at native, relocatable pieces. Object indexes and placement in a GSPM
 image belong to later build stages and must not be inferred from waveform bytes.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/commands.md
 """
 from __future__ import annotations
 

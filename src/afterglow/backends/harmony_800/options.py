@@ -3,7 +3,7 @@
 Every Logitech configuration carries the same settings behind its Options screen, and they
 used to be copied from a donor, which also copied the donor's language and the year it was
 built in. They are built here instead, from the reading of upstairs' screens recorded in
-docs/harmony_one/gspm.md ("The Options screens"): a chain of pickers - year, month, day,
+docs/harmony_one/options.md: a chain of pickers - year, month, day,
 hour, minute, morning or afternoon - each writing one clock variable and opening the next,
 and five sensitivity levels that each write the firmware's setting byte and confirm it.
 
@@ -33,7 +33,7 @@ SILENT = [0xFFFF, MODE_STACK]             # the next variable write runs no tran
 SHOW_PAGE = (0xF776, REGISTER)            # queue (accumulator, 0x76): show that page
 CURRENT_PAGE = (0xE700, REGISTER)         # the page shown, into the accumulator
 LOAD = 0xFB00
-# `0x1F` bands that move a value between a variable and the registers (gspm.md)
+# `0x1F` bands that move a value between a variable and the registers (options.md)
 TO_ACC, FROM_ACC, FROM_BYTE, TO_BYTE, ADD_BYTE = 0xEF, 0xED, 0xEE, 0xF0, 0xFA
 DAY_SET, CLOCK_SET, REFRESH = 0xFFF8, 0xFFF9, 0xFFF7   # `0x07`: after a date, a time, a redraw
 

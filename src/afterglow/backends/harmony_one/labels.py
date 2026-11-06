@@ -25,7 +25,7 @@ image's own unaccented letter with a mark above it: a glyph whose pixels are exa
 letter the image has read, with ink only above that letter's own, is that letter with the
 mark its extra ink makes - two dots, a ring, or a stroke leaning one way or the other.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/reading.md
 """
 
 from __future__ import annotations

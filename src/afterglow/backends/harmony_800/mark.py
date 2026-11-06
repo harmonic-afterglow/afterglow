@@ -13,7 +13,7 @@ starts, so the end vector alone finds it.
 
 Pure standard library.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/image.md
 """
 
 from __future__ import annotations

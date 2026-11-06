@@ -2,7 +2,7 @@
 it is drawn over, an activity's icon on its starting screen, and a favourite's logo on its
 button - each composed so it needs no transparency.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

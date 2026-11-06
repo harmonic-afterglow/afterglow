@@ -3,7 +3,7 @@ notices and the system messages - carried into a generated image from the scaffo
 model (platform/system-screens.json), at the ordinals and template indices the firmware
 looks for.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/firmware.md
 """
 
 from __future__ import annotations

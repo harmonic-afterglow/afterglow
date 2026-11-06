@@ -1,7 +1,7 @@
 """A project's devices as a generated Harmony 800 holds them: commands lowered to records,
 power and inputs as state variables, and the keys a device page binds.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 
 from __future__ import annotations

@@ -55,7 +55,7 @@ configurations import and build - every command rendered into recorded sequences
 sequence table byte for byte - but no build has yet been flashed to one. The 1000
 stores configurations the same way as the 900 and has donor evidence, but has not been
 flashed. Harmony One is `experimental`: its configurations are generated from a project
-(docs/harmony_one/gspm.md) and have booted and run activities on testers' remotes, but
+([generating.md](../harmony_one/generating.md)) and have booted and run activities on testers' remotes, but
 none has gone through the first-write process. The 880, 890 and 76x use a different
 architecture and nothing in these documents applies to them.
 

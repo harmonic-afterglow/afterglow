@@ -9,7 +9,7 @@ each device's number keypad after its pages, the rest of the Activities menu, ea
 activity's screens, then Help with nothing running,
 Options' second page and the Tutorial.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations

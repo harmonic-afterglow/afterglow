@@ -1,11 +1,12 @@
 """The idle machine a generated Harmony 800 runs: keypad lights, their timers, the events.
 
-The firmware lights nothing by itself - the factory image has no light instruction and its
-keys stay dark - so every Logitech configuration carries a small machine that lights the
-keypad when a key is pressed, darkens it when a timer runs out, lights the zones the shown
-screen uses, and answers the events the firmware posts: USB in and out, charging, the side
-strips - and, while the remote charges, shows the charging screens in a ring. docs/harmony_one/gspm.md, "The idle layer", is its specification, read from
-upstairs by running its handlers under every combination of the platform's variables.
+The firmware lights nothing by itself - the factory image has no light instruction and its keys
+stay dark - so every Logitech configuration carries a small machine that lights the keypad when
+a key is pressed, darkens it when a timer runs out, lights the zones the shown screen uses, and
+answers the events the firmware posts: USB in and out, charging, the side strips - and, while
+the remote charges, shows the charging screens in a ring. docs/harmony_one/idle.md is its
+specification, read from upstairs by running its handlers under every combination of the
+platform's variables.
 
 This module builds that machine from the specification rather than carrying upstairs' own.
 It is written as a model in the carried-screens form - objects, timers and variables named
@@ -20,11 +21,11 @@ import copy
 from . import structures
 
 
-# Opcodes and bands, as the Harmony 800's interpreter reads them (gspm.md).
+# Opcodes and bands, as the Harmony 800's interpreter reads them (harmony-800-firmware.md).
 OBJECT = 0x7F
 ENTER_MODE = 0x7E
 REGISTER = 0x1F          # band FB loads the byte register, EB/EA start/stop a timer
-SETTING = 0x3F           # band C0 a light channel, F0-FF the firmware's settings (gspm.md)
+SETTING = 0x3F           # band C0 a light channel, F0-FF the firmware's settings
 MODE_STACK = 0x07        # FFFD push the current mode, FFFC pop it, FFFF a silent write
 TEST = 0x71              # compare a variable with the byte register
 BEEP = 0x75
@@ -36,19 +37,19 @@ EQUAL, NOT_EQUAL, AT_MOST = 0x00, 0x01, 0x04
 INVERT = 0x80            # the test drops the next instruction when it holds
 PUSH_MODE, POP_MODE, SILENT = 0xFFFD, 0xFFFC, 0xFFFF
 STATUS = 0xFFFB          # stop every running timer (the firmware runs at most four)
-CHARGE = 0xE8            # `1F E8xx`: the context under 0xFC on the key stack (gspm.md)
+CHARGE = 0xE8            # `1F E8xx`: the context under 0xFC on the key stack
 PREVIOUS_PAGE, NEXT_PAGE = 0xFFA0, 0xFFA1
 
-# Light channels (gspm.md): the screen backlight, the keypad, and eight zones.
+# Light channels (idle.md): the screen backlight, the keypad, and eight zones.
 SCREEN = 0x11
-# The 800's lights (lights.py, gsgd.md "Lights"), as asdfgpio's 800 named them: LED 0 the
-# left arrow, 1 the right arrow, 2 and 3 the touch areas below the display, left and right,
-# 4 the remote's keys, 5 the keyboard and 6 the power key. The keys, the keyboard and the
-# power key light at level 4 whenever the remote is awake, as Logitech's own 800 image
-# lights them. The touch areas light per screen as the One's zones do - the arrows where
-# there are pages to turn, a softkey's area where the screen has that softkey - at the
-# level Logitech's image gives them; the One's zones are two colours of each light and the
-# 800 has one, so both colours of a zone light the same LED (zone_light).
+# The 800's lights (lights.py, harmony_800/hardware.md "Lights"), as asdfgpio's 800 named them:
+# LED 0 the left arrow, 1 the right arrow, 2 and 3 the touch areas below the display, left and
+# right, 4 the remote's keys, 5 the keyboard and 6 the power key. The keys, the keyboard and the
+# power key light at level 4 whenever the remote is awake, as Logitech's own 800 image lights
+# them. The touch areas light per screen as the One's zones do - the arrows where there are
+# pages to turn, a softkey's area where the screen has that softkey - at the level Logitech's
+# image gives them; the One's zones are two colours of each light and the 800 has one, so both
+# colours of a zone light the same LED (zone_light).
 KEYPAD = (4, 5, 6)
 TOUCH = (0, 1, 2, 3)
 ZONES = 8
@@ -61,7 +62,7 @@ SCREEN_LEVEL, KEY_LEVEL, TOUCH_LEVEL = 6, 4, 1
 LIGHTS_OUT = (0xF101, SETTING)
 MOTION_OFF = (0xF100, SETTING)
 
-# The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, HOLD and
+# The platform's variables are the firmware's (idle.md): battery level 0-7, USB, HOLD and
 # CHARGING as upstairs tests them, and AWAKE - the infrared engine's state, 0 when idle.
 BATTERY, HOLD, CHARGING, USB, AWAKE = 9, 13, 15, 16, 17
 LOW_BATTERY = 2
@@ -74,7 +75,7 @@ OFF_DURATION, POLL_DURATION = 10, 2
 # problem's notice stays lit for PROBLEM_SHOWN.
 SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, CHARGING_DARK, PROBLEM_SHOWN = 5, 5, 1, 25, 20
 
-# What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
+# What each kind of screen lights, as every donor's screens of that kind do (idle.md):
 # the arrows light only where there are pages to turn, a softkey's bar only where the
 # screen has that softkey. Screens of no kind - an activity starting - light nothing.
 SCREEN_ZONES = {
@@ -99,7 +100,7 @@ ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
 IR_STATE = 0x30          # the 800's own: the infrared engine's state changed
-# The firmware's charging events (gspm.md, "Where the events come from"): external power
+# The firmware's charging events (idle.md, "Where the events come from"): external power
 # removed and connected - lifted off the cradle and set on it - and a charger fault.
 CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
 # The battery level went up: on the cradle, as it charges.
@@ -119,7 +120,7 @@ def light(channel: int, level: int, flag: int = 0) -> list:
 
 def zone_light(zone: int, level: int) -> list:
     """A One zone's light on the 800: zones 0/1 the left arrow, 2/3 the right one, 4/5
-    the left softkey's area, 6/7 the right one's (harmony_one/gspm.md), each pair the two
+    the left softkey's area, 6/7 the right one's (harmony_one/idle.md), each pair the two
     colours of one light, which on the 800 is one LED of one colour."""
     return light(TOUCH[zone // 2], TOUCH_LEVEL if level else 0)
 
@@ -315,7 +316,7 @@ class _Machine:
             # The 800's infrared engine posts 0x30 each time its state changes and waits
             # until the event is answered; Logitech's 800 image answers `07 FFFA`. A build
             # that left it unanswered sent its first command and no other, kept the IR
-            # indicator up and never slept (gsgd.md, "Events").
+            # indicator up and never slept (harmony_800/lists-and-instructions.md, "Events").
             structures.NATIVE | IR_STATE: [0xFFFA, MODE_STACK],
             0x25: [0, 0],
             0xAE: m.object([[BEEP_PAGE, BEEP], [PREVIOUS_PAGE, PAGE]]),
@@ -356,7 +357,7 @@ class _Machine:
 
     def key_rows(self) -> dict[int, list]:
         """Two codes below the keys run the key light too, as both donors have them:
-        0x17, which wakes the remote when it is picked up (gspm.md), with its own firmware
+        0x17, which wakes the remote when it is picked up (idle.md), with its own firmware
         steps first and lights-out's setting byte after, and 0x30, a plain wake."""
         m = self.m
         return {

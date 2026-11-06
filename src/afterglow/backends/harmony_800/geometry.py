@@ -9,7 +9,7 @@ and its touch zones are carried from the One's touch units, through the One's pi
 the 800's. The status bar is the One's too, and sits at the display's top right
 (STATUS_ORIGIN).
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/drawing.md
 """
 
 from __future__ import annotations

@@ -14,7 +14,7 @@ characters it draws - and then runs the layout in its order: the platform's obje
 (activity_screens.py), and finally placement and the tables (assemble.py). Every number
 in an image is a position, so that order is what makes a build the same each time.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations

@@ -14,7 +14,7 @@ joined the way the image's own builder split them.
 
 What cannot be read is not guessed: a command no button names keeps a numbered name.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/reading.md
 """
 
 from __future__ import annotations
@@ -582,11 +582,11 @@ def _state(states: dict, record: dict, power, image: Image, gates=None, others=N
                 variable, held = gate
                 app = (gates[variable]["timer_ms"] or held if not gates[variable]["ours"]
                        else held + states.get("power", {}).get("delay_ms", 0))
-            # Logitech's configurations carry the input delay in the input's own command
-            # object, its 0x7C in tenths (Kāt's Hisense: InputDelay 1000, 10 there and on
-            # no other command): the code held that long, which keeps the device busy as
-            # long (gspm.md, probe BO). Ours is a wait after the send. Either way the next
-            # command comes that much later, which is what the input delay says.
+            # Logitech's configurations carry the input delay in the input's own command object,
+            # its 0x7C in tenths (Kāt's Hisense: InputDelay 1000, 10 there and on no other
+            # command): the code held that long, which keeps the device busy as long
+            # (harmony_one/activities.md, probe BO). Ours is a wait after the send. Either way
+            # the next command comes that much later, which is what the input delay says.
             sends = [step for step in image.steps(item["operand"]) if step[0] == SEND] \
                 if item["category"] == OBJECT else []
             if len(sends) == 1 and sends[0][2] > 1 and steps and steps[-1][0] == SEND:

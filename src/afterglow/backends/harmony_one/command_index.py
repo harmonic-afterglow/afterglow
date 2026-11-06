@@ -4,7 +4,7 @@ Section 5 is the path the firmware uses to resolve the high and low bytes of a c
 ID. It owns command records; byte-pattern scans do not. Section-11 command objects add
 runtime device IDs, which are retained as evidence rather than mistaken for device names.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/commands.md
 """
 from __future__ import annotations
 

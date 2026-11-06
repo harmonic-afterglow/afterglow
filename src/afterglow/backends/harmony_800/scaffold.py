@@ -5,7 +5,7 @@ the configuration's: the screen ordinals it reserves for its own notices, and th
 sections every image measured holds byte for byte. They are recorded here, with the
 evidence, rather than copied from a donor.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ SYSTEM_SCREENS = 40
 
 # Section 16 indexes section 15's tail at these offsets: the 800's own tables, from a
 # factory remote's /cfg/usercfg (platform/platform.json, "properties") - but for tables
-# 6 and 7, the battery's levels, which are the One's (docs/harmony_800/gsgd.md, "Battery
+# 6 and 7, the battery's levels, which are the One's (docs/harmony_800/hardware.md, "Battery
 # levels").
 SECTION_16_OFFSETS = (0, 3, 16, 19, 28, 31, 40, 73, 106, 109, 114)
 

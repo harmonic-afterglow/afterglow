@@ -5,7 +5,7 @@ the configuration's: the screen ordinals it reserves for its own notices, and th
 sections every image measured holds byte for byte. They are recorded here, with the
 evidence, rather than copied from a donor.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations

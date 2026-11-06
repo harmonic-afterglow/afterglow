@@ -5,7 +5,7 @@ Those models name what they use symbolically: an object of their own, a mode, a 
 switch table, a variable, the hub's screens. This translates each name into the number
 the image gives it, and reserves the carried modes with their programs.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/firmware.md
 """
 
 from __future__ import annotations

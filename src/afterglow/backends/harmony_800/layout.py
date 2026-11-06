@@ -7,7 +7,7 @@ makes a build reproducible. What a mode's programs point at is placed later, so 
 is reserved whole when it is numbered and its programs are written once everything has an
 address (assemble.py).
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations
@@ -21,10 +21,10 @@ from .structures import OBJECT_ATOM, object_body
 # screen's labels, the activities' screens - in the space model blocks use (scaffold.py).
 ACTIVITY_BLOCK = 0xFA0000
 
-# The firmware's instruction queue holds 40 and drops what does not fit, and running an
-# object puts all of its atoms at the head of the queue at once (the Harmony 800's
-# section-11 runner, gspm.md). No handler in any donor queues more than 16 deep; a build
-# keeps every object to this many atoms, so its handlers stay as shallow.
+# The firmware's instruction queue holds 40 and drops what does not fit, and running an object
+# puts all of its atoms at the head of the queue at once (the Harmony 800's section-11 runner,
+# harmony_one/harmony-800-firmware.md). No handler in any donor queues more than 16 deep; a
+# build keeps every object to this many atoms, so its handlers stay as shallow.
 OBJECT_ATOMS = 8
 # Atoms that must stay next to the one after them: a test drops the next instruction, and
 # `07 FFFF` silences the next write.

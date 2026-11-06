@@ -5,7 +5,7 @@ follows section-11 object references to IDs already owned by section 5. Navigati
 multi-command actions, and other classes stay explicitly counted rather than being
 flattened into portable hard-key assignments.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/screens.md
 """
 from __future__ import annotations
 

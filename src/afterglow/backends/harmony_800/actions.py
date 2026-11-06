@@ -2,7 +2,7 @@
 instructions that send a device's command, wait before its next send, or write its power
 and input variables, whose transitions send what changing them takes.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 
 from __future__ import annotations

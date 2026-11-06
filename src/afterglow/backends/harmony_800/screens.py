@@ -5,7 +5,7 @@ counter, and the platform's handlers in its list.
 The features (hub.py, activity_screens.py, options_screens.py) say what a screen shows and
 binds; this says how a screen of theirs is reserved and drawn.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations
@@ -19,11 +19,11 @@ from .scaffold import ENTER
 from .structures import DRAW_OVERLAY, OBJECT_ATOM
 
 
-# The 800: a screen this backend builds is drawn on the 800's own display (geometry.py),
-# and its backdrop - the One's is black - fills the whole display. It is a picture, as
-# every Logitech image's is: the drawing VM's rectangle (opcode 01) writes its pixels
-# without selecting the LCD (FUN_08010dc4 toggles only D/C), so after the first picture
-# has released the panel's chip select a rectangle draws nothing (gsgd.md, "Drawing").
+# The 800: a screen this backend builds is drawn on the 800's own display (geometry.py), and its
+# backdrop - the One's is black - fills the whole display. It is a picture, as every Logitech
+# image's is: the drawing VM's rectangle (opcode 01) writes its pixels without selecting the LCD
+# (FUN_08010dc4 toggles only D/C), so after the first picture has released the panel's chip
+# select a rectangle draws nothing (harmony_800/drawing.md, "Drawing").
 BACKDROP = "backdrop"
 
 # Over it, a screen of the 800's own draws its title bar and softkey bar, as Logitech's 800

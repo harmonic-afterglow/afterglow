@@ -12,7 +12,7 @@ Two fonts count as the same typeface only when they declare the same height and 
 code they both carry has an identical decoded shape. Where compatible fonts disagree
 about a code, that code is left unresolved rather than picked from one of them.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

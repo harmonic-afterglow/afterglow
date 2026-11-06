@@ -13,7 +13,7 @@ font glyph uses. Nothing in the format carries
 an alpha channel; a run simply declines to write, so what was already on the screen shows
 through.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

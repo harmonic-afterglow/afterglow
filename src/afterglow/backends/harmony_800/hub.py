@@ -1,7 +1,7 @@
 """The hub every Logitech configuration has, devices or not: the Activities screen it boots
 into, the device menu behind Devices, and each device's pages of command buttons.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations

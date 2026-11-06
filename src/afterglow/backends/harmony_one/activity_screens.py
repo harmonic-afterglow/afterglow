@@ -4,7 +4,7 @@ and the Remote Assistant's questions, and the section-10 context that starts it 
 
 What each activity does was planned already (activities.py); this lays it out.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 
 from __future__ import annotations

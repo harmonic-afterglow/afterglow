@@ -4,7 +4,7 @@ pages, softkeys, titles and counters, at the places every donor draws them.
 These return drawing programs (drawing.py) and never place anything; the screens that use
 them are laid out by layout.py.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations

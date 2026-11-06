@@ -6,7 +6,7 @@ pixels that are ink, and the ones that are left alone. A text's codes are 1-base
 indexes into its font, so the build chooses them: printable ASCII, then whatever else the
 image's labels use, in the order they first appear.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/drawing.md
 """
 
 from __future__ import annotations

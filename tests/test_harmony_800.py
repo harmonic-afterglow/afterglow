@@ -1,6 +1,6 @@
 """The Harmony 800 backend: images read as the 800's firmware reads them.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/README.md
 """
 
 from __future__ import annotations
@@ -249,8 +249,8 @@ def _first_draw(image, at, depth=0):
 
 def test_every_page_clears_the_display_with_a_picture(image):
     """The drawing VM's rectangle writes without selecting the LCD, so after any picture it
-    draws nothing (gsgd.md, "Drawing"): the screens this backend builds begin with the
-    full-screen backdrop, as every Logitech image's do, and draw no rectangle."""
+    draws nothing (harmony_800/drawing.md, "Drawing"): the screens this backend builds begin
+    with the full-screen backdrop, as every Logitech image's do, and draw no rectangle."""
     for k, screen in enumerate(_screens(image)):
         ops = set()
         _walk(image, screen["program"], ops=ops)
@@ -286,8 +286,8 @@ def test_the_firmware_takes_the_checksum_an_image_stores(image, empty):
     assert gsgd.checksum(b"\x01\x02\x03", 3) == (0x21 ^ 0x01 ^ 0x03, 0x43 ^ 0x02)
 
 
-# What the 800's firmware posts as an event (gsgd.md, "Events"), the codes a mode or
-# context answers, and 0x30, which Logitech's own image answers.
+# What the 800's firmware posts as an event (harmony_800/lists-and-instructions.md, "Events"),
+# the codes a mode or context answers, and 0x30, which Logitech's own image answers.
 EVENTS_800 = set(range(0x17, 0x2F)) | {0x30, 0x31, 0x32, 0x33, 0x34, 0x01, 0x02, 0x05, 0x06, 0x07}
 
 
@@ -328,7 +328,8 @@ def test_lights_name_the_800s_channels(image):
 
 def test_the_ir_engine_is_answered_each_time_its_state_changes(image):
     """The 800's infrared engine posts 0x30 when its state changes and waits for it to be
-    answered; unanswered, the first command was the only one sent (gsgd.md, "Events")."""
+    answered; unanswered, the first command was the only one sent
+    (harmony_800/lists-and-instructions.md, "Events")."""
     answers = [(operand, category) for at in _contexts(image)
                for tag, operand, category in _rows(image, at) if tag == 0x30]
     assert (0xFFFA, 0x07) in answers

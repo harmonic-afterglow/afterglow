@@ -1037,11 +1037,11 @@ def test_section_nine_opens_with_the_list_that_starts_the_image():
 
 class _Idle:
     """A generated image's instructions run the way the Harmony 800's interpreter runs
-    them (gspm.md): an object's instructions in place, a failed test dropping the next
-    one, `0x3F` band C0 setting a light channel, entering a mode running the shown
-    screen's leave handler and then the new one's enter handler. What leaves the
-    interpreter is kept: the level of every channel, the timers running, the variables,
-    the screen shown and the ones pushed under it."""
+    them (harmony-800-firmware.md): an object's instructions in place, a failed test dropping
+    the next one, `0x3F` band C0 setting a light channel, entering a mode running the shown
+    screen's leave handler and then the new one's enter handler. What leaves the interpreter is
+    kept: the level of every channel, the timers running, the variables, the screen shown and
+    the ones pushed under it."""
 
     def __init__(self, image):
         self.image = image
