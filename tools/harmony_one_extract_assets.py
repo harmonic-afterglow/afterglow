@@ -523,7 +523,7 @@ def donor_bookkeeping(atoms: list) -> tuple[list, int]:
 
 
 CHARGE_BAND = 0xE8
-# What a charge context is for, by the battery events it answers (gspm.md).
+# What a charge context is for, by the battery events it answers (docs/harmony_one/idle.md).
 CHARGE_EVENTS = {frozenset((0x1A, 0x1B, 0x1C, 0x1D)): "normal", frozenset((0x1E,)): "usb",
                  frozenset((0x18, 0x19)): "low"}
 

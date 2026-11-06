@@ -3,7 +3,7 @@
 This module reports structures without assigning portable meaning to them. Classification
 is evidence for the next importer slice, not permission to mutate or relocate the image.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/commands.md
 """
 
 from __future__ import annotations

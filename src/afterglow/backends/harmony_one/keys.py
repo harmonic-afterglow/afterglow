@@ -6,7 +6,7 @@ A project names keys the way every Harmony remote's software does - `VolumeUp`,
 for key `0x80 | scan`. This is the one table between the two, and the three keys the
 firmware's flow owns rather than any device: Activities, Off and Help.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ COMMAND_KEYS = tuple(name for name, scan in SCANS.items()
 
 
 # Names a key's own command goes by in Logitech's database besides the key's: the digits
-# are "1" to "0", mute is "Mute" (gspm.md, "A page you can press").
+# are "1" to "0", mute is "Mute" (harmony_one/generating.md, "A page you can press").
 _OWN_NAMES = {**{f"Number{digit}": (str(digit),) for digit in range(10)},
               "VolumeMute": ("Mute",), "NumberEnter": ("Enter",)}
 

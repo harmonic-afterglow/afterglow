@@ -7,7 +7,7 @@ to the remote's `/cfg/usercfg`. Reading an image back gives the project it was b
 which every image Afterglow builds carries in its mark (mark.py); the 800's own
 configurations from Logitech carry none and are not supported.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/image.md
 """
 
 from __future__ import annotations

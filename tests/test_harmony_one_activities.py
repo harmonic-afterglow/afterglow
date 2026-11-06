@@ -1,8 +1,8 @@
 """A generated Harmony One's activities, run the way the remote runs them.
 
-The interpreter here follows the Harmony 800's (gspm.md): a write fires the variable's
-transitions, selecting a context runs the old one's leave and the new one's enter (or its
-tag 5 when it is already running), a switch runs the program its table gives the
+The interpreter here follows the Harmony 800's (harmony_one/harmony-800-firmware.md): a write
+fires the variable's transitions, selecting a context runs the old one's leave and the new one's
+enter (or its tag 5 when it is already running), a switch runs the program its table gives the
 variable's value. What reaches the infrared queue is logged as device and command.
 """
 from __future__ import annotations
@@ -351,9 +351,9 @@ def test_a_step_the_one_cannot_take_is_reported_and_a_missing_command_refused():
 
 
 def test_every_charge_context_the_key_stack_can_select_is_there(remote):
-    # `1F E8xx` puts context xx under 0xFC on the key stack, which the firmware looks up
-    # before the screen itself (the Harmony 800's key lookup, gspm.md). Every one a build
-    # selects must exist and only pass the battery events on, or a remote on USB would
+    # `1F E8xx` puts context xx under 0xFC on the key stack, which the firmware looks up before
+    # the screen itself (the Harmony 800's key lookup, harmony-800-firmware.md). Every one a
+    # build selects must exist and only pass the battery events on, or a remote on USB would
     # look its keys up in an activity's context, or past the end of section 10.
     image = remote["image"]
     contexts = activity_index.contexts(image)

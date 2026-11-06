@@ -14,7 +14,7 @@ alone, so a soft edge has to become a hard one. Both are reported rather than do
 quietly, because a picture that looked right in the editor and wrong on the remote is
 exactly the failure this module exists to prevent.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

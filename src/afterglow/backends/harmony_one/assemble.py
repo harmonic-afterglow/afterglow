@@ -7,7 +7,7 @@ derived range covers its own table and nothing else, then the checksum and `PTYY
 Section 9 is the exception that proves the order matters: it is not a table but the key
 registers themselves, back to back between 7 and 10, as in every donor.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations

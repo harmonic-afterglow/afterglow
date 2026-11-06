@@ -6,7 +6,7 @@ currently established by independent images; unknown layouts remain undecoded.
 Bitmap parsing is still required so a claimed layout cannot silently include a
 code for which the image has no drawable glyph.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

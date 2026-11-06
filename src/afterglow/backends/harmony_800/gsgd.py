@@ -1,6 +1,6 @@
 """The Harmony 800's configuration image: header, section pointers, checksum and close.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/image.md
 """
 
 from __future__ import annotations

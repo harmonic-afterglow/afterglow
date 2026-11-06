@@ -5,7 +5,7 @@ counter, and the platform's handlers in its list.
 The features (hub.py, activity_screens.py, options_screens.py) say what a screen shows and
 binds; this says how a screen of theirs is reserved and drawn.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations

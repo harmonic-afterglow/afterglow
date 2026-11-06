@@ -7,7 +7,7 @@ place whose key the device lacks keeps its label and does nothing.
 Back, the left softkey, and the 123 key go back to the pages it was opened from; Devices
 opens the device list.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 
 from __future__ import annotations

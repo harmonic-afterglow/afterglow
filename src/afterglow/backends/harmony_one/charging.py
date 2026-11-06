@@ -7,7 +7,7 @@ enters the next when its timer runs out. Every key starts the ring again from th
 battery, so a key pressed on the cradle does nothing else. The pictures are the scaffold's
 `charging/*`, so a theme can replace them.
 
-Format reference: docs/harmony_one/gspm.md, "Charging"
+Format reference: docs/harmony_one/idle.md, "Charging"
 """
 
 from __future__ import annotations

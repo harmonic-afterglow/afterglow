@@ -5,7 +5,7 @@ device objects, font and engine records, and the clock stamp: each written exact
 measured in Logitech's images. Where they go is the layout's business; these only say
 what the bytes are.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations

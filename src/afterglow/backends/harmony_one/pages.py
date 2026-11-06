@@ -4,7 +4,7 @@ pages, softkeys, titles and counters, at the places every donor draws them.
 These return drawing programs (drawing.py) and never place anything; the screens that use
 them are laid out by layout.py.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/generating.md
 """
 
 from __future__ import annotations
@@ -219,7 +219,7 @@ def softkey_label(text: str, font: dict, attribute: int, xy) -> list[dict]:
 # Which fonts follow the screen: cyan for Activities, green for Options, orange for the
 # device screens.
 TITLE_XY = (6, 4)
-# what the status bar leaves of the top line: its icons start at x 128 (gspm.md, "the
+# what the status bar leaves of the top line: its icons start at x 128 (drawing.md, "the
 # status bar"), the clock is on the line below
 TITLE_ROOM = 120
 PAGE_COUNTER_Y = 18

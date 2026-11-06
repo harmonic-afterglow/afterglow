@@ -12,7 +12,7 @@ Nothing is dropped quietly: a step this remote cannot carry out is recorded in t
 ``skipped`` list with the reason, and a step naming a device or command the project does
 not have is refused, since the activity would start differently from how it was written.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activities.md
 """
 from __future__ import annotations
 

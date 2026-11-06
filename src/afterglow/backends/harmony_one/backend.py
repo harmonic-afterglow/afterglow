@@ -5,7 +5,7 @@ settings (generate.py) - nothing is carried from a previous configuration. Readi
 image validates it and recovers what is proven of its devices, keeping the native payload
 unchanged.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/README.md
 """
 
 from __future__ import annotations

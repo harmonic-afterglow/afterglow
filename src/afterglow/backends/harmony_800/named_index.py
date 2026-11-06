@@ -4,7 +4,7 @@ Restricting the grammar to section 0 and requiring a contiguous chain closed by 
 prevents ordinary bitmap or program bytes from becoming names merely because they resemble
 an A7 record.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activity-engine.md
 """
 from __future__ import annotations
 

@@ -28,7 +28,7 @@ SLOTS = {11: {"baseline": 9, "cap": 7}, 14: {"baseline": 11, "cap": 8},
 
 # The characters every slot carries unless a build says which: printable ASCII, numbered
 # from 1. Every word an image draws is set by its build, so the codes are the build's to
-# choose (gspm.md, "Words are the build's own, and so are the font codes").
+# choose (harmony_one/generating.md, "Words are the build's own, and so are the font codes").
 REPERTOIRE = tuple(chr(code) for code in range(0x20, 0x7F))
 
 

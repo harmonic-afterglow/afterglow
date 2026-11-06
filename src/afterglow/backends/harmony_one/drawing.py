@@ -11,7 +11,7 @@ program in a donor and getting its own bytes back. Relocating or generating a pr
 is then a matter of what addresses the instructions are given, not of guessing their
 shape.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/drawing.md
 """
 
 from __future__ import annotations

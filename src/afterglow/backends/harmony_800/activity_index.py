@@ -4,7 +4,7 @@ An activity is retained as native evidence unless its section-10 ENTER/REFRESH h
 section-14 transitions reach indexed commands unambiguously. An empty result is explicitly
 undetermined because RE-HARMONY did not establish the separate All Off/default-state path.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/activity-engine.md
 """
 from __future__ import annotations
 

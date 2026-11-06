@@ -1,6 +1,6 @@
 """The 800's lists: handler lists, key registers and contexts, and the instructions in them.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/lists-and-instructions.md
 """
 
 from __future__ import annotations
@@ -13,11 +13,11 @@ KEY_DOWN = 0xC000
 KEY_UP = 0x8000
 MAX_ROWS = 0xFF
 
-# Events a screen's list or a context answers (gsgd.md, "Lists").
+# Events a screen's list or a context answers (lists-and-instructions.md, "Lists").
 ENTER = 0x06
 LEAVE = 0x07
 
-# Opcodes (gsgd.md, "Instructions").
+# Opcodes (lists-and-instructions.md, "Instructions").
 OBJECT = 0x7F
 SCREEN = 0x7E
 IR_SEND = 0x7D

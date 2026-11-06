@@ -6,7 +6,7 @@ selector. This module derives them from a configuration and refuses any that the
 does not agree on, which is how the scaffold's artwork is extracted
 (tools/harmony_one_extract_assets.py). It names resources; it does not invent them.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/screens.md
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@ device objects, font and engine records, and the clock stamp: each written exact
 measured in Logitech's images. Where they go is the layout's business; these only say
 what the bytes are.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations
@@ -77,10 +77,10 @@ def device_objects(
 EMPTY_KEY_REGISTER = b"\x00\x00\x00"
 
 
-# The One's events (harmony_one/gspm.md, "Where the events come from") under the numbers the
-# 800's firmware posts for the same thing (gsgd.md, "Events"). The battery levels 0-5 (0x18-
-# 0x1D), motion (0x17), USB changed (0x2D), a mode entered or left (0x06, 0x07) and a
-# context's own codes (1, 2, 5) are the same on both.
+# The One's events (harmony_one/idle.md, "Where the events come from") under the numbers the
+# 800's firmware posts for the same thing (harmony_800/lists-and-instructions.md, "Events"). The
+# battery levels 0-5 (0x18-0x1D), motion (0x17), USB changed (0x2D), a mode entered or left
+# (0x06, 0x07) and a context's own codes (1, 2, 5) are the same on both.
 EVENTS = {
     0x0F: 0x20, 0x10: 0x21,          # the battery level went up / down
     0x0D: 0x1E, 0x0E: 0x1F,          # the battery at level 6 / 7
@@ -101,7 +101,7 @@ NATIVE = 0x10000
 def tag(code: int) -> int:
     """The 800's list tag for a One key code: an event is renumbered to the 800's (EVENTS);
     a key or touch zone going down, the One's `0x80 | n`, is the 800's `0xC000 | n`
-    (gsgd.md, "Lists"). A code marked NATIVE is the 800's already."""
+    (harmony_800/lists-and-instructions.md, "Lists"). A code marked NATIVE is the 800's already."""
     if code & NATIVE and code <= NATIVE | 0xFFFF:
         return code & 0xFFFF
     if code > 0xFF:                  # already an 800 tag: a keyboard key, say

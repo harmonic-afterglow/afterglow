@@ -5,7 +5,7 @@ through this module as the One's address `GSPM`: its base, its marker, its secti
 seal. Here those names are the 800's `GSGD` (gsgd.py): base `0x050000`, `CHJL`, `OGSA`, all
 twenty sections present.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/image.md
 """
 
 from __future__ import annotations

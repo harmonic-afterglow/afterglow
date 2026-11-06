@@ -4,7 +4,7 @@ With activities Options has Logitech's two pages - the Remote Assistant, the Tut
 Date and Time, then Screen Sounds and Screen Sensitivity - and without them the one page
 of the last three. The screens it opens are carried (options.py, carried.py).
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/options.md
 """
 
 from __future__ import annotations

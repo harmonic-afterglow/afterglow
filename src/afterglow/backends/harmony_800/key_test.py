@@ -1,20 +1,20 @@
 """The key test: a screen that names the code of whatever is pressed on the remote.
 
 The 800's hard keys, keyboard and touch areas beyond the display all arrive as list tags
-(gsgd.md, "Lists"), and which code each key sends has not been read anywhere. This screen
-answers every code a list can hold besides its handlers, each by a screen showing that
-code, so a remote's owner can press every key and say what each one is. Touching the
-display goes back to Activities; the strips beside it and the panel below it, where the
-softkey bars are, show their own codes.
+(lists-and-instructions.md, "Lists"), and which code each key sends has not been read anywhere.
+This screen answers every code a list can hold besides its handlers, each by a screen showing
+that code, so a remote's owner can press every key and say what each one is. Touching the
+display goes back to Activities; the strips beside it and the panel below it, where the softkey
+bars are, show their own codes.
 
 Before it comes the light test: a page for each of the 800's seven LEDs, each lighting
 only its own LED (every other dark) and saying which it is, so the owner can say which
-light each channel is (gsgd.md, "Lights"). Touching the display moves on; after the last
+light each channel is (hardware.md, "Lights"). Touching the display moves on; after the last
 LED the key test begins. Waking the remote lights them all again, as it always does.
 
 It is reached from the device list: its right strip, on the last page, opens it.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/hardware.md
 """
 
 from __future__ import annotations

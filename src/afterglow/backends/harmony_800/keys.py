@@ -14,7 +14,7 @@ the One lacks: TV, DVR, Mouse, and Back, Home and PIP on the bottom row, named a
 Logitech's database names the commands they are for. The slide-out keyboard sends
 `0xC4xx` and is not here yet.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/hardware.md
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ COMMAND_KEYS = tuple(name for name, scan in SCANS.items() if scan not in FLOW)
 
 
 # Names a key's own command goes by in Logitech's database besides the key's: the digits
-# are "1" to "0", mute is "Mute" (gspm.md, "A page you can press").
+# are "1" to "0", mute is "Mute" (harmony_one/generating.md, "A page you can press").
 _OWN_NAMES = {**{f"Number{digit}": (str(digit),) for digit in range(10)},
               "VolumeMute": ("Mute",), "NumberEnter": ("Enter",)}
 

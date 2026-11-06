@@ -1,7 +1,7 @@
 """The One's light instructions on the 800's light channels.
 
 A light is opcode `3F` with band `C0`-`CF`: the One reads the channel from five bits,
-`(operand >> 4) & 0x1F` (harmony_one/gspm.md), and has the screen's backlight on channel
+`(operand >> 4) & 0x1F` (harmony_one/idle.md), and has the screen's backlight on channel
 `0x11`, its keypad on `0x08`-`0x0C` and `0x10`, and eight zones on 0-7. The 800 reads only
 the operand's low byte, `channel = low >> 4`, `level = (low >> 1) & 7`, `flag = low & 1`
 (`FUN_0800b61a`), and has LEDs on channels 0-6 and the display's backlight on channel 7, a
@@ -18,7 +18,7 @@ still in the One's numbering, from a carried One model, lights nothing on zone 7
 would be the 800's backlight (`one`). Instructions can pass the encoders twice, so
 `instruction` leaves channels 0-7 alone.
 
-Format reference: docs/harmony_800/gsgd.md
+Format reference: docs/harmony_800/hardware.md
 """
 
 from __future__ import annotations

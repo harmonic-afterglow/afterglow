@@ -1,11 +1,12 @@
 """The idle machine a generated Harmony One runs: keypad lights, their timers, the events.
 
-The firmware lights nothing by itself - the factory image has no light instruction and its
-keys stay dark - so every Logitech configuration carries a small machine that lights the
-keypad when a key is pressed, darkens it when a timer runs out, lights the zones the shown
-screen uses, and answers the events the firmware posts: USB in and out, charging, the side
-strips - and, while the remote charges, shows the charging screens in a ring. docs/harmony_one/gspm.md, "The idle layer", is its specification, read from
-upstairs by running its handlers under every combination of the platform's variables.
+The firmware lights nothing by itself - the factory image has no light instruction and its keys
+stay dark - so every Logitech configuration carries a small machine that lights the keypad when
+a key is pressed, darkens it when a timer runs out, lights the zones the shown screen uses, and
+answers the events the firmware posts: USB in and out, charging, the side strips - and, while
+the remote charges, shows the charging screens in a ring. docs/harmony_one/idle.md is its
+specification, read from upstairs by running its handlers under every combination of the
+platform's variables.
 
 This module builds that machine from the specification rather than carrying upstairs' own.
 It is written as a model in the carried-screens form - objects, timers and variables named
@@ -17,11 +18,11 @@ from __future__ import annotations
 
 import copy
 
-# Opcodes and bands, as the Harmony 800's interpreter reads them (gspm.md).
+# Opcodes and bands, as the Harmony 800's interpreter reads them (harmony-800-firmware.md).
 OBJECT = 0x7F
 ENTER_MODE = 0x7E
 REGISTER = 0x1F          # band FB loads the byte register, EB/EA start/stop a timer
-SETTING = 0x3F           # band C0 a light channel, F0-FF the firmware's settings (gspm.md)
+SETTING = 0x3F           # band C0 a light channel, F0-FF the firmware's settings
 MODE_STACK = 0x07        # FFFD push the current mode, FFFC pop it, FFFF a silent write
 TEST = 0x71              # compare a variable with the byte register
 BEEP = 0x75
@@ -34,10 +35,10 @@ EQUAL, NOT_EQUAL, GREATER, AT_MOST = 0x00, 0x01, 0x03, 0x04
 INVERT = 0x80            # the test drops the next instruction when it holds
 PUSH_MODE, POP_MODE, SILENT = 0xFFFD, 0xFFFC, 0xFFFF
 STATUS = 0xFFFB          # stop every running timer (the firmware runs at most four)
-CHARGE = 0xE8            # `1F E8xx`: the context under 0xFC on the key stack (gspm.md)
+CHARGE = 0xE8            # `1F E8xx`: the context under 0xFC on the key stack
 PREVIOUS_PAGE, NEXT_PAGE = 0xFFA0, 0xFFA1
 
-# Light channels (gspm.md): the screen backlight, the keypad, and eight zones.
+# Light channels (idle.md): the screen backlight, the keypad, and eight zones.
 SCREEN = 0x11
 KEYPAD = (0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x10)
 ZONES = 8
@@ -48,7 +49,7 @@ SCREEN_LEVEL, KEY_LEVEL = 6, 1
 LIGHTS_OUT = (0xF101, SETTING)
 MOTION_OFF = (0xF100, SETTING)
 
-# The platform's variables are the firmware's (gspm.md): battery level 0-7, USB, HOLD and
+# The platform's variables are the firmware's (idle.md): battery level 0-7, USB, HOLD and
 # CHARGING as upstairs tests them, and AWAKE - the infrared engine's state, 0 when idle.
 BATTERY, HOLD, CHARGING, USB, AWAKE = 9, 13, 15, 16, 17
 LOW_BATTERY = 2
@@ -65,7 +66,7 @@ SHOW_DELAY, BATTERY_SHOWN, PHOTO_SHOWN, PROBLEM_SHOWN = 5, 5, 1, 20
 # Without it the backlight stays lit for as long as the remote sits on the cradle.
 CHARGE_STATE, DARK_DELAY = 10, 1
 
-# What each kind of screen lights, as every donor's screens of that kind do (gspm.md):
+# What each kind of screen lights, as every donor's screens of that kind do (idle.md):
 # the arrows light only where there are pages to turn, a softkey's bar only where the
 # screen has that softkey. Screens of no kind - an activity starting - light nothing.
 SCREEN_ZONES = {
@@ -90,7 +91,7 @@ LOW_BATTERY_SCREEN, USB_SCREEN, SCREEN_NINE = 0, 1, 9
 ENTER, LEAVE = 0x06, 0x07
 
 MOTION = 0x17            # the event the firmware posts when the remote is picked up
-# The firmware's charging events (gspm.md, "Where the events come from"): external power
+# The firmware's charging events (idle.md, "Where the events come from"): external power
 # removed and connected - lifted off the cradle and set on it - and a charger fault.
 CHARGING_STOPPED, CHARGING_STARTED, CHARGING_PROBLEM = 0x1E, 0x1F, 0x23
 # The battery level went up: on the cradle, as it charges.
@@ -347,7 +348,7 @@ class _Machine:
 
     def key_rows(self) -> dict[int, list]:
         """Two codes below the keys run the key light too, as both donors have them:
-        0x17, which wakes the remote when it is picked up (gspm.md), with its own firmware
+        0x17, which wakes the remote when it is picked up (idle.md), with its own firmware
         steps first and lights-out's setting byte after, and 0x30, a plain wake."""
         m = self.m
         return {

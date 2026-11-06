@@ -1,6 +1,6 @@
 """Structural validation for the Harmony One's indexed configuration image.
 
-Format reference: docs/harmony_one/gspm.md
+Format reference: docs/harmony_one/image.md
 """
 
 from __future__ import annotations
