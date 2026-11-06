@@ -250,6 +250,8 @@
       "flash"
     ],
     "screen_grid": {"device": [2, 3], "activity": [2, 3]},
+    "type_icons": {"folder": "scaffolds/harmony-one/images/icons",
+                   "fallback": "activities/VirtualGeneric"},
     "device_pages": [
       "search",
       "identity",

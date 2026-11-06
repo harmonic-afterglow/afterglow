@@ -118,6 +118,14 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
                     for tab in screens["tabs"])):
         raise ValueError(f"{profile_id}: interface.activity_screens lists its tabs, each "
                          "with the group it shows and the property that turns it on")
+    icons = interface.get("type_icons")
+    if icons is not None and not (
+            isinstance(icons, dict) and set(icons) <= {"folder", "fallback"}
+            and isinstance(icons.get("folder"), str)
+            and isinstance(icons.get("fallback", ""), str)):
+        raise ValueError(f"{profile_id}: interface.type_icons names the folder of the "
+                         "remote's device and activity icons, and optionally the one it "
+                         "draws for a type it has none for")
     languages = interface.get("languages")
     if not isinstance(languages, list) or not languages or not all(
             isinstance(pair, list) and len(pair) == 2 for pair in languages):
@@ -367,6 +375,17 @@ class RemoteProfile:
         remote's screen, filled row by row - None for a remote with no such page."""
         size = (self.interface.get("screen_grid") or {}).get(kind)
         return tuple(size) if size else None
+
+    @property
+    def type_icons(self) -> tuple[Path, str | None]:
+        """(the folder of this remote's own device and activity icons, the icon it draws
+        for a type it has none for or None). The folder holds `devices/<Type>.png` and
+        `activities/<Type>.png`; the profile's `interface.type_icons` names it inside the
+        package (a Harmony One's and 800's are in their scaffolds), and a profile that
+        does not has the Harmony 900's and 1100's, `icons/`, with no stand-in."""
+        given = self.interface.get("type_icons") or {}
+        folder = paths.root() / given["folder"] if given.get("folder") else paths.icons()
+        return folder, given.get("fallback") or None
 
     @property
     def languages(self) -> tuple:

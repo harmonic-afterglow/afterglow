@@ -164,7 +164,8 @@ class ActivityIdentityPage(QWizardPage):
         if current and current not in {t for _l, t in types}:
             types.insert(0, (f"{current} (from the imported config)", current))
         for label, atype in types:
-            self.type_combo.addItem(type_icon(atype, 20), label, atype)
+            self.type_combo.addItem(type_icon(atype, 20, vocabulary.for_remote(remote)),
+                                    label, atype)
         # An activity without a type opens as "Custom / Other", never as whatever the
         # list happens to start with - saving it for any other reason would set that.
         wanted = existing.get("type") or GENERIC_TYPE
