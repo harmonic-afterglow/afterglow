@@ -34,6 +34,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **Device and activity icons are the project's remote's own.** A Harmony One or 800
+  project shows the pictures that remote draws - the 800's glossy set, the One's own -
+  in the Devices and Activities lists and in the type menus, instead of the Harmony 900's,
+  and a device without a type shows the generic icon those remotes give it. A profile
+  names its set in `interface.type_icons`; the 900 and 1100 keep `icons/`.
 - A saved or shared project records the Afterglow version that wrote it (`saved_by`), and
   any recordings it had repaired (`repairs`), so a later fix to how a remote plays commands
   can repair the projects an older version left.

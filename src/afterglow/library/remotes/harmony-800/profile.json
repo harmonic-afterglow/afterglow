@@ -282,6 +282,10 @@
         2,
         3
       ]
+    },
+    "type_icons": {
+      "folder": "scaffolds/harmony-800/images/icons",
+      "fallback": "activities/VirtualGeneric"
     }
   }
 }

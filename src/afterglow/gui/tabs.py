@@ -39,14 +39,14 @@ class DeviceCard(QWidget):
         layout.setContentsMargins(8, 12, 8, 12)
         layout.addWidget(_grip())
 
+        profile = project_remote(project)
         glyph = QLabel()
-        glyph.setPixmap(type_pixmap(spec.get("type", ""), 34))
+        glyph.setPixmap(type_pixmap(spec.get("type", ""), 34, profile))
         glyph.setFixedWidth(42)
         layout.addWidget(glyph)
 
         info = QVBoxLayout()
         name_lbl = bold(spec.get("label","?"))
-        profile = project_remote(project)
         labels = profile.device_types
         kind = labels.get(spec.get("type", ""), spec.get("type", ""))
         # Where its codes go out, only where there is a choice: a remote without RF
@@ -195,7 +195,8 @@ class DevicesTab(QWidget):
             self.refresh()
             self.changed.emit()
 class ActivityCard(QWidget):
-    def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None, type_names=None):
+    def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None, type_names=None,
+                 remote=None):
         super().__init__(parent)
         self.spec = spec
         layout = QHBoxLayout(self)
@@ -207,7 +208,7 @@ class ActivityCard(QWidget):
         atype    = spec.get("type","VirtualTelevisionN")
 
         glyph = QLabel()
-        glyph.setPixmap(type_pixmap(atype, 34))
+        glyph.setPixmap(type_pixmap(atype, 34, remote))
         glyph.setFixedWidth(42)
         layout.addWidget(glyph)
 
@@ -272,15 +273,16 @@ class ActivitiesTab(QWidget):
         by_id = self._by_id()
         try:
             from .. import vocabulary
-            names = {identifier: label for label, identifier in vocabulary.activity_types(
-                project_remote(self.project))}
+            remote = project_remote(self.project)
+            names = {identifier: label for label, identifier
+                     in vocabulary.activity_types(remote)}
         except LookupError:
-            names = {}
+            remote, names = None, {}
         self.cards.fill([
             ActivityCard(spec, by_id,
                          on_edit   = lambda _, idx=i: self.edit_activity(idx),
                          on_delete = lambda _, idx=i: self.delete_activity(idx),
-                         type_names=names)
+                         type_names=names, remote=remote)
             for i, spec in enumerate(self.project["activities"])],
             "No activities yet. Click '+ Add Activity' to create one.")
 

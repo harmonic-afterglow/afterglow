@@ -718,7 +718,7 @@ class IdentityPage(QWizardPage):
         if existing_type and existing_type not in types:
             types.insert(0, existing_type)
         self._type_index = {name: i for i, name in enumerate(types)}
-        populate_types(self.type_combo, types, labels=self._types)
+        populate_types(self.type_combo, types, labels=self._types, remote=profile)
         if existing.get("type") in self._types:
             index = self.type_combo.findData(existing["type"])
             if index >= 0:

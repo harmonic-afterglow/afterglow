@@ -307,6 +307,43 @@ def test_icons_cover_the_vocabulary():
         assert icons.missing([t for _label, t in profile.activity_types]) == [], profile.id
 
 
+def test_each_remote_has_a_picture_of_its_own_for_every_type():
+    """A Harmony One or 800 draws its own icons, not the 900's: the profile names them,
+    one per type it offers, and the stand-in it draws for a type it has none for."""
+    from afterglow import remotes
+    for profile in remotes.load_all():
+        folder, fallback = profile.type_icons
+        for name in profile.device_types:
+            assert (folder / "devices" / f"{name}.png").is_file(), (profile.id, name)
+        for _label, name in profile.activity_types:
+            assert (folder / "activities" / f"{name}.png").is_file(), (profile.id, name)
+        if fallback:
+            assert (folder / f"{fallback}.png").is_file(), profile.id
+    assert remotes.get("harmony-one").type_icons[0].parts[-4:] == (
+        "scaffolds", "harmony-one", "images", "icons")
+    assert remotes.get("harmony-800").type_icons[0].parts[-4:] == (
+        "scaffolds", "harmony-800", "images", "icons")
+
+
+def test_the_interface_shows_the_project_s_remote_s_icons():
+    pytest.importorskip("afterglow.qt.QtWidgets")
+    from afterglow import remotes
+    from afterglow.gui import icons
+    if not icons.have_artwork():
+        pytest.skip("icon artwork not extracted")
+    one, nine = remotes.get("harmony-one"), remotes.get("harmony-900")
+    own = one.type_icons[0]
+    assert icons.artwork_for("Television", one) == own / "devices" / "Television.png"
+    assert icons.artwork_for("VirtualDvd", one) == own / "activities" / "VirtualDvd.png"
+    assert icons.artwork_for("Television", nine) == icons.ARTWORK / "devices" / "Television.png"
+    assert icons.artwork_for("Television") == icons.ARTWORK / "devices" / "Television.png"
+    # no type: the One draws its generic icon, the 900 nothing
+    assert icons.artwork_for("", one) == own / "activities" / "VirtualGeneric.png"
+    assert icons.artwork_for("", nine) is None
+    # button glyphs are the 900's and 1100's whichever remote it is
+    assert icons.artwork_for("myTV", one) == icons.ARTWORK / "buttons" / "myTV.png"
+
+
 def test_button_glyphs_are_available():
     pytest.importorskip("afterglow.qt.QtWidgets")
     from afterglow.gui import icons
