@@ -294,6 +294,20 @@ def build(specs, work, request: BuildRequest | None = None):
         if not anybody_new:
             root.find("User/Properties").remove(new_found)
 
+    # A welcome after the write: the 900's first-time setup - the remote test over every
+    # device, then the rest of Logitech's walkthrough - runs on the first start after a
+    # write whose User block says FirstTimeDownload (app-main.swf, CurrentState). Logitech
+    # sent it on an account's first update only; the app decides "always" or "never" per
+    # write (settings["welcome"]). The 1100's interface has no such setup.
+    from .... import remotes
+    if (settings.get("welcome") == "always"
+            and remotes.for_project({"settings": settings}).can("first_time_setup")):
+        props = root.find("User/Properties")
+        first = props.find("Property[@name='FirstTimeDownload']")
+        if first is None:
+            first = ET.SubElement(props, "Property", name="FirstTimeDownload")
+        first.text = "True"
+
     for d in root.findall("Device"): root.remove(d)
     for a in root.findall("Activity"): root.remove(a)
     for dev in devices: root.append(ET.fromstring(dev))

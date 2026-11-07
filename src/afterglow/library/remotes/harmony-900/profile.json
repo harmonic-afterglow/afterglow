@@ -17,7 +17,8 @@
     "rf_blaster": true,
     "touchscreen": true,
     "ir_learning": true,
-    "hard_keys": true
+    "hard_keys": true,
+    "first_time_setup": true
   },
   "infrared": {
     "native_protocols": [

@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Logitech's compiles do: while it runs, Devices shows the devices it switches on first.
 - **Harmony One: Logitech's favourite channels are imported**; those sent through the
   remote's number sender used to be lost.
+- **The Harmony 900 can welcome you after a write**: the remote's own first-time setup,
+  which tests each device and walks through the rest, runs on the first start after a
+  write the app marks as a welcome (`settings["welcome"]`). A 900 or 1100 configuration
+  read off a remote is now known as an Afterglow build or not (`afterglow_built`), so the
+  app can tell a first write from a later one.
 
 - **Bold text on the Harmony One and 800, where Logitech's own One draws it**: every
   label, title and softkey but the message text. Galmuri has no bold at the One's size,
