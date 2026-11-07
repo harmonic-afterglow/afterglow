@@ -739,3 +739,22 @@ def test_an_online_input_waits_for_the_apps_only_after_power_on():
     _start(machine, 1)                                        # the TV stays on
     _start(machine, 0)
     assert ("wait", 0, 50) not in machine.log                 # the apps are up already
+
+
+def test_off_s_help_with_no_device_to_ask_about_says_there_is_nothing_to_do():
+    """Logitech's power off help with no device to ask about shows "Nothing to do" with
+    OK, not questions it has none of (Danny Bloe's harmony-explorations, compiler.md,
+    "the power off help")."""
+    from afterglow.backends.harmony_one import importing
+
+    screen = _device("screen", "Screen", "Projector", 6, {"Menu": "Menu"})
+    project = {"devices": [screen], "activities": [
+        {"id": "1", "label": "Watch", "type": "VirtualTelevisionN", "control": "screen"}]}
+    image = importing.Image(generate.build(project)["image"])
+    texts = {item["text"] for screen in image.screens for slot in screen["slots"]
+             for item in image.page_text(slot["program_offset"])}
+    assert "Nothing to do" in texts
+    with_power = importing.Image(generate.build(PROJECT)["image"])
+    assert "Nothing to do" not in {
+        item["text"] for screen in with_power.screens for slot in screen["slots"]
+        for item in with_power.page_text(slot["program_offset"])}

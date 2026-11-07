@@ -182,14 +182,22 @@ class Flow:
         screens.owned(rows, zones, program, "question", title, keys=mode_keys,
                       on_enter=on_enter)
 
-    def _help(self, title, ordinals, before, home, icon=None):
+    def _help(self, title, ordinals, before, home, icon=None, *, off=False):
         """Help as upstairs runs it: re-send everything and ask whether that fixed it;
         if not, ask after each device and input in turn - No sends it again and asks
-        whether it is now right, and once it is, whether that fixed the problem."""
+        whether it is now right, and once it is, whether that fixed the problem. Off's
+        Help with no device to ask about says there is nothing to do, OK going back, as
+        Logitech's does (Danny Bloe's harmony-explorations, compiler.md, "the power off
+        help")."""
         words, layout = self.screens.words, self.layout
         self.help_screen(title, (before, [(ordinals["prompt"], ENTER_MODE)]))
         nav = layout.navigation
         items = list(zip(ordinals["asked"], ordinals["questions"]))
+        if off and not items:
+            self._answered(title, lambda: self._paragraphs(words("help.nothing-to-do"),
+                                                           HELP_PROMPT_Y),
+                           {"ok": nav(home)}, icon=icon, home=home)
+            return
         first = items[0][1]["ask"] if items else home
         self._answered(title, lambda: self._paragraphs(words("help.fixed-first"),
                                                        HELP_PROMPT_Y),
@@ -443,6 +451,7 @@ class Flow:
             name = off.get("label") or self.screens.words("activity.power-off")
             rows.append((keys.code(keys.HELP), layout.navigation(ordinals.off_help)))
             self._help(name, ordinals.off,
-                       [STOP_TIMERS] + self.actions.direct_power(off["off"], False), home)
+                       [STOP_TIMERS] + self.actions.direct_power(off["off"], False), home,
+                       off=True)
             self._notes(name, ordinals.off["assistant"], home, off=True)
         return rows
