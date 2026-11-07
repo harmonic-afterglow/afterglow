@@ -139,7 +139,14 @@ you want to hide the Remote Assistant?", whose Yes sets 3 and says "To hide the 
 assistant, use the software to update the display settings for your remote."; at 3,
 nothing. Off has its own: at 0 or 1, "Welcome to your remote." (OK sets 1), then "Ensure all
 your devices are off. If any devices are still on, press "Help" now."; at 2, that and the
-offer to hide it. Start-up runs Off, so a new remote opens on the welcome. Options' first row
+offer to hide it. Start-up runs Off, so a new remote opens on the welcome. **The welcome tour** follows,
+once after each write, as Logitech's One goes on from the "devices off" note's OK to its
+tour's "Welcome!" on a variable of its own (Danny Bloe's harmony-explorations,
+compiler.md, "the welcome tour and the Remote Assistant"): `Welcome_2`, starting at 0,
+switched on by that OK - at 0 it writes 1 and opens the Tutorial's first page, at 1 it
+goes home - and with the assistant hidden by Off itself. A build whose
+`settings.welcome` is "never" starts it at 1; the app turns "first" into "always" or
+"never" by whether the remote held one of Afterglow's configurations. Options' first row
 is a switch on the same state: at 3 it reads "Turn Remote Assistant On" and sets 1, else
 "Turn Remote Assistant Off" and sets 3. A build generates all of it, its state
 `RemoteAssistant_4` (activity_screens.Flow._notes).

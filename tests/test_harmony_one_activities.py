@@ -477,11 +477,31 @@ def test_the_remote_assistant_shows_logitechs_notes_until_it_is_hidden(remote):
 
 
 def test_a_new_remote_starts_on_the_welcome_and_off_notes_every_device_should_be_off(remote):
+    """After a write, as Logitech's One: the Remote Assistant's welcome, that every
+    device should be off, then the welcome tour once - its first page, Exit to the menu -
+    and on the next Off the notes alone (Danny Bloe's harmony-explorations, compiler.md,
+    "the welcome tour and the Remote Assistant")."""
     machine = _fresh(remote)                              # start-up runs Off
     welcome = machine.mode
     assert welcome != scaffold.SYSTEM_SCREENS and _answers(machine) == {OK}
     machine.touch(OK)                                     # ensure every device is off
     assert machine.mode not in (welcome, scaffold.SYSTEM_SCREENS)
+    machine.touch(OK)
+    tour = machine.mode
+    assert tour != scaffold.SYSTEM_SCREENS and pages.PAGE_DEVICES_KEY in _answers(machine)
+    machine.touch(pages.PAGE_DEVICES_KEY)                 # Exit
+    assert machine.mode == scaffold.SYSTEM_SCREENS
+    machine.press(keys.code(keys.OFF))                    # the tour has run: not again
+    machine.touch(OK)
+    machine.touch(OK)
+    assert machine.mode == scaffold.SYSTEM_SCREENS
+
+
+def test_a_build_told_it_is_not_the_first_skips_the_welcome_tour():
+    """settings.welcome "never" - the app's answer when the remote has been written
+    before - leaves the tour out of the start, as MyHarmony's later syncs do."""
+    machine = _fresh(generate.build({**PROJECT, "settings": {"welcome": "never"}}))
+    machine.touch(OK)
     machine.touch(OK)
     assert machine.mode == scaffold.SYSTEM_SCREENS
 
@@ -797,3 +817,15 @@ def test_an_activity_s_page_arrows_take_the_direction_pad():
     bound = planned["activities"][0]["keys"]
     assert bound[keys.by_name("UpArrow")] == bound[keys.by_name("DirectionUp")]
     assert bound[keys.by_name("DownArrow")] == bound[keys.by_name("DirectionDown")]
+
+
+def test_with_the_assistant_hidden_a_first_start_still_opens_the_welcome_tour():
+    machine = _fresh(generate.build({**PROJECT, "settings": {"remote_assistant": False}}))
+    assert machine.mode != scaffold.SYSTEM_SCREENS
+    assert pages.PAGE_DEVICES_KEY in _answers(machine)    # the tour's Exit
+    machine.touch(pages.PAGE_DEVICES_KEY)
+    machine.press(keys.code(keys.OFF))                    # once only
+    assert machine.mode == scaffold.SYSTEM_SCREENS
+    skipped = _fresh(generate.build({**PROJECT, "settings": {
+        "remote_assistant": False, "welcome": "never"}}))
+    assert skipped.mode == scaffold.SYSTEM_SCREENS

@@ -98,7 +98,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     acts = list((activities or {}).get("activities") or []) if running else []
     if running and activities is not None:
         _activity_variables(variables, acts,
-                            hidden=bool(activities.get("assistant_hidden")))
+                            hidden=bool(activities.get("assistant_hidden")),
+                            welcome=activities.get("welcome", True))
 
     # The object every owned page's fragment queues to draw status overlays 3 and 0.
     status_object = (layout.object(object_body([(3, DRAW_OVERLAY), (0, DRAW_OVERLAY)]))
@@ -227,7 +228,7 @@ def _command_objects(layout, devices):
             command["object_index"] = wrapper - 1
 
 
-def _activity_variables(variables, acts, hidden=False):
+def _activity_variables(variables, acts, hidden=False, welcome=True):
     """`CurrentActivityState`: each activity is a value, and the one past them is nothing
     running, the value it starts at - section 0 names it, as the donors do. Then the
     Remote Assistant's state, as upstairs keeps it: 0 never shown, 1 welcomed, 2 shown
@@ -238,6 +239,10 @@ def _activity_variables(variables, acts, hidden=False):
     if acts:
         variables.assistant = variables.add("RemoteAssistant_4", {
             "initial": 3 if hidden else 0, "limit": 3, "padding": 0, "transitions": []})
+        # Whether the welcome tour has run since this configuration was written: 0 shows
+        # it once, 1 - a build told to skip it - never (activity_screens.Flow.welcome)
+        variables.welcome = variables.add("Welcome_2", {
+            "initial": 0 if welcome else 1, "limit": 1, "padding": 0, "transitions": []})
 
 
 def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
@@ -388,6 +393,9 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     planned = activity_plan.plan(project, devices)
     planned["assistant_hidden"] = (project.get("settings") or {}).get(
         "remote_assistant") is False
+    # The welcome tour after a write: shown unless the build is told it is not the first
+    # (settings.welcome "never"; the app turns "first" into one or the other)
+    planned["welcome"] = (project.get("settings") or {}).get("welcome") != "never"
     preferred = preferences(project)
     held_commands(project, devices, planned, library=library)
     frame = "activity/row-frame" if "activity/row-frame" in pictures else "row-frame"
