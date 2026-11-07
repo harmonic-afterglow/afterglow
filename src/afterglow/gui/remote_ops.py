@@ -167,6 +167,7 @@ class RemoteWorker(QThread):
                         f"The remote could not be backed up, so nothing was written: "
                         f"{exc}") from exc
                 self.log.emit(f"Backed up to {backup}")
+            self._welcome(remote, identity, backup)
             self.log.emit(f"Writing {path.name} to {identity['model']}...")
             remote.write_config(path, self._on_progress, **accept)
             # The write succeeded or write_config would have raised. Only the restart
@@ -177,6 +178,35 @@ class RemoteWorker(QThread):
             # vendor recovery.
             missed_restart = remote.last_restart_error
         self._written(missed_restart)
+
+    def _welcome(self, remote, identity, backup) -> None:
+        """On "first flash only", build the welcome in when what the remote holds now is
+        not one of Afterglow's configurations (welcome.py): read from the backup just
+        taken, or read for this alone when no backup was."""
+        project = self.kwargs.get("welcome_project")
+        if not project:
+            return
+        from .. import welcome
+        from ..build_service import ConfigBuildService
+        raw = None
+        if backup:
+            raw = Path(backup).read_bytes()
+        elif identity.get("can_read") is not False and identity.get("config_valid") is not False:
+            import tempfile
+            self.log.emit(f"Reading what is on the {identity['model']} now, to see whether "
+                          "this is its first Afterglow configuration...")
+            with tempfile.TemporaryDirectory() as folder:
+                current = Path(folder) / "current.ezhex"
+                try:
+                    remote.save_config(current, self._on_progress)
+                    raw = current.read_bytes()
+                except (concord.RemoteError, OSError, ValueError) as exc:
+                    self.log.emit(f"(could not read it: {exc})")
+        if welcome.decide(project, raw) == "always":
+            self.log.emit("The remote has no Afterglow configuration yet, so this one "
+                          "shows the welcome once after it is written.")
+            ConfigBuildService(Path(self.kwargs["build_root"]), self.log.emit).build(
+                welcome.resolved(project, "always"))
 
     def _flash(self):
         path = Path(self.kwargs["path"])
