@@ -89,6 +89,13 @@ def read_configuration_file(path) -> bytes:
         return archive.read(names[0])
 
 
+def afterglow_built(payload: bytes) -> bool:
+    """Whether ``payload`` is one of Afterglow's builds, for the app's "first flash"
+    decision before a write (settings.welcome): its mark says so (mark.signed). Logitech's
+    800 images, the factory's and anything unreadable are not ours."""
+    return mark.signed(payload)
+
+
 def import_project(source, profile, context) -> ImportResult:
     """Read a configuration Afterglow built back as the project it was built from (its
     mark, mark.py). One without the mark - Logitech's own - is refused, never guessed at."""
