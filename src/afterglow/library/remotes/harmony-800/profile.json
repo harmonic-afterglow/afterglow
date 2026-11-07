@@ -283,6 +283,7 @@
       "output_file",
       "language",
       "assistant",
+      "welcome",
       "preferences"
     ],
     "languages": [
