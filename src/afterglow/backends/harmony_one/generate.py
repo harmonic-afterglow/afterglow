@@ -49,7 +49,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
              tail: bytes | None = None, fonts=(), pictures=(), engine=(),
              devices=(), templates=None, label_font: int | None = None,
              softkey_fonts: dict | None = None, options: dict | None = None,
-             system: dict | None = None, words=None, activities: dict | None = None) -> bytes:
+             system: dict | None = None, words=None, activities: dict | None = None,
+             light: int = idle_machine.OFF_DURATION, hours: int = 12) -> bytes:
     """Lay out a whole image from what a build has prepared.
 
     With nothing given it is the smallest configuration this backend can build: no
@@ -68,7 +69,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
             f"{PLATFORM_TAIL_SIZE}")
     # Every word this image draws comes from the catalogue, in the project's language.
     words = catalogue.ENGLISH if words is None else words
-    system = _worded(system, fonts, words)
+    system = _worded(system, fonts, words, hours)
     household = buttons == HOUSEHOLD_BUTTONS
     layout = Layout(scaffold.header(buttons))
     platform = _platform(layout, system, household)
@@ -83,8 +84,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     # The charging screens are the idle layer's, so only an image with it has them.
     charging_pictures = (charging.roles(pictures) if hub and options
                          and isinstance(pictures, dict) else [])
-    model = (idle_machine.attach(options, system, len(charging_pictures)) if hub and options
-             else None)
+    model = (idle_machine.attach(options, system, len(charging_pictures), light)
+             if hub and options else None)
     numbers = ordinals.hub(platform=platform.count, hub=hub,
                            carried_modes=len(model["modes"]) if model else None,
                            charging=len(charging_pictures))
@@ -134,7 +135,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         stamp=structures.stamp(*DEFAULT_STAMP) if stamp is None else stamp)
 
 
-def _worded(system, fonts, words):
+def _worded(system, fonts, words, hours=12):
     """The firmware's screens name their words; they are drawn in this image's fonts
     (platform_text.py), or left out of an image built without fonts."""
     if not system:
@@ -142,7 +143,8 @@ def _worded(system, fonts, words):
     used = {item["font"] for block in system["blocks"] for item in block
             if item.get("opcode") == "label"}
     fonts_ok = bool(fonts) and all(font < len(fonts) for font in used)
-    return platform_text.render(system, labeller(list(fonts)) if fonts_ok else None, words)
+    return platform_text.render(system, labeller(list(fonts)) if fonts_ok else None, words,
+                                hours)
 
 
 @dataclass
@@ -385,6 +387,7 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     planned = activity_plan.plan(project, devices)
     planned["assistant_hidden"] = (project.get("settings") or {}).get(
         "remote_assistant") is False
+    preferred = preferences(project)
     held_commands(project, devices, planned, library=library)
     frame = "activity/row-frame" if "activity/row-frame" in pictures else "row-frame"
     for activity in planned["activities"]:
@@ -414,8 +417,8 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
         engine=engine_records(*stamp_fields),
         devices=devices,
         templates=touch_templates(directory), system=load_system(directory),
-        options=options_model(fonts, stamp_fields[-1], words),
-        words=words, activities=planned)
+        options=options_model(fonts, stamp_fields[-1], words, preferred["hours"]),
+        words=words, activities=planned, **preferred)
     return {"image": image, "fonts": dict(zip(order, fonts)), "skipped": planned["skipped"]}
 
 
@@ -428,11 +431,28 @@ def build_stamp(now=None) -> tuple:
     return (now.second, now.minute, now.hour, now.day - 1, now.month - 1, now.year)
 
 
-def options_model(fonts: list[dict], year: int, words=None) -> dict | None:
+def preferences(project: dict) -> dict:
+    """The remote's own settings a project chooses (the profile's `preferences`, the keys
+    the Harmony 1100's are under): how long the screen stays lit after the last key, and
+    a 12- or 24-hour clock. A project that chooses neither gets Logitech's: 10 seconds
+    and twelve hours."""
+    settings = project.get("settings") or {}
+    light = str(settings.get("backlight_timeout") or idle_machine.OFF_DURATION)
+    if not light.isdigit() or not 1 <= int(light) <= LIGHT_LIMIT:
+        raise ValueError(f"the screen stays lit 1 to {LIGHT_LIMIT} seconds, not {light!r}")
+    return {"light": int(light),
+            "hours": 24 if settings.get("time_format") == "Military" else 12}
+
+
+# The longest the profile offers: five minutes.
+LIGHT_LIMIT = 300
+
+
+def options_model(fonts: list[dict], year: int, words=None, hours: int = 12) -> dict | None:
     """The Options screens (options.py), their text set in the image's own fonts."""
     from . import options
 
     if not fonts or len(fonts) <= max(options.TITLE_FONT, options.COUNTER_FONT,
                                       options.LABEL_FONT, options.BACK_FONT):
         return None
-    return options.build(labeller(fonts), year, words)
+    return options.build(labeller(fonts), year, words, hours)

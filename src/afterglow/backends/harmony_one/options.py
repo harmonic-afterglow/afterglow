@@ -145,16 +145,17 @@ def _highlight(x: int, y: int, width: int) -> list[dict]:
              "color": HIGHLIGHT} for bx, by, bw, bh in bars] + [{"opcode": "end"}]
 
 
-def build(label, year: int, words=None) -> dict:
+def build(label, year: int, words=None, hours: int = 12) -> dict:
     """The Options model for a configuration built in ``year``.
 
     ``label(text, attribute, room)`` returns a line of text as glyph codes (hex) and its
     width in pixels, in the font the image draws ``attribute`` with; ``words`` is the
-    language (catalogue.Words), English when not given.
+    language (catalogue.Words), English when not given. ``hours`` is the clock, 12 or
+    24: Logitech's European One sets a 24-hour clock with no Time of Day picker.
     """
     from .catalogue import ENGLISH
 
-    screens = _Screens(label, year, ENGLISH if words is None else words)
+    screens = _Screens(label, year, ENGLISH if words is None else words, hours)
     screens.date_and_time()
     screens.sensitivity()
     return screens.model()
@@ -164,8 +165,10 @@ class _Screens:
     """The Options screens, built into one model. Everything is numbered in the order it
     is made, so the order of the calls is the model's."""
 
-    def __init__(self, label, year: int, words):
-        self.words = words
+    def __init__(self, label, year: int, words, hours: int = 12):
+        if hours not in (12, 24):
+            raise ValueError(f"a clock has 12 or 24 hours, not {hours}")
+        self.words, self.hours = words, hours
         m = self.m = _Model(label)
         self.pm_flag = m.variable(1)
         self.page_scratch = m.variable(0xFEFD)
@@ -206,7 +209,8 @@ class _Screens:
         self.leap_years = [y for y in self.years if calendar.isleap(y)]
         self.year_mode, self.month_normal, self.month_leap = m.mode(), m.mode(), m.mode()
         self.day_modes = {days: m.mode() for days in (31, 30, 29, 28)}
-        self.hour_mode, self.minute_mode, self.ampm_mode = m.mode(), m.mode(), m.mode()
+        self.hour_mode, self.minute_mode = m.mode(), m.mode()
+        self.ampm_mode = m.mode() if hours == 12 else None
         self.sense_mode = m.mode()
         self.confirm_modes = {name: m.mode() for name, _value in SENSITIVITY}
 
@@ -399,6 +403,20 @@ class _Screens:
                         "grid", lambda d: [PRESS, silent(DAY, d), (DAY_SET, MODE_STACK),
                                            go(self.hour_mode)],
                         self.back_to_month)
+        if self.hours == 24:
+            # Logitech's European One: the hour 00 to 23, and the minute sets the clock -
+            # there is no Time of Day picker (Danny Bloe's harmony-explorations,
+            # architectures/harmony-one/compiler.md)
+            self.picker(self.hour_mode, "hour", HOUR,
+                        [(h, f"{h:02d}:00") for h in range(24)], "grid",
+                        lambda h: [PRESS, silent(HOUR, h), go(self.minute_mode)],
+                        self.back_to_day)
+            self.picker(self.minute_mode, "minute", MINUTE,
+                        [(n, f"{n:02d}") for n in range(60)], "grid",
+                        lambda n: [PRESS, silent(MINUTE, n), (CLOCK_SET, MODE_STACK),
+                                   self.exit],
+                        lambda: go(self.hour_mode))
+            return
         # The clock's hour runs 0-23; the picker shows twelve and the last screen adds
         # the afternoon. Entering it folds an afternoon hour back first, as upstairs does.
         fold = [[LOAD | 12, REGISTER], self.guarded(_test(TEST_BYTE, 3, HOUR), m.object([
