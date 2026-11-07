@@ -19,6 +19,10 @@ configuration has them agreeing. Afterglow used to write only the XML, so choosi
 12-hour clock produced a config that contradicted itself - and the `.dat` is the one the
 remote actually reads at boot. A definition's `xml_property` names that second home.
 
+A preference marked `"compiled": true` has no file: the backend builds it into the
+configuration itself (the Harmony One's screen light and clock), and nothing here writes
+or reads it.
+
 Writing a preference means writing every home it has. Anything not set is left exactly as
 the scaffold had it, so a build never invents a preference the user did not choose.
 """
@@ -54,7 +58,7 @@ def apply(work: str, settings: dict, profile) -> list[str]:
     written = []
     for key, definition in definitions(profile).items():
         value = settings.get(key)
-        if value in (None, ""):
+        if value in (None, "") or "file" not in definition:   # compiled in, not a file
             continue
         path = os.path.join(folder, definition["file"])
         with open(path, "w", encoding="utf-8") as handle:
@@ -68,6 +72,8 @@ def read(extracted_dir: str, profile) -> dict:
     folder = os.path.join(extracted_dir, "platformconfig")
     out = {}
     for key, definition in definitions(profile).items():
+        if "file" not in definition:          # compiled into the configuration
+            continue
         path = os.path.join(folder, definition["file"])
         if os.path.isfile(path):
             with open(path, encoding="utf-8", errors="replace") as handle:
