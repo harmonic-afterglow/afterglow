@@ -26,7 +26,9 @@ def _unquote(text: str) -> str:
     while at < len(body):
         char = body[at]
         if char == "\\" and at + 1 < len(body):
-            out.append(_ESCAPES.get(body[at + 1], body[at + 1]))
+            if body[at + 1] not in _ESCAPES:
+                raise ValueError(f"unknown escape \\{body[at + 1]} in {text!r}")
+            out.append(_ESCAPES[body[at + 1]])
             at += 2
             continue
         out.append(char)

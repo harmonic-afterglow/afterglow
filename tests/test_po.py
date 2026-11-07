@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from afterglow import po
 
 FINNISH = r'''# a comment
@@ -72,3 +74,10 @@ def test_a_template_reads_back_as_an_empty_catalogue():
     assert "#. where it is drawn" in text and "#, python-brace-format" in text
     catalogue = po.parse(text)
     assert catalogue.get("a.b", "Hello") is None and catalogue.plural is None
+
+
+def test_an_unknown_escape_is_refused_rather_than_read_as_its_letter():
+    """`\\A` for `\\nA` once ran two French sentences together; msgfmt refuses it, and so
+    does the reader."""
+    with pytest.raises(ValueError):
+        po.parse('msgctxt "x"\nmsgid "a\\nb"\nmsgstr "a\\Ab"\n')

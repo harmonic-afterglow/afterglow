@@ -41,6 +41,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   letters - Romanian's ș ț, Azerbaijani's ə, Greek capitals with tonos - and the
   punctuation they set: typographic quotes and dashes, the ellipsis, €, №, and the narrow
   no-break space French puts before : ; ! ?
+- **French on the Harmony One and 800**, translated by MickBim from the One's own French,
+  with French spacing before "?", "!" and ":", which never wraps onto a line of its own.
+  A `.po` file with a broken escape is refused rather than read wrongly.
 - **Bulgarian on the Harmony One and 800.** A remote's languages are now the translations
   beside it: putting a `locale/<language>.po` there makes the language appear in Remote
   Settings, named in its own language.
