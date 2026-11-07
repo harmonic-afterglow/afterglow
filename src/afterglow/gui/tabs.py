@@ -414,6 +414,19 @@ class SettingsTab(QWidget):
             lambda _on: None if self._loading else self.changed.emit())
         form.addRow("Remote Assistant:", self.assistant)
 
+        # The welcome a remote shows once after a write - the 650's tour, the One's
+        # Tutorial, the 900's first-time setup - on its first Afterglow configuration only,
+        # on every one, or never (welcome.py)
+        from .. import welcome
+        self.welcome = QComboBox()
+        for label, value in welcome.CHOICES:
+            self.welcome.addItem(label, value)
+        self.welcome.setToolTip("When the remote shows its welcome after a flash. First "
+                                "flash only shows it when the remote does not already hold "
+                                "a configuration made with Afterglow.")
+        self.welcome.activated.connect(self.changed)
+        form.addRow("Welcome after flashing:", self.welcome)
+
         # Blasters are paired with the remote, not with a device, so this lives here
         # rather than on a device's Edit page: pairing must not require a device first.
         blaster_row = QHBoxLayout()
@@ -459,7 +472,7 @@ class SettingsTab(QWidget):
         for widget, field in ((self.first_name, "owner"), (self.last_name, "owner"),
                               (self.locale, "language"), (self.blaster_row, "rf_blasters"),
                               (self.theme_row, "theme"), (self.assistant, "assistant"),
-                              (self.prefs_box, "preferences")):
+                              (self.welcome, "welcome"), (self.prefs_box, "preferences")):
             self.form.setRowVisible(widget, field in shown)
         if profile is None or profile.id == self._profile_id:
             return
@@ -571,6 +584,11 @@ class SettingsTab(QWidget):
                 settings["theme_folder"] = theme
             else:
                 settings.pop("theme_folder", None)
+        if "welcome" in shown:
+            if self.welcome.currentData() == "first":
+                settings.pop("welcome", None)
+            else:
+                settings["welcome"] = self.welcome.currentData()
         if "assistant" in shown:
             if self.assistant.isChecked():
                 settings.pop("remote_assistant", None)
@@ -613,6 +631,8 @@ class SettingsTab(QWidget):
         self.last_name.setText(s.get("last_name", ""))
         self._fill_themes(profile, s.get("theme_folder", ""))
         self.assistant.setChecked(s.get("remote_assistant", True) is not False)
+        from .. import welcome
+        self.welcome.setCurrentIndex(self.welcome.findData(welcome.setting(self.project)))
         idx = self.locale.findData(s.get("locale", "enu"))
         self.locale.setCurrentIndex(idx if idx >= 0 else 0)
         self._refresh_blasters()
@@ -745,7 +765,7 @@ class UpdateTab(QWidget):
             return False
         return True
 
-    def _build(self, out_path: Path, then) -> None:
+    def _build(self, out_path: Path, then, project: dict | None = None) -> None:
         """Build the project as it is now to `out_path`, then call `then()`.
 
         Flash and Export both come through here, so a write is always of the project
@@ -754,7 +774,7 @@ class UpdateTab(QWidget):
         self.log_box.clear()
         self._busy(True)
         self._building_new_device_ids = new_device_ids(self.project)
-        project = copy.deepcopy(self.project)
+        project = copy.deepcopy(self.project if project is None else project)
         project.setdefault("settings", {})["out_file"] = str(out_path)
         self.worker = ConfigBuildWorker(user_folder("generated"), project)
         self.worker.log.connect(self.log_box.append)
@@ -967,8 +987,17 @@ class UpdateTab(QWidget):
                 return
         out_path = self.out_path()
         options = {"backup": str(backup)} if backup else {}
+        # The welcome on "first flash only": built without it, and the write builds it
+        # in once it has seen that the remote holds no configuration of ours (welcome.py)
+        from .. import welcome
+        build = None
+        if welcome.setting(self.project) == "first":
+            import copy
+            build = welcome.resolved(copy.deepcopy(self.project), "never")
+            build["settings"]["out_file"] = str(out_path)
+            options.update(welcome_project=build, build_root=str(user_folder("generated")))
         self._build(out_path, lambda: self._run(
-            "write", path=str(out_path), **options).start())
+            "write", path=str(out_path), **options).start(), project=build)
 
     def _confirm_experimental(self, profile):
         """Warn, and name the backup a write will take first; None if cancelled.
