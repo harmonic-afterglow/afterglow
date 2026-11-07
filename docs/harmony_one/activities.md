@@ -96,7 +96,17 @@ each one by writing a channel variable whose transition loads the number (`7A`) 
 the firmware's number sender (`1F F3`) over a digit table in section 17. A build sends the
 digits instead - the control device's digit commands, each followed by its key delay
 (`press_interkey`), then the confirm key (`channel_confirm`) - which sends the same codes
-without the table. A favourite's logo is composed onto the frame of the button place it is
+without the table. An import reads Logitech's the way the firmware runs them: section
+17 is the number sender, as Danny Bloe's harmony-explorations lays it out (config-format/
+state.md, "Base slot 16", numbered from 0 there) - a record per device that takes a
+number, its flags, a base added to the number, a minimum of digits, an instruction sent
+first, one last (the confirm) and a prefix once the number is long enough, and three
+tables of ten digit instructions, for the first place of several, the middle ones and the
+last. A write of a variable whose transitions dial is read as what its transition sends,
+the twin variable it writes silently after (`TV_+_AVR_DiscreteChannel_3` beside
+`TV_+_AVR_Channel_3`) firing nothing; the digits it sends are one-block copies, read as
+their keys' commands "(press)". Kāt's three favourites came back as channels 2, 3 and 4,
+where before they were lost. A favourite's logo is composed onto the frame of the button place it is
 drawn in; a favourite without one shows its name. An activity with favourites and buttons
 opens on its favourites, the left softkey going between them ("Commands"/"Favorites"),
 lighting zones 5 and 7 as the donors' screens with both softkeys do.

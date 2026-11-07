@@ -33,6 +33,9 @@ from .pages import (
 
 SEND, WAIT, WRITE, MODE, CONTEXT, SWITCH = "send", "wait", "write", "mode", "context", "switch"
 OBJECT, COMMAND, DEVICE_OR_WAIT, ENTER_MODE = 0x7F, 0x7D, 0x7C, 0x7E
+# A number into the accumulator, and the `1F` band that hands it to the number sender
+LOAD_NUMBER, DIAL = 0x7A, 0xF3
+SILENT = (0xFFFF, 0x07)          # the next write fires no transition
 TESTS = (0x70, 0x71)
 # What a button's frame covers below its top: its label's lines sit within it.
 BUTTON_HEIGHT = 50
@@ -81,6 +84,13 @@ class Image:
         self.groups = part("switch tables", switch_tables, [])
         self.templates = part("touch templates", ui_index.touch_templates, {})
         self.contexts = part("contexts", activity_index.contexts, [])
+        self.number_senders = part("number senders", number_senders, [])
+        # The variables a Logitech favourite writes: one whose transitions dial a number
+        # through the number sender (`1F F3`), so writing it is the channel being sent.
+        self.channel_variables = {
+            index for index, record in enumerate(self.engine)
+            if any(item["category"] == OBJECT and self._dials(item["operand"])
+                   for item in record["transitions"])}
 
     def steps(self, index: int, depth: int = 12) -> list[tuple]:
         """What running object ``index`` always does, its nested objects followed:
@@ -98,6 +108,7 @@ class Image:
             return [(SEND, command, repeats)]
         out = []
         guarded = False
+        accumulator, silent = 0, False
         for operand, opcode in atoms:
             # a test decides whether the next instruction runs: what it guards is not
             # something the object always does
@@ -107,7 +118,52 @@ class Image:
             if opcode in TESTS:
                 guarded = True
                 continue
-            out += self.atom(operand, opcode, depth)
+            if opcode == LOAD_NUMBER:
+                accumulator = operand
+            elif opcode == 0x1F and operand >> 8 == DIAL:
+                out += self.dial(accumulator, operand & 0xFF, depth)
+            if (operand, opcode) == SILENT:
+                silent = True
+                continue
+            if silent and opcode >= 0x80:      # a silent write fires no transition
+                out.append((WRITE, opcode & 0x7F, operand))
+            else:
+                out += self.atom(operand, opcode, depth)
+            silent = False
+        return out
+
+    def _dials(self, index: int, depth: int = 6) -> bool:
+        """Whether object ``index`` runs the number sender, itself or in what it calls."""
+        if depth < 0 or not 0 <= index < len(self.objects):
+            return False
+        return any((opcode == 0x1F and operand >> 8 == DIAL)
+                   or (opcode == OBJECT and self._dials(operand, depth - 1))
+                   for operand, opcode in self.objects[index]["atoms"])
+
+    def dial(self, value: int, record: int, depth: int = 12) -> list[tuple]:
+        """What the number sender sends for ``value`` with record ``record``, as the
+        firmware runs it (Danny Bloe's harmony-explorations, config-format/state.md, "the
+        number sender"): the base added, the digits at least ``minimum`` of them, the
+        first instruction, the prefix once the number is long enough, a digit table per
+        place - the first digit of several the first table, the last the last, the rest
+        the middle one - and the last instruction."""
+        if not 0 <= record < len(self.number_senders):
+            return []
+        sender = self.number_senders[record]
+        digits = str(value + sender["base"]).zfill(sender["minimum"])
+        flags = sender["flags"]
+        threshold = 100 if flags & 4 else 10 if flags & 2 else 10000
+        atoms = [sender["first"]]
+        if value + sender["base"] >= threshold:
+            atoms.append(sender["prefix"])
+        for place, digit in enumerate(digits):
+            table = (2 if place == len(digits) - 1 else 0 if place == 0 else 1)
+            atoms.append(sender["tables"][table][int(digit)])
+        atoms.append(sender["last"])
+        out = []
+        for atom in atoms:
+            if atom is not None:
+                out += self.atom(*atom, depth)
         return out
 
     def row(self, entry: dict) -> list[tuple]:
@@ -121,7 +177,15 @@ class Image:
         if opcode == DEVICE_OR_WAIT:
             return [(WAIT, operand >> 8, (operand & 0xFF) * 100)]
         if opcode >= 0x80:
-            return [(WRITE, opcode & 0x7F, operand)]
+            variable = opcode & 0x7F
+            write = [(WRITE, variable, operand)]
+            # a favourite's channel: writing the variable dials it, so what its transition
+            # sends is what the write does
+            if variable in self.channel_variables:
+                for item in self.engine[variable]["transitions"]:
+                    if item["to"] == operand and item["category"] == OBJECT:
+                        return write + self.steps(item["operand"], depth - 1)
+            return write
         if opcode == ENTER_MODE:
             return [(MODE, operand)]
         if opcode == 0x1F and operand >> 8 == 0xFF:
@@ -182,6 +246,42 @@ class Image:
         except KeyError:
             return False
         return width > FRAME_WIDTH
+
+
+def number_senders(payload: bytes) -> list[dict]:
+    """Section 17: how a favourite's number becomes digit codes, one record per device that
+    takes a number - a count and a pointer per record, each record its flags, a base
+    added to the number, a minimum of digits, the instructions sent first, last and as a
+    prefix, and three tables of ten, the instruction per digit for the first, middle and
+    last place. As Danny Bloe's harmony-explorations has it (config-format/state.md, "Base
+    slot 16: the number sender", there numbered from 0); a zero instruction is none."""
+    start, end = gspm.section_ranges(payload)[17]
+    count = payload[start]
+    if start + 1 + 3 * count > end:
+        raise ValueError("section 17's pointers run past its end")
+
+    def instruction(at):
+        operand, opcode = struct.unpack_from("<HB", payload, at)
+        return None if not (operand or opcode) else (operand, opcode)
+
+    def pointer(at):
+        return int.from_bytes(payload[at:at + 3], "little") - gspm.BASE
+    out = []
+    for index in range(count):
+        at = pointer(start + 1 + 3 * index)
+        if not 0 <= at <= len(payload) - 23:
+            raise ValueError(f"number sender {index} lies outside the image")
+        tables = []
+        for field in (14, 17, 20):
+            table = pointer(at + field)
+            if not 0 <= table <= len(payload) - 30:
+                raise ValueError(f"number sender {index}'s digit table lies outside the image")
+            tables.append([instruction(table + 3 * digit) for digit in range(10)])
+        out.append({"flags": payload[at], "base": int.from_bytes(payload[at + 1:at + 4], "little"),
+                    "minimum": payload[at + 4], "first": instruction(at + 5),
+                    "last": instruction(at + 8), "prefix": instruction(at + 11),
+                    "tables": tables})
+    return out
 
 
 def switch_tables(payload: bytes) -> list[dict]:
@@ -1372,6 +1472,11 @@ class Activities:
                 return
 
     def _digit(self, device_id: str, name: str) -> str | None:
+        # Logitech's number sender sends a digit's one-block copy, which is read as its
+        # key's command "(press)"
+        name = name.removesuffix(" (press)")
+        if name in DIGIT_KEYS:
+            return DIGIT_KEYS[name]
         device = next((item for item in self.devices if item["id"] == device_id), None)
         for entry in (device or {}).get("commands") or []:
             if entry[0] == name:

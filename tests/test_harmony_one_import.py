@@ -435,3 +435,35 @@ def test_a_devices_other_states_build_and_come_back(tmp_path):
     assert read["power_off_steps"] == ["Exit", "PowerOff"]
     assert read["inputs"] == [[name, steps] for name, steps in tv["inputs"]]
     assert read["control_states"] == tv["control_states"]
+
+
+def test_a_logitech_favourite_dials_its_channel_through_the_number_sender():
+    """Logitech's favourite writes a channel variable whose transition loads the number
+    (`7A`) and hands it to the number sender (`1F F3`), which sends a digit from a table
+    per place - the first digit of several from the first table, the last from the last,
+    the rest the middle one - and then its last instruction, the confirm (Danny Bloe's
+    harmony-explorations, config-format/state.md). The transition's own write of the
+    variable's twin is silent and fires nothing."""
+    from afterglow.backends.harmony_one import importing
+
+    def send(command):
+        return {"atoms": [(command, 0x7D), (0x0001, 0x7C)]}
+    # objects 0-9 send digit commands 0x10-0x19 of the first table, 10-19 the middle
+    # table's 0x20-0x29, 20-29 the last table's 0x30-0x39; 30 the confirm
+    objects = ([send(0x10 + d) for d in range(10)] + [send(0x20 + d) for d in range(10)]
+               + [send(0x30 + d) for d in range(10)] + [send(0x40)])
+    # 31: the transition - load 101, dial, and silently write the twin variable 1
+    objects.append({"atoms": [(101, 0x7A), (0xF300, 0x1F), (0xFFFF, 0x07), (5, 0x81)]})
+    image = importing.Image.__new__(importing.Image)
+    image.objects = objects
+    image.number_senders = [{
+        "flags": 0, "base": 0, "minimum": 0, "first": None, "prefix": None,
+        "last": (30, 0x7F),
+        "tables": [[(start + d, 0x7F) for d in range(10)] for start in (0, 10, 20)]}]
+    image.engine = [{"transitions": [{"from": 0xFFFE, "to": 5, "operand": 31,
+                                      "category": 0x7F}]},
+                    {"transitions": [{"from": 0xFFFE, "to": 1, "operand": 0,
+                                      "category": 0x7F}]}]
+    image.channel_variables = {0}
+    sends = [step[1] for step in image.atom(5, 0x80) if step[0] == importing.SEND]
+    assert sends == [0x11, 0x20, 0x31, 0x40]
