@@ -783,3 +783,17 @@ def test_each_activity_lists_its_own_devices_first(remote):
     assert machine.sent == []
     machine.touch(pages.PAGE_DEVICES_KEY)
     assert machine.mode == music_list
+
+
+def test_an_activity_s_page_arrows_take_the_direction_pad():
+    """Every activity of Logitech's One compiles binds UpArrow as DirectionUp and DownArrow
+    as DirectionDown where the control device has no arrows of its own (Danny Bloe's
+    harmony-explorations, remotes/harmony-one/keys.md)."""
+    player = _device("player", "Player", "DVD", 7, {
+        "DirectionUp": "DirectionUp", "DirectionDown": "DirectionDown", "Play": "Play"})
+    project = {"devices": [player], "activities": [
+        {"id": "1", "label": "Watch", "type": "VirtualDvd", "control": "player"}]}
+    planned = activities.plan(project, devices.lowered_devices(project))
+    bound = planned["activities"][0]["keys"]
+    assert bound[keys.by_name("UpArrow")] == bound[keys.by_name("DirectionUp")]
+    assert bound[keys.by_name("DownArrow")] == bound[keys.by_name("DirectionDown")]

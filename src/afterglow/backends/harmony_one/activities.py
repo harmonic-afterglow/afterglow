@@ -243,7 +243,11 @@ def _digit_command(spec: dict, digit: str) -> str | None:
 
 def _routed_keys(activity: dict, devices, index_of) -> dict:
     """The keys an activity's roles route: volume and mute to the volume device, every
-    other key the control device has a command for to that device."""
+    other key the control device has a command for to that device, and the page arrows
+    its direction pad where it has nothing there - every activity of Logitech's One
+    compiles binds UpArrow as DirectionUp and DownArrow as DirectionDown (Danny Bloe's
+    harmony-explorations, remotes/harmony-one/keys.md), the fill-in his 600-family
+    compiler page measures (`activityKeysFromRoles`)."""
     display, control = activity.get("display"), activity.get("control")
     volume = activity.get("volume", display)
 
@@ -257,8 +261,12 @@ def _routed_keys(activity: dict, devices, index_of) -> dict:
                 out.setdefault(name, (target, command["command_id"]))
         return out
     routed = {name: value for name, value in slots(volume).items() if name in VOLUME_KEYS}
-    for name, value in slots(control).items():
+    own = slots(control)
+    for name, value in own.items():
         routed.setdefault(name, value)
+    for key, pad in (("UpArrow", "DirectionUp"), ("DownArrow", "DirectionDown")):
+        if key not in own and pad in own:
+            routed.setdefault(key, own[pad])
     return routed
 
 
