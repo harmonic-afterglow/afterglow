@@ -140,7 +140,10 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
     for key, spec in (preferences or {}).items():
         if key.startswith("_"):
             continue
-        for required in ("file", "label", "default"):
+        # a preference is a file the remote reads at boot, or - `"compiled": true` - one
+        # the backend builds into the configuration (the Harmony One's and 800's)
+        for required in ("label", "default") + (() if spec.get("compiled") is True
+                                                else ("file",)):
             if required not in spec:
                 raise ValueError(f"{profile_id}: preference {key} has no {required}")
         if ("choices" in spec) == ("range" in spec):

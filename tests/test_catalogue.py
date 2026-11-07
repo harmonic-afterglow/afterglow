@@ -236,9 +236,12 @@ def _900_preferences():
 
 def test_a_preference_maps_to_one_file_each():
     """One setting, one file - and no two settings may claim the same file, on any
-    remote."""
+    remote. A preference built into the configuration (`compiled`) has none."""
     for profile in remotes.load_all():
-        files = [d["file"] for d in preferences.definitions(profile).values()]
+        definitions = preferences.definitions(profile).values()
+        assert all(("file" in d) != (d.get("compiled") is True) for d in definitions), \
+            profile.id
+        files = [d["file"] for d in definitions if "file" in d]
         assert len(files) == len(set(files)), profile.id
         for filename in files:
             assert filename.endswith(".dat"), (profile.id, filename)
