@@ -16,8 +16,9 @@ SCREEN_WIDTH = 176
 LINE_SPACING = 12                  # a notice's lines, where the original had only one
 
 
-def text(item: dict, words) -> str:
-    """The words a ``label`` item stands for (one line of a notice: see ``lines``)."""
+def text(item: dict, words, hours: int = 12) -> str:
+    """The words a ``label`` item stands for (one line of a notice: see ``lines``); the
+    clock's hour on a ``hours`` clock, 12 or 24."""
     key = item["key"]
     if key.startswith("screen-"):
         return lines(item, words)[item["line"]]
@@ -27,8 +28,9 @@ def text(item: dict, words) -> str:
         return words("system.message", number=item["value"])
     if key == "weekday":
         return words(f"clock.weekday.{item['value']}")
-    if key == "hour":                     # the clock's hour runs 0-23; it shows 12-hour
-        return f"{item['value'] % 12 or 12}:"
+    if key == "hour":                     # the clock's hour runs 0-23
+        # twelve-hour as Logitech's One shows it, or 00 to 23 as its European One does
+        return f"{item['value']:02d}:" if hours == 24 else f"{item['value'] % 12 or 12}:"
     if key == "minute":
         return f"{item['value']:02d}"
     raise ValueError(f"the platform screens name a label {key!r} the catalogue lacks")
@@ -38,7 +40,7 @@ def lines(item: dict, words) -> list[str]:
     return words(f"system.screen.{item['key'].split('-')[1]}").split("\n")
 
 
-def render(model: dict, label, words=None) -> dict:
+def render(model: dict, label, words=None, hours: int = 12) -> dict:
     """``model`` with every ``label`` item drawn: an attribute, then the text placed by its
     rule. ``label(text, attribute, room)`` gives the glyph codes (hex) and the width; with
     no ``label`` - an image built without fonts - the words are left out. ``words`` is the
@@ -84,6 +86,6 @@ def render(model: dict, label, words=None) -> dict:
                 for index, words_ in enumerate(texts):
                     draw(words_, item, top + spacing * index)
                 continue
-            draw(text(item, words), item, item["y"])
+            draw(text(item, words, hours), item, item["y"])
         blocks.append(out)
     return {**model, "blocks": blocks}

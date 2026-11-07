@@ -26,6 +26,14 @@ to the previous picker; from Day it goes to the Day screen's own month, chosen b
 variables 5 and 6. Screen Sounds is a row of Options itself: a switch on its flag whose two
 programs write `3F F300` or `F301`, flip the flag and redraw (`07 FFF7`).
 
+**A 24-hour clock.** Logitech's European One (skin 59) has no Time of Day picker: its
+Hour picker offers 00:00 to 23:00 and the minute sets the clock, and the status bar
+draws the hour 00 to 23 (Danny Bloe's harmony-explorations, architectures/harmony-one/
+compiler.md, "the clock header" and "the Year picker"). A project chooses it with the
+preference `time_format: "Military"`, the key and value the Harmony 1100 keeps it under;
+the Hour picker then writes variable 2 := 0 to 23, and Minute sets the clock (`07 FFF9`)
+and goes back to Options.
+
 A picker opens on the page holding the clock's current value and frames that value's button.
 Its enter handler loads the variable into the accumulator (`1F EF`), takes the first value
 off (`79`, adds), divides by the buttons a page (`77`) and queues `(accumulator, 76)`, show

@@ -52,10 +52,16 @@ firmware's motion event. Each key row runs the wake:
 3. arm: stop the off timer; if platform variable 17 is not 0, screen backlight to 6 with bit 0
    set and start the off timer; start the poll timer (13), whose action is this step again.
 
-The off timer (duration 10) turns every channel to 0 and writes `0x3F F101`. Upstairs wraps
+The off timer turns every channel to 0 and writes `0x3F F101`. Upstairs wraps
 the wake in tests of platform variables 13, 16 and 9; run under every combination of their
 values (`one-tools/effects.py`), the tests only change how many times the same writes repeat,
 never the end state, so a generated wake does not need them.
+
+**How long the screen stays lit** is the off timer's duration, in seconds: 10 in every
+Logitech compile (their pair of 10 and 20), and Danny Bloe's harmony-explorations raised it
+to 60 and the screen stayed lit about a minute (remotes/harmony-one/hardware.md). A
+project sets it with the preference `backlight_timeout`, the key the Harmony 1100 keeps
+its own under, 1 to 300.
 
 **The platform variables are the firmware's.** No configuration writes 0-17; the factory
 image declares their ranges. 0-6 count the clock (seconds and minutes to 59, hours to 23,

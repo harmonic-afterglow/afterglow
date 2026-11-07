@@ -1364,6 +1364,51 @@ def test_date_and_time_offers_the_build_year_and_sets_the_clock_through_its_pick
     assert "28" in last and "29" not in last
 
 
+def test_a_24_hour_clock_picks_the_hour_00_to_23_and_has_no_time_of_day():
+    """Logitech's European One: the Hour picker offers 00:00 to 23:00, and the minute
+    sets the clock and goes back to Options, with no Time of Day picker; the clock in the
+    status bar draws 00 to 23 (Danny Bloe's harmony-explorations, architectures/
+    harmony-one/compiler.md)."""
+    from afterglow.backends.harmony_one import platform_text
+
+    project = {**THREE, "settings": {"time_format": "Military"}}
+    built = generate.build(project, stamp_fields=(0, 0, 0, 0, 0, 2027))
+    image = built["image"]
+    twelve = generate.options_model(FONTS, 2027)
+    model = generate.options_model(FONTS, 2027, hours=24)
+    assert len(model["modes"]) == len(twelve["modes"]) - 1      # no Time of Day
+    machine = _Idle(image)
+    year = OPTIONS + 1 + model["entries"]["date-and-time"]
+    machine.enter(year)
+    _press(machine, image, year, 0, 0xB0)                    # 2026
+    _press(machine, image, machine.mode, 0, 0xB0)            # January
+    _press(machine, image, machine.mode, 0, 0xB0)            # the 1st
+    hour = machine.mode
+    assert [t for _a, _x, _y, t in _texts(built, hour, 2) if ":" in t][:2] == [
+        "12:00", "13:00"]
+    _press(machine, image, hour, 2, 0xB3)                    # 15:00
+    assert machine.variables[2] == 15
+    _press(machine, image, machine.mode, 9, 0xB5)            # 59
+    assert machine.variables[1] == 59 and machine.variables[2] == 15
+    assert machine.mode == OPTIONS
+    hour_label = {"key": "hour", "value": 0}
+    assert platform_text.text(hour_label, ENGLISH, 24) == "00:"
+    assert platform_text.text(hour_label, ENGLISH) == "12:"
+
+
+def test_the_screen_stays_lit_as_long_as_the_project_says():
+    """The off timer that darkens the screen and keys runs 10 seconds in every Logitech
+    compile; a project's `backlight_timeout` sets it, as 60 kept a One lit a minute
+    (Danny Bloe's harmony-explorations, remotes/harmony-one/hardware.md)."""
+    from afterglow.backends.harmony_one import idle
+
+    assert generate.preferences(THREE) == {"light": 10, "hours": 12}
+    assert generate.preferences({"settings": {"backlight_timeout": "60"}})["light"] == 60
+    assert idle.build(None, light=60)["timers"][0]["duration"] == 60
+    with pytest.raises(ValueError):
+        generate.preferences({"settings": {"backlight_timeout": "0"}})
+
+
 def test_the_options_screens_draw_their_text_from_the_catalogue():
     # Nothing of a donor's language: every word on the Options screens is the catalogue's.
     from afterglow.backends.harmony_one import catalogue
