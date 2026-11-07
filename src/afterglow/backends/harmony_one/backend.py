@@ -13,11 +13,12 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 import shutil
+import struct
 import tempfile
 
 from ... import ezhex, payloads
 from ..contracts import BuildResult, ImportResult
-from . import command_index, gspm, importing, inventory, labels
+from . import command_index, font_index, gspm, importing, inventory, labels
 
 
 # The types a device and an activity get when none is recognised: "Home appliance" and
@@ -29,6 +30,23 @@ GENERIC_ACTIVITY = "VirtualGeneric"
 # place drawn and bound with nothing: no frame, no label, no key, no touch zone.
 # Logitech's own One images never leave one; Afterglow draws its pages itself.
 SCREEN_GAPS = True
+
+
+def afterglow_built(payload: bytes) -> bool | None:
+    """Whether ``payload`` is one of Afterglow's builds, for the app's "first flash"
+    decision before a write (settings.welcome): True for ours, False for Logitech's, the
+    factory image or nothing readable, None when it cannot tell. The One carries no mark
+    of its own; Logitech's compiles and the factory image draw Logitech's letters, and
+    every build of ours draws its own font or a theme's (labels.Text.logitech)."""
+    try:
+        gspm.validate(payload)
+        drawn = sum(len(font["glyphs"]) for font in font_index.fonts(payload))
+        text = labels.Text(payload)
+    except (ValueError, IndexError, KeyError, struct.error):
+        return False
+    if not drawn:                       # no letters at all: nothing to tell it by
+        return None
+    return not text.logitech
 
 
 def validate_payload(payload: bytes, _profile=None) -> dict:
