@@ -886,7 +886,8 @@
       "input_delay",
       "app_power_delay"
     ],
-    "settings": ["output_file", "owner", "language", "rf_blasters", "preferences"],
+    "settings": ["output_file", "owner", "language", "rf_blasters", "welcome",
+                 "preferences"],
     "languages": [
       ["English", "enu"], ["Danish", "dan"], ["Dutch", "nld"], ["Finnish", "fin"],
       ["French", "fra"], ["German", "deu"], ["Italian", "ita"], ["Norwegian", "nor"],
