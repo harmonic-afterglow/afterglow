@@ -100,6 +100,11 @@ msgctxt "help.fixed"
 msgid "Did that fix the problem?"
 msgstr "Това реши ли проблема?"
 
+#. Help pressed with nothing on, when no device has a power to ask about; OK goes back: a message centred on the screen; about 160 pixels a line
+msgctxt "help.nothing-to-do"
+msgid "Nothing to do"
+msgstr "Няма какво да се направи"
+
 #. Help asks about each device an activity turns on; {device} is its name: a message centred on the screen; about 160 pixels a line; three lines at most
 #, python-brace-format
 msgctxt "assistant.is-on"
