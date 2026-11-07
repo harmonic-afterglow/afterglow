@@ -741,3 +741,39 @@ def test_an_activity_button_draws_its_icon_under_its_label():
         with_icon["skipped"]
     # the frame with the red circle on it, which no plain build carries
     assert red in with_icon["image"] and red not in without["image"]
+
+
+# the remote's own settings, built into the image (the One's, harmony_one/idle.md, options.md)
+def test_the_screen_stays_lit_as_long_as_the_project_says():
+    """The idle layer's off timer darkens the screen and the keys: 10 seconds unless the
+    project's `backlight_timeout` says otherwise, 1 to 300. Run under emulation, a build at
+    15 seconds turned the backlight off between 12 and 16 seconds after the last touch."""
+    from afterglow.backends.harmony_800 import idle
+
+    assert generate.preferences(PROJECT) == {"light": 10, "hours": 12}
+    assert generate.preferences({"settings": {"backlight_timeout": "60"}})["light"] == 60
+    assert idle.build(None, light=60)["timers"][0]["duration"] == 60
+    for wrong in ("0", "301", "ten"):
+        with pytest.raises(ValueError):
+            generate.preferences({"settings": {"backlight_timeout": wrong}})
+
+
+def test_a_24_hour_clock_draws_00_to_23_and_has_no_time_of_day_picker():
+    """`time_format: "Military"` builds the clock Logitech's European One has: the status
+    bar's hour 00 to 23, an Hour picker of 00:00 to 23:00 whose minute sets the clock, and
+    no Time of Day screen - so one screen fewer. Under emulation the Hour picker opened on
+    21:00 at 21:30, and 01:00 then 30 set the clock to 01:30 and went back to Options."""
+    from afterglow.backends.harmony_800 import mark, platform_text
+    from afterglow.backends.harmony_800.catalogue import ENGLISH
+
+    twelve = generate.build(PROJECT)["image"]
+    project = {**PROJECT, "settings": {"time_format": "Military"}}
+    image = generate.build(project)["image"]
+    assert gsgd.validate(image)["ok"]
+    assert len(_screens(image)) == len(_screens(twelve)) - 1
+    assert platform_text.text({"key": "hour", "value": 0}, ENGLISH, 24) == "00:"
+    assert platform_text.text({"key": "hour", "value": 21}, ENGLISH, 24) == "21:"
+    assert platform_text.text({"key": "hour", "value": 0}, ENGLISH) == "12:"
+    # the choice travels in the mark, so reading the image back keeps it
+    assert mark.read(image)["project"]["settings"]["time_format"] == "Military"
+

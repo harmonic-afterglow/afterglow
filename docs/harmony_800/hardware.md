@@ -70,3 +70,19 @@ where the configuration warns of a low battery - begins near half charge. Afterg
 Harmony One's tables instead, Logitech's curve for the same kind of cell: on battery
 3.00-4.05 V, on the cradle full above 4.17 V. The level itself was measured correct: the
 tester's 4.13 V read as level 6, as the factory table says.
+
+## Settings a build carries
+
+The 800 has no settings store a configuration tool writes, so a project's choices are built
+into the image, as on the Harmony One ([idle.md](../harmony_one/idle.md),
+[options.md](../harmony_one/options.md)):
+
+- **How long the screen stays lit** (`backlight_timeout`, 1 to 300 seconds, 10 by default) is
+  the idle layer's off timer, which darkens the backlight and every LED. Danny Bloe's
+  harmony-explorations (MIT) measured a One kept lit a minute with 60; under emulation of
+  firmware 0.7.1 a build at 15 turned the backlight off between 12 and 16 seconds after the
+  last touch, where 10 would have before 12.
+- **A 24-hour clock** (`time_format`, `Military`) draws the status bar's hour 00 to 23 and
+  gives Date and Time an Hour picker of 00:00 to 23:00 whose minute sets the clock, with no
+  Time of Day picker - the clock of Logitech's European One, as harmony-explorations reads
+  it. Under emulation the picker opened on the current hour and set the time it was given.
