@@ -630,7 +630,8 @@ class SettingsTab(QWidget):
         self.first_name.setText(s.get("first_name", ""))
         self.last_name.setText(s.get("last_name", ""))
         self._fill_themes(profile, s.get("theme_folder", ""))
-        self.assistant.setChecked(s.get("remote_assistant", True) is not False)
+        # "false" is how an 1100 project kept it while it was one of the remote's preferences
+        self.assistant.setChecked(s.get("remote_assistant", True) not in (False, "false"))
         from .. import welcome
         self.welcome.setCurrentIndex(self.welcome.findData(welcome.setting(self.project)))
         idx = self.locale.findData(s.get("locale", "enu"))

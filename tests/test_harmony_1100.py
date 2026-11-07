@@ -65,7 +65,8 @@ def test_its_interface_has_no_rf_and_its_own_settings():
     profile = remotes.get("harmony-1100")
     assert "rf_blasters" not in profile.settings_fields
     assert list(profile.preferences) == ["time_format", "backlight_level",
-                                         "backlight_timeout", "remote_assistant"]
+                                         "backlight_timeout"]
+    assert "assistant" in profile.settings_fields
     assert profile.preferences["backlight_level"]["range"] == [0, 255]
 
 

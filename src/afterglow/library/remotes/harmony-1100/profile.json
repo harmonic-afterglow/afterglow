@@ -1356,6 +1356,7 @@
       "output_file",
       "owner",
       "language",
+      "assistant",
       "preferences"
     ],
     "languages": [
@@ -1449,21 +1450,6 @@
       "range": [
         1,
         99
-      ]
-    },
-    "remote_assistant": {
-      "file": "system_remoteassistant.dat",
-      "label": "Remote assistant",
-      "default": "false",
-      "choices": [
-        [
-          "Off",
-          "false"
-        ],
-        [
-          "On",
-          "true"
-        ]
       ]
     }
   }

@@ -86,3 +86,23 @@ def test_the_900_is_welcomed_when_the_write_says_so(tmp_path):
 def test_the_1100_has_no_first_time_setup_to_run(tmp_path):
     user = _user(_build(tmp_path, "harmony-1100", welcome="always"))
     assert user.find("Properties/Property[@name='FirstTimeDownload']") is None
+
+
+TRAINING_WHEELS = "Properties/Property[@name='TrainingWheels']"
+
+
+@pytest.mark.parametrize("setting, shown", [(None, "True"), (False, "False"),
+                                            ("false", "False"), ("true", "True")])
+def test_the_1100s_remote_assistant_is_what_the_project_says(tmp_path, setting, shown):
+    """The 1100 sets its Remote Assistant from TrainingWheels on the first start after a
+    write - on when it is missing - and overwrites its own preference file with it, so
+    the choice has to be in the configuration. "false" is how a project kept it while
+    it was one of the remote's preferences."""
+    settings = {} if setting is None else {"remote_assistant": setting}
+    user = _user(_build(tmp_path, "harmony-1100", **settings))
+    assert user.findtext(TRAINING_WHEELS) == shown
+
+
+def test_the_900_keeps_its_remote_assistant_off(tmp_path):
+    user = _user(_build(tmp_path, "harmony-900", remote_assistant=True))
+    assert user.findtext(TRAINING_WHEELS) == "False"
