@@ -275,6 +275,7 @@ def _owned_screens(screens, numbers, carried, variables, devices, acts, pages,
     if numbers.options_more is not None:
         settings.page(1)
         settings.tutorial()
+    owned.activity_device_menus()
     if len(layout.trailers) == platform.count:
         empty_screen(screens, platform.owned)
     return rows

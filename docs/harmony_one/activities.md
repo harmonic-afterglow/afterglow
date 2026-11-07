@@ -78,7 +78,12 @@ checked where it matters against the Harmony 800's firmware:
   activity's icon (62x42 at 57,67), "Starting ..." in attribute 11 and "Keep the remote
   pointed at your system." in attribute 0, and swallows every key. The activity's pages
   are its buttons, six to a page on blue frames, a Devices softkey, the side strips turning
-  pages. Help draws its name, "Attempting to fix the problem...", the waves and the same
+  pages. **Each activity has its own device list**, as Logitech's compiles do (Danny Bloe's
+  harmony-explorations, architectures/harmony-one/compiler.md, "the device lists"): every
+  device once, those its start switches on first in that order, then the rest as the list
+  with nothing running has them. An activity's pages open its own list; the Activities
+  menu's Devices and every device page's Devices switch on the counter to the running
+  activity's list, or the idle one. The lists come after the Tutorial's screens. Help draws its name, "Attempting to fix the problem...", the waves and the same
   reminder; entering it re-sends what the activity set and goes back. The device list's and
   device pages' left softkey reads "Current Activity" while one runs.
 

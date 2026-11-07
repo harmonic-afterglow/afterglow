@@ -30,6 +30,7 @@ class Ordinals:
     menu: list[int] = field(default_factory=list)
     commands: dict[int, list[int]] = field(default_factory=dict)   # by device index
     menu_of_device: dict[int, int] = field(default_factory=dict)
+    activity_menus: list[list[int]] = field(default_factory=list)   # each activity's list
     activity_menu: list[int] = field(default_factory=list)
     activities: list[dict] = field(default_factory=list)          # per activity
     off_help: int | None = None
@@ -128,6 +129,9 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
         # Options' second page, with the Remote Assistant's switch.
         out.options_more = take(1)[0]
         out.tutorial = take(tutorial_pages)
+        # Each activity's own device list, as Logitech's has: its devices first
+        # (hub.Hub.activity_device_menus), as many pages as the list with none running.
+        out.activity_menus = [take(len(out.menu)) for _ in acts] if out.menu else []
     # The idle layer's contexts are 1 and 2, then its charge contexts; each activity's
     # follows, then Off's.
     out.off_context = out.activity_context + len(acts)

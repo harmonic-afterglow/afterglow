@@ -758,3 +758,28 @@ def test_off_s_help_with_no_device_to_ask_about_says_there_is_nothing_to_do():
     assert "Nothing to do" not in {
         item["text"] for screen in with_power.screens for slot in screen["slots"]
         for item in with_power.page_text(slot["program_offset"])}
+
+
+def test_each_activity_lists_its_own_devices_first(remote):
+    """Logitech's device list while an activity runs is that activity's own: the devices
+    its start switches on first, then the rest (Danny Bloe's harmony-explorations,
+    compiler.md, "the device lists"). Devices on a device page opens the running
+    activity's list again."""
+    machine = _fresh(remote)
+    machine.press(keys.code(keys.ACTIVITIES))              # the menu, nothing running
+    machine.touch(pages.MENU_DEVICES_KEY)
+    idle_list = machine.mode
+    machine.touch(pages.MENU_ROW_KEYS[0])                  # the TV comes first
+    machine.sent.clear()
+    machine.press(keys.by_name("ChannelUp"))
+    assert machine.sent == [_command("ChannelUp")]
+    _start(machine, 1)                                     # Listen to Music: the receiver
+    machine.touch(pages.PAGE_DEVICES_KEY)
+    music_list = machine.mode
+    assert music_list != idle_list
+    machine.touch(pages.MENU_ROW_KEYS[0])                  # now the receiver comes first
+    machine.sent.clear()
+    machine.press(keys.by_name("ChannelUp"))               # the receiver has none
+    assert machine.sent == []
+    machine.touch(pages.PAGE_DEVICES_KEY)
+    assert machine.mode == music_list

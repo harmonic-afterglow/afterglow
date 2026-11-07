@@ -70,6 +70,23 @@ class Flow:
             self.resume_group = layout.group(
                 [(value, layout.block(_enter(item["home"])))
                  for value, item in enumerate(ordinals.activities)]) if acts else None
+        # Devices: the running activity's own device list, or the list with none running,
+        # as Logitech's Devices record switches on the counter (Danny Bloe's
+        # harmony-explorations, compiler.md, "the device lists").
+        self.devices_group = None
+        if variables.state is not None and ordinals.activity_menus and ordinals.menu:
+            self.devices_group = layout.group(
+                [(value, layout.block(_enter(pages[0])))
+                 for value, pages in enumerate(ordinals.activity_menus)]
+                + [(len(acts), layout.block(_enter(ordinals.menu[0])))])
+
+    def to_devices(self) -> int:
+        """An object that opens the device list for what is running."""
+        if self.devices_group is None:
+            return self.layout.navigation(self.ordinals.menu[0])
+        return self.layout.object(object_body([
+            (structures.IR_OBJECT_KIND_FALLBACK, 0x75),
+            ((self.devices_group << 8) | self.variables.state, 0x72)]))
 
     def back_to_current(self) -> int:
         """An object that opens what is running: an activity's first page, or the menu."""
@@ -93,7 +110,7 @@ class Flow:
                     (0xFF00 | (ordinals.activity_context + index), 0x1F)])), OBJECT_ATOM)
                 for slot, index in enumerate(on_page)]
         rows.append((MENU_OPTIONS_KEY, layout.navigation(ordinals.options), OBJECT_ATOM))
-        rows.append((MENU_DEVICES_KEY, layout.navigation(ordinals.menu[0]), OBJECT_ATOM))
+        rows.append((MENU_DEVICES_KEY, self.to_devices(), OBJECT_ATOM))
         if total > 1:
             rows.append((SIDE_PREV_KEY, layout.navigation(
                 ordinals.activity_menu[(page_index - 1) % total]), OBJECT_ATOM))
@@ -349,8 +366,10 @@ class Flow:
                              OBJECT_ATOM))
                 rows.append((SIDE_NEXT_KEY, layout.navigation(
                     ordinals[(page_index + 1) % len(ordinals)]), OBJECT_ATOM))
-            rows.append((PAGE_DEVICES_KEY, layout.navigation(self.ordinals.menu[0]),
-                         OBJECT_ATOM))
+            number = next(index for index, item in enumerate(self.acts) if item is act)
+            devices_list = (self.ordinals.activity_menus[number][0]
+                            if self.ordinals.activity_menus else self.ordinals.menu[0])
+            rows.append((PAGE_DEVICES_KEY, layout.navigation(devices_list), OBJECT_ATOM))
             zones = [zone for zone in without_gaps(page_zones(self.geometry, len(chunk)), chunk)
                      if zone["y"] != SOFTKEY_LEFT_ZONE["y"]]
             zones.append(dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F))
