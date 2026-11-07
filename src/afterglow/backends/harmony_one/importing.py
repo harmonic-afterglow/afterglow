@@ -29,7 +29,7 @@ from . import (
     activity_index, bitmap, command_index, font_index, gspm, ir_lowering, keys, labels,
     named_index, ui_index)
 from .pages import (
-    BUTTON_POSITIONS, FRAME_WIDTH, MENU_FRAME_XY, MENU_ICON_XY, TITLE_XY)
+    BUTTON_POSITIONS, FRAME_WIDTH, MENU_FRAME_XY, MENU_ICON_XY, PAD_ROOM, TITLE_XY, pad_words)
 
 SEND, WAIT, WRITE, MODE, CONTEXT, SWITCH = "send", "wait", "write", "mode", "context", "switch"
 OBJECT, COMMAND, DEVICE_OR_WAIT, ENTER_MODE = 0x7F, 0x7D, 0x7C, 0x7E
@@ -234,18 +234,30 @@ class Image:
 
     def _split(self, before: dict, after: dict) -> bool:
         """Whether the line ``after`` goes on a word the line ``before`` split, as this
-        builder splits one: ``before`` fills its frame so that ``after``'s first letter
-        would not have fit on it."""
-        if " " in before["text"] or not after.get("codes") or not before.get("codes"):
+        builder splits a pad's label (pages.pad_label, Logitech's rule): only where a
+        word may be split, before a capital, digit or "+" after a lower case letter or
+        after a hyphen, and only where the two parts would not have fit on one line -
+        else the line ended at a space. Where both could be, a line of one word was split
+        and a line of several ended at a space."""
+        text, following = before["text"], after["text"]
+        first = pad_words(following)[0][0] if pad_words(following) else ""
+        if not (text and first):
+            return False
+        hyphen = text.endswith("-") and not text.endswith("--")
+        if not (hyphen or (text[-1].islower()
+                           and (first[0].isupper() or first[0] in "+0123456789"))):
             return False
         widths = (self.glyph_widths[before["attribute"]]
                   if before["attribute"] is not None
                   and before["attribute"] < len(self.glyph_widths) else {})
         try:
-            width = sum(widths[code] for code in before["codes"] + after["codes"][:1])
-        except KeyError:
+            width = sum(widths[code] for code in before["codes"]
+                        + after["codes"][:len(first)])
+        except (KeyError, TypeError):
             return False
-        return width > FRAME_WIDTH
+        if width <= PAD_ROOM:            # it would have fit: the line ended at a space
+            return False
+        return hyphen or " " not in text
 
 
 def number_senders(payload: bytes) -> list[dict]:

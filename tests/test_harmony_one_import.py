@@ -467,3 +467,31 @@ def test_a_logitech_favourite_dials_its_channel_through_the_number_sender():
     image.channel_variables = {0}
     sends = [step[1] for step in image.atom(5, 0x80) if step[0] == importing.SEND]
     assert sends == [0x11, 0x20, 0x31, 0x40]
+
+
+def test_a_pad_label_wraps_as_logitech_s_and_its_name_comes_back(tmp_path):
+    """A pad's label is laid out by Logitech's rule - split before a capital after a lower
+    case letter, and at spaces, lines to 72 pixels, at most three (Danny Bloe's
+    harmony-explorations, compiler.md, "a pad's label") - and a name split so is read
+    back without the space, one wrapped at a space with it."""
+    from afterglow.backends.harmony_one import pages
+
+    from test_harmony_one_activities import _device
+    from test_harmony_one_generate import FONTS
+
+    assert pages.pad_words("DirectionDown") == [("Direction", " "), ("Down", "")]
+    assert pages.pad_words("Blu-ray Menu") == [("Blu-", " "), ("ray", ""), ("Menu", " ")]
+    font = FONTS[0]
+    widths, codes = pages.measure(font)
+
+    def text(glyphs):
+        names = {code: char for char, code in codes.items()}
+        return "".join(names[code] for code in glyphs)
+    lines = [text(line) for line in pages.pad_label("NetflixAppLaunchButton", font)]
+    assert len(lines) <= pages.PAD_LINES and "".join(lines) == "NetflixAppLaunchButton"
+    assert all(sum(widths[codes[c]] for c in line) <= pages.PAD_ROOM for line in lines)
+    names = ["DirectionDown", "TV Power Toggle", "PreviousChannel", "SurroundToggle",
+             "AVR Input Digital", "NetflixAppLaunchButton", "Vol +"]
+    device = _device("tv", "Living Room TV", "Television", 4, {name: None for name in names})
+    project = _imported(generate.build({"devices": [device]})["image"], tmp_path)
+    assert sorted(entry[0] for entry in project["devices"][0]["commands"]) == sorted(names)

@@ -139,6 +139,16 @@ whole line is split where it stops fitting, and anything left after the second l
 marked `..`. The upstairs round trip now keeps every device name whole - "Game Console (With
 DVD)" and "AV Receiver- Room 1" draw on two lines - where it used to trim them.
 
+**A pad's label is Logitech's** (`pages.pad_label`), as Danny Bloe's harmony-explorations
+measured it on 3232 pads of eighteen compiles (architectures/harmony-one/compiler.md, "a pad's
+label"): words split at spaces, before a capital, digit or `+` after a lower case letter, and
+after a single hyphen; lines filled greedily to 72 pixels, a word alone up to 73 and a wider
+one cut with `..` on its own line; at most three lines, at 9, 20 and 31 into the pad.
+"DirectionDown" draws as "Direction" over "Down" rather than "DirectionDow" over "n". An
+import of this backend's image reads a break at such a place as a split only where the two
+parts could not have shared a line, and then only on a line of one word; elsewhere the line
+ended at a space.
+
 ## Nothing a generated image names is missing
 
 `afterglow-research/one-tools/refcheck.py` resolves every instruction in an image - objects,

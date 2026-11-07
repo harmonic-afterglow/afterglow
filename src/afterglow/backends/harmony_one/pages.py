@@ -9,6 +9,7 @@ Format reference: docs/harmony_one/generating.md
 
 from __future__ import annotations
 
+import re
 import struct
 from dataclasses import dataclass
 
@@ -29,6 +30,16 @@ FIRST_BUTTON_KEY = 0xB0
 MENU_LINE_OFFSETS = (-6, 6)
 BUTTON_LINE_OFFSETS = (-5, 6)
 ELLIPSIS = ".."
+
+# A pad's label as Logitech's compiler lays it out on a device page and an activity's
+# screen (Danny Bloe's harmony-explorations, architectures/harmony-one/compiler.md, "a
+# pad's label"): split into words at spaces, before a capital, digit or "+" after a lower
+# case letter, and after a single hyphen; lines filled greedily to 72 pixels, a lone word
+# up to 73 and a wider one cut with ".." on its own line; at most three lines, 11 apart
+# and centred on the pad's label row - 20, or 15 and 26, or 9, 20 and 31.
+PAD_ROOM, PAD_LONE_ROOM, PAD_LINES = 72, 73, 3
+PAD_LINE_OFFSETS = (-11, 0, 11)
+_PAD_SPLIT = re.compile(r"(?<=[a-z])(?=[A-Z0-9+])|(?<=[^-]-)(?=[^-])")
 
 
 def measure(font: dict):
@@ -99,6 +110,58 @@ def line_ys(baseline: int, count: int, offsets: tuple[int, int]) -> list[int]:
     return [baseline] if count == 1 else [baseline + offset for offset in offsets[:count]]
 
 
+def pad_words(label: str) -> list[tuple[str, str]]:
+    """A pad label's words as Logitech's compiler splits them, each with what joins it
+    to the one before: a space, or nothing where a word was split."""
+    out = []
+    for word in re.split(r"[ \t\n]+", label):
+        if word:
+            parts = _PAD_SPLIT.split(word)
+            out += [(parts[0], " ")] + [(part, "") for part in parts[1:]]
+    return out
+
+
+def pad_label(label: str, font: dict) -> list[bytes]:
+    """A pad's label as Logitech lays it out (PAD_ROOM): its glyph lines, one to
+    three."""
+    widths, codes = measure(font)
+    missing = sorted(set(label) - set(codes))
+    if missing:
+        raise ValueError(
+            f"this font cannot draw {', '.join(repr(item) for item in missing)}")
+
+    def width(text):
+        return sum(widths[codes[character]] for character in text)
+    mark = ELLIPSIS if all(character in codes for character in ELLIPSIS) else ""
+
+    def cut(text, room):
+        while text and width(text + mark) > room:
+            text = text[:-1]
+        return text + mark
+    out, joins, line = [], [], ""
+    for word, join in pad_words(label):
+        candidate = line + join + word if line else word
+        if line and width(candidate) <= PAD_ROOM:
+            line = candidate
+            continue
+        if line:
+            out.append(line)
+        joins.append(join)
+        if width(word) <= PAD_LONE_ROOM:
+            line = word
+        else:                                     # too wide even alone: cut, on its own
+            out.append(cut(word, PAD_LONE_ROOM))
+            line = ""
+    if line:
+        out.append(line)
+    if len(out) > PAD_LINES:
+        rest = out[PAD_LINES - 1] + "".join(
+            join + text for join, text in zip(joins[PAD_LINES:], out[PAD_LINES:]))
+        out = out[:PAD_LINES - 1] + [cut(rest, PAD_ROOM)]
+    font.setdefault("drawn", set()).update(label, *out)
+    return [drawing.GlyphCodes.of(codes[character] for character in text) for text in out]
+
+
 def button_page(labels: list[str], frames: list[int], font: dict, *,
                 prologue: int | None = None, backdrop: int | None = None,
                 attribute: int = 0, frame_width: int | None = None) -> list[dict]:
@@ -106,7 +169,7 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
 
     Each button is its frame and then its label, centred over the frame the way every
     donor page centres one: the label's x is the midpoint of the frame less half the
-    text's width. A label wider than its button wraps onto a second line. A place whose
+    text's width. A label wraps as Logitech's does (pad_label). A place whose
     frame is None is a gap: nothing is drawn there. A button with an icon has it drawn
     on its frame (pictures.button_picture), and its label over it like any other's.
     """
@@ -135,9 +198,10 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
         frame_width = FRAME_WIDTH if frame_width is None else frame_width
         if label is None:          # a picture that says it all: a favourite's logo
             continue
-        lines = fit_label(label, font, frame_width)
-        for glyphs, y in zip(lines, line_ys(top + LABEL_BASELINE, len(lines),
-                                             BUTTON_LINE_OFFSETS)):
+        lines = (pad_label(label, font) if frame_width == FRAME_WIDTH
+                 else fit_label(label, font, frame_width))
+        offsets = PAD_LINE_OFFSETS if len(lines) == PAD_LINES else BUTTON_LINE_OFFSETS
+        for glyphs, y in zip(lines, line_ys(top + LABEL_BASELINE, len(lines), offsets)):
             width = sum(widths[code] for code in glyphs)
             out.append({
                 "opcode": "inline_text",
