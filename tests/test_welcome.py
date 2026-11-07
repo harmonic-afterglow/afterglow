@@ -13,14 +13,14 @@ LOGITECH_650 = sorted((ROOT / "configs" / "650").glob("*.ezhex")) if (
     ROOT / "configs" / "650").is_dir() else []
 
 
-def _project(**settings):
+def _project(remote="harmony-one", **settings):
     return {"devices": [], "activities": [],
-            "settings": {"remote": "harmony-650", **settings}}
+            "settings": {"remote": remote, **settings}}
 
 
 def _ours() -> bytes:
-    from afterglow.backends.harmony_650 import compose
-    return compose.build(_project(), stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    from afterglow.backends.harmony_one import generate
+    return bytes(generate.build(_project(), stamp_fields=(0, 0, 12, 0, 0, 2026))["image"])
 
 
 def test_a_project_names_first_flash_only_unless_it_chose_otherwise():
@@ -42,4 +42,5 @@ def test_first_flash_only_welcomes_a_remote_with_nothing_of_ours():
 
 @pytest.mark.skipif(not LOGITECH_650, reason="Logitech's 650 configurations")
 def test_first_flash_only_welcomes_a_remote_holding_logitechs_configuration():
-    assert welcome.decide(_project(), LOGITECH_650[0].read_bytes()) == "always"
+    assert welcome.decide(_project("harmony-650"),
+                          LOGITECH_650[0].read_bytes()) == "always"
