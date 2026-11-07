@@ -74,6 +74,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **The Harmony 1100's Remote Assistant setting works.** It was written to a preference
+  file the remote overwrites on the first start after every write, so the assistant came
+  on whatever the setting said. It now goes into the configuration, where the 1100 reads
+  it, and is the same Remote Assistant checkbox the One and 800 have. A project saved
+  with it Off keeps it off.
 - **Harmony 1100 commands an older Afterglow got wrong are repaired.** The 1100 keeps no
   protocols: importing one reads back what the build sent as recordings, and those were
   replayed as they were through every later fix - an MCE keyboard's Win+1 built by

@@ -300,13 +300,24 @@ def build(specs, work, request: BuildRequest | None = None):
     # sent it on an account's first update only; the app decides "always" or "never" per
     # write (settings["welcome"]). The 1100's interface has no such setup.
     from .... import remotes
-    if (settings.get("welcome") == "always"
-            and remotes.for_project({"settings": settings}).can("first_time_setup")):
+    remote = remotes.for_project({"settings": settings})
+
+    def user_property(name, value):
         props = root.find("User/Properties")
-        first = props.find("Property[@name='FirstTimeDownload']")
-        if first is None:
-            first = ET.SubElement(props, "Property", name="FirstTimeDownload")
-        first.text = "True"
+        prop = props.find(f"Property[@name='{name}']")
+        if prop is None:
+            prop = ET.SubElement(props, "Property", name=name)
+        prop.text = value
+
+    if settings.get("welcome") == "always" and remote.can("first_time_setup"):
+        user_property("FirstTimeDownload", "True")
+    # The Remote Assistant. On the first start after a write the interface sets it from
+    # TrainingWheels - on unless that says False - and writes its own preference file
+    # (app-main.swf), so that file is not where the choice goes. A remote that offers
+    # the choice gets it here; the 900's scaffold keeps it off.
+    if "assistant" in remote.settings_fields:
+        hidden = settings.get("remote_assistant") in (False, "false")
+        user_property("TrainingWheels", "False" if hidden else "True")
 
     for d in root.findall("Device"): root.remove(d)
     for a in root.findall("Activity"): root.remove(a)
