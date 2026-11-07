@@ -69,7 +69,9 @@ def fit_label(label: str, font: dict, room: int, lines: int = 2) -> list[bytes]:
     # Each line remembers how it joins the one before: a space, or nothing where a word
     # was split, so what is cut after the last line reads as the label did.
     out, line, joins = [], "", []
-    words = [(word, " ") for word in label.split()]
+    # only an ordinary space breaks a line: a no-break space - French puts one before
+    # "?" and "!" - keeps its neighbours together, and is drawn as itself
+    words = [(word, " ") for word in re.split(r"[ \t\n]+", label) if word]
     while words:
         word, join = words.pop(0)
         candidate = f"{line} {word}" if line else word

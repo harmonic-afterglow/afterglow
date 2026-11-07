@@ -454,3 +454,19 @@ def test_every_face_draws_every_letter_a_translation_may_use(remote):
         face = bdf.Bitmap.read(scaffold / faces_named[kind])
         missing = "".join(char for char in TRANSLATABLE if face.glyph(char) is None)
         assert not missing, f"{remote} {kind} lacks {missing!r}"
+
+
+def test_a_no_break_space_keeps_french_punctuation_on_its_word():
+    """French puts a narrow no-break space before "?" and "!": a line wraps only at an
+    ordinary space, so the mark never starts a line on its own."""
+    from afterglow.backends.harmony_one import generate, pages
+
+    from test_harmony_one_activities import PROJECT
+    built = generate.build({**PROJECT, "settings": {"locale": "fr"}})
+    font = next(font for font in built["fonts"].values()
+                if {"\u00e9", "\u202f", "?"} <= set(pages.measure(font)[1]))
+    _widths, codes = pages.measure(font)
+    names = {code: char for char, code in codes.items()}
+    text = "L'appareil Receiver est-il allum\u00e9\u202f?"
+    lines = ["".join(names[c] for c in line) for line in pages.fit_label(text, font, 150)]
+    assert len(lines) == 2 and lines[1] != "?" and lines[1].endswith("allum\u00e9\u202f?")
