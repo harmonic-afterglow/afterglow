@@ -57,6 +57,22 @@ def append(body: bytearray, project: dict) -> bytearray:
     return body
 
 
+def signed(payload: bytes) -> bool:
+    """Whether an image ends with an Afterglow mark's trailer - one of our builds, even
+    one whose project no longer checks out or that a newer Afterglow wrote. False for an
+    image without it, Logitech's and the factory's, and for one that cannot be read."""
+    try:
+        image = gsgd.trimmed(payload)
+        close = struct.unpack_from("<I", image, 4)[0] - gsgd.base_of(image)
+        start = close - 2 - TRAILER.size
+        if start < gsgd.HEADER_SIZE:
+            return False
+        magic, *_fields, closing = TRAILER.unpack_from(image, start)
+    except (ValueError, struct.error):
+        return False
+    return magic == MAGIC and closing == END
+
+
 def read(payload: bytes) -> dict:
     """The mark of an image: ``{"version", "project"}``. Raises NotAfterglow, naming why,
     for an image without one or with one that does not hold together."""

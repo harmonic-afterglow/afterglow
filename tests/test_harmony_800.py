@@ -846,3 +846,30 @@ def test_an_activity_s_page_arrows_take_the_direction_pad():
     bound = activities.plan(project, devices.lowered_devices(project))["activities"][0]["keys"]
     assert bound[keys.by_name("UpArrow")] == bound[keys.by_name("DirectionUp")]
     assert bound[keys.by_name("DownArrow")] == bound[keys.by_name("DirectionDown")]
+
+
+def test_the_welcome_tour_follows_the_remote_assistant_once_after_a_write():
+    """As Logitech's One (Danny Bloe's harmony-explorations): after the Remote Assistant's
+    welcome and its devices-off note, the Tutorial's first page opens, on a Welcome_2
+    variable the image starts at 0; `welcome: "never"` starts it at 1. Under emulation
+    the first build opened "Welcome to your Harmony 800" after the second OK and the
+    "never" build went back to Activities."""
+    first = generate.build(WATCHING)["image"]
+    never = generate.build({**WATCHING, "settings": {"welcome": "never"}})["image"]
+    assert gsgd.validate(first)["ok"] and gsgd.validate(never)["ok"]
+    assert b"Welcome_2" in first and b"Welcome_2" in never
+    assert len(_screens(first)) == len(_screens(never))
+
+
+def test_the_app_can_tell_one_of_our_builds_by_its_mark():
+    """backend.afterglow_built, asked before a write to decide the welcome tour: our
+    builds carry the mark; an image without it - Logitech's, the factory's - or nothing
+    readable is not ours."""
+    image = generate.build(WATCHING)["image"]
+    assert backend.afterglow_built(image) is True
+    unsigned = bytearray(image)
+    at = unsigned.rindex(b"AGLW")
+    unsigned[at:at + 4] = b"\0\0\0\0"
+    assert backend.afterglow_built(bytes(unsigned)) is False
+    assert backend.afterglow_built(b"") is False
+    assert backend.afterglow_built(b"GSGD" + bytes(200)) is False
