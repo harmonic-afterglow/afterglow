@@ -20,8 +20,9 @@ three household configurations and on generated ones:
   screen per page; both are reached from a device-menu row, whose object also writes a
   variable of its own in Logitech's images.
 - **Command names are the buttons' labels.** A name too long for a button's line is split
-  without a space where it has none ("Power" over "Toggle" is PowerToggle), where this
-  backend wraps at spaces. Commands a device page does not show are bound to physical keys,
+  without a space where it has none ("Power" over "Toggle" is PowerToggle); this backend
+  splits a pad's label the same way, and reads its own back by widths (generating.md,
+  "A pad's label is Logitech's"). Commands a device page does not show are bound to physical keys,
   and are named by them. Logitech keeps a press-only copy of a device's power and input
   commands - the same code without its repeat - which its state variables send.
 - **A device's state variables carry its label.** `<Label>_Power_2` sends the off command
