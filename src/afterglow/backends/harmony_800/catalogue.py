@@ -138,6 +138,9 @@ def _messages() -> list[po.Message]:
                    "starts the explanation below it: " + MESSAGE),
         po.Message("help.fixed", "Did that fix the problem?",
                    "Help, after a device answered: " + MESSAGE),
+        po.Message("help.nothing-to-do", "Nothing to do",
+                   "Help pressed with nothing on, when no device has a power to ask "
+                   "about; OK goes back: " + MESSAGE),
         po.Message("assistant.is-on", "Is the {device} on?",
                    "Help asks about each device an activity turns on; {device} is its "
                    "name: " + MESSAGE + "; three lines at most", brace_format=True),

@@ -107,11 +107,25 @@ class Hub:
         screens.owned(rows, zones, program, "activities", screens.words("hub.activities-title"))
 
     def device_menu(self):
-        """The device menu: a page of up to three rows, and where there are more devices
-        the side strips move between menu pages in a cycle."""
+        """The device menu with no activity running."""
+        self._device_menu(self.ordinals.menu, list(self.pages))
+
+    def activity_device_menus(self):
+        """Each activity's own device list, as Logitech's: every device once, those the
+        activity's start switches on first in that order, then the rest as the list with
+        none running has them (Danny Bloe's harmony-explorations, compiler.md, "the
+        device lists")."""
+        idle = list(self.pages)
+        for act, menu in zip(self.flow.acts if self.flow else [],
+                             self.ordinals.activity_menus):
+            first = [index for index in act["on"] if index in idle]
+            self._device_menu(menu, first + [index for index in idle if index not in first])
+
+    def _device_menu(self, menu: list[int], devices: list[int]):
+        """A device menu at the screens ``menu``: a page of up to three rows of
+        ``devices``, and where there are more the side strips move between its pages in
+        a cycle."""
         screens, layout, ordinals = self.screens, self.layout, self.ordinals
-        menu = ordinals.menu
-        devices = list(self.pages)
         icon_roles = sorted(role for role in screens.roles if role.startswith("row-icon/"))
         running = self.flow is not None and bool(self.flow.acts)
         for page_index in range(len(menu)):
@@ -187,7 +201,9 @@ class Hub:
                     zones += [dict(SOFTKEY_LEFT_ZONE, tag=PAGE_ACTIVITIES_KEY & 0x7F),
                               dict(SOFTKEY_RIGHT_ZONE, tag=PAGE_DEVICES_KEY & 0x7F)]
                     rows.append((PAGE_ACTIVITIES_KEY, self._to_activities(), OBJECT_ATOM))
-                    rows.append((PAGE_DEVICES_KEY, layout.navigation(home), OBJECT_ATOM))
+                    rows.append((PAGE_DEVICES_KEY,
+                                 self.flow.to_devices() if running else layout.navigation(home),
+                                 OBJECT_ATOM))
                 labels = [None if command is None else command.get("label") or command["name"]
                           for command in chunk]
                 gaps = [command is None for command in chunk]

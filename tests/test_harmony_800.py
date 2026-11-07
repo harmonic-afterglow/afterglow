@@ -777,3 +777,72 @@ def test_a_24_hour_clock_draws_00_to_23_and_has_no_time_of_day_picker():
     # the choice travels in the mark, so reading the image back keeps it
     assert mark.read(image)["project"]["settings"]["time_format"] == "Military"
 
+
+
+# closer to Logitech's compiles (the One's, from Danny Bloe's harmony-explorations)
+def _even_font(width=10):
+    from string import printable
+    return {"glyphs": {code: {"width": width, "char": char}
+                       for code, char in enumerate(printable.strip() + " ", start=1)}}
+
+
+def _text(lines, font):
+    chars = {code: item["char"] for code, item in font["glyphs"].items()}
+    return ["".join(chars[code] for code in line) for line in lines]
+
+
+def test_a_pad_label_breaks_where_logitech_s_compiler_does():
+    """Before a capital, digit or + after a lower case letter, and after a hyphen, as well
+    as at spaces - so DirectionDown wraps as Direction over Down rather than where the
+    line runs out. The 800's pads keep their own room and two lines."""
+    from afterglow.backends.harmony_800 import pages
+
+    font = _even_font()
+    room = pages.FRAME_WIDTH - pages.LABEL_INSET
+    assert _text(pages.fit_label("DirectionDown", font, room, pad=True), font) == [
+        "Direction", "Down"]
+    assert _text(pages.fit_label("DirectionDown", font, room), font) == ["DirectionD", "own"]
+    assert _text(pages.fit_label("Wi-Fi Setup", font, room, pad=True), font) == [
+        "Wi-Fi", "Setup"]
+    # a label that fits draws exactly as before
+    assert pages.fit_label("Input2", font, room, pad=True) == pages.fit_label(
+        "Input2", font, room)
+
+
+def test_off_s_help_with_no_device_to_ask_about_says_there_is_nothing_to_do():
+    from afterglow.backends.harmony_800 import importing
+
+    def texts(project):
+        image = importing.Image(generate.build(project)["image"])
+        return {item["text"] for screen in image.screens for slot in screen["slots"]
+                for item in image.page_text(slot["program_offset"])}
+
+    screen = {"id": "s", "label": "Screen", "type": "Projector",
+              "signals": {"Menu": _nec(6, 1)}}
+    def says_nothing_to_do(project):     # a glyph the reader cannot name reads as \ufffd
+        return any("Nothing to do" in text for text in texts(project))
+
+    assert says_nothing_to_do({"devices": [screen], "activities": [
+        {"id": "1", "label": "Watch", "type": "VirtualTelevisionN", "control": "s"}]})
+    # WATCHING names no power commands, so it has nothing to ask either; a TV with a
+    # power off command is asked about instead
+    assert says_nothing_to_do(WATCHING)
+    tv = {**WATCHING["devices"][0], "power_on_cmd": "PowerOn", "power_off_cmd": "PowerOff"}
+    assert not says_nothing_to_do({**WATCHING, "devices": [tv, WATCHING["devices"][1]]})
+
+
+def test_an_activity_s_page_arrows_take_the_direction_pad():
+    """The 800's Page up and down keys are UpArrow and DownArrow; where the control device
+    has no arrows of its own they send its DirectionUp and DirectionDown, as every
+    activity of Logitech's One compiles binds them."""
+    from afterglow.backends.harmony_800 import activities, devices, keys
+
+    player = {"id": "p", "label": "Player", "type": "DvdCd", "signals": {
+        name: _nec(7, n) for n, name in enumerate(["DirectionUp", "DirectionDown", "Play"])},
+        "commands": [[name, name, "", "", name]
+                     for name in ("DirectionUp", "DirectionDown", "Play")]}
+    project = {"devices": [player], "activities": [
+        {"id": "1", "label": "Watch", "type": "VirtualDvd", "control": "p"}]}
+    bound = activities.plan(project, devices.lowered_devices(project))["activities"][0]["keys"]
+    assert bound[keys.by_name("UpArrow")] == bound[keys.by_name("DirectionUp")]
+    assert bound[keys.by_name("DownArrow")] == bound[keys.by_name("DirectionDown")]
