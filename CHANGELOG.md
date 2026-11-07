@@ -8,6 +8,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **A welcome after flashing on the Harmony One and 800**, as Logitech's One shows it:
+  the Remote Assistant's welcome, then the Tutorial, once after a write. Settings has a
+  "Welcome after flashing" choice - first flash only, every flash or never - and "first"
+  is decided before the write from whether the remote held one of Afterglow's
+  configurations.
+- **How long the screen stays lit, and a 24-hour clock, on the Harmony One and 800**, in
+  Settings. The 24-hour clock is the European One's: hours 00 to 23 and no AM/PM step.
+- **Each activity lists its own devices first** on the Harmony One and 800, as
+  Logitech's compiles do: while it runs, Devices shows the devices it switches on first.
+- **Harmony One: Logitech's favourite channels are imported**; those sent through the
+  remote's number sender used to be lost.
+
 - **Bold text on the Harmony One and 800, where Logitech's own One draws it**: every
   label, title and softkey but the message text. Galmuri has no bold at the One's size,
   so each bold letter - Latin with its accents, Greek, Cyrillic - was drafted and then
@@ -33,6 +45,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   still stops at two of a megabyte.
 
 ### Changed
+
+- **Harmony One and 800 button labels wrap as Logitech's do**: before a capital after a
+  lower case letter, so "DirectionDown" reads "Direction" over "Down"; three lines on the
+  One's buttons.
+- **Off's Help with no device to ask about says "Nothing to do"** on the Harmony One and
+  800, and an activity's page arrows take the direction pad when its device has no
+  arrows of its own. These, the welcome tour, the screen light and the device lists
+  follow Danny Bloe's harmony-explorations, which measured them on Logitech's compiles
+  and on remotes.
 
 - **Device and activity icons are the project's remote's own.** A Harmony One or 800
   project shows the pictures that remote draws - the 800's glossy set, the One's own -
