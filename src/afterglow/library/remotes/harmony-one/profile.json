@@ -298,6 +298,7 @@
       "language",
       "theme",
       "assistant",
+      "welcome",
       "preferences"
     ],
     "languages": [
