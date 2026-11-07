@@ -1320,3 +1320,14 @@ def test_a_theme_named_in_the_project_is_found_in_the_themes_folder(tmp_path):
     result = backends.for_profile(profile).build_project(project, profile, context)
     assert asked == [("harmony-one", "Mario")]
     assert result.metadata["scaffold"] == str(theme)
+
+
+def test_the_app_can_ask_whether_a_one_s_configuration_is_one_of_ours():
+    """Before a write the app asks whether the remote holds one of Afterglow's builds -
+    no welcome tour then - or Logitech's, the factory image or nothing readable."""
+    from afterglow.backends.harmony_one import backend, generate
+
+    from test_harmony_one_activities import PROJECT
+    assert backend.afterglow_built(bytes(generate.build(PROJECT)["image"])) is True
+    assert backend.afterglow_built(b"") is False
+    assert backend.afterglow_built(b"\\0" * 4096) is False
