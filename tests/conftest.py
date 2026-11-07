@@ -142,15 +142,32 @@ def entries_of(path):
     return zipfile.ZipFile(_io.BytesIO(payload_of(path)))
 
 
+# The one Qt application, held for the life of the process. Held only by the session
+# fixture, it went when pytest finalised the session - in the middle of the last test's
+# teardown, with widgets and garbage from two thousand tests still pointing into it - and
+# a CI run segfaulted there now and then.
+_QAPP = None
+
+
 @pytest.fixture(scope="session")
 def qapp_or_skip():
     """A Qt application, or skip. Widget placement is worth testing; needing a display
     is not a reason to leave it untested."""
     pytest.importorskip("afterglow.qt.QtWidgets")
+    import gc
     import os
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from afterglow.qt.QtCore import QEvent
     from afterglow.qt.QtWidgets import QApplication
-    return QApplication.instance() or QApplication([])
+    global _QAPP
+    if _QAPP is None:
+        _QAPP = QApplication.instance() or QApplication([])
+    yield _QAPP
+    # What the tests left behind goes now, while the application is still there for it:
+    # widgets waiting on deleteLater, and widgets only a reference cycle kept alive.
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    gc.collect()
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 @pytest.fixture(scope="session")
