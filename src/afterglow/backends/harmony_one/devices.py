@@ -480,6 +480,7 @@ class Variables:
     slots: list[dict] = field(default_factory=list)
     state: int | None = None
     assistant: int | None = None
+    welcome: int | None = None
 
     def add(self, name: str, record: dict) -> int:
         self.records.append((name, record))

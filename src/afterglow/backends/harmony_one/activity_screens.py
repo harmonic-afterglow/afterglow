@@ -80,6 +80,25 @@ class Flow:
                  for value, pages in enumerate(ordinals.activity_menus)]
                 + [(len(acts), layout.block(_enter(ordinals.menu[0])))])
 
+    def welcome(self, home: int | None) -> int:
+        """An object that opens the Tutorial's first page the first time it runs after a
+        write, and ``home`` after that (with None, stays put): Logitech's One goes from
+        the Remote Assistant's
+        "devices off" note on to its tour's "Welcome!", on a variable of its own the
+        configuration starts at 0 (Danny Bloe's harmony-explorations, compiler.md, "the
+        welcome tour and the Remote Assistant")."""
+        if self.variables.welcome is None or not self.ordinals.tutorial:
+            return (self.layout.navigation(home) if home is not None
+                    else self.layout.object(object_body([])))
+        mark = self.variables.welcome
+        group = self.layout.group([
+            (0, self.layout.block([{"opcode": "atom", "operand": 1, "category": 0x80 | mark}]
+                                  + _enter(self.ordinals.tutorial[0]))),
+            (1, self.layout.block(_enter(home) if home is not None
+                                  else [{"opcode": "end"}]))])
+        return self.layout.object(object_body([
+            (structures.IR_OBJECT_KIND_FALLBACK, 0x75), ((group << 8) | mark, 0x72)]))
+
     def to_devices(self) -> int:
         """An object that opens the device list for what is running."""
         if self.devices_group is None:
@@ -283,7 +302,7 @@ class Flow:
             sequence = [
                 ("welcome", words("assistant.welcome"), {"ok": setting(1, notes["first"])},
                  None),
-                ("first", alert, {"ok": nav(home)}, None),
+                ("first", alert, {"ok": self.welcome(home)}, None),
                 ("again", alert, {"ok": nav(notes["hide"])}, None)]
         else:
             alert = words("assistant.press-help")
@@ -313,10 +332,15 @@ class Flow:
         wake = ([{"opcode": "atom", "operand": self.wake[0], "category": self.wake[1]}]
                 if self.wake else [])
 
+        # Hidden after Off, a first start still opens the welcome tour, once.
+        tour = ([{"opcode": "atom", "operand": self.welcome(None), "category": OBJECT_ATOM}]
+                if off else [])
+
         def block(value, ordinal):
             if value != 3:
                 return _enter(ordinal)
-            return wake + (_enter(ordinal) if ordinal is not None else [{"opcode": "end"}])
+            return wake + tour + (_enter(ordinal) if ordinal is not None
+                                  else [{"opcode": "end"}])
         group = layout.group([(value, layout.block(block(value, ordinal)))
                               for value, ordinal in cases])
         return ((group << 8) | self.variables.assistant, 0x72)
