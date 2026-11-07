@@ -165,7 +165,8 @@ def _write(variable, value: int) -> list:
     return [value, {"write": variable}]
 
 
-def build(system: dict | None, sounds: dict | None = None, charging: int = 0) -> dict:
+def build(system: dict | None, sounds: dict | None = None, charging: int = 0,
+          light: int = OFF_DURATION) -> dict:
     """The machine as a model, with its entry points under ``"idle"``.
 
     ``system`` is the platform model (system-screens.json): the firmware's own screens,
@@ -173,8 +174,13 @@ def build(system: dict | None, sounds: dict | None = None, charging: int = 0) ->
     Screen Sounds switch, whose flag start-up clears as upstairs does. ``charging`` is how
     many charging screens the image has - the battery, then its photos - which it names
     ``{"exit": "charging-<n>"}``; none, and the remote shows nothing while it charges.
+    ``light`` is how many seconds the screen and keys stay lit after the last key: the
+    off timer's duration, 10 in every Logitech compile, and 60 kept a One lit a minute
+    (Danny Bloe's harmony-explorations, remotes/harmony-one/hardware.md).
     """
-    machine = _Machine(charging)
+    if not 1 <= light <= 0xFFFFFF:
+        raise ValueError(f"the screen cannot stay lit {light} seconds")
+    machine = _Machine(charging, light)
     events, key_rows = machine.events(), machine.key_rows()
     screens = (system or {}).get("screens", ())
     handlers = machine.platform_handlers(screens)
@@ -209,11 +215,11 @@ class _Machine:
     keypad lights and their timers, then what the charging events choose, then the
     events, the key rows, and the screens' handlers."""
 
-    def __init__(self, charging: int = 0):
+    def __init__(self, charging: int = 0, light: int = OFF_DURATION):
         m = self.m = _Model()
         self.zone_flags = [m.flag() for _ in range(ZONES)]
         self.usb_shown = m.flag()
-        self.off_timer, self.poll_timer = m.timer(OFF_DURATION), m.timer(POLL_DURATION)
+        self.off_timer, self.poll_timer = m.timer(light), m.timer(POLL_DURATION)
         self._zone_objects: dict[tuple, list] = {}
         self._lights()
         self._charge()
@@ -463,12 +469,13 @@ def _shift(value, objects: int, timers: int, variables: int):
     return {key: _shift(item, objects, timers, variables) for key, item in value.items()}
 
 
-def attach(options: dict, system: dict | None, charging: int = 0) -> dict:
+def attach(options: dict, system: dict | None, charging: int = 0,
+           light: int = OFF_DURATION) -> dict:
     """The Options model with the idle machine appended in its namespace, and each of
     its ``{"zones": ...}`` references made a call of the machine's zone object."""
     model = copy.deepcopy(options)
     sounds = model.get("sounds", {}).get("switch")
-    machine = build(system, sounds, charging)
+    machine = build(system, sounds, charging, light)
     shift = (len(model["objects"]), len(model["timers"]), len(model["variables"]))
 
     def zones(value):

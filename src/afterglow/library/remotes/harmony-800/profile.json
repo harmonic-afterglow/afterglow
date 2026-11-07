@@ -230,6 +230,23 @@
     "hard_key_layout": []
   },
   "properties": {},
+  "preferences": {
+    "_comment": "Compiled into the configuration rather than written as a file, as on the Harmony One; the keys and values are the Harmony 1100's, so moving a project between them keeps the choice.",
+    "time_format": {
+      "_comment": "Twelve hours, as the One shows them, or 00 to 23 as Logitech's European One does, with no Time of Day picker.",
+      "compiled": true,
+      "label": "Clock",
+      "default": "Civilian",
+      "choices": [["12-hour", "Civilian"], ["24-hour", "Military"]]
+    },
+    "backlight_timeout": {
+      "_comment": "Seconds the screen and keys stay lit after the last key: the idle layer's off timer, 10 in Logitech's compiles for the One (Danny Bloe's harmony-explorations measured 60 keeping a One lit a minute).",
+      "compiled": true,
+      "label": "Backlight timeout (s)",
+      "default": "10",
+      "range": [1, 300]
+    }
+  },
   "interface": {
     "_comment": "No RF blasters, no owner name (nothing on the One shows it) and no preferences file; a theme folder instead. No Advanced pages: the device and activity properties they edit are the Harmony 900's, which the One's builder does not read. Timing offers what the builder uses - power-on delay, the delay between digits, Always on. Languages are the ones the Harmony One backend has a catalogue for (backends/harmony_one/locale).",
     "tabs": [
@@ -265,7 +282,8 @@
     "settings": [
       "output_file",
       "language",
-      "assistant"
+      "assistant",
+      "preferences"
     ],
     "languages": [
       [
