@@ -9,6 +9,7 @@ Format reference: docs/harmony_one/generating.md
 
 from __future__ import annotations
 
+import re
 import struct
 from dataclasses import dataclass
 
@@ -47,6 +48,24 @@ BUTTON_LINE_OFFSETS = (-8, 9)
 LABEL_INSET = 8            # what a label leaves of its frame, either side together
 ELLIPSIS = ".."
 
+# Where a pad's label may break between lines, as Logitech's compiler splits it (Danny
+# Bloe's harmony-explorations, architectures/harmony-one/compiler.md, "a pad's label"): at
+# spaces, before a capital, digit or "+" after a lower case letter, and after a single
+# hyphen - so DirectionDown wraps as Direction over Down. The 800 keeps its own pad's room
+# and two lines: its pads are larger than the One's and no Logitech 800 page measures them.
+_PAD_SPLIT = re.compile(r"(?<=[a-z])(?=[A-Z0-9+])|(?<=[^-]-)(?=[^-])")
+
+
+def pad_words(label: str) -> list[tuple[str, str]]:
+    """A pad label's words as Logitech's compiler splits them, each with what joins it
+    to the one before: a space, or nothing where a word was split."""
+    out = []
+    for word in re.split(r"[ \t\n]+", label):
+        if word:
+            parts = _PAD_SPLIT.split(word)
+            out += [(parts[0], " ")] + [(part, "") for part in parts[1:]]
+    return out
+
 
 def measure(font: dict):
     metrics = font.get("metrics") or font["glyphs"]
@@ -55,10 +74,12 @@ def measure(font: dict):
     return widths, codes
 
 
-def fit_label(label: str, font: dict, room: int, lines: int = 2) -> list[bytes]:
+def fit_label(label: str, font: dict, room: int, lines: int = 2,
+              pad: bool = False) -> list[bytes]:
     """A label as the glyph lines that fit ``room`` pixels, at most ``lines`` of them.
 
-    Words wrap at spaces; a word wider than a line on its own is split where it stops
+    Words wrap at spaces - and on a pad, also where Logitech's compiler splits a word
+    (pad_words); a word wider than a line on its own is split where it stops
     fitting. What still does not fit after the last line is cut, and the cut is marked
     with two full stops when the font has them, so a long name is shortened rather than
     refused or drawn past its frame, which nothing in the format clips.
@@ -75,10 +96,10 @@ def fit_label(label: str, font: dict, room: int, lines: int = 2) -> list[bytes]:
     # Each line remembers how it joins the one before: a space, or nothing where a word
     # was split, so what is cut after the last line reads as the label did.
     out, line, joins = [], "", []
-    words = [(word, " ") for word in label.split()]
+    words = pad_words(label) if pad else [(word, " ") for word in label.split()]
     while words:
         word, join = words.pop(0)
-        candidate = f"{line} {word}" if line else word
+        candidate = f"{line}{join}{word}" if line else word
         if width(candidate) <= room:
             if not line:
                 joins.append(join)
@@ -150,7 +171,8 @@ def button_page(labels: list[str], frames: list[int], font: dict, *,
         frame_width = FRAME_WIDTH if frame_width is None else frame_width
         if label is None:          # a picture that says it all: a favourite's logo
             continue
-        lines = fit_label(label, font, frame_width - LABEL_INSET)
+        lines = fit_label(label, font, frame_width - LABEL_INSET,
+                          pad=frame_width == FRAME_WIDTH)
         for glyphs, y in zip(lines, line_ys(top + LABEL_BASELINE, len(lines),
                                              BUTTON_LINE_OFFSETS)):
             width = sum(widths[code] for code in glyphs)
