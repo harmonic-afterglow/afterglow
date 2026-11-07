@@ -259,6 +259,29 @@ def claims_legacy(spec: dict) -> bool:
     return schema in LEGACY_DEVICE_SCHEMAS or schema is None
 
 
+# The User id every Afterglow build of a 900 or 1100 keeps from its scaffold. Logitech's
+# configurations carry the account's own number (seven digits in every one seen), so it
+# tells our builds from theirs without anything added to what the remote reads.
+SCAFFOLD_USER_ID = "10000000"
+
+
+def afterglow_built(payload: bytes) -> bool | None:
+    """Whether a configuration read off a remote - an `.ezhex`, or the zip inside one - is
+    an Afterglow build: True, False for Logitech's or the factory's, None if unreadable."""
+    from ... import ezhex
+    try:
+        if not payload.startswith(b"PK"):
+            payload = ezhex.read(payload).payload
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            user_id = ET.fromstring(archive.read("userconfig/UserConfiguration.xml")
+                                    ).findtext("User/Id")
+    except (ezhex.NotAnEzhex, zipfile.BadZipFile, KeyError, ET.ParseError, ValueError):
+        return None
+    if user_id is None:
+        return None
+    return user_id.strip() == SCAFFOLD_USER_ID
+
+
 def promote_native_signals(device: dict) -> int:
     """Make a portable device's native-only Codes portable, in place; how many changed.
 
