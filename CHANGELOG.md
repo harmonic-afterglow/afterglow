@@ -77,6 +77,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **The Linux AppImage reaches the remote on Arch and other systems without
+  `libcrypt.so.1`.** Its libconcord loads Kerberos through libcurl, which needs that library,
+  and the bundle left it to the system; it now carries it, and the build fails if anything
+  else libconcord loads is missing from the bundle. When a bundled libconcord does not load,
+  Afterglow names the library it lacks instead of saying libconcord was not found.
 - **The Harmony 1100's Remote Assistant setting works.** It was written to a preference
   file the remote overwrites on the first start after every write, so the assistant came
   on whatever the setting said. It now goes into the configuration, where the 1100 reads

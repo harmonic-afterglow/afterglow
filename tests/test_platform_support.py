@@ -1144,3 +1144,32 @@ def test_direct_access_has_a_terminal_command_too(monkeypatch, tmp_path):
 
     monkeypatch.setattr(paths, "data_dir", lambda: tmp_path)
     assert usb_link.manual_command("direct").endswith("install_harmony_udev.sh direct")
+
+
+def test_a_bundled_libconcord_that_will_not_load_names_what_it_lacks(monkeypatch, tmp_path):
+    """The Linux bundle carried libconcord and the loader refused it for a dependency the
+    system lacked (libcrypt.so.1 on Arch), and Afterglow said "libconcord was not found" -
+    sending people after a library they had. It names the missing one instead."""
+    import pytest
+
+    from afterglow import concord
+
+    bundled = tmp_path / "libconcord.so.6.0.0"
+    bundled.write_bytes(b"")
+    monkeypatch.setattr(concord.sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.delenv("AFTERGLOW_LIBCONCORD", raising=False)
+
+    def refuse(name, *args, **kwargs):
+        if str(name) == str(bundled):
+            # as PyInstaller's ctypes hook raises it inside a bundle: its own words, from
+            # the loader's
+            loader = OSError("libcrypt.so.1: cannot open shared object file: "
+                             "No such file or directory")
+            raise OSError(f"Failed to load dynlib/dll {str(name)!r}.") from loader
+        raise OSError(f"{name}: cannot open shared object file")
+    monkeypatch.setattr(concord.ctypes, "CDLL", refuse)
+    monkeypatch.setattr(concord.ctypes.util, "find_library", lambda name: None)
+    with pytest.raises(concord.NotAvailable) as raised:
+        concord._load()
+    assert "libcrypt.so.1" in str(raised.value)
+    assert "not found" not in str(raised.value)

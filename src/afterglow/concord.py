@@ -44,6 +44,7 @@ import ctypes.util
 import logging
 import os
 import queue
+import re
 import shutil
 import sys
 import tempfile
@@ -354,7 +355,9 @@ def _load():
         try:
             return ctypes.CDLL(str(candidate))
         except OSError as exc:
-            LOAD_ERRORS.append(f"{candidate}: {exc}")
+            # inside a bundle PyInstaller's ctypes hook raises its own "Failed to load
+            # dynlib" from the loader's error, which is the one that names what is missing
+            LOAD_ERRORS.append(f"{candidate}: {exc.__cause__ or exc}")
             continue
     for name in LIBRARY_NAMES:
         try:
@@ -377,6 +380,19 @@ def _load():
             return ctypes.CDLL(found)
         except OSError:
             pass
+    # Afterglow's own copy was there and the loader refused it: that is not "not found",
+    # and saying so sent people looking for a library they had. The loader's own words
+    # name what is missing - typically one of its dependencies the system lacks.
+    if LOAD_ERRORS:
+        reason = LOAD_ERRORS[-1].split(": ", 1)[-1]
+        missing = re.search(r"([\w.+-]+\.(?:so[\w.]*|dylib|dll)): cannot open shared object",
+                            reason)
+        needs = (f"it needs {missing.group(1)}, which this system does not have"
+                 if missing else reason)
+        raise NotAvailable(
+            f"Afterglow's own libconcord is here but could not be loaded: {needs}. "
+            f"Afterglow can still author configurations without it - only reading from "
+            f"and writing to the remote need it.")
     install = {
         "linux": "build and install that, then run ldconfig",
         "darwin": "on macOS it has to be Afterglow's own build, from "
