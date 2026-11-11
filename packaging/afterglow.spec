@@ -90,12 +90,26 @@ datas += [(str(locale), f"afterglow/backends/{locale.parent.name}/locale")
 # copies it bundles.
 #
 # Set `AFTERGLOW_BUNDLE_LIBCONCORD` to the library file to include it.
+#
+# `AFTERGLOW_BUNDLE_EXTRA` names more libraries, separated by the path separator, that
+# PyInstaller leaves out of the closure as "the system's" when not every system has them.
+# The Linux bundle's libcurl reaches Heimdal Kerberos, which needs `libcrypt.so.1`;
+# PyInstaller counts libcrypt as part of glibc, but distributions that moved to libxcrypt
+# ship only `libcrypt.so.2` (Arch without libxcrypt-compat), and libconcord then failed
+# to load there (packaging/linux/build-bundle.sh).
 binaries = []
 _libconcord = os.environ.get("AFTERGLOW_BUNDLE_LIBCONCORD")
 if _libconcord:
     source = Path(_libconcord).expanduser().resolve()
     if not source.is_file():
         raise SystemExit(f"AFTERGLOW_BUNDLE_LIBCONCORD is not a file: {source}")
+    binaries.append((str(source), "."))
+# Each is bundled under the name it is given, which has to be the SONAME its dependants
+# ask for - the build copies `libcrypt.so.1` out of its symlink under that name.
+for _extra in filter(None, os.environ.get("AFTERGLOW_BUNDLE_EXTRA", "").split(os.pathsep)):
+    source = Path(_extra).expanduser()
+    if not source.is_file():
+        raise SystemExit(f"AFTERGLOW_BUNDLE_EXTRA names no file: {source}")
     binaries.append((str(source), "."))
 
 # ## The Universal C runtime, for Windows 7

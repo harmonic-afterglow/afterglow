@@ -43,8 +43,44 @@ uv venv --python 3.13 /tmp/venv
 . /tmp/venv/bin/activate
 uv pip install -e ".[gui]" "PyQt6==6.7.1" pyinstaller
 
+# libconcord's closure reaches Heimdal Kerberos (libcurl -> LDAP -> SASL -> GSSAPI), which
+# needs libcrypt.so.1. PyInstaller leaves libcrypt out as part of glibc, but systems on
+# libxcrypt have only libcrypt.so.2 - Arch without libxcrypt-compat - and the bundled
+# libconcord would not load there. So it is bundled, copied out under its SONAME.
+rm -rf /tmp/bundle-extra && mkdir -p /tmp/bundle-extra
+cp -L "$(ldconfig -p | awk '$1 == "libcrypt.so.1" {print $NF; exit}')" \
+  /tmp/bundle-extra/libcrypt.so.1
+
 AFTERGLOW_BUNDLE_LIBCONCORD=/tmp/libconcord-install/lib/libconcord.so.6.0.0 \
+AFTERGLOW_BUNDLE_EXTRA=/tmp/bundle-extra/libcrypt.so.1 \
   pyinstaller --noconfirm packaging/afterglow.spec
+
+# Everything libconcord loads, followed through the bundle, is in the bundle or is glibc's
+# own: a library left to "the system" that a system may lack is how libcrypt.so.1 broke
+# the bundle on Arch, reported as "libconcord was not found".
+python3 - dist/afterglow <<'CLOSURE'
+import pathlib, re, subprocess, sys
+root = next(pathlib.Path(sys.argv[1]).rglob("libconcord.so*")).parent
+glibc = re.compile(r"^(libc|libm|libdl|libpthread|librt|libresolv|libutil|libanl|"
+                   r"ld-linux[-\w]*)\.so")
+seen, todo, missing = set(), [next(root.glob("libconcord.so*")).name], []
+while todo:
+    name = todo.pop()
+    if name in seen:
+        continue
+    seen.add(name)
+    if glibc.match(name):
+        continue
+    path = root / name
+    if not path.exists():
+        missing.append(name)
+        continue
+    out = subprocess.run(["readelf", "-d", str(path)], capture_output=True, text=True).stdout
+    todo += re.findall(r"\(NEEDED\)\s+Shared library: \[([^\]]+)\]", out)
+if missing:
+    sys.exit(f"libconcord needs what the bundle lacks: {', '.join(sorted(missing))}")
+print(f"libconcord's closure is bundled: {len(seen)} libraries")
+CLOSURE
 
 packaging/linux/build-appimage.sh
 
