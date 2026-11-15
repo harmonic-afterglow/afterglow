@@ -1490,6 +1490,9 @@ TIMING_HELP = {
     "app_power_delay": ("Apps ready after switching on:",
                         "For smart TVs: how long after switching on its apps, such as "
                         "Netflix, answer. Used only for inputs marked App."),
+    "inter_device_delay": ("Pause before the next device:",
+                           "Raise it if the next device in an activity misses its "
+                           "command after this one's."),
 }
 
 
@@ -1545,6 +1548,10 @@ class TimingPage(QWizardPage):
         self.input_delay = spin("input_delay", 30000, 100, existing.get("input_delay") or 0)
         self.app_delay = spin("app_power_delay", 120000, 1000,
                               existing.get("app_power_delay") or 0)
+        # How long an activity waits after this device's commands before the next
+        # device's - Logitech's InterDeviceDelay, which a remote keeping it per device has.
+        self.inter_device = spin("inter_device_delay", 30000, 100,
+                                 existing.get("inter_device_delay", 500))
 
         # Only the fields this remote's builder uses (its profile's `interface.timing`);
         # the rest keep their values, so collecting hands back what was there.
@@ -1555,7 +1562,8 @@ class TimingPage(QWizardPage):
                                 ("hold_presilence", self.hold_sil),
                                 ("hold_interkey", self.hold_key),
                                 ("input_delay", self.input_delay),
-                                ("app_power_delay", self.app_delay)):
+                                ("app_power_delay", self.app_delay),
+                                ("inter_device_delay", self.inter_device)):
                 layout.setRowVisible(widget, key in fields)
                 layout.setRowVisible(self._help[key], key in fields)
 
@@ -1578,6 +1586,7 @@ class TimingPage(QWizardPage):
             "hold_interkey": self.hold_key.value(),
             "input_delay": self.input_delay.value(),
             "app_power_delay": self.app_delay.value(),
+            "inter_device_delay": self.inter_device.value(),
         }
 
     def load_template(self, t):
@@ -1586,7 +1595,8 @@ class TimingPage(QWizardPage):
         if t.get("power_delay") is not None:
             self.pwr_delay.setValue(int(t["power_delay"]))
         for key, widget in (("input_delay", self.input_delay),
-                            ("app_power_delay", self.app_delay)):
+                            ("app_power_delay", self.app_delay),
+                            ("inter_device_delay", self.inter_device)):
             if t.get(key) is not None:
                 widget.setValue(int(t[key]))
 

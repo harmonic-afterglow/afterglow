@@ -13,6 +13,7 @@ from .remote_bar import ChooseRemoteDialog
 from .tabs import remote_profiles
 
 DEFAULT_REMOTE_KEY = "ui/default_remote"
+DEFAULT_SKIN_KEY = "ui/default_remote_skin"     # which of the remote's models it is
 ASKED_KEY = "ui/default_remote_asked"
 OFFER_NEVER_KEY = "ui/default_remote_never_offer"
 
@@ -27,9 +28,23 @@ def default_remote_id(settings=None) -> str | None:
     return chosen if chosen in {profile.id for profile in remote_profiles()} else None
 
 
-def set_default_remote(remote_id: str, settings=None) -> None:
+def default_remote_skin(settings=None) -> int | None:
+    """Which model of the default remote it is - a 600 rather than a 650 - when one was
+    picked and is still the default's."""
+    store = _settings(settings)
+    remote_id = default_remote_id(store)
+    skin = store.value(DEFAULT_SKIN_KEY, 0, type=int)
+    profile = next((p for p in remote_profiles() if p.id == remote_id), None)
+    return skin if profile is not None and skin in getattr(profile, "skins", ()) else None
+
+
+def set_default_remote(remote_id: str, settings=None, skin: int | None = None) -> None:
     store = _settings(settings)
     store.setValue(DEFAULT_REMOTE_KEY, remote_id)
+    if skin is None:
+        store.remove(DEFAULT_SKIN_KEY)
+    else:
+        store.setValue(DEFAULT_SKIN_KEY, int(skin))
     store.setValue(ASKED_KEY, True)
     store.sync()
 
@@ -41,10 +56,11 @@ def choose_default_remote(parent, settings=None) -> str | None:
         remote_profiles(), "Your remote",
         "Which Harmony do you have? Afterglow starts with a project for it, and new "
         "projects are for it unless you choose otherwise. Settings → Default Remote "
-        "changes it later.", parent, selected=default_remote_id(store))
+        "changes it later.", parent, selected=default_remote_id(store),
+        selected_skin=default_remote_skin(store))
     chosen = dialog.chosen() if dialog.exec() else None
     if chosen:
-        set_default_remote(chosen, store)
+        set_default_remote(chosen, store, dialog.chosen_skin())
     return chosen
 
 

@@ -1,0 +1,361 @@
+{
+  "_comment": "The remote as its user guide draws it (page 6, tools/remote_art.py). `view` is the part shown - the whole remote, its case included; `keys` where each key sits, x, y, width, height in the drawing's points, each lit by the outline drawn around it (the rockers, the d-pad and Play/Pause share one outline, cut here into their keys); `unassignable` keys the remote keeps for itself - the activity keys, Help, the keys around the screen - shown dark. `cut` is the screen, from its bezel to its page keys, left out of the editors' picture and closed up over, so the keys fit a smaller window; the case is 4.5% narrower above the screen than below it, so what is above is widened by that to meet it. The colour keys are drawn blank; `source.marks` prints their colours, as on the 900's.",
+  "svg": "art.svg",
+  "cut": [324.0, 413.0, 1.0453],
+  "view": [79.5, 264.5, 105.6, 419.5],
+  "keys": {
+    "Menu": [
+      90.8,
+      417.4,
+      22.8,
+      10.7
+    ],
+    "Info": [
+      151.2,
+      417.4,
+      22.8,
+      10.7
+    ],
+    "Exit": [
+      93.7,
+      434.3,
+      22.1,
+      10.7
+    ],
+    "Guide": [
+      149.0,
+      434.3,
+      22.1,
+      10.7
+    ],
+    "UpArrow": [
+      123.8,
+      417.8,
+      17.0,
+      14.8
+    ],
+    "DownArrow": [
+      123.8,
+      432.6,
+      17.0,
+      14.8
+    ],
+    "Red": [
+      96.4,
+      453.2,
+      14.6,
+      8.2
+    ],
+    "Green": [
+      115.2,
+      453.2,
+      14.6,
+      8.2
+    ],
+    "Yellow": [
+      135.0,
+      453.2,
+      14.6,
+      8.2
+    ],
+    "Blue": [
+      153.8,
+      453.2,
+      14.6,
+      8.2
+    ],
+    "DirectionUp": [
+      125.5,
+      469.6,
+      13.8,
+      14.9
+    ],
+    "DirectionDown": [
+      125.5,
+      498.7,
+      13.8,
+      14.7
+    ],
+    "DirectionLeft": [
+      111.8,
+      484.5,
+      13.7,
+      14.2
+    ],
+    "DirectionRight": [
+      139.3,
+      484.5,
+      13.6,
+      14.2
+    ],
+    "Select": [
+      125.5,
+      484.5,
+      13.8,
+      14.2
+    ],
+    "VolumeUp": [
+      94.9,
+      471.0,
+      15.1,
+      20.6
+    ],
+    "VolumeDown": [
+      94.9,
+      491.6,
+      15.1,
+      20.6
+    ],
+    "ChannelUp": [
+      154.9,
+      471.0,
+      15.1,
+      20.6
+    ],
+    "ChannelDown": [
+      154.9,
+      491.6,
+      15.1,
+      20.6
+    ],
+    "VolumeMute": [
+      109.3,
+      513.7,
+      14.6,
+      10.4
+    ],
+    "PrevChannel": [
+      140.9,
+      513.7,
+      14.6,
+      10.4
+    ],
+    "Rewind": [
+      99.5,
+      531.6,
+      19.2,
+      10.4
+    ],
+    "FastForward": [
+      146.1,
+      531.6,
+      19.2,
+      10.4
+    ],
+    "Play": [
+      123.2,
+      531.8,
+      18.3,
+      19.8
+    ],
+    "Pause": [
+      124.9,
+      551.6,
+      15.0,
+      21.3
+    ],
+    "SkipBack": [
+      95.0,
+      548.2,
+      22.0,
+      10.4
+    ],
+    "SkipForward": [
+      147.8,
+      548.2,
+      22.0,
+      10.4
+    ],
+    "Record": [
+      98.4,
+      565.1,
+      19.7,
+      10.4
+    ],
+    "Stop": [
+      146.7,
+      565.1,
+      19.7,
+      10.4
+    ],
+    "NumberPlus": [
+      107.4,
+      633.1,
+      11.9,
+      12.4
+    ],
+    "Number0": [
+      124.6,
+      635.7,
+      15.7,
+      10.7
+    ],
+    "NumberEnter": [
+      145.4,
+      633.1,
+      11.9,
+      12.4
+    ],
+    "Number1": [
+      102.2,
+      584.7,
+      15.7,
+      10.7
+    ],
+    "Number2": [
+      124.6,
+      584.9,
+      15.7,
+      10.7
+    ],
+    "Number3": [
+      146.9,
+      584.7,
+      15.7,
+      10.7
+    ],
+    "Number4": [
+      102.2,
+      601.5,
+      15.7,
+      10.7
+    ],
+    "Number5": [
+      124.6,
+      601.8,
+      15.7,
+      10.7
+    ],
+    "Number6": [
+      146.9,
+      601.5,
+      15.7,
+      10.7
+    ],
+    "Number7": [
+      102.2,
+      618.8,
+      15.7,
+      10.7
+    ],
+    "Number8": [
+      124.6,
+      619.3,
+      15.7,
+      10.7
+    ],
+    "Number9": [
+      146.9,
+      618.8,
+      15.7,
+      10.7
+    ]
+  },
+  "unassignable": {
+    "All Off": [
+      99.4,
+      280.1,
+      8.7,
+      9.6
+    ],
+    "Watch TV": [
+      108.7,
+      294.0,
+      20.1,
+      9.4
+    ],
+    "Watch a Movie": [
+      136.0,
+      294.0,
+      20.1,
+      9.4
+    ],
+    "Listen to Music": [
+      95.6,
+      308.2,
+      20.1,
+      9.4
+    ],
+    "Help": [
+      123.6,
+      307.7,
+      17.7,
+      9.4
+    ],
+    "More Activities": [
+      149.0,
+      308.2,
+      20.1,
+      9.4
+    ],
+    "Screen key, top left": [
+      90.9,
+      347.1,
+      9.2,
+      16.4
+    ],
+    "Screen key, top right": [
+      164.7,
+      347.1,
+      9.2,
+      16.4
+    ],
+    "Screen key, bottom left": [
+      90.9,
+      366.5,
+      9.2,
+      16.4
+    ],
+    "Screen key, bottom right": [
+      164.7,
+      366.5,
+      9.2,
+      16.4
+    ],
+    "Previous page": [
+      100.6,
+      401.0,
+      17.6,
+      9.8
+    ],
+    "Centre key": [
+      122.3,
+      400.7,
+      20.1,
+      10.7
+    ],
+    "Next page": [
+      146.6,
+      401.0,
+      17.6,
+      9.8
+    ]
+  },
+  "source": {
+    "guide": "harmony650-user-guide.pdf",
+    "page": 6,
+    "region": [77, 262, 112, 426],
+    "marks": [
+      {
+        "d": "M 100.84 456.07 H 106.56 A 1.23 1.23 0 0 1 106.56 458.53 H 100.84 A 1.23 1.23 0 0 1 100.84 456.07 Z",
+        "fill": "#e0302b",
+        "stroke": 0.3
+      },
+      {
+        "d": "M 119.64 456.07 H 125.36 A 1.23 1.23 0 0 1 125.36 458.53 H 119.64 A 1.23 1.23 0 0 1 119.64 456.07 Z",
+        "fill": "#2fa84f",
+        "stroke": 0.3
+      },
+      {
+        "d": "M 139.44 456.07 H 145.16 A 1.23 1.23 0 0 1 145.16 458.53 H 139.44 A 1.23 1.23 0 0 1 139.44 456.07 Z",
+        "fill": "#f2c230",
+        "stroke": 0.3
+      },
+      {
+        "d": "M 158.24 456.07 H 163.96 A 1.23 1.23 0 0 1 163.96 458.53 H 158.24 A 1.23 1.23 0 0 1 158.24 456.07 Z",
+        "fill": "#2f6fd6",
+        "stroke": 0.3
+      }
+    ]
+  }
+}

@@ -160,10 +160,12 @@ class _ActionEditor(QWidget):
 class FavouriteDialog(QDialog):
     """A favourite: a logo, a label, and what it tunes to."""
 
-    def __init__(self, devices, parent=None, existing=None, participating=None):
+    def __init__(self, devices, parent=None, existing=None, participating=None,
+                 logos=True):
         super().__init__(parent)
         self.setWindowTitle("Favourite")
-        self.resize(520, 460)
+        self.logos = logos
+        self.resize(520, 460 if logos else 220)
         self.result_data = None
         self.image_path = None
 
@@ -186,7 +188,11 @@ class FavouriteDialog(QDialog):
         row.addWidget(self.preview)
         row.addWidget(browse)
         row.addWidget(self.image_name, 1)
-        layout.addRow("Logo:", row)
+        if logos:
+            layout.addRow("Logo:", row)
+        else:
+            for widget in (self.preview, browse, self.image_name):
+                widget.hide()
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                    | QDialogButtonBox.StandardButton.Cancel)
@@ -226,7 +232,8 @@ class FavouriteDialog(QDialog):
         label = self.label_edit.text().strip()
         if not label:
             QMessageBox.warning(self, "A label is needed",
-                                "Give the favourite a name to show under its logo.")
+                                "Give the favourite a name to show "
+                                + ("under its logo." if self.logos else "on the remote."))
             return
         kind, payload = self.action.value()
         image = (Path(self.image_path).name if self.image_path
@@ -349,19 +356,26 @@ class FavouritesPage(QWizardPage):
     def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.devices = devices
+        # a remote whose favourites are labels only (the 650's and 700's) is offered no
+        # logo to pick: Logitech never gave them one
+        self.logos = remote is None or remote.favourite_logos
         self.setTitle("Favourites")
         self.setSubTitle(
             "Channel logos for the touchscreen. Each one tunes to a channel, sends a "
-            "command, or runs a macro.")
+            "command, or runs a macro." if self.logos else
+            "Favourite channels, by name. Each one tunes to a channel, sends a command, "
+            "or runs a macro.")
         layout = QVBoxLayout(self)
 
         self.table = _ButtonTable(["Logo", "Label", "Does"])
+        self.table.setColumnHidden(0, not self.logos)
         body = QHBoxLayout()
         body.addWidget(self.table, 1)
         grid = remote.screen_grid("activity") if remote is not None else None
         self.preview = ScreenPreview(*(grid or (2, 3)),
                                      title=(existing or {}).get("label") or "")
-        self.preview.setVisible(grid is not None)
+        # labels behind a button of the activity's screen are no page of logos to draw
+        self.preview.setVisible(grid is not None and self.logos)
         self.preview.picked.connect(self.table.selectRow)
         self.table.currentCellChanged.connect(lambda row, *_rest: self.preview.select(row))
         body.addWidget(self.preview, 0, Qt.AlignmentFlag.AlignTop)
@@ -404,7 +418,7 @@ class FavouritesPage(QWizardPage):
     def _show(self):
         """Draw the pages as the list has them: each logo, or its label without one."""
         self.preview.set_buttons([
-            (label, None, _find_image(image) if image else None)
+            (label, None, _find_image(image) if image and self.logos else None)
             for label, _kind, _payload, image in self.get_buttons()])
 
     def _load_confirm_choices(self, current):
@@ -439,7 +453,8 @@ class FavouritesPage(QWizardPage):
 
     def _add(self):
         dialog = FavouriteDialog(self.devices, self,
-                                 participating=getattr(self, "_participating", None))
+                                 participating=getattr(self, "_participating", None),
+                                 logos=self.logos)
         if dialog.exec() and dialog.result_data:
             self._add_row(*dialog.result_data)
             if dialog.image_path:
@@ -462,7 +477,7 @@ class FavouritesPage(QWizardPage):
         dialog = FavouriteDialog(
             self.devices, self,
             existing={"label": label, "kind": kind, "payload": payload, "image": image},
-            participating=getattr(self, "_participating", None))
+            participating=getattr(self, "_participating", None), logos=self.logos)
         if dialog.exec() and dialog.result_data:
             # In its place: it used to go to the end of the list.
             entries = self.get_buttons()
@@ -508,19 +523,29 @@ class ScreenButtonsPage(QWizardPage):
         self.devices = devices
         self._title = (existing or {}).get("label") or ""
         self.setTitle("Screen buttons")
+        # the remote's own icons, where its screen draws them beside a label
+        self.icons = remote is None or remote.screen_icons
         self.setSubTitle(
             "The buttons on this activity's page of the remote's screen. Each sends "
-            "one command or runs a macro, and can carry one of the remote's own icons.")
+            "one command or runs a macro"
+            + (", and can carry one of the remote's own icons." if self.icons else "."))
         layout = QVBoxLayout(self)
 
         self.table = _ButtonTable(["Icon", "Label", "Does"])
+        self.table.setColumnHidden(0, not self.icons)
         body = QHBoxLayout()
         body.addWidget(self.table, 1)
         grid = remote.screen_grid("activity") if remote is not None else None
         self.preview = ScreenPreview(*(grid or (2, 3)), title=self._title)
         self.preview.setVisible(grid is not None)
-        self.preview.picked.connect(self.table.selectRow)
-        self.table.currentCellChanged.connect(lambda row, *_rest: self.preview.select(row))
+        # the button a remote puts first while the activity has favourites (the 650's
+        # "Favorite Channels"): drawn, but no row of the list
+        self._lead = None
+        self.preview.picked.connect(
+            lambda index: self.table.selectRow(index - self._offset())
+            if index >= self._offset() else None)
+        self.table.currentCellChanged.connect(
+            lambda row, *_rest: self.preview.select(row + self._offset() if row >= 0 else -1))
         body.addWidget(self.preview, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(body, 1)
         self.dragger = RowDragger(self.table, self._moved)
@@ -547,9 +572,21 @@ class ScreenButtonsPage(QWizardPage):
             self._add_row(entry)
         self._show()
 
+    def _shows(self) -> tuple:
+        return ("label", "icon") if self.icons else ("label",)
+
+    def _offset(self) -> int:
+        return 1 if self._lead else 0
+
+    def show_favourites_button(self, label: str | None):
+        """Draw ``label`` first on the page, as the remote puts its favourites' button,
+        or nothing there."""
+        self._lead = label
+        self._show()
+
     def _show(self):
         """Draw the page as the list has it now."""
-        self.preview.set_buttons([
+        self.preview.set_buttons(([(self._lead, None)] if self._lead else []) + [
             None if entry is None else (entry.get("label") or "", entry.get("icon"))
             for entry in self._entries()])
 
@@ -601,7 +638,8 @@ class ScreenButtonsPage(QWizardPage):
 
     def _add(self):
         dialog = ScreenButtonDialog(
-            self.devices, self, participating=getattr(self, "_participating", None))
+            self.devices, self, participating=getattr(self, "_participating", None),
+            shows=self._shows())
         if dialog.exec() and dialog.result_data:
             self._add_row(dialog.result_data)
             self._show()
@@ -616,7 +654,7 @@ class ScreenButtonsPage(QWizardPage):
             return
         dialog = ScreenButtonDialog(
             self.devices, self, participating=getattr(self, "_participating", None),
-            existing=entry)
+            existing=entry, shows=self._shows())
         if dialog.exec() and dialog.result_data:
             # In its place: it used to go to the end of the list.
             entries = self._entries()

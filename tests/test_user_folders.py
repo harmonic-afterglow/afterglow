@@ -30,7 +30,7 @@ def test_each_themed_remote_gets_an_example_that_is_never_offered():
         notes = themes.seed_examples()
         example = themes.folder("harmony-one") / themes.EXAMPLE
         assert (example / themes.MANIFEST).is_file()
-        assert notes and str(example) in notes[0]
+        assert any(str(example) in note for note in notes)
         assert themes.names("harmony-one") == []
         assert themes.path("harmony-one", themes.EXAMPLE) is None
         # an owner's copy of it is a theme, found by its name

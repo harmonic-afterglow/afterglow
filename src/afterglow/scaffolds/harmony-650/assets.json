@@ -1,0 +1,469 @@
+{
+  "extractor": "tools/arch14_extract_assets.py",
+  "font_roles": {
+    "answer": "font-04",
+    "button": "font-08",
+    "delay_row": "font-08",
+    "indicator": "font-06",
+    "menu_row": "font-07",
+    "message": "font-03",
+    "notice": "font-02",
+    "softkey": "font-01",
+    "title": "font-05"
+  },
+  "fonts": {
+    "font-00": {
+      "height": 15,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-01": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          32,
+          32,
+          32
+        ],
+        "shadow": null
+      }
+    },
+    "font-02": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          213,
+          214,
+          222
+        ],
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-03": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-04": {
+      "height": 15,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-05": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          32,
+          32,
+          32
+        ],
+        "shadow": null
+      }
+    },
+    "font-06": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          32,
+          32,
+          32
+        ],
+        "shadow": null
+      }
+    },
+    "font-07": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-08": {
+      "height": 15,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-09": {
+      "height": 13,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-10": {
+      "height": 11,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-11": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-12": {
+      "height": 13,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-13": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-14": {
+      "height": 10,
+      "look": {
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-15": {
+      "height": 11,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-16": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "large": true,
+        "shadow": [
+          49,
+          48,
+          49
+        ]
+      }
+    },
+    "font-17": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "font-18": {
+      "height": 14,
+      "look": {
+        "bold": true,
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "shadow": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "pictures": {
+    "backdrop": {
+      "file": "images/backdrop.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "corner/activity": {
+      "file": "images/corner/activity.png",
+      "mode": "raw",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "corner/device": {
+      "file": "images/corner/device.png",
+      "mode": "raw",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "corner/idle": {
+      "file": "images/corner/idle.png",
+      "mode": "raw",
+      "size": [
+        12,
+        12
+      ]
+    },
+    "corner/mark": {
+      "file": "images/corner/mark.png",
+      "mode": "runs",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "page/activity": {
+      "file": "images/page/activity.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/delays": {
+      "file": "images/page/delays.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/device": {
+      "file": "images/page/device.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/device-one": {
+      "file": "images/page/device-one.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/menu-one": {
+      "file": "images/page/menu-one.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/select": {
+      "file": "images/page/select.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/working": {
+      "file": "images/page/working.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-02-0": {
+      "file": "images/platform/screen-02-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-03-0": {
+      "file": "images/platform/screen-03-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-04-0": {
+      "file": "images/platform/screen-04-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-09-0": {
+      "file": "images/platform/screen-09-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "softkey": {
+      "file": "images/softkey.png",
+      "mode": "runs",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "title-bar": {
+      "file": "images/title-bar.png",
+      "mode": "raw",
+      "size": [
+        128,
+        16
+      ]
+    }
+  },
+  "remote": "harmony-650",
+  "schema": "afterglow-scaffold-assets/1",
+  "source": "extracted from a Harmony 650 / 665 configuration; artwork only",
+  "typeface": {
+    "bold": "fonts/galmuri/GalmuriAfterglow9-Bold.bdf.gz",
+    "large": "fonts/galmuri/GalmuriAfterglow11.bdf.gz",
+    "large-bold": "fonts/galmuri/GalmuriAfterglow11-Bold.bdf.gz",
+    "regular": "fonts/galmuri/GalmuriAfterglow9.bdf.gz",
+    "small": "fonts/galmuri/GalmuriAfterglow7.bdf.gz"
+  }
+}

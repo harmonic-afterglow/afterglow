@@ -19,6 +19,12 @@ def import_result(extracted_dir, out_file=None, name=None):
         extracted_dir, profile, {"out_file": out_file, "name": name})
     # The remote it came off is the remote it is for, until somebody migrates it.
     result.project.setdefault("settings", {})["remote"] = profile.id
+    # One remote sold under several skin numbers - a Harmony 665 is a 650 that says 75 -
+    # keeps the one it came off, which a build of it says again.
+    if header_path.is_file():
+        skin = remotes.identity_of(header_path.read_bytes()).get("skin")
+        if skin in profile.other_skins:
+            result.project["settings"]["skin"] = skin
     # Its keys are bound as the configuration had them; none is free to fill.
     for device in result.project.get("devices") or []:
         device[project_devices.KEYS_FILLED] = True

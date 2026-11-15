@@ -13,8 +13,8 @@ def setup(qapp_or_skip, tmp_path, monkeypatch):
 
     from afterglow.gui import default_remote
 
-    profiles = [SimpleNamespace(id="harmony-900", model="Harmony 900"),
-                SimpleNamespace(id="harmony-1100", model="Harmony 1100")]
+    profiles = [SimpleNamespace(id="harmony-900", model="Harmony 900", skins=(61,)),
+                SimpleNamespace(id="harmony-1100", model="Harmony 1100", skins=(62, 63))]
     monkeypatch.setattr(default_remote, "remote_profiles", lambda: profiles)
     settings = QSettings(str(tmp_path / "s.ini"), QSettings.Format.IniFormat)
     asked = []
@@ -22,7 +22,9 @@ def setup(qapp_or_skip, tmp_path, monkeypatch):
     class Chooser:
         answer = "harmony-1100"
 
-        def __init__(self, choices, title, intro, parent=None, selected=None):
+        skin = None
+
+        def __init__(self, choices, title, intro, parent=None, selected=None, **_rest):
             asked.append(selected)
 
         def exec(self):
@@ -30,6 +32,9 @@ def setup(qapp_or_skip, tmp_path, monkeypatch):
 
         def chosen(self):
             return self.answer
+
+        def chosen_skin(self):
+            return self.skin
 
     monkeypatch.setattr(default_remote, "ChooseRemoteDialog", Chooser)
     return SimpleNamespace(module=default_remote, settings=settings, asked=asked,
@@ -123,3 +128,32 @@ def test_the_startup_project_follows_the_choice_only_while_untouched(qapp_or_ski
     window._mark_dirty()
     window.start_with_default_remote("harmony-900")
     assert window.project["settings"]["remote"] == "harmony-1100"
+
+
+def test_the_model_picked_is_remembered_with_the_remote(setup):
+    setup.chooser.answer, setup.chooser.skin = "harmony-1100", 63
+    assert setup.module.choose_default_remote(None, setup.settings) == "harmony-1100"
+    assert setup.module.default_remote_skin(setup.settings) == 63
+    setup.chooser.answer, setup.chooser.skin = "harmony-900", None
+    setup.module.choose_default_remote(None, setup.settings)
+    assert setup.module.default_remote_skin(setup.settings) is None
+
+
+def test_the_chooser_lists_every_model_and_searches_them(qapp_or_skip):
+    from afterglow import remotes
+    from afterglow.gui.remote_bar import ChooseRemoteDialog
+    profiles = [remotes.get(r) for r in ("harmony-900", "harmony-650", "harmony-700")]
+    dialog = ChooseRemoteDialog(profiles, "Your remote", "Which?", selected="harmony-650",
+                                selected_skin=71)
+    texts = [dialog.list.item(i).text() for i in range(dialog.list.count())]
+    assert any(text.startswith("Harmony 600 ") for text in texts)
+    assert any(text.startswith("Harmony 665 ") for text in texts)
+    assert "Harmony Touch" in texts                        # listed, not supported yet
+    assert (dialog.chosen(), dialog.chosen_skin()) == ("harmony-650", 71)
+    dialog.search.setText("665")
+    shown = [dialog.list.item(i).text() for i in range(dialog.list.count())
+             if not dialog.list.item(i).isHidden()]
+    assert shown == ["Harmony 665 · experimental"]
+    assert (dialog.chosen(), dialog.chosen_skin()) == ("harmony-650", 75)
+    dialog.search.setText("touch")
+    assert dialog.chosen() is None                          # only a greyed one matches

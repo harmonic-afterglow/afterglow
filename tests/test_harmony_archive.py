@@ -120,6 +120,9 @@ def test_a_catalogue_device_gets_its_input_delay_and_the_wait_for_its_apps(tmp_p
     assert (device["input_delay"], device["app_power_delay"], device["power_delay"]) == (
         1000, 10000, 8000)
     assert device["online_inputs"] == ["Netflix"]
+    # the wait before the next device, which a remote keeping it per device uses
+    assert template["timing"]["inter_device_delay"] == 500
+    assert device["inter_device_delay"] == 500
 
 
 def test_a_learned_command_is_its_captured_timings():

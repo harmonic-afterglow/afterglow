@@ -8,14 +8,16 @@ the remote's `art.json` are the page's points too.
 
 Everything about one remote's drawing lives in its folder (library/remotes/<id>/): the
 recipe in `art.json` under "source" - the guide, page and region, callout colours to
-leave out, colours to repaint, a mock-up screen to empty, marks to print on the keys -
+leave out, parts of the page to erase, colours to repaint, a mock-up screen to empty, marks
+to print on the keys -
 and the result, `art.svg`, written beside it.
 
     python3 tools/remote_art.py ../afterglow-site/_sources/manuals \
         src/afterglow/library/remotes/harmony-one src/afterglow/library/remotes/harmony-900
 
 The first argument is the folder holding the user guides. Needs pdftocairo (poppler), but
-not for a guide kept only as the SVG of its remote's page.
+not for a guide kept only as the SVG of its remote's page. A label printed as a mark is
+its letters' outlines, kept in the recipe, so the drawing needs no font.
 """
 from __future__ import annotations
 
@@ -187,38 +189,54 @@ def _blank(root, screen) -> None:
     walk(root, (1, 0, 0, 1, 0, 0))
 
 
+def _erase(root, boxes) -> None:
+    """Leave out what lies wholly inside any of ``boxes`` (x0, y0, x1, y1): a part of
+    the page that reaches into the region but is no part of the remote - the 800's
+    slide-out keyboard, drawn against its side."""
+    def inside(box):
+        return any(x0 <= box[0] and box[2] <= x1 and y0 <= box[1] and box[3] <= y1
+                   for x0, y0, x1, y1 in boxes)
+
+    def walk(parent, m):
+        for child in list(parent):
+            matrix = _then(m, _matrix(child.get("transform")))
+            box = _bounds(child, matrix)
+            if box and inside(box):
+                parent.remove(child)
+            elif box:
+                walk(child, matrix)
+    walk(root, (1, 0, 0, 1, 0, 0))
+
+
 def _mark(root, marks) -> None:
     """Print on the keys what the guide's drawing leaves off: the 1100's is drawn
-    blank, and the 900's colour keys are drawn black. Each mark is a label - {"text", "x", "y", "size"}, centred on x, y - or a
-    symbol, {"d"} in the drawing's points, filled in black or its "fill" colour, and
-    outlined with "stroke" - a width."""
+    blank, and the 900's colour keys are drawn black. Each mark is a shape, {"d"} in the
+    drawing's points, filled in black or its "fill" colour and outlined with "stroke" - a
+    width; a label is its letters' outlines, named by "label"."""
     layer = ET.SubElement(root, NS + "g", {"id": "afterglow-marks", "fill": INK})
     for mark in marks:
         if "text" in mark:
-            label = ET.SubElement(layer, NS + "text", {
-                "x": str(mark["x"]), "y": str(mark["y"] + mark["size"] * 0.36),
-                "font-family": "Helvetica, Arial, sans-serif", "font-weight": "bold",
-                "font-size": str(mark["size"]), "text-anchor": "middle"})
-            label.text = mark["text"]
-        else:
-            outlined = mark.get("stroke")
-            fill = mark.get("fill") or ("none" if outlined else INK)
-            ET.SubElement(layer, NS + "path", {
-                "d": mark["d"], "fill": fill,
-                **({"stroke": INK, "stroke-width": str(outlined),
-                    "stroke-linecap": "round", "stroke-linejoin": "round"}
-                   if outlined else {})})
+            # a label is its letters' outlines (a "d" mark), never text: a PC without the
+            # font would draw another, or none
+            raise SystemExit(f"mark {mark['text']!r} is text; give its outline as a d mark")
+        outlined = mark.get("stroke")
+        fill = mark.get("fill") or ("none" if outlined else INK)
+        ET.SubElement(layer, NS + "path", {
+            "d": mark["d"], "fill": fill,
+            **({"stroke": INK, "stroke-width": str(outlined),
+                "stroke-linecap": "round", "stroke-linejoin": "round"}
+               if outlined else {})})
 
 
 INK = "#231f20"                      # the guides' own black
-
-
 def cut(page_svg: Path, region, out: Path, drop=(), recolour=None, screen=None,
-        marks=()) -> None:
+        marks=(), erase=()) -> None:
     x, y, width, height = region
     tree = ET.parse(page_svg)
     root = tree.getroot()
     _keep_inside(root, (1, 0, 0, 1, 0, 0), (x, y, x + width, y + height))
+    if erase:
+        _erase(root, erase)
     _restyle(root, drop, recolour)
     if screen:
         _blank(root, screen)
@@ -251,7 +269,7 @@ def main(argv=None):
             out = folder / "art.svg"
             cut(page, source["region"], out, source.get("drop", ()),
                 {k.lower(): v for k, v in (source.get("recolour") or {}).items()},
-                source.get("screen"), source.get("marks", ()))
+                source.get("screen"), source.get("marks", ()), source.get("erase", ()))
         print(f"wrote {out}")
 
 

@@ -8,6 +8,43 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **The Harmony 650, 665 and 700, experimental.** Afterglow reads their configurations,
+  and builds and writes new ones from a project: the Activities menu and Devices list, each
+  device's and activity's pages with Logitech's own layout, Starting and Turning off,
+  the sending mark, the activity keys (Watch a Movie, Watch TV, Listen to Music) as the
+  configuration had them, Help and its Delay Fixing, devices' power-on, inter-device,
+  input and inter-key delays, menu inputs (Source, Up or Down, OK), RC5/RC6 commands and
+  favourite channels behind an activity's "Favorite Channels" button, MyHarmony's backlight time and tilt-to-wake settings, the Remote Assistant's note after a start, and Logitech's activity key fill-ins (page arrows from the pad, a disc player's skips on Channel up and down). The 665 is the 650
+  under its own skin, and the 600 too, in its own grey pictures and light levels; a 600's
+  favourite channels read from Logitech's number sender, and its codes with a repeat frame
+  but no lead-in. Testers' own configurations rebuild and read back the same.
+  Favourites are edited by name on the activity's Favourites page, which offers no logos
+  on these remotes: no configuration Logitech built for them has one.
+- **Choose which activity each activity button starts** on the Harmony 650, 665 and 700:
+  "Button" on an activity's first page - Watch TV, Watch a Movie, Listen to Music or none -
+  or a click on the key in the Physical buttons picture. One activity a button, as
+  MyHarmony's "Customize Activity Buttons": a key another activity has can be chosen, with
+  a warning that saving takes it from that one.
+- **The Harmony 650 and 700 can be translated.** Every word a build draws - the menus,
+  Help and Delay Fixing, the Remote Assistant's note, the welcome tour, the firmware's
+  notices - comes from the remote's catalogue (`locale/harmony-650.pot`,
+  `harmony-700.pot`), English for now; a translation is a `<language>.po` beside it, and
+  a word longer than its English is wrapped or cut rather than stopping the build.
+- **The Harmony 650's and 700's editors look like the remote**: the Screen buttons page
+  draws the screen's four corners a page, Favorite Channels first while the activity has
+  favourites, and offers no icons, which these screens cannot draw; the colour keys are
+  coloured in the remote's picture.
+- **A welcome after the first flash.** The Harmony 650, 665 and 700 show Logitech's
+  ten-page welcome tour once after a write, as MyHarmony did after an account's first
+  sync: on "First flash only" (the default) when the remote does not already hold a
+  configuration made with Afterglow, or on every flash, or never - Settings, "Welcome after
+  flashing".
+- **Menu inputs on every remote.** A device whose inputs are a menu - Source, then Up or
+  Down, then OK, as Logitech's database has many televisions - keeps its way in and out
+  when it comes from the database or a configuration, and the 900, 1100, One and 800
+  send it so.
+- **A device's inter-key delay on the One and 800** is the hold of the codes Help sends
+  to fix it, as Logitech writes it, and is read from their configurations.
 - **A welcome after flashing on the Harmony One and 800**, as Logitech's One shows it:
   the Remote Assistant's welcome, then the Tutorial, once after a write. Settings has a
   "Welcome after flashing" choice - first flash only, every flash or never - and "first"

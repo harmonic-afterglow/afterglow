@@ -37,6 +37,7 @@ EXPECTED = (
     "harmony_800/lists-and-instructions.md",
     "harmony_800/hardware.md",
     "harmony_800/drawing.md",
+    "harmony_650_700/gspm.md",
 )
 
 

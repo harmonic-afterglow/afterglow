@@ -6,7 +6,8 @@ are literally what the remote draws. That makes them the project's remote's: a H
 or 800 draws its own set, so a profile names where that remote's pictures are
 (`RemoteProfile.type_icons`) and everything that shows a device or an activity passes the
 project's remote. Without one - and for button glyphs, which only `icons/` has - it is the
-Harmony 900's and 1100's set.
+Harmony 900's and 1100's set. A remote that draws none (the 650 and 700, whose menus are
+names alone) says so, and shows none.
 
 There is deliberately **no substitute set**. Drawn stand-ins were tried and removed: an
 abstract box-with-dots is not more useful than an honest blank, and it made the interface
@@ -39,6 +40,8 @@ def artwork_for(type_name: str, remote=None) -> Path | None:
     profile is given - its stand-in where that remote draws one for a type it has no
     picture of - else from `icons/`."""
     folder, fallback = remote.type_icons if remote is not None else (ARTWORK, None)
+    if folder is None:                  # the remote draws no device or activity icons
+        return None
     key = (str(folder), type_name)
     if key not in _paths:
         candidates = []

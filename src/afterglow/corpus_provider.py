@@ -558,10 +558,12 @@ def _archive_timing(timing) -> dict:
         return {}
     out = {}
     # how long a switch of input needs before the next command, which every builder
-    # waits; and how long after power-on a smart TV's online apps take to answer, which
-    # every builder waits for the first of them
+    # waits; how long after power-on a smart TV's online apps take to answer, which
+    # every builder waits for the first of them; and how long an activity waits after
+    # the device before the next one, which a remote keeping it per device uses
     for source, target in (("interKeyDelay", "press_interkey"), ("inputDelay", "input_delay"),
-                          ("connectedAppPowerOnDelay", "app_power_delay")):
+                          ("connectedAppPowerOnDelay", "app_power_delay"),
+                          ("interDeviceDelay", "inter_device_delay")):
         value = timing.get(source)
         if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
             out[target] = value

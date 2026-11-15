@@ -90,8 +90,8 @@ def test_profile_firmware_bounds_are_enforced_for_writes():
 def test_an_unshipped_remote_is_still_named_on_import():
     """Dropping the profiles must not make a foreign config unidentifiable rubbish:
     the skin table still says which remote it belongs to."""
-    header = b"<INTENDEDVERSION><PROTOCOL>14</PROTOCOL><SKIN>72</SKIN></INTENDEDVERSION>"
-    with pytest.raises(remotes.UnknownRemote, match="Harmony 650"):
+    header = b"<INTENDEDVERSION><PROTOCOL>8</PROTOCOL><SKIN>15</SKIN></INTENDEDVERSION>"
+    with pytest.raises(remotes.UnknownRemote, match="Harmony 880"):
         remotes.identify(header)
 
 
@@ -316,6 +316,8 @@ def test_each_remote_has_a_picture_of_its_own_for_every_type():
     from afterglow import remotes
     for profile in remotes.load_all():
         folder, fallback = profile.type_icons
+        if folder is None:                  # a remote that draws none: the 650, 700
+            continue
         for name in profile.device_types:
             assert (folder / "devices" / f"{name}.png").is_file(), (profile.id, name)
         for _label, name in profile.activity_types:

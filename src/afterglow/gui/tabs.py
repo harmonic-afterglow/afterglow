@@ -14,7 +14,7 @@ from ..qt.QtGui import QFont
 from .build_service import BuildWorker as ConfigBuildWorker
 from .project import (mark_device_new, new_device_ids)
 
-from .activity_wizard import ActivityEditor, ActivityWizard
+from .activity_wizard import ActivityEditor, ActivityWizard, one_activity_a_button
 from .icons import pixmap as type_pixmap
 from .constants import user_folder
 from .device_wizard import DeviceEditor, DeviceWizard
@@ -294,9 +294,11 @@ class ActivitiesTab(QWidget):
             return
         wiz = ActivityWizard(devs, self,
                              taken_ids=[a.get("id") for a in self.project["activities"]],
-                             remote=project_remote(self.project))
+                             remote=project_remote(self.project),
+                             activities=self.project["activities"])
         if wiz.exec() and wiz.result_spec:
             self.project["activities"].append(wiz.result_spec)
+            one_activity_a_button(self.project["activities"], wiz.result_spec)
             self._keep_assets(wiz)
             self.refresh()
             self.changed.emit()
@@ -320,9 +322,11 @@ class ActivitiesTab(QWidget):
     def edit_activity(self, idx):
         editor = ActivityEditor(self.project["devices"], self,
                                 existing=self.project["activities"][idx],
-                                remote=project_remote(self.project))
+                                remote=project_remote(self.project),
+                                activities=self.project["activities"])
         if editor.exec() and editor.result_spec:
             self.project["activities"][idx] = editor.result_spec
+            one_activity_a_button(self.project["activities"], editor.result_spec)
             self._keep_assets(editor)
             self.refresh()
             self.changed.emit()
@@ -501,10 +505,11 @@ class SettingsTab(QWidget):
             return
         self.prefs_form.addRow(sep())
         self.prefs_form.addRow(bold("Remote's own settings"))
-        note = QLabel(
+        # a remote with no Options of its own says so in its profile (`_note`)
+        note = QLabel((profile.preference_definitions or {}).get("_note") or (
             "These are applied when you flash. The remote keeps its own copy, so a "
             "setting you change on the device under Options stays until the next flash "
-            "overwrites it.")
+            "overwrites it."))
         note.setWordWrap(True)
         note.setStyleSheet("color: gray;")
         self.prefs_form.addRow(note)

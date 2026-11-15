@@ -110,15 +110,18 @@ class TemplateRepository:
         return result
 
 
-def new_project(remote: str | None = None) -> dict[str, Any]:
-    """An empty project for `remote`, else for the one verified remote, else for none if
-    that is ambiguous - in which case the Remote Settings tab is where the user says
-    which."""
+def new_project(remote: str | None = None, skin: int | None = None) -> dict[str, Any]:
+    """An empty project for `remote` - the model of it `skin` names, for one sold under
+    several (a 600 is built grey, a 650 in colour) - else for the one verified remote,
+    else for none if that is ambiguous - in which case the Remote Settings tab is where
+    the user says which."""
     from .. import remotes
 
     project = deepcopy(DEFAULT_PROJECT)
     if remote:
         project["settings"]["remote"] = remote
+        if skin is not None:
+            project["settings"]["skin"] = skin
         return project
     try:
         project["settings"]["remote"] = remotes.default().id

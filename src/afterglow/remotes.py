@@ -76,7 +76,8 @@ SETTINGS_FIELDS = ("output_file", "owner", "language", "rf_blasters", "theme",
                    "assistant", "welcome", "preferences")
 # The device Timing page's fields, by the project key each one sets.
 TIMING_FIELDS = ("always_on", "power_delay", "press_presilence", "press_interkey",
-                 "hold_presilence", "hold_interkey", "input_delay", "app_power_delay")
+                 "hold_presilence", "hold_interkey", "input_delay", "app_power_delay",
+                 "inter_device_delay")
 # What each list may contain, and what it must: a device is its commands, and so on.
 INTERFACE = {
     "tabs": (TABS, ("devices", "flash")),
@@ -119,13 +120,26 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
         raise ValueError(f"{profile_id}: interface.activity_screens lists its tabs, each "
                          "with the group it shows and the property that turns it on")
     icons = interface.get("type_icons")
-    if icons is not None and not (
+    if icons is not None and icons is not False and not (
             isinstance(icons, dict) and set(icons) <= {"folder", "fallback"}
             and isinstance(icons.get("folder"), str)
             and isinstance(icons.get("fallback", ""), str)):
         raise ValueError(f"{profile_id}: interface.type_icons names the folder of the "
                          "remote's device and activity icons, and optionally the one it "
-                         "draws for a type it has none for")
+                         "draws for a type it has none for - or is false, for a remote "
+                         "that draws none")
+    buttons = interface.get("activity_buttons")
+    if buttons is not None and not (
+            isinstance(buttons, list) and all(
+                isinstance(pair, list) and len(pair) == 2 for pair in buttons)):
+        raise ValueError(f"{profile_id}: interface.activity_buttons lists [label, value] "
+                         "for each key an activity can be put on")
+    if not isinstance(interface.get("favourites_button", ""), str):
+        raise ValueError(f"{profile_id}: interface.favourites_button is the label of the "
+                         "button an activity's screen opens its favourites with")
+    for flag in ("favourite_logos", "screen_icons"):
+        if not isinstance(interface.get(flag, True), bool):
+            raise ValueError(f"{profile_id}: interface.{flag} is true or false")
     languages = interface.get("languages")
     if not isinstance(languages, list) or not languages or not all(
             isinstance(pair, list) and len(pair) == 2 for pair in languages):
@@ -265,6 +279,33 @@ class RemoteProfile:
         return self._offered("timing")
 
     @property
+    def activity_buttons(self) -> tuple[tuple[str, str], ...]:
+        """The keys an activity can be put on - the 650's and 700's Watch TV, Watch a
+        Movie and Listen to Music - as (label, the project's `activity_button` value);
+        none on a remote whose activities have no keys of their own."""
+        return tuple(tuple(pair) for pair in self.interface.get("activity_buttons") or ())
+
+    @property
+    def screen_icons(self) -> bool:
+        """Whether a button on an activity's screen can carry one of the remote's icons;
+        the 650's and 700's draw their labels alone."""
+        return bool(self.interface.get("screen_icons", True))
+
+    @property
+    def favourites_button(self) -> str | None:
+        """The button a remote puts first on an activity's screen when the activity has
+        favourites, which opens them - the 650's and 700's "Favorite Channels" - or None
+        where favourites are a page of their own."""
+        return self.interface.get("favourites_button") or None
+
+    @property
+    def favourite_logos(self) -> bool:
+        """Whether a favourite here can carry a logo. The 650's and 700's cannot: no
+        configuration Logitech built for them has one, so a logo would be Afterglow's
+        invention, and their favourites are labels."""
+        return bool(self.interface.get("favourite_logos", True))
+
+    @property
     def activity_screens(self) -> dict | None:
         """An activity's screen as a set of tabs, for a remote that has one (the 1100):
         each tab's group, the property that turns it on, and its named slots - or None
@@ -380,12 +421,16 @@ class RemoteProfile:
         return tuple(size) if size else None
 
     @property
-    def type_icons(self) -> tuple[Path, str | None]:
+    def type_icons(self) -> tuple[Path | None, str | None]:
         """(the folder of this remote's own device and activity icons, the icon it draws
         for a type it has none for or None). The folder holds `devices/<Type>.png` and
         `activities/<Type>.png`; the profile's `interface.type_icons` names it inside the
         package (a Harmony One's and 800's are in their scaffolds), and a profile that
-        does not has the Harmony 900's and 1100's, `icons/`, with no stand-in."""
+        does not has the Harmony 900's and 1100's, `icons/`, with no stand-in. (None,
+        None) for a remote that draws no such icons - the 650's and 700's menus are
+        names alone - so nothing shows one."""
+        if self.interface.get("type_icons") is False:
+            return None, None
         given = self.interface.get("type_icons") or {}
         folder = paths.root() / given["folder"] if given.get("folder") else paths.icons()
         return folder, given.get("fallback") or None
@@ -498,9 +543,11 @@ class RemoteProfile:
     def hard_key_art(self) -> dict | None:
         """The remote's own picture and where each key sits on it, for the keys view:
         {"svg": path, "view": (x, y, w, h) shown, "keys": {key: (x, y, w, h)},
-        "unassignable": {name: (x, y, w, h)}} in the drawing's units - a key cut from a
-        ring is the corners of its wedge instead - or None for a remote nobody has drawn
-        yet (the grid of `hard_key_layout` then)."""
+        "unassignable": {name: (x, y, w, h)}, "cut": (top, bottom) or None} in the
+        drawing's units - a key cut from a ring is the corners of its wedge instead;
+        `cut` a band left out and closed up, the 650's screen between its activity keys
+        and Menu - or None for a remote nobody has drawn yet (the grid of
+        `hard_key_layout` then)."""
         art = self.art
         if not art or self.folder is None:
             return None
@@ -508,7 +555,8 @@ class RemoteProfile:
                 "view": tuple(art["view"]) if art.get("view") else None,
                 "keys": {key: tuple(box) for key, box in art["keys"].items()},
                 "unassignable": {name: tuple(box) for name, box
-                                 in (art.get("unassignable") or {}).items()}}
+                                 in (art.get("unassignable") or {}).items()},
+                "cut": tuple(art["cut"]) if art.get("cut") else None}
 
     def key_label(self, key: str) -> str:
         """A key as people call it - "Volume +", "OK" - rather than as a configuration

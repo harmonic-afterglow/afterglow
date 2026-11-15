@@ -33,8 +33,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Afterglow")
         self.resize(900, 600)
 
-        from .default_remote import default_remote_id
-        self.project   = empty_project(default_remote_id())
+        from .default_remote import default_remote_id, default_remote_skin
+        self.project   = empty_project(default_remote_id(), default_remote_skin())
         from .. import paths
         from .activity_buttons import previous_prepared_dir
         # Earlier versions kept the library and logos in application data. Brought into
@@ -239,15 +239,22 @@ class MainWindow(QMainWindow):
         self.update_tab.refresh()
 
     def _choose_remote(self, title, intro, exclude=None):
-        from .default_remote import default_remote_id
+        """The remote chosen, or None; which model of it, in `_chosen_skin`."""
+        from .default_remote import default_remote_id, default_remote_skin
+        self._chosen_skin = None
         choices = [p for p in remote_profiles() if p.id != exclude]
         if not choices:
             QMessageBox.information(
                 self, title, "There is no other remote Afterglow can build for yet.")
             return None
         dialog = ChooseRemoteDialog(choices, title, intro, self,
-                                    selected=default_remote_id())
-        return dialog.chosen() if dialog.exec() else None
+                                    selected=default_remote_id(),
+                                    selected_skin=default_remote_skin(),
+                                    known=remote_profiles())
+        if not dialog.exec():
+            return None
+        self._chosen_skin = dialog.chosen_skin()
+        return dialog.chosen()
 
     def change_remote(self, target_id=None):
         """Move the project to another remote: review what changes, save it as new."""
@@ -269,6 +276,9 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Change remote", str(exc))
             return
+        skin = getattr(self, "_chosen_skin", None)
+        if skin in target.skins:
+            migrated.setdefault("settings", {})["skin"] = skin
         if not MigrationDialog(source, target, report, self).exec():
             return
         stem = Path(self._project_path).stem if self._project_path else "project"
@@ -291,11 +301,14 @@ class MainWindow(QMainWindow):
         """The startup project is for the remote just chosen, if nothing was done in it."""
         untouched = not self._project_path and not self._dirty and \
             not self.project.get("devices") and not self.project.get("activities")
+        from .default_remote import default_remote_skin
         profile = self._profile()
-        if not remote_id or not untouched or (profile and profile.id == remote_id):
+        same = profile and profile.id == remote_id and \
+            (self.project.get("settings") or {}).get("skin") == default_remote_skin()
+        if not remote_id or not untouched or same:
             return
         self.project.clear()
-        self.project.update(empty_project(remote_id))
+        self.project.update(empty_project(remote_id, default_remote_skin()))
         self._reload_tabs()
 
     def choose_default_remote(self):
@@ -313,7 +326,7 @@ class MainWindow(QMainWindow):
                 "New project", "Which remote is this project for?")
             if not chosen:
                 return
-            project["settings"]["remote"] = chosen
+            project = empty_project(chosen, self._chosen_skin)
         self.project.clear()
         self.project.update(project)
         self._project_path = None

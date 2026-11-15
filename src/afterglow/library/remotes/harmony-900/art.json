@@ -1,5 +1,5 @@
 {
-  "_comment": "The remote as its user guide draws it (page 8, tools/remote_art.py), shown from Activities down; keys as on the Harmony One's, and the four colour keys. The mute key is printed *.",
+  "_comment": "The remote as its user guide draws it (page 8, tools/remote_art.py), shown from Activities down; keys as on the Harmony One's, and the four colour keys. The mute key is printed *. The guide prints the clear key's + twice, one copy off its key; `erase` leaves it out and a mark draws one in the key's middle.",
   "svg": "art.svg",
   "view": [98.5, 396.5, 106.0, 282.4],
   "keys": {
@@ -53,6 +53,7 @@
     "guide": "harmony900-user-guide.pdf",
     "page": 8,
     "region": [98.5, 396.5, 106.0, 282.4],
+    "erase": [[125.51, 641.15, 125.91, 641.55], [124.05, 644.55, 124.45, 644.95]],
     "marks": [
       {
         "d": "M 112.83 453.17 H 120.35 A 1.1 1.1 0 0 1 120.35 455.37 H 112.83 A 1.1 1.1 0 0 1 112.83 453.17 Z",
@@ -73,7 +74,8 @@
         "d": "M 180.25 453.17 H 187.78 A 1.1 1.1 0 0 1 187.78 455.37 H 180.25 A 1.1 1.1 0 0 1 180.25 453.17 Z",
         "fill": "#2f6fd6",
         "stroke": 0.3
-      }
+      },
+      {"d": "M 125.15 639.08 H 130.35 V 640.03 H 125.15 Z M 127.28 636.95 H 128.22 V 642.15 H 127.28 Z"}
     ]
   }
 }

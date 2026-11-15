@@ -136,7 +136,8 @@ def _with_commands():
             "signals": {"VolumeUp": signal, "Netflix": signal}}
 
 
-@pytest.mark.parametrize("model", ["harmony-one", "harmony-900", "harmony-1100"])
+@pytest.mark.parametrize("model", ["harmony-one", "harmony-900", "harmony-1100", "harmony-650",
+                                   "harmony-700"])
 def test_every_key_is_on_the_drawing(model):
     from afterglow import remotes
     profile = remotes.get(model)
@@ -254,7 +255,8 @@ def test_the_900_colour_keys_show_their_colours():
     svg = ET.parse(remotes.get("harmony-900").hard_key_art["svg"]).getroot()
     marks = next(g for g in svg.iter() if g.get("id") == "afterglow-marks")
     fills = [path.get("fill") for path in marks]
-    assert fills == ["#e0302b", "#2fa84f", "#f2c230", "#2f6fd6"]      # red green yellow blue
+    # red green yellow blue, then the clear key's +, which the guide prints off its key
+    assert fills[:4] == ["#e0302b", "#2fa84f", "#f2c230", "#2f6fd6"]
 
 
 def test_the_list_views_key_picker_is_the_remote_drawing(qapp_or_skip):

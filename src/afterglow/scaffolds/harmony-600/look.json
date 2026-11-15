@@ -1,0 +1,171 @@
+{
+  "schema": "afterglow-harmony-650-look/1",
+  "_comment": "The Harmony 600's look, for the 650 backend's builds that state skin 71 or 73: Logitech's grey pictures and the 600's light levels (section 15's tail), drawn from a Polish 600's configuration (tools/arch14_extract_assets.py, its three Help pages named by eye). Everything else - wiring, firmware screens, fonts - is the 650's (scaffolds/harmony-650).",
+  "skins": [
+    71,
+    73
+  ],
+  "pictures": {
+    "backdrop": {
+      "file": "images/backdrop.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "corner/activity": {
+      "file": "images/corner/activity.png",
+      "mode": "raw",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "corner/device": {
+      "file": "images/corner/device.png",
+      "mode": "raw",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "corner/idle": {
+      "file": "images/corner/idle.png",
+      "mode": "raw",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "corner/mark": {
+      "file": "images/corner/mark.png",
+      "mode": "runs",
+      "size": [
+        12,
+        10
+      ]
+    },
+    "page/delays": {
+      "file": "images/page/delays.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/working": {
+      "file": "images/page/working.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/select": {
+      "file": "images/page/select.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/activity": {
+      "file": "images/page/activity.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/activity-one": {
+      "file": "images/page/activity-one.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/device": {
+      "file": "images/page/device.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/device-one": {
+      "file": "images/page/device-one.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/menu": {
+      "file": "images/page/menu.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "page/menu-one": {
+      "file": "images/page/menu-one.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-02-0": {
+      "file": "images/platform/screen-02-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-03-0": {
+      "file": "images/platform/screen-03-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-04-0": {
+      "file": "images/platform/screen-04-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "platform/screen-09-0": {
+      "file": "images/platform/screen-09-0.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "softkey": {
+      "file": "images/softkey.png",
+      "mode": "runs",
+      "size": [
+        128,
+        128
+      ]
+    },
+    "title-bar": {
+      "file": "images/title-bar.png",
+      "mode": "raw",
+      "size": [
+        128,
+        16
+      ]
+    }
+  },
+  "tail": "012c0004030005000a002000012c00040100030005002000066000620034013601000302030ee9071b0834084d089808dd09e40ce40ce40ce40ce40ce40ce40ce40c0ee9071b0847097909ab09dd09e40ce40ce40ce40ce40ce40ce40ce40c010000020807e42a"
+}

@@ -1,5 +1,5 @@
 {
-  "_comment": "The remote as its user guide draws it (page 6, tools/remote_art.py). `view` is the part shown - the keys, from Activities down, edge to edge; `keys` where each key sits, x, y, width, height in the drawing's points, each lit by the outline drawn around it (the rockers, the d-pad and Play/Pause share one outline, cut here into their keys); `unassignable` keys the remote keeps for itself, shown dark.",
+  "_comment": "The remote as its user guide draws it (page 6, tools/remote_art.py). `view` is the part shown - the keys, from Activities down, edge to edge; `keys` where each key sits, x, y, width, height in the drawing's points, each lit by the outline drawn around it (the rockers, the d-pad and Play/Pause share one outline, cut here into their keys); `unassignable` keys the remote keeps for itself, shown dark. The guide prints the clear key's + off its key; `erase` leaves it out and a mark draws one in the key's middle.",
   "svg": "art.svg",
   "view": [96.6, 398.0, 106.0, 278.6],
   "keys": {
@@ -48,6 +48,8 @@
   "source": {
     "guide": "harmonyone-user-guide.pdf",
     "page": 6,
-    "region": [96, 267, 107, 410]
+    "region": [96, 267, 107, 410],
+    "erase": [[124.05, 644.25, 124.45, 644.65]],
+    "marks": [{"d": "M 123.35 638.08 H 128.55 V 639.03 H 123.35 Z M 125.48 635.95 H 126.42 V 641.15 H 125.48 Z"}]
   }
 }

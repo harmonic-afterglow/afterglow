@@ -7,11 +7,12 @@ whose report is shown before anything is written.
 """
 from __future__ import annotations
 
+import re
 from collections import OrderedDict
 
-from ..qt.QtCore import pyqtSignal
+from ..qt.QtCore import Qt, pyqtSignal
 from ..qt.QtWidgets import (
-    QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLabel, QListWidget,
+    QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget,
     QListWidgetItem, QPushButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
 )
 
@@ -63,27 +64,49 @@ class RemoteBar(QFrame):
 
 
 class ChooseRemoteDialog(QDialog):
-    """Pick a remote that configurations can be built for."""
+    """Pick a remote, by the model printed on it: every Harmony Logitech made is listed,
+    the ones configurations can be built for first and the rest greyed, with a search
+    over them. A remote sold under several names - the 600, 650 and 665 - is each of
+    them, so a project knows which it is for (`chosen_skin`): a 600 is built grey."""
 
     def __init__(self, profiles, title: str, intro: str, parent=None,
-                 selected: str | None = None):
+                 selected: str | None = None, selected_skin: int | None = None,
+                 known=None):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.resize(460, 320)
+        self.resize(460, 480)
         layout = QVBoxLayout(self)
         text = QLabel(intro)
         text.setWordWrap(True)
         layout.addWidget(text)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search remotes")
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(self._filter)
+        layout.addWidget(self.search)
         self.list = QListWidget()
-        for profile in profiles:
-            item = QListWidgetItem(status_text(profile))
+        supported, others = _models(profiles, known)
+        for name, profile, skin in supported:
+            item = QListWidgetItem(f"{name} · {profile.status}")
             item.setData(256, profile.id)
+            item.setData(257, skin)
             item.setToolTip(profile.notes or "")
             self.list.addItem(item)
-        if self.list.count():
-            ids = [profile.id for profile in profiles]
-            self.list.setCurrentRow(ids.index(selected) if selected in ids else 0)
-        self.list.itemDoubleClicked.connect(lambda _item: self.accept())
+        self._header = None
+        if others:
+            self._header = QListWidgetItem("Not supported yet")
+            self._header.setFlags(Qt.ItemFlag.NoItemFlags)
+            font = self._header.font()
+            font.setBold(True)
+            self._header.setFont(font)
+            self.list.addItem(self._header)
+            for name in others:
+                item = QListWidgetItem(name)
+                item.setFlags(Qt.ItemFlag.NoItemFlags)       # shown, greyed, not chosen
+                self.list.addItem(item)
+        self._select(selected, selected_skin)
+        self.list.itemDoubleClicked.connect(
+            lambda item: self.accept() if item.data(256) else None)
         layout.addWidget(self.list, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                    | QDialogButtonBox.StandardButton.Cancel)
@@ -91,9 +114,77 @@ class ChooseRemoteDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+    def _choosable(self):
+        return [self.list.item(i) for i in range(self.list.count())
+                if self.list.item(i).data(256)]
+
+    def _select(self, remote_id, skin) -> None:
+        items = self._choosable()
+        if not items:
+            return
+        exact = [item for item in items
+                 if item.data(256) == remote_id and (skin is None or item.data(257) == skin)]
+        self.list.setCurrentItem(exact[0] if exact else items[0])
+
+    def _filter(self, text: str) -> None:
+        """Show the remotes whose name has every word typed: "650", "harmony 7"."""
+        words = text.casefold().split()
+        shown_other = False
+        for i in range(self.list.count()):
+            item = self.list.item(i)
+            if item is self._header:
+                continue
+            hidden = not all(word in item.text().casefold() for word in words)
+            item.setHidden(hidden)
+            if not hidden and not item.data(256):
+                shown_other = True
+        if self._header is not None:
+            self._header.setHidden(not shown_other)
+        current = self.list.currentItem()
+        if current is None or current.isHidden():
+            visible = [item for item in self._choosable() if not item.isHidden()]
+            if visible:
+                self.list.setCurrentItem(visible[0])
+
     def chosen(self) -> str | None:
         item = self.list.currentItem()
-        return item.data(256) if item else None
+        return item.data(256) if item and not item.isHidden() else None
+
+    def chosen_skin(self) -> int | None:
+        """The skin of the model picked: which of a remote's names it is."""
+        item = self.list.currentItem()
+        return item.data(257) if item and item.data(256) and not item.isHidden() else None
+
+
+def _models(profiles, known=None) -> tuple[list, list[str]]:
+    """([(model, profile, skin)] that can be chosen, [model] that cannot), by the skins
+    Logitech numbered them with (remotes.models). A model of a profile in ``known`` but
+    not offered - the project's own remote, when moving it - is in neither."""
+    from .. import remotes
+    names = {int(skin): entry.get("model") or "" for skin, entry in remotes.models().items()
+             if str(skin).isdigit()}
+    supported, seen = [], set()
+    for profile in profiles:
+        mine = []
+        for skin in profile.skins:
+            name = names.get(skin) or profile.model
+            if name not in seen:
+                seen.add(name)
+                mine.append((name, profile, skin))
+        supported += sorted(mine, key=lambda entry: _natural(entry[0]))
+    taken = {skin for profile in (known or profiles) for skin in profile.skins}
+    taken_names = {names.get(skin) for skin in taken} | seen
+    others = sorted({name for skin, name in names.items()
+                     if skin not in taken and name and not name.isdigit()
+                     and name not in taken_names},
+                    key=_natural)
+    return supported, others
+
+
+def _natural(name: str) -> list:
+    """Sorts "Harmony 600" before "Harmony 1100": its numbers as numbers."""
+    return [int(part) if part.isdigit() else part.casefold()
+            for part in re.split(r"(\d+)", name)]
 
 
 class MigrationDialog(QDialog):

@@ -1,12 +1,7 @@
 {
-  "_comment": "The remote as its Getting Started Guide draws it (page 3, tools/remote_art.py), without the slide-out keyboard and the guide's callout lines. `view` is the part shown - the keys, from 123 down to the bottom row; `keys` where each key sits, x, y, width, height in the drawing's points, each the inside of the outline drawn around it (the rockers, the d-pad, Play/Pause and the TV/Help/DVR bar share outlines, cut here into their keys); `unassignable` the keys the remote keeps for itself, shown dark.",
+  "_comment": "The remote as its Getting Started Guide draws it (page 3, tools/remote_art.py), without the slide-out keyboard (`erase`, drawn against the case's right side) and the guide's callout lines. `view` is the part shown - the keys, from 123 down to the front's rounded end, edge to edge - not the chin below it; `keys` where each key sits, x, y, width, height in the drawing's points, each the inside of the outline drawn around it (the rockers, the d-pad, Play/Pause and the TV/Help/DVR bar share outlines, cut here into their keys); `unassignable` the keys the remote keeps for itself, shown dark.",
   "svg": "art.svg",
-  "view": [
-    537.5,
-    295.5,
-    55.0,
-    109.0
-  ],
+  "view": [531.8, 295.5, 66.7, 117.0],
   "keys": {
     "TV": [
       540.0,
@@ -224,14 +219,10 @@
   "source": {
     "guide": "harmony800-getting-started-guide-page3.svg",
     "page": 3,
-    "region": [
-      530.0,
-      212.0,
-      67.0,
-      216.0
-    ],
+    "region": [530.0, 212.0, 70.0, 216.0],
     "drop": [
       "#ed1d24"
-    ]
+    ],
+    "erase": [[596.5, 250.0, 640.0, 398.0]]
   }
 }

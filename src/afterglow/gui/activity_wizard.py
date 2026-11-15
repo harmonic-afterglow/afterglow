@@ -7,7 +7,7 @@ from ..qt.QtWidgets import (
     QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
     QSplitter, QAbstractItemView, QHeaderView, QWizardPage
 )
-from ..qt.QtCore import Qt, QSize
+from ..qt.QtCore import Qt, QSize, pyqtSignal
 
 from .macro import MacroEditorWidget, StartupEditor
 from .project import (drop_retired_fields)
@@ -18,7 +18,7 @@ from .. import vocabulary
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
-from .keys_view import CHANGED, FREE, KeysViewChoice, RemoteKeys, legend
+from .keys_view import ASSIGNED, CHANGED, FREE, KeysViewChoice, RemoteKeys, legend
 from .sections import SectionDialog, StepWizard
 from .widgets import _new_act_id
 
@@ -54,7 +54,8 @@ GENERIC_TYPE = "VirtualGeneric"
 
 
 class ActivityWizard(StepWizard):
-    def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None):
+    def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None,
+                 activities=None):
         super().__init__("Add Activity" if not existing else "Edit Activity", parent)
         profile = vocabulary.for_remote(remote)
         self._taken_ids = list(taken_ids or [])
@@ -62,7 +63,8 @@ class ActivityWizard(StepWizard):
         self.result_spec = None
         e = self._existing = existing or {}
 
-        self.identity = ActivityIdentityPage(e, remote=profile)
+        self.identity = ActivityIdentityPage(
+            e, remote=profile, holders=button_holders(activities, existing))
         self.roles = ActivityRolesPage(devices, e)
         self.favourites = FavouritesPage(devices, e, remote=profile)
         self.screen_buttons = screen_page(devices, e, profile)
@@ -83,6 +85,8 @@ class ActivityWizard(StepWizard):
                 self.add_step(*pages[name])
         # What happens when the activity ends is for Edit: a new one needs its inputs.
         self.startup.for_adding()
+        link_activity_key(self.identity, self.hard_buttons)
+        link_favourites_button(self.favourites, self.screen_buttons, profile)
 
     def initializePage(self, page_id):
         """Before a page is shown, tell it which devices this activity uses.
@@ -129,6 +133,7 @@ class ActivityWizard(StepWizard):
         if vol and vol != spec["display"]:
             spec["volume"] = vol
         spec["roles"] = p1.get_roles()
+        apply_button(spec, p0)
         spec["image_buttons"] = p3.get_buttons()
         confirm = p3.get_confirm()
         if confirm:
@@ -146,9 +151,76 @@ class ActivityWizard(StepWizard):
         return spec
 
 
+def _listed(names: list[str]) -> str:
+    """'A, B or C'."""
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " or " + names[-1]
+
+
+def link_activity_key(identity: "ActivityIdentityPage",
+                      buttons: "ActivityHardButtonsPage") -> None:
+    """The identity page's Button and the activity key lit in the physical buttons'
+    picture are one choice: changing either changes the other."""
+    combo = identity.button_combo
+    if combo is None:
+        return
+    buttons.holders = identity.holders
+    buttons.show_activity_key(combo.currentData())
+    combo.currentIndexChanged.connect(lambda _i: buttons.show_activity_key(combo.currentData()))
+    buttons.activity_key_chosen.connect(
+        lambda value: combo.setCurrentIndex(max(combo.findData(value), 0)))
+
+
+def link_favourites_button(favourites, screen, profile) -> None:
+    """On a remote whose activity screen opens its favourites with a button of its own,
+    the screen page draws that button while the favourites page lists any."""
+    label = getattr(profile, "favourites_button", None)
+    show = getattr(screen, "show_favourites_button", None)
+    if not label or show is None:
+        return
+    model = favourites.table.model()
+
+    def follow(*_args):
+        try:
+            show(label if model.rowCount() else None)
+        except RuntimeError:        # the editor closing: its pages are going first
+            pass
+    for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset):
+        signal.connect(follow)
+    follow()
+
+
+def button_holders(activities, editing=None) -> dict:
+    """{activity key: label} of the activities other than ``editing`` that have one."""
+    return {act["activity_button"]: act.get("label") or "another activity"
+            for act in activities or []
+            if act is not editing and act.get("activity_button")}
+
+
+def apply_button(spec: dict, page: "ActivityIdentityPage") -> None:
+    """The key the identity page chose for the activity, on a remote that has them."""
+    if page.button_combo is None:
+        return
+    chosen = page.button_combo.currentData()
+    if chosen:
+        spec["activity_button"] = chosen
+    else:
+        spec.pop("activity_button", None)
+
+
+def one_activity_a_button(activities: list, spec: dict) -> None:
+    """The key ``spec`` took is no other activity's any more."""
+    chosen = spec.get("activity_button")
+    if chosen:
+        for other in activities:
+            if other is not spec and other.get("activity_button") == chosen:
+                other.pop("activity_button", None)
+
+
 class ActivityIdentityPage(QWizardPage):
-    def __init__(self, existing, parent=None, remote=None):
+    def __init__(self, existing, parent=None, remote=None, holders=None):
         super().__init__(parent)
+        # {activity key: the label of the other activity it starts now}
+        self.holders = dict(holders or {})
         self.setTitle("Activity")
         self.setSubTitle("The name the remote shows for this activity, and its icon.")
         layout = QFormLayout(self)
@@ -174,6 +246,32 @@ class ActivityIdentityPage(QWizardPage):
                 self.type_combo.setCurrentIndex(i); break
         layout.addRow("Type:", self.type_combo)
 
+        # The key that starts it, on a remote with Watch TV, Watch a Movie and Listen to
+        # Music (the 650 and 700): as MyHarmony's "Customize Activity Buttons", one
+        # activity a key - choosing one another activity has moves it here
+        self.button_combo = None
+        buttons = vocabulary.for_remote(remote).activity_buttons
+        if buttons:
+            self.button_combo = QComboBox()
+            self.button_combo.addItem("None", None)
+            for label, value in buttons:
+                holder = self.holders.get(value)
+                self.button_combo.addItem(
+                    f'{label} (now starts "{holder}")' if holder else label, value)
+            at = self.button_combo.findData(existing.get("activity_button"))
+            self.button_combo.setCurrentIndex(max(at, 0))
+            self.button_combo.setToolTip(
+                "The button above the screen that starts this activity. Each button "
+                "starts one activity; choosing one another activity uses moves it here.")
+            layout.addRow("Button:", self.button_combo)
+            # a key another activity has can still be chosen: saving takes it from that one
+            self.button_warning = QLabel()
+            self.button_warning.setWordWrap(True)
+            self.button_warning.setStyleSheet("color: #b35c00;")
+            layout.addRow("", self.button_warning)
+            self.button_combo.currentIndexChanged.connect(self._warn_button)
+            self._warn_button()
+
         self.id_edit = QLineEdit(existing.get("id", ""))
         self.id_edit.setReadOnly(True)
         self.id_edit.setPlaceholderText("assigned automatically")
@@ -182,6 +280,17 @@ class ActivityIdentityPage(QWizardPage):
         # editing one silently breaks every reference to it. Shown, never editable.
         layout.addRow("Activity ID:", self.id_edit)
         layout.setRowVisible(self.id_edit, False)    # nobody needs to see it
+
+    def _warn_button(self, *_args):
+        """Say so when the chosen key starts another activity now."""
+        value = self.button_combo.currentData()
+        holder = self.holders.get(value)
+        label = self.button_combo.currentText().split(" (now starts")[0]
+        self.button_warning.setText(
+            f'{label} starts "{holder}" now. Saving moves it to this '
+            f'activity, and "{holder}" will have no button.' if holder else "")
+        self.button_warning.setVisible(bool(holder))
+
 
 # Which device types plausibly fill which role. A hint for ordering the lists, not a
 # restriction: every device stays selectable, because somebody's setup will not match.
@@ -351,6 +460,10 @@ class HardButtonMacroDialog(QDialog):
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
 class ActivityHardButtonsPage(QWizardPage):
+    # the activity key (a 650's "TV", "Movie", "Music") clicked in the picture, or None
+    # when the one it had is clicked again; the identity page's Button follows it
+    activity_key_chosen = pyqtSignal(object)
+
     def __init__(self, devices, existing, parent=None, remote=None):
         super().__init__(parent)
         self.setTitle("Physical buttons")
@@ -374,6 +487,10 @@ class ActivityHardButtonsPage(QWizardPage):
         picture.setContentsMargins(0, 0, 0, 0)
         self.keys_view = RemoteKeys(remote)
         self.keys_view.key_clicked.connect(self._edit_slot)
+        # the keys that start an activity, by the label the picture knows them by
+        self._activity_keys = dict(vocabulary.for_remote(remote).activity_buttons)
+        self._activity_key = None
+        self.keys_view.fixed_clicked.connect(self._activity_key_clicked)
         picture.addWidget(self.keys_view, 3)
         side = QVBoxLayout()
         side.addWidget(QLabel("<b>Changed in this activity</b>"))
@@ -385,11 +502,15 @@ class ActivityHardButtonsPage(QWizardPage):
         back.clicked.connect(self._reset_listed)
         side.addWidget(back)
         hint = QLabel("Click a key to change what it does. Hover over a key to see "
-                      "what it sends.")
+                      "what it sends."
+                      + (" Click " + _listed(list(self._activity_keys)) + " to start "
+                         "this activity with it." if self._activity_keys else ""))
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray;")
         side.addWidget(hint)
-        side.addWidget(legend([(CHANGED, "Its own action"), (FREE, "Default")]))
+        side.addWidget(legend([(CHANGED, "Its own action"), (FREE, "Default")]
+                              + ([(ASSIGNED, "Starts this activity")]
+                                 if self._activity_keys else [])))
         picture.addLayout(side, 2)
         layout.addWidget(self.picture, 1)
 
@@ -469,6 +590,29 @@ class ActivityHardButtonsPage(QWizardPage):
 
     def _row_of(self, slot):
         return self.slots.index(slot)
+
+    def show_activity_key(self, value):
+        """Light the activity key this activity is on (a profile value, or None)."""
+        self._activity_key = value
+        label = next((label for label, item in self._activity_keys.items()
+                      if item == value), None)
+        holders = getattr(self, "holders", {})
+
+        def says(name):
+            if name == label:
+                holder = holders.get(value)
+                return (f'{name}: starts this activity (saving takes it from '
+                        f'"{holder}")' if holder else f"{name}: starts this activity")
+            holder = holders.get(self._activity_keys[name])
+            return (f'{name}: starts "{holder}" - click to move it to this activity'
+                    if holder else f"{name}: click to start this activity with it")
+        self.keys_view.set_choices({name: says(name) for name in self._activity_keys}, label)
+
+    def _activity_key_clicked(self, label):
+        value = self._activity_keys.get(label)
+        chosen = None if value == self._activity_key else value
+        self.show_activity_key(chosen)
+        self.activity_key_chosen.emit(chosen)
 
     def _edit_slot(self, slot):
         """Change what a key does, from the picture."""
@@ -615,13 +759,14 @@ ACTIVITY_SECTIONS = (
 
 
 class ActivityEditor(SectionDialog):
-    def __init__(self, devices, parent=None, existing=None, remote=None):
+    def __init__(self, devices, parent=None, existing=None, remote=None, activities=None):
         super().__init__("Edit Activity", parent)
         profile = vocabulary.for_remote(remote)
         self.result_spec  = None
         e = self._existing = existing or {}
 
-        self.p0 = ActivityIdentityPage(e, remote=profile)
+        self.p0 = ActivityIdentityPage(
+            e, remote=profile, holders=button_holders(activities, existing))
         self.p1 = ActivityRolesPage(devices, e)
         self.p3 = FavouritesPage(devices, e, remote=profile)
         self.p3b = screen_page(devices, e, profile)
@@ -638,6 +783,8 @@ class ActivityEditor(SectionDialog):
         for name, label, seldom in ACTIVITY_SECTIONS:
             if name in profile.activity_pages:
                 self.add_section(name, label, pages[name], seldom=seldom)
+        link_activity_key(self.p0, self.p4)
+        link_favourites_button(self.p3, self.p3b, profile)
         self._share_participation()
 
     def section_shown(self, _name):
@@ -681,6 +828,7 @@ class ActivityEditor(SectionDialog):
             "control": p1.ctrl_combo.currentData(),
             "roles":   p1.get_roles(),
         })
+        apply_button(spec, p0)
         spec["image_buttons"] = p3.get_buttons()
         confirm = p3.get_confirm()
         if confirm:

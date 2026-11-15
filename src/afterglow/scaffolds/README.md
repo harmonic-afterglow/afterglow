@@ -20,6 +20,8 @@ answers:
   its pictures are the vendor's, extracted as PNG files anyone can open and replace, and its
   text is drawn by each build from an openly licensed typeface, with its own `README.md`
   and `NOTICE.md`. Only artwork is taken, never anything identifying a remote or its owner.
+  `harmony-700` and `harmony-650` are the same kind, each extracted from a configuration of
+  that remote.
 
 Which one applies is measured across several real configurations, not assumed.
 

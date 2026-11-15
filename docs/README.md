@@ -8,6 +8,7 @@ Reference documentation for supported remote architectures and configuration for
 |---|---|---|
 | [harmony_pk/](harmony_pk/README.md) | Harmony 900 (`harmony_pk`) | `.ezhex` container, XML payload, `IrProto.bin`, `SsIr.bin` |
 | [harmony_one/](harmony_one/README.md) | Harmony One (`harmony-one`) | arch-12 `GSPM` indexed image and native integrity |
+| [harmony_650_700/](harmony_650_700/gspm.md) | Harmony 650 and 700 (`harmony-650`, `harmony-700`) | arch-14 `GSPM`: where it differs from the One's |
 | [harmony_800/](harmony_800/README.md) | Harmony 800 (`harmony-800`) | `GSGD` image read from the 800's firmware |
 
 ### Harmony 900 (`harmony_pk`) Format Documents
@@ -34,6 +35,10 @@ Reference documentation for supported remote architectures and configuration for
 - [idle.md](harmony_one/idle.md) — Key lights, wake and sleep, the firmware's events, start-up, and the charging screens
 - [activities.md](harmony_one/activities.md) — Devices' power and input state variables, and how a build generates activities, Help and the Remote Assistant
 - [reading.md](harmony_one/reading.md) — What an import relies on when it reads a configuration back, and what validation proves
+
+### Harmony 650 and 700 (`harmony-650`, `harmony-700`) Format Documents
+
+- [gspm.md](harmony_650_700/gspm.md) — The arch-14 indexed image: section order, screen slots, command objects, drawing
 
 ### Harmony 800 (`harmony-800`) Format Documents
 

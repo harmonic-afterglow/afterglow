@@ -109,7 +109,11 @@ def test_a_device_left_as_it_is_is_in_neither_list_of_a_built_activity(build):
     power = re.search(r"<Label>Watch</Label>.*?<Power>(.*?)</Power>", xml, re.S).group(1)
     assert power == "<On>1</On><Off>2</Off>"          # 3 neither on nor off
 
-    from afterglow.backends.harmony_one import activities, generate
-    one = dict(project, settings={"remote": "harmony-one"})
-    planned = activities.plan(one, generate.lowered_devices(one))["activities"][0]
-    assert planned["on"] == [0] and planned["off"] == [1]
+    import importlib
+    for backend, remote in (("harmony_one", "harmony-one"), ("harmony_650", "harmony-650"),
+                            ("harmony_700", "harmony-700")):
+        activities = importlib.import_module(f"afterglow.backends.{backend}.activities")
+        devices = importlib.import_module(f"afterglow.backends.{backend}.devices")
+        built = dict(project, settings={"remote": remote})
+        planned = activities.plan(built, devices.lowered_devices(built))["activities"][0]
+        assert (planned["on"], planned["off"]) == ([0], [1]), backend
