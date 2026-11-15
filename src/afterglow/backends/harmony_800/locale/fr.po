@@ -10,7 +10,7 @@ msgstr ""
 #. The Activities screen: a screen's title, top left; about 96 pixels in the title font
 msgctxt "hub.activities-title"
 msgid "My Activities"
-msgstr "Mes activités"
+msgstr "Mes Activités"
 
 #. The Activities screen when there are none: a message centred on the screen; about 160 pixels a line
 msgctxt "hub.no-activities"
@@ -20,12 +20,12 @@ msgstr "Aucune activité"
 #. The device list: a screen's title, top left; about 96 pixels in the title font
 msgctxt "hub.devices-title"
 msgid "Devices"
-msgstr "Appareils"
+msgstr "Dispositifs"
 
 #. The device list when there are none: a message centred on the screen; about 160 pixels a line
 msgctxt "hub.no-devices"
 msgid "No devices"
-msgstr "Aucun appareil"
+msgstr "Aucun dispositif"
 
 #. The key test screen: a screen's title, top left; about 96 pixels in the title font
 msgctxt "keytest.title"
@@ -82,7 +82,7 @@ msgstr "Activités"
 #. Opens the device list: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "softkey.devices"
 msgid "Devices"
-msgstr "Appareils"
+msgstr "Dispositifs"
 
 #. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "softkey.current-activity"
@@ -100,7 +100,7 @@ msgstr[1] "pages"
 #, python-brace-format
 msgctxt "activity.starting"
 msgid "Starting {activity}"
-msgstr "Démarrage de {activity}"
+msgstr "Démarrage {activity}"
 
 #. While an activity starts or Help is fixing it, at the bottom: a message centred on the screen; about 160 pixels a line; two lines at most
 msgctxt "activity.keep-pointed"
@@ -110,7 +110,7 @@ msgstr "Pointez la télécommande vers votre système."
 #. Help, under the activity's name, while it re-sends what the activity needs: a message centred on the screen; about 160 pixels a line
 msgctxt "activity.fixing"
 msgid "Attempting to fix the problem..."
-msgstr "Tentative de résolution du problème..."
+msgstr "Tentative de résolution du problème en cours..."
 
 #. The title of Help when nothing is running, while it turns everything off again: a screen's title, top left; about 96 pixels in the title font
 msgctxt "activity.power-off"
@@ -125,7 +125,7 @@ msgstr "123"
 #. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "softkey.back"
 msgid "Back"
-msgstr "Retour"
+msgstr "Précédent"
 
 #. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "softkey.commands"
@@ -140,19 +140,17 @@ msgstr "Favoris"
 #. Help, at the bottom while it re-sends: a message centred on the screen; about 160 pixels a line; two lines
 msgctxt "help.keep-pointed"
 msgid "Keep the remote pointed to your system."
-msgstr "Pointez la télécommande vers votre système."
+msgstr "Gardez la télécommande orientée vers le système."
 
 #. Help's first question, after it has re-sent everything; a line break starts the explanation below it: a message centred on the screen; about 160 pixels a line
 msgctxt "help.fixed-first"
 msgid "Did that fix the problem?\nIf not, the remote will ask you questions to help correct the problem."
-msgstr ""
-"Le problème est-il résolu ?\n"
-"Sinon, la télécommande va vous poser quelques questions pour le résoudre."
+msgstr "Cela a-t-il résolu le problème ?\nSinon, la télécommande va vous poser des questions pour vous aider à y parvenir."
 
 #. Help, after a device answered: a message centred on the screen; about 160 pixels a line
 msgctxt "help.fixed"
 msgid "Did that fix the problem?"
-msgstr "Le problème est-il résolu ?"
+msgstr "Cela a-t-il résolu le problème?"
 
 #. Help pressed with nothing on, when no device has a power to ask about; OK goes back: a message centred on the screen; about 160 pixels a line
 msgctxt "help.nothing-to-do"
@@ -163,37 +161,37 @@ msgstr "Rien à faire"
 #, python-brace-format
 msgctxt "assistant.is-on"
 msgid "Is the {device} on?"
-msgstr "L'appareil {device} est-il allumé ?"
+msgstr "L'appareil {device} est-il activé?"
 
 #. Help asks again after sending its power: a message centred on the screen; about 160 pixels a line
 #, python-brace-format
 msgctxt "assistant.now-on"
 msgid "Now is the {device} on?"
-msgstr "L'appareil {device} est-il allumé maintenant ?"
+msgstr "L'appareil {device} est-il maintenant activé?"
 
 #. Help asks about each input; {device} and {input} are names: a message centred on the screen; about 160 pixels a line; three lines at most
 #, python-brace-format
 msgctxt "assistant.input"
 msgid "Is the {device} set to the {input} input?"
-msgstr "L'appareil {device} est-il sur l'entrée {input} ?"
+msgstr "L'appareil {device} est-il défini sur {input}?"
 
 #. Help asks again after sending the input: a message centred on the screen; about 160 pixels a line
 #, python-brace-format
 msgctxt "assistant.now-input"
 msgid "Now is the {device} set to the {input} input?"
-msgstr "L'appareil {device} est-il maintenant sur l'entrée {input} ?"
+msgstr "L'appareil {device} est-il maintenant défini sur {input}?"
 
 #. Off's Help asks about each device: a message centred on the screen; about 160 pixels a line
 #, python-brace-format
 msgctxt "assistant.is-off"
 msgid "Is the {device} off?"
-msgstr "L'appareil {device} est-il éteint ?"
+msgstr "L'appareil {device} est-il désactivé?"
 
 #. Off's Help asks again after turning it off: a message centred on the screen; about 160 pixels a line
 #, python-brace-format
 msgctxt "assistant.now-off"
 msgid "Now is the {device} off?"
-msgstr "L'appareil {device} est-il éteint maintenant ?"
+msgstr "L'appareil {device} est-il maintenant désactivé?"
 
 #. An answer, bottom left: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "softkey.yes"
@@ -214,32 +212,32 @@ msgstr "OK"
 #, python-brace-format
 msgctxt "assistant.title"
 msgid "{name}:"
-msgstr "{name} :"
+msgstr "{name}:"
 
 #. Above each Remote Assistant note: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.heading"
 msgid "Remote Assistant:"
-msgstr "Assistant de la télécommande :"
+msgstr "Assistant de la télécommande:"
 
 #. After an activity starts: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.press-help"
 msgid "If any devices are not set up correctly, press \"Help\" now."
-msgstr "Si un appareil n'est pas configuré correctement, appuyez sur « Help »."
+msgstr "Si certains dispositifs ne sont pas configurés correctement, appuyez sur la touche Help."
 
 #. After an activity starts, once Remote Assistant is back on: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.set-up"
 msgid "The remote has now set up your system for this Activity."
-msgstr "La télécommande a configuré votre système pour cette activité."
+msgstr "La télécommande a maintenant configuré votre système pour cette activité."
 
 #. Above Yes and No: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.hide"
 msgid "Do you want to hide the Remote Assistant?"
-msgstr "Voulez-vous masquer l'Assistant de la télécommande ?"
+msgstr "Voulez-vous masquer l'Assistant de la télécommande?"
 
 #. After choosing to hide it: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.how-to-hide"
 msgid "To hide the remote assistant, use the software to update the display settings for your remote."
-msgstr "Pour masquer l'Assistant, modifiez les paramètres d'affichage de la télécommande dans le logiciel."
+msgstr "Pour masquer l'assistant, utilisez le logiciel afin de mettre à jour les paramètres d'affichage."
 
 #. The first note a new remote shows, when it starts: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.welcome"
@@ -249,7 +247,7 @@ msgstr "Bienvenue sur votre télécommande."
 #. After Off: a message centred on the screen; about 160 pixels a line
 msgctxt "assistant.all-off"
 msgid "Ensure all your devices are off.  If any devices are still on, press \"Help\" now."
-msgstr "Vérifiez que tous vos appareils sont éteints. Si l'un d'eux est encore allumé, appuyez sur « Help »."
+msgstr "Vérifiez que tous vos dispositifs sont désactivés. Si certains sont toujours activés, appuyez sur la touche Help."
 
 #. An Options row while the Remote Assistant asks after each start: a row label, centred on a 164-pixel row
 msgctxt "options.assistant-off"
@@ -284,51 +282,37 @@ msgstr "Bienvenue sur votre télécommande tactile Harmony 800. Touchez l'écran
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.2"
 msgid "Use the arrow buttons on the sides of this screen to move between pages.\nPress the right arrow now."
-msgstr ""
-"Utilisez les flèches latérales de cet écran pour parcourir les pages.\n"
-"Appuyez sur la flèche droite maintenant."
+msgstr "Utilisez les flèches latérales de cet écran pour parcourir les pages.\nAppuyez sur la flèche droite maintenant."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.3"
 msgid "The Harmony remote uses Activities to give you simple one-touch control of your entertainment system.\nPress the Activities button now."
-msgstr ""
-"La télécommande Harmony contrôle votre système en une seule touche grâce aux activités.\n"
-"Appuyez sur le bouton Activities maintenant."
+msgstr "La télécommande Harmony contrôle votre système en une seule touche grâce aux activités.\nAppuyez sur le bouton Activities maintenant."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.4"
 msgid "Activities are what you actually do with your entertainment system, like watch TV or listen to music.\nTouch Watch TV now."
-msgstr ""
-"Une activité, c'est ce que vous faites avec votre système : regarder la télé, écouter de la musique...\n"
-"Touchez Regarder TV maintenant."
+msgstr "Une activité, c'est ce que vous faites avec votre système : regarder la télé, écouter de la musique...\nTouchez Regarder TV maintenant."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.5"
 msgid "Selecting the Watch TV Activity turns on the devices you use to watch TV.\nPress the right arrow to continue."
-msgstr ""
-"L'activité Regarder TV allume les appareils qui servent à regarder la télé.\n"
-"Appuyez sur la flèche droite pour continuer."
+msgstr "L'activité Regarder TV allume les appareils qui servent à regarder la télé.\nAppuyez sur la flèche droite pour continuer."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.6"
 msgid "Look on the screen for functions you can't find elsewhere on the remote.\nPress the right arrow to continue."
-msgstr ""
-"Cherchez sur l'écran les fonctions absentes des boutons de la télécommande.\n"
-"Appuyez sur la flèche droite pour continuer."
+msgstr "Cherchez sur l'écran les fonctions absentes des boutons de la télécommande.\nAppuyez sur la flèche droite pour continuer."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.7"
 msgid "To select another Activity, simply press the Activities button.\nPress the right arrow to continue."
-msgstr ""
-"Pour choisir une autre activité, appuyez simplement sur le bouton Activities.\n"
-"Appuyez sur la flèche droite pour continuer."
+msgstr "Pour choisir une autre activité, appuyez simplement sur le bouton Activities.\nAppuyez sur la flèche droite pour continuer."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.8"
 msgid "Use the Help button if your Activity doesn't start properly.\nPress Help now."
-msgstr ""
-"Utilisez le bouton Help si votre activité ne démarre pas correctement.\n"
-"Appuyez sur Help maintenant."
+msgstr "Utilisez le bouton Help si votre activité ne démarre pas correctement.\nAppuyez sur Help maintenant."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.9"
@@ -338,17 +322,12 @@ msgstr "Help vous pose des questions pour remettre votre activité en route. App
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.10"
 msgid "To turn off your entertainment system, press the Power button.\nPress the Power button to continue."
-msgstr ""
-"Pour éteindre votre système, appuyez sur le bouton Power.\n"
-"Appuyez sur Power pour continuer."
+msgstr "Pour éteindre votre système, appuyez sur le bouton Power.\nAppuyez sur Power pour continuer."
 
 #. A Tutorial page, from the left, about 160 pixels a line; a line break starts a new paragraph. The last paragraph says which key moves on.
 msgctxt "tutorial.11"
 msgid "It's that easy!\nYou can now enjoy your entertainment system with one-touch Activity control.\nPress Exit now."
-msgstr ""
-"C'est aussi simple que ça !\n"
-"Profitez de votre système grâce aux activités en une touche.\n"
-"Appuyez sur Quitter maintenant."
+msgstr "C'est aussi simple que ça !\nProfitez de votre système grâce aux activités en une touche.\nAppuyez sur Quitter maintenant."
 
 #. On the activity row the Tutorial pictures; about 100 pixels
 msgctxt "tutorial.watch-tv"
@@ -408,7 +387,7 @@ msgstr "Activer les sons de l'écran"
 #. Steps back a screen: a softkey label, bottom of the screen; about 70 pixels
 msgctxt "options.back"
 msgid "Back"
-msgstr "Retour"
+msgstr "Précédent"
 
 #. Closes a confirmation, bottom right; about 40 pixels
 msgctxt "options.ok"
@@ -533,7 +512,7 @@ msgstr "Moyenne"
 #. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
 msgctxt "options.sensitivity.high"
 msgid "High"
-msgstr "Élevée"
+msgstr "Elevée"
 
 #. A touch sensitivity level: a button label, centred on a 81-pixel button; may wrap to two lines
 msgctxt "options.sensitivity.very-high"
@@ -543,7 +522,7 @@ msgstr "Très élevée"
 #. Confirms the level chosen; the level follows on the next line: a message centred on the screen; about 160 pixels a line
 msgctxt "options.sensitivity-set"
 msgid "Screen sensitivity is set to"
-msgstr "Sensibilité de l'écran :"
+msgstr "Sensibilité définie sur"
 
 #. Closes a firmware notice, bottom right; about 40 pixels
 msgctxt "system.ok"
@@ -559,7 +538,7 @@ msgstr "Message système : {number}"
 #. Firmware screen 0, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.0"
 msgid "The battery level is low!"
-msgstr "Batterie faible !"
+msgstr "Le niveau de batterie est faible!"
 
 #. Firmware screen 1, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.1"
@@ -589,26 +568,17 @@ msgstr "Apprentissage..."
 #. Firmware screen 8, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.8"
 msgid "Firmware upgrade in progress"
-msgstr ""
-"Mise à niveau du\n"
-"micrologiciel..."
+msgstr "Mise à niveau du\nmicrologiciel..."
 
 #. Firmware screen 9, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.9"
 msgid "Charging problem.\nContact customer support:\nhttp://supportinfo.\nharmonyremote.com"
-msgstr ""
-"Problème de charge.\n"
-"Contactez l'assistance :\n"
-"http://supportinfo.\n"
-"harmonyremote.com"
+msgstr "Problème de charge.\nContactez l'assistance :\nhttp://supportinfo.\nharmonyremote.com"
 
 #. Firmware screen 10, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.10"
 msgid "Go to Website\nto update settings"
-msgstr ""
-"Allez sur le site\n"
-"pour mettre à jour\n"
-"les paramètres"
+msgstr "Allez sur le site\npour mettre à jour\nles paramètres"
 
 #. Firmware screen 11, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.11"
@@ -618,9 +588,7 @@ msgstr "Initialisation\nUSB"
 #. Firmware screen 12, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.12"
 msgid "Bootloader\nLocked"
-msgstr ""
-"Bootloader\n"
-"verrouillé"
+msgstr "Bootloader\nverrouillé"
 
 #. Firmware screen 13, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.13"
@@ -630,45 +598,32 @@ msgstr "Horloge"
 #. Firmware screen 14, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.14"
 msgid "IR LEDs\nand\nPhotodiode"
-msgstr ""
-"LED IR\n"
-"et\n"
-"photodiode"
+msgstr "LED IR\net\nphotodiode"
 
 #. Firmware screen 15, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.15"
 msgid "FLASH Memory\nID"
-msgstr ""
-"Mémoire flash\n"
-"ID"
+msgstr "Mémoire flash\nID"
 
 #. Firmware screen 16, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.16"
 msgid "FLASH Memory\nErase"
-msgstr ""
-"Mémoire flash\n"
-"Effacement"
+msgstr "Mémoire flash\nEffacement"
 
 #. Firmware screen 17, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.17"
 msgid "FLASH Memory\nWrite"
-msgstr ""
-"Mémoire flash\n"
-"Écriture"
+msgstr "Mémoire flash\nÉcriture"
 
 #. Firmware screen 18, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.18"
 msgid "FLASH Memory\nClear"
-msgstr ""
-"Mémoire flash\n"
-"Remise à zéro"
+msgstr "Mémoire flash\nRemise à zéro"
 
 #. Firmware screen 19, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.19"
 msgid "LCD Module\nFailed"
-msgstr ""
-"Écran LCD\n"
-"en panne"
+msgstr "Écran LCD\nen panne"
 
 #. Firmware screen 20, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.20"
@@ -678,9 +633,7 @@ msgstr "Panne PLL"
 #. Firmware screen 21, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.21"
 msgid "BootRAM\nTruncated"
-msgstr ""
-"BootRAM\n"
-"tronquée"
+msgstr "BootRAM\ntronquée"
 
 #. Firmware screen 22, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.22"
@@ -690,9 +643,7 @@ msgstr "Mode sans échec"
 #. Firmware screen 23, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.23"
 msgid "Safe Mode\nRequested"
-msgstr ""
-"Mode sans échec\n"
-"demandé"
+msgstr "Mode sans échec\ndemandé"
 
 #. Firmware screen 24, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.24"
@@ -702,23 +653,17 @@ msgstr "Batterie faible"
 #. Firmware screen 25, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.25"
 msgid "Battery Fast\nCharge"
-msgstr ""
-"Batterie\n"
-"charge rapide"
+msgstr "Batterie\ncharge rapide"
 
 #. Firmware screen 26, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.26"
 msgid "Battery Trickle Charge"
-msgstr ""
-"Batterie\n"
-"charge d'entretien"
+msgstr "Batterie\ncharge d'entretien"
 
 #. Firmware screen 27, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.27"
 msgid "Battery Charge\nComplete"
-msgstr ""
-"Batterie\n"
-"chargée"
+msgstr "Batterie\nchargée"
 
 #. Firmware screen 28, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.28"
@@ -728,65 +673,47 @@ msgstr "Envoi IR"
 #. Firmware screen 29, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.29"
 msgid "Invalid\nConfiguration"
-msgstr ""
-"Configuration\n"
-"non valide"
+msgstr "Configuration\nnon valide"
 
 #. Firmware screen 30, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.30"
 msgid "Bootloader\nBad Image"
-msgstr ""
-"Bootloader\n"
-"image incorrecte"
+msgstr "Bootloader\nimage incorrecte"
 
 #. Firmware screen 31, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.31"
 msgid "Bootloader\nUpgrade Failed"
-msgstr ""
-"Bootloader\n"
-"mise à niveau échouée"
+msgstr "Bootloader\nmise à niveau échouée"
 
 #. Firmware screen 32, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.32"
 msgid "Battery ADC\nNot Calibrated"
-msgstr ""
-"ADC batterie\n"
-"non étalonné"
+msgstr "ADC batterie\nnon étalonné"
 
 #. Firmware screen 33, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.33"
 msgid "LightSense ADC\nNot Calibrated"
-msgstr ""
-"ADC luminosité\n"
-"non étalonné"
+msgstr "ADC luminosité\nnon étalonné"
 
 #. Firmware screen 34, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.34"
 msgid "Revision ADC\nNot Calibrated"
-msgstr ""
-"ADC révision\n"
-"non étalonné"
+msgstr "ADC révision\nnon étalonné"
 
 #. Firmware screen 35, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.35"
 msgid "Application\nTerminated"
-msgstr ""
-"Application\n"
-"arrêtée"
+msgstr "Application\narrêtée"
 
 #. Firmware screen 36, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.36"
 msgid "Configuration\nCorrupted"
-msgstr ""
-"Configuration\n"
-"corrompue"
+msgstr "Configuration\ncorrompue"
 
 #. Firmware screen 37, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.37"
 msgid "Missing\nLicense"
-msgstr ""
-"Licence\n"
-"manquante"
+msgstr "Licence\nmanquante"
 
 #. Firmware screen 38, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.38"
@@ -796,11 +723,7 @@ msgstr "Connexion USB établie"
 #. Firmware screen 39, one line per line break, centred; about 160 pixels a line
 msgctxt "system.screen.39"
 msgid "Needs to be\nsetup.\nBattery\nCharging"
-msgstr ""
-"Configuration\n"
-"requise.\n"
-"Batterie\n"
-"en charge"
+msgstr "Configuration\nrequise.\nBatterie\nen charge"
 
 #. The status bar's clock, before the time; about 20 pixels in the 11-pixel font
 msgctxt "clock.weekday.0"
