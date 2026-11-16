@@ -163,7 +163,7 @@ def _favourites(activity, specs, devices, index_of, where, skipped) -> list[dict
         elif kind == "macro":
             steps = _steps(payload, specs, devices, index_of, here, skipped)
         else:
-            skipped.append(f"{here}: a {kind!r} favourite is not one the One can send")
+            skipped.append(f"{here}: a {kind!r} favourite is not one this remote can send")
             continue
         out.append({"label": label, "image": image, "steps": steps})
     return out
@@ -224,7 +224,7 @@ def _steps(steps, specs, devices, index_of, where, skipped) -> list[tuple]:
                                      f"{devices[target]['label']!r}, which has no {digit} key")
                 out.append(("send", target, _command(devices, target, name, where)))
         else:
-            skipped.append(f"{where}: a {kind!r} step is not something the One can do")
+            skipped.append(f"{where}: a {kind!r} step is not something this remote can do")
     return out
 
 

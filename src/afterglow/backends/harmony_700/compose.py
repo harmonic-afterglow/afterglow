@@ -218,7 +218,8 @@ class Fonts:
         codes = font["codes"]
         missing = sorted({char for char in text if char not in codes})
         if missing:
-            raise ValueError(f"font {attribute} draws no {''.join(missing)!r} for {text!r}")
+            raise ValueError(f"{text!r} has letters this remote cannot show: "
+                             f"{''.join(missing)!r}. Rename it without them.")
         width = sum(font["widths"][codes[char]] for char in text)
         # past its room - a translation's word longer than the English it stands for - it
         # is cut, "..", as a name too long is

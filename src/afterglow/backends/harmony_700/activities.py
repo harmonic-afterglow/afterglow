@@ -109,7 +109,7 @@ def _activity(activity: dict, specs, devices, index_of, skipped) -> dict:
             # a key routed from a device's own slots simply is not on this remote; one
             # the project bound on purpose is worth saying so about
             if name in (activity.get("hard_macros") or {}):
-                skipped.append(f"{where}: the One has no key {name!r} to bind")
+                skipped.append(f"{where}: this remote has no key {name!r} to bind")
             continue
         hard[code] = value
 
@@ -158,7 +158,7 @@ def _favourites(activity, specs, devices, index_of, where, skipped) -> list[dict
         elif kind == "macro":
             steps = _steps(payload, specs, devices, index_of, here, skipped)
         else:
-            skipped.append(f"{here}: a {kind!r} favourite is not one the One can send")
+            skipped.append(f"{here}: a {kind!r} favourite is not one this remote can send")
             continue
         out.append({"label": label, "image": image, "steps": steps})
     return out
@@ -219,7 +219,7 @@ def _steps(steps, specs, devices, index_of, where, skipped) -> list[tuple]:
                                      f"{devices[target]['label']!r}, which has no {digit} key")
                 out.append(("send", target, _command(devices, target, name, where)))
         else:
-            skipped.append(f"{where}: a {kind!r} step is not something the One can do")
+            skipped.append(f"{where}: a {kind!r} step is not something this remote can do")
     return out
 
 

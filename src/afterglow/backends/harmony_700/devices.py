@@ -327,7 +327,8 @@ def lowered_devices(project: dict, *, library=None) -> list[dict]:
         signals = device.get("signals") or {}
         if len(signals) > 0xFF:
             raise ValueError(
-                f"device {label!r} has {len(signals)} commands; an ordinal is one byte")
+                f"device {label!r} has {len(signals)} commands; this remote keeps at most "
+                "255 for a device")
         # The keys each command is bound to, from the project's own hard slots, and the
         # commands with no label - ones a device's pages never show.
         slots, unlabelled = {}, set()

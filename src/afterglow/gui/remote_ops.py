@@ -330,18 +330,3 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
         outcome["message"] = ("It stopped without saying why. Help > Show log file has "
                               "what it did; please attach it to a bug report.")
     return outcome["ok"], outcome["message"], outcome["result"]
-
-
-def blasters_in(config_path) -> list[dict]:
-    """The receivers a saved configuration knows about, for showing after a re-read."""
-    import contextlib
-    import io
-    import tempfile
-
-    from .. import ezhex
-    from ..rf import extract_rf
-
-    work = tempfile.mkdtemp()
-    with contextlib.redirect_stdout(io.StringIO()):
-        ezhex.unpack(str(config_path), work)
-    return ((extract_rf(work) or {}).get("receivers")) or []

@@ -607,7 +607,7 @@ def test_a_device_cannot_hold_more_commands_than_an_ordinal_can_name():
     crowded = {"devices": [{"label": "Too many", "signals": {
         f"Command {index}": _nec(1, index % 256) for index in range(256)}}]}
 
-    with pytest.raises(ValueError, match="an ordinal is one byte"):
+    with pytest.raises(ValueError, match="at most 255"):
         devices.lowered_devices(crowded)
 
 
