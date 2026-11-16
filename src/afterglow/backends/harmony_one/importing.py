@@ -1836,7 +1836,7 @@ def read_settings(image: Image) -> dict:
     marks |= {words(key) for words in languages.values() for key in ("options.am", "options.pm")}
     if drawn & marks:
         out["time_format"] = "Civilian"
-    elif drawn and not any(labels.UNKNOWN in line for line in drawn):
+    elif drawn and not image.text.unread:
         # no AM or PM in text that reads in full; text that does not (a language whose
         # letters no known face draws) cannot say they are absent
         out["time_format"] = "Military"
