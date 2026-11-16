@@ -108,14 +108,19 @@ def import_project(source, profile, context) -> ImportResult:
     rank = {index: at for at, index in enumerate(importing.device_list_order(image)[0])}
     devices = [device for _key, device in sorted(
         enumerate(devices), key=lambda pair: (rank.get(pair[0], len(rank)), pair[0]))]
-    # a name with a character the text reader does not know is said, to be put right
+    # a name with a character the text reader does not know is said, to be put right: it
+    # reads as "?", which builds, and a name is one when a line it was read from had one
     unread = [label for label in (
         [device["label"] for device in devices]
         + [name for device in devices for name in device["signals"]]
-        + [activity["label"] for activity in activities]) if labels.UNKNOWN in label]
+        + [activity["label"] for activity in activities])
+        if any(line and line in label for line in image.text.unread)]
     if unread:
         notes.append("these names have characters that could not be read (shown as "
-                     f"{labels.UNKNOWN}): " + ", ".join(repr(name) for name in unread))
+                     f"{labels.UNKNOWN!r}): " + ", ".join(repr(name) for name in unread)
+                     + ". They build and can be renamed; please open an Issue in the "
+                     "Afterglow repository with this configuration so its letters can be "
+                     "learned")
     notes += [f"could not read the image's {item}" for item in image.unreadable]
     settings = {"remote": profile.id, **importing.remote_settings(image)}
     if not activities:

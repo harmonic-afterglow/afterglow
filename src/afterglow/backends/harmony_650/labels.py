@@ -12,8 +12,8 @@ Logitech's codes are image-wide, one character each, which settles what shape al
 not: a code read the same in every font that can read it is read so in the rest, and a
 shape some face draws for two characters - a capital I and a small l - is the one of them
 no other code of the image already stands for. The image's established layout, when it
-has one, comes last. A character still unknown is read as U+FFFD and counted, never
-guessed.
+has one, comes last. A character still unknown is read as "?" - which builds - and
+counted, its text kept in ``unread``, never guessed.
 
 This backend's own fonts give every character its own code in each slot, so elimination
 does not apply to them, and Galmuri draws a capital O and a zero alike. A shape still
@@ -40,7 +40,10 @@ from . import drawing, font_index, glyph_codec, ui_index
 
 SHAPES_FILE = "platform/glyph-shapes.json"
 SHAPES_SCHEMA = "afterglow-arch14-glyph-shapes/1"
-UNKNOWN = "\N{REPLACEMENT CHARACTER}"
+# A character no shape reads: a plain question mark, which every font draws and every
+# remote builds, so a name with one can still be sent to the remote as it is and put
+# right later. Which texts have one is kept (`Text.unread`), since a "?" may be real.
+UNKNOWN = "?"
 # What this backend's own fonts are asked to draw, to know their shapes: printable ASCII,
 # Latin-1's and Latin Extended-A's letters - a Polish 600's ł and ś - and the quotes and
 # dashes Logitech's translations use.
@@ -137,6 +140,7 @@ class Text:
         layout = glyph_codec.inspect(payload) if self.logitech else {"error": "per font"}
         self.layout = {} if layout.get("error") else dict(layout["code_to_character"])
         self.unknown = 0
+        self.unread: set[str] = set()
         self.inferred = 0
 
     @classmethod
@@ -145,6 +149,7 @@ class Text:
         text = cls.__new__(cls)
         text.candidates, text.fonts, text.shared, text.layout = [], [], {}, {}
         text.logitech, text.unknown, text.inferred = False, 0, 0
+        text.unread = set()
         return text
 
     def _read(self, code: int, attribute: int | None) -> str:
@@ -179,7 +184,10 @@ class Text:
                 self.inferred += 1
                 out.append(_by_neighbours(characters, "".join(out),
                                           read[index + 1] if index + 1 < len(read) else ""))
-        return "".join(out)
+        text = "".join(out)
+        if any(not characters for characters in read):
+            self.unread.add(text)
+        return text
 
 
 def _script(character: str) -> str:

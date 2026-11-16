@@ -48,3 +48,12 @@ def test_what_a_project_cannot_say_is_counted_not_dropped_unseen():
     reader.image = SimpleNamespace(names={7: "TV_ChannelMode"}, channel_variables={9})
     reader.macro([(importing.WRITE, 7, 1), (importing.WRITE, 9, 3)])
     assert reader.left_out == Counter({"a write to TV_ChannelMode": 1})
+
+
+def test_an_unreadable_letter_reads_as_a_question_mark_and_its_line_is_kept():
+    """A "?" builds and can be typed over; which lines had a letter no shape reads is
+    kept apart, since a "?" may be real."""
+    text = labels.Text.empty()
+    line = text.decode(bytes([0x21, 0x22]), None)
+    assert labels.UNKNOWN == "?" and set(line) == {"?"} and line
+    assert text.unread == {line} and text.unknown == len(line)
