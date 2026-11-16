@@ -70,3 +70,22 @@ def test_a_remote_without_a_drawing_shows_its_keys_as_a_grid(qapp_or_skip):
     widget = RemoteKeys(profile)
     assert not widget.has_picture()
     assert set(widget.keys()) == set(profile.hard_keys)
+
+
+def test_the_keys_can_be_walked_and_picked_from_the_keyboard(qapp_or_skip):
+    from afterglow.qt.QtCore import Qt
+    from afterglow.qt.QtTest import QTest
+
+    from afterglow.gui.keys_view import RemoteKeys
+    widget = RemoteKeys(remotes.get("harmony-650"))
+    widget.resize(300, 600)
+    picked = []
+    widget.key_clicked.connect(picked.append)
+    order = widget.keys()
+    QTest.keyClick(widget, Qt.Key.Key_Right)
+    QTest.keyClick(widget, Qt.Key.Key_Right)
+    QTest.keyClick(widget, Qt.Key.Key_Return)
+    assert picked == [order[1]]
+    QTest.keyClick(widget, Qt.Key.Key_Left)
+    QTest.keyClick(widget, Qt.Key.Key_Space)
+    assert picked == [order[1], order[0]]

@@ -43,6 +43,10 @@ class RemoteKeys(QWidget):
     def __init__(self, profile, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
+        # Reached with Tab too: the arrow keys walk the keys as they sit on the remote,
+        # Enter or Space picks the one lit, as a click does
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setAccessibleName("The remote's keys")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._profile = profile
         self._states: dict[str, tuple[str, str]] = {}
@@ -293,6 +297,34 @@ class RemoteKeys(QWidget):
         fixed = self.fixed_at(event.position())
         if fixed in self._choosable:
             self.fixed_clicked.emit(fixed)
+
+
+    def keyPressEvent(self, event):
+        order = self.keys()
+        if not order:
+            return super().keyPressEvent(event)
+        current = self._hover if self._hover in order else self._selected
+        step = {Qt.Key.Key_Right: 1, Qt.Key.Key_Down: 1,
+                Qt.Key.Key_Left: -1, Qt.Key.Key_Up: -1}.get(event.key())
+        if step is not None:
+            at = order.index(current) + step if current in order else 0
+            self._hover = order[at % len(order)]
+            self.update()
+            text = self._states.get(self._hover, (FREE, ""))[1] or self.label(self._hover)
+            self.setAccessibleDescription(text)
+            box = self._transform().map(self._keys[self._hover]).boundingRect()
+            QToolTip.showText(self.mapToGlobal(box.center().toPoint()), text, self)
+            return
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space) \
+                and current in order:
+            self.key_clicked.emit(current)
+            return
+        super().keyPressEvent(event)
+
+    def focusOutEvent(self, event):
+        self._hover = None
+        self.update()
+        super().focusOutEvent(event)
 
 
 def key_label(profile, key) -> str:
