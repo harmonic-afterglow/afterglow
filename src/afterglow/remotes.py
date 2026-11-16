@@ -840,6 +840,16 @@ def models(library: Path | str = LIBRARY) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))["models"] if path.is_file() else {}
 
 
+def model_name(profile: RemoteProfile, skin=None) -> str:
+    """What the remote is called, by the model its skin names - "Harmony 600" for a
+    project made for one - rather than the profile's shared "Harmony 600 / 650 / 665"."""
+    if skin is not None and int(skin) in profile.skins:
+        name = (models().get(str(int(skin))) or {}).get("model")
+        if name and not name.isdigit():
+            return name
+    return profile.model
+
+
 # identifying a remote from a configuration
 _FIELDS = {"arch": rb"<PROTOCOL>(\d+)</PROTOCOL>", "skin": rb"<SKIN>(\d+)</SKIN>",
            "software_type": rb"<SOFTWARETYPE>(\d+)</SOFTWARETYPE>"}

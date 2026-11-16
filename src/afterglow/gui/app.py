@@ -275,10 +275,13 @@ class MainWindow(QMainWindow):
         self.update_tab.refresh()
 
     def _choose_remote(self, title, intro, exclude=None):
-        """The remote chosen, or None; which model of it, in `_chosen_skin`."""
+        """(remote id, skin) chosen, or None. ``exclude`` is a (remote id, skin) - the
+        model the project is for - left out of the list; its other models are not."""
         from .default_remote import default_remote_id, default_remote_skin
-        self._chosen_skin = None
-        choices = [p for p in remote_profiles() if p.id != exclude]
+        choices = remote_profiles()
+        if exclude is not None and all(len(p.skins) <= 1 for p in choices
+                                       if p.id == exclude[0]):
+            choices = [p for p in choices if p.id != exclude[0]]
         if not choices:
             QMessageBox.information(
                 self, title, "There is no other remote Afterglow can build for yet.")
@@ -286,27 +289,28 @@ class MainWindow(QMainWindow):
         dialog = ChooseRemoteDialog(choices, title, intro, self,
                                     selected=default_remote_id(),
                                     selected_skin=default_remote_skin(),
-                                    known=remote_profiles())
-        if not dialog.exec():
+                                    known=remote_profiles(), exclude=exclude)
+        if not dialog.exec() or not dialog.chosen():
             return None
-        self._chosen_skin = dialog.chosen_skin()
-        return dialog.chosen()
+        return dialog.chosen(), dialog.chosen_skin()
 
-    def change_remote(self, target_id=None):
+    def change_remote(self, target_id=None, target_skin=None):
         """Move the project to another remote: review what changes, save it as new."""
         from .. import migrate, remotes
         if self._remote_busy():
             return
         source = self._profile()
+        source_skin = (self.project.get("settings") or {}).get("skin")
         if not target_id:
-            target_id = self._choose_remote(
+            chosen = self._choose_remote(
                 "Change remote",
                 "Move this project to another remote. Devices, activities and settings "
                 "are checked against what that remote can do; you see every change "
                 "before anything is saved, and this project is left as it is.",
-                exclude=source.id if source else None)
-        if not target_id:
-            return
+                exclude=(source.id, source_skin) if source else None)
+            if not chosen:
+                return
+            target_id, target_skin = chosen
         self.settings_tab.save()
         target = remotes.get(target_id)
         try:
@@ -314,9 +318,8 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Change remote", str(exc))
             return
-        skin = getattr(self, "_chosen_skin", None)
-        if skin in target.skins:
-            migrated.setdefault("settings", {})["skin"] = skin
+        if target_skin in target.skins:
+            migrated.setdefault("settings", {})["skin"] = target_skin
         if not MigrationDialog(source, target, report, self).exec():
             return
         stem = Path(self._project_path).stem if self._project_path else "project"
@@ -333,7 +336,7 @@ class MainWindow(QMainWindow):
         self._reload_tabs()
         self._write_project(path)
         from .default_remote import offer_after_change
-        offer_after_change(self, target)
+        offer_after_change(self, target, skin=migrated.get("settings", {}).get("skin"))
 
     def start_with_default_remote(self, remote_id):
         """The startup project is for the remote just chosen, if nothing was done in it."""
@@ -364,7 +367,7 @@ class MainWindow(QMainWindow):
                 "New project", "Which remote is this project for?")
             if not chosen:
                 return
-            project = empty_project(chosen, self._chosen_skin)
+            project = empty_project(*chosen)
         self.project.clear()
         self.project.update(project)
         self._project_path = None

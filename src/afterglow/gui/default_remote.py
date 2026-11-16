@@ -75,16 +75,18 @@ def ask_at_first_start(parent, settings=None) -> str | None:
     return chosen
 
 
-def offer_after_change(parent, profile, settings=None) -> bool:
-    """After a project moved to `profile`: offer to make it the default. True if made."""
+def offer_after_change(parent, profile, settings=None, skin=None) -> bool:
+    """After a project moved to `profile` - the model `skin` names - offer to make it
+    the default. True if made. The skin goes with it: a 600 owner's default stays a 600."""
+    from .. import remotes
     store = _settings(settings)
-    if profile.id == default_remote_id(store) or \
+    if (profile.id == default_remote_id(store) and skin == default_remote_skin(store)) or \
             store.value(OFFER_NEVER_KEY, False, type=bool):
         return False
     box = QMessageBox(parent)
     box.setIcon(QMessageBox.Icon.Question)
     box.setWindowTitle("Default remote")
-    box.setText(f"Make the {profile.model} your default remote?")
+    box.setText(f"Make the {remotes.model_name(profile, skin)} your default remote?")
     box.setInformativeText("Afterglow then starts with a project for it, and new "
                            "projects are for it.")
     box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -95,6 +97,6 @@ def offer_after_change(parent, profile, settings=None) -> bool:
         store.setValue(OFFER_NEVER_KEY, True)
         store.sync()
     if answer == QMessageBox.StandardButton.Yes:
-        set_default_remote(profile.id, store)
+        set_default_remote(profile.id, store, skin if skin in profile.skins else None)
         return True
     return False

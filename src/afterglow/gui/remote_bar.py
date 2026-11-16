@@ -71,7 +71,7 @@ class ChooseRemoteDialog(QDialog):
 
     def __init__(self, profiles, title: str, intro: str, parent=None,
                  selected: str | None = None, selected_skin: int | None = None,
-                 known=None):
+                 known=None, exclude=None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(460, 480)
@@ -86,6 +86,13 @@ class ChooseRemoteDialog(QDialog):
         layout.addWidget(self.search)
         self.list = QListWidget()
         supported, others = _models(profiles, known)
+        # the model the project is for already (profile id, skin): its profile's other
+        # models stay offered - a 650 project can become a 600's
+        if exclude is not None:
+            from .. import remotes
+            mine = remotes.model_name(remotes.get(exclude[0]), exclude[1])
+            supported = [entry for entry in supported
+                         if not (entry[1].id == exclude[0] and entry[0] == mine)]
         for name, profile, skin in supported:
             item = QListWidgetItem(f"{name} · {profile.status}")
             item.setData(256, profile.id)

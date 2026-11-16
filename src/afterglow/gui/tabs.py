@@ -668,7 +668,7 @@ class SettingsTab(QWidget):
 
 class UpdateTab(QWidget):
     flash_succeeded = pyqtSignal(object)  # ids flagged new in the configuration written
-    migrate_requested = pyqtSignal(str)   # move the project to this remote
+    migrate_requested = pyqtSignal(str, object)   # move the project to this remote, skin
 
     def __init__(self, project, settings_tab, parent=None):
         super().__init__(parent)
@@ -746,6 +746,11 @@ class UpdateTab(QWidget):
 
     def _profile(self):
         return project_remote(self.project)
+
+    def _remote_name(self) -> str:
+        from .. import remotes
+        return remotes.model_name(self._profile(),
+                                  self.project.get("settings", {}).get("skin"))
 
     def _name_the_write(self):
         """An experimental remote is written the same way, backed up first."""
@@ -978,16 +983,19 @@ class UpdateTab(QWidget):
             return
         except (OSError, ValueError):
             return
+        # the model, not only the profile: a 600 read into a 650 project is another remote
+        skin = remotes.identity_of(header).get("skin")
+        read = remotes.model_name(profile, skin)
         current = self.project.get("settings", {}).get("remote")
-        if profile.id == current or not profile.buildable:
+        if not profile.buildable or profile.id == current and read == self._remote_name():
             return
+        ours = f", and this project is for the {self._remote_name()}" if current else ""
         answer = QMessageBox.question(
             self, "Different remote",
-            f"That was a {profile.model}, and this project is for "
-            f"{self._profile().model}. Move this project to the {profile.model}? You "
-            "will see what changes first.")
+            f"That was a {read}{ours}. Move this project to the {read}? You will see "
+            "what changes first.")
         if answer == QMessageBox.StandardButton.Yes:
-            self.migrate_requested.emit(profile.id)
+            self.migrate_requested.emit(profile.id, skin)
 
     def flash(self):
         """Build the project as it is on screen and write it, after one confirmation."""

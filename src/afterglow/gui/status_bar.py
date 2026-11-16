@@ -66,7 +66,9 @@ class ProjectStatusBar(QStatusBar):
             self.remote.setText("No remote chosen")
             self.remote.setStyleSheet("")
         else:
-            self.remote.setText(f"{profile.model} · {profile.status}")
+            from .. import remotes
+            name = remotes.model_name(profile, (project.get("settings") or {}).get("skin"))
+            self.remote.setText(f"{name} · {profile.status}")
             colour = STATUS_COLOURS.get(profile.status)
             self.remote.setStyleSheet(f"color: {colour};" if colour and
                                       not profile.verified else "")
