@@ -749,7 +749,10 @@ class UpdateTab(QWidget):
 
     def _name_the_write(self):
         """An experimental remote is written the same way, backed up first."""
-        verified = self._profile().verified
+        try:
+            verified = self._profile().verified
+        except LookupError:          # no remote chosen yet: asked once the window is up
+            verified = True
         self.flash_btn.setToolTip(
             "" if verified else "This remote's support is experimental: what is on it is "
             "saved to the Dumps folder before anything is written")
