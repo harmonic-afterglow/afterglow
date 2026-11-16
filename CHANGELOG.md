@@ -10,6 +10,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **The Harmony One is supported.** Configurations built for it have booted and run on
+  testers' remotes since it arrived in 0.3.0-beta.2.1, with no failure reported. A
+  write now asks once, as the 900's does, and no longer saves the remote first: use Read
+  from Remote to keep what is on it. Reading a One's own configuration still leaves some
+  things behind; that is being worked on. Not yet seen on a remote: this release's One
+  additions (pad labels, Nothing to do, per-activity device lists, page arrows, the
+  welcome tour, the screen's lit time and 24-hour clock, number-sender favourites).
 - **The Harmony 650, 665 and 700, experimental.** Afterglow reads their configurations,
   and builds and writes new ones from a project: the Activities menu and Devices list, each
   device's and activity's pages with Logitech's own layout, Starting and Turning off,

@@ -27,15 +27,16 @@ def test_the_window_opens_with_an_unwritable_documents_folder(
 
 
 def test_the_window_opens_with_two_verified_remotes_and_none_chosen(qapp_or_skip, monkeypatch):
-    """The day a second remote is verified, a first start has no single default: the
-    window has to open first, then ask which remote."""
+    """A library where two remotes are verified and none says it is the default has no
+    answer for a first start: the window has to open first, then ask which remote."""
     import dataclasses
 
     from afterglow import remotes
     from afterglow.gui import default_remote
     real = remotes.load_all
     monkeypatch.setattr(remotes, "load_all", lambda library=remotes.LIBRARY: [
-        dataclasses.replace(p, status=remotes.VERIFIED) if p.id == "harmony-1100" else p
+        dataclasses.replace(p, status=remotes.VERIFIED, default=False)
+        if p.id == "harmony-1100" else dataclasses.replace(p, default=False)
         for p in real(library)])
     monkeypatch.setattr(default_remote, "default_remote_id", lambda *_a: None)
     with pytest.raises(remotes.UnknownRemote):

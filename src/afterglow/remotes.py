@@ -235,6 +235,10 @@ class RemoteProfile:
     # {skin: scaffold}: a model sold under this firmware with a look of its own - the
     # Harmony 600's grey pictures, scaffolds/harmony-600 - for its backend to build with
     looks: dict = field(default_factory=dict)
+    # The remote a project that names none is for ("default": true): projects saved
+    # before remotes were named are the Harmony 900's. Not a status: several remotes can
+    # be verified, only one can be the default.
+    default: bool = False
     # The remote's own folder (`<id>/profile.json`), which holds what belongs to this
     # remote alone - its drawing. None for a profile that is a bare JSON file.
     folder: Path | None = None
@@ -768,6 +772,7 @@ def _from_json(data: dict) -> RemoteProfile:
         other_boards=tuple(ident.get("other_boards") or ()),
         notes=data.get("notes", ""),
         looks={int(skin): scaffold for skin, scaffold in (data.get("looks") or {}).items()},
+        default=data.get("default") is True,
     )
 
 
@@ -867,11 +872,21 @@ def get(profile_id: str, library: Path | str = LIBRARY) -> RemoteProfile:
 def default(library: Path | str = LIBRARY) -> RemoteProfile:
     """The remote a project targets when it names none.
 
-    Only ever the single verified model. With none, or with several, there is no honest
-    answer, so this raises rather than picking one - the bug this replaces was every
-    module quietly assuming a Harmony 900 on its own.
+    The profile that says it is (`"default": true`) - the 900, whose projects came before
+    remotes were named - or, in a library where none says so, the single verified model.
+    With two defaults, or none and not one verified, there is no honest answer, so this
+    raises rather than picking one - the bug this replaces was every module quietly
+    assuming a Harmony 900 on its own.
     """
-    verified = [profile for profile in load_all(library) if profile.verified]
+    profiles = load_all(library)
+    marked = [profile for profile in profiles if profile.default]
+    if len(marked) > 1:
+        raise UnknownRemote(
+            f"{len(marked)} remote profiles say they are the default: "
+            + ", ".join(profile.id for profile in marked))
+    if marked:
+        return marked[0]
+    verified = [profile for profile in profiles if profile.verified]
     if len(verified) != 1:
         raise UnknownRemote(
             f"{len(verified)} remote models are verified, so a project has to name the "

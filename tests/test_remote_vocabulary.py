@@ -199,13 +199,16 @@ def test_scart_is_offered_even_though_no_configuration_has_ever_had_it(qapp_or_s
 
 
 # which remote a project is for
-def two_verified(tmp_path):
-    """A library where a second model has also been verified."""
+def two_verified(tmp_path, *defaults):
+    """A library where a second model has also been verified; ``defaults`` names the ones
+    that say they are the default."""
     profile = json.loads(remotes.profile_path("harmony-900").read_text(encoding="utf-8"))
-    profile.update(id="test-model", model="Test Model", identity={"arch": 15, "skin": 99})
-    (tmp_path / "harmony-900.json").write_text(
-        remotes.profile_path("harmony-900").read_text(encoding="utf-8"), encoding="utf-8")
-    (tmp_path / "test-model.json").write_text(json.dumps(profile), encoding="utf-8")
+    for remote, data in (("harmony-900", dict(profile)), ("test-model", dict(
+            profile, id="test-model", model="Test Model", identity={"arch": 15, "skin": 99}))):
+        data.pop("default", None)
+        if remote in defaults:
+            data["default"] = True
+        (tmp_path / f"{remote}.json").write_text(json.dumps(data), encoding="utf-8")
     return tmp_path
 
 
@@ -214,9 +217,18 @@ def test_a_project_is_for_the_remote_it_names():
     assert remotes.for_project(project).id == "harmony-900"
 
 
-def test_a_project_naming_no_remote_gets_the_one_verified_model():
+def test_a_project_naming_no_remote_gets_the_default():
     assert remotes.for_project({"settings": {}}).id == remotes.default().id
-    assert remotes.default().verified
+    assert remotes.default().default and remotes.default().verified
+
+
+def test_with_two_verified_models_the_default_is_the_one_that_says_so(tmp_path):
+    """The One verified beside the 900 must not leave a project saved before remotes were
+    named without a remote: the 900 says it is the default."""
+    library = two_verified(tmp_path, "harmony-900")
+    assert remotes.for_project({"settings": {}}, library).id == "harmony-900"
+    with pytest.raises(remotes.UnknownRemote, match="say they are the default"):
+        remotes.default(two_verified(tmp_path, "harmony-900", "test-model"))
 
 
 def test_with_two_verified_models_a_project_has_to_say_which(tmp_path):

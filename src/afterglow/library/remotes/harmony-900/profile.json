@@ -13,6 +13,7 @@
   "payload": "pk",
   "backend": "harmony-pk",
   "status": "verified",
+  "default": true,
   "capabilities": {
     "rf_blaster": true,
     "touchscreen": true,

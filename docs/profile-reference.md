@@ -22,6 +22,7 @@ what its remote has is refused. It never inherits the Harmony 900's answer.
 | `payload` | the container format, `pk` or `blob` (`payloads/`) |
 | `backend` | the backend that builds and imports it (`backends/<name>/`) |
 | `status` | `read-only`, `experimental` or `verified`. This is a safety gate, not a label. **Anyone** can write an experimental remote from the Flash tab. See AGENTS.md §2b and `docs/first-write.md`. |
+| `default` | `true` on the one remote a project that names none is for: the Harmony 900, whose projects came before remotes were named. Not a status: several remotes can be verified. |
 | `capabilities` | what the remote has: `hard_keys`, `touchscreen`, `keyboard`, `ir_learning`, `rf_blaster`, `first_time_setup` |
 | `infrared` | what the backend can send natively |
 | `looks` | `{skin: scaffold}`: a model with a look of its own, such as `{"71": "harmony-600"}`, the 600's grey pictures and light levels |
