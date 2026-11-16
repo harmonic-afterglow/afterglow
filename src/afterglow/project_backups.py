@@ -26,7 +26,13 @@ def name_of(project_path) -> str:
 
 
 def folder_for(project_path) -> Path:
-    return paths.user_folder("backups") / name_of(project_path)
+    """`<project> (<where it is>)`: the name, and a short mark of the folder it is saved
+    in, so `a/living.json` and `b/living.json` keep their own histories rather than
+    pruning each other's. Backups made before that are left in `<project>/`."""
+    import hashlib
+    path = Path(project_path)
+    where = hashlib.sha256(str(path.resolve().parent).encode("utf-8")).hexdigest()[:6]
+    return paths.user_folder("backups") / f"{name_of(path)} ({where})"
 
 
 def history(project_path) -> list[Path]:

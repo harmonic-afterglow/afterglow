@@ -22,7 +22,7 @@ def project_file(tmp_path, monkeypatch):
 def test_the_version_a_save_replaces_is_kept(project_file):
     kept = project_backups.back_up(project_file)
     assert kept.read_text() == '{"version": 1}'
-    assert kept.parent.name == "living-room"
+    assert kept.parent.name.startswith("living-room (")
     assert project_backups.back_up(project_file) is None, "the same version twice"
 
 
@@ -112,3 +112,15 @@ def test_the_file_menu_has_its_shortcuts(window):
     for name in ("New Project", "Open Project…", "Import .ezhex…", "Save Project",
                  "Save Project As…", "Export .ezhex…", "Exit"):
         assert keys[name], f"{name} has no shortcut"
+
+
+def test_projects_of_the_same_name_in_different_folders_keep_their_own_history(tmp_path):
+    from afterglow import project_backups
+    first, second = tmp_path / "a" / "living.json", tmp_path / "b" / "living.json"
+    for path, text in ((first, "first"), (second, "second")):
+        path.parent.mkdir()
+        path.write_text(text)
+        project_backups.back_up(path)
+    assert project_backups.folder_for(first) != project_backups.folder_for(second)
+    assert [p.read_text() for p in project_backups.history(first)] == ["first"]
+    assert [p.read_text() for p in project_backups.history(second)] == ["second"]
