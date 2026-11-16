@@ -819,6 +819,11 @@ class UpdateTab(QWidget):
             button.setEnabled(not busy)
         self.progress.setVisible(busy)
 
+    def running_operation(self) -> str | None:
+        """The remote operation under way - "write", "read", "identify"... - or None."""
+        worker = getattr(self, "_worker", None)
+        return worker.operation if worker is not None and worker.isRunning() else None
+
     def _run(self, operation, **kwargs):
         """Start a remote operation on a worker thread and wire it to the log."""
         from .remote_ops import RemoteWorker

@@ -187,8 +187,27 @@ class MainWindow(QMainWindow):
         if self._project_path:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(self._project_path).parent)))
 
+    def _remote_busy(self) -> bool:
+        """While the remote is being talked to, the window stays open and the project
+        stays in it: closing tore the worker thread down part-way through a write, which
+        leaves the remote showing an error until it is written again. True means stay."""
+        operation = self.update_tab.running_operation()
+        if operation is None:
+            return False
+        if operation == "write":
+            text = ("Afterglow is writing to the remote. Stopping part-way would leave "
+                    "it without a working configuration until it is written again.\n\n"
+                    "Wait for the write to finish; the Flash tab shows how far it has got.")
+        else:
+            text = ("Afterglow is talking to the remote. Wait for it to finish; the "
+                    "Flash tab shows how far it has got.")
+        QMessageBox.information(self, "The remote is busy", text)
+        return True
+
     def _keep_or_discard_changes(self) -> bool:
         """Before the project is replaced: save, discard, or stay. False means stay."""
+        if self._remote_busy():
+            return False
         if not self._dirty:
             return True
         answer = QMessageBox.question(
@@ -259,6 +278,8 @@ class MainWindow(QMainWindow):
     def change_remote(self, target_id=None):
         """Move the project to another remote: review what changes, save it as new."""
         from .. import migrate, remotes
+        if self._remote_busy():
+            return
         source = self._profile()
         if not target_id:
             target_id = self._choose_remote(
