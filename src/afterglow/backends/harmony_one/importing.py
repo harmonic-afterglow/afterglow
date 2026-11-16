@@ -1769,3 +1769,77 @@ def read_types(image: Image) -> dict[tuple[str, int], str]:
         if found is not None:
             out[(row["kind"], row["key"])] = found
     return out
+
+
+# What a settings read takes as a language: at least this many of its own words drawn.
+LANGUAGE_EVIDENCE = 5
+
+
+def _drawn_text(image: Image) -> set[str]:
+    """Every line of text any screen draws."""
+    return {item["text"] for screen in image.screens for slot in screen["slots"]
+            for item in image.page_text(slot["program_offset"])}
+
+
+def backlight_timeout(image: Image) -> int | None:
+    """How many seconds the screen stays lit after the last key: the off timer's
+    duration, the timer the wake starts as it turns the screen's backlight on (idle.md,
+    "How long the screen stays lit") - 10 in every Logitech compile. None when no object
+    does that."""
+    from . import idle
+
+    lit = tuple(idle.light(idle.SCREEN, idle.SCREEN_LEVEL, 1))
+    durations = [seconds for seconds, _operand, _opcode in timers(image.payload)]
+    for item in image.objects:
+        if lit in item["atoms"]:
+            for operand, category in item["atoms"]:
+                if (category == idle.REGISTER and operand >> 8 == idle.START_TIMER
+                        and (operand & 0xFF) < len(durations)):
+                    return durations[operand & 0xFF]
+    return None
+
+
+def read_settings(image: Image) -> dict:
+    """The project settings an image was compiled with, as far as it shows them.
+
+    - ``backlight_timeout``: the off timer's duration (backlight_timeout above).
+    - ``time_format``: a twelve-hour clock has the Time of Day picker, so the image draws
+      AM and PM, in any language a catalogue here knows; a 24-hour one draws neither,
+      which only text that reads in full can show.
+    - ``remote_assistant``: False when this backend's `RemoteAssistant_4` starts hidden
+      (3). Logitech's images do not name the assistant's state, so theirs is not read.
+    - ``locale``: the translation whose own words the image draws most, if any does.
+    """
+    from . import catalogue
+
+    out: dict = {}
+    seconds = backlight_timeout(image)
+    if seconds is not None:
+        out["backlight_timeout"] = str(seconds)
+    drawn = _drawn_text(image)
+    languages = {code: catalogue.load(code) for code in catalogue.translations()}
+    marks = {catalogue.ENGLISH(key) for key in ("options.am", "options.pm")}
+    marks |= {words(key) for words in languages.values() for key in ("options.am", "options.pm")}
+    if drawn & marks:
+        out["time_format"] = "Civilian"
+    elif drawn and not any(labels.UNKNOWN in line for line in drawn):
+        # no AM or PM in text that reads in full; text that does not (a language whose
+        # letters no known face draws) cannot say they are absent
+        out["time_format"] = "Military"
+    for record in image.engine:
+        if image.names.get(record["property_id"]) == "RemoteAssistant_4":
+            if record["initial"] == 3:
+                out["remote_assistant"] = False
+            break
+    scores = {}
+    for code, words in languages.items():
+        own = {words(message.context) for message in catalogue.MESSAGES
+               if not message.brace_format and message.plural is None}
+        own -= {catalogue.ENGLISH(message.context) for message in catalogue.MESSAGES
+                if not message.brace_format and message.plural is None}
+        scores[code] = len(drawn & own)
+    if scores:
+        best = max(scores, key=scores.get)
+        if scores[best] >= LANGUAGE_EVIDENCE:
+            out["locale"] = best
+    return out

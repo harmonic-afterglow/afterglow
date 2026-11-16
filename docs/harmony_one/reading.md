@@ -40,6 +40,18 @@ three household configurations and on generated ones:
 - **A held code is a repeat count** in Logitech's images - the low byte of a command
   object's device field, 1 for a tap - and a record of its own in this backend's: the press,
   its repeat frame until the hold has lasted, then a gap.
+- **The remote's own settings are read from what they compile to.** How long it stays lit
+  is the off timer's duration: the timer the wake starts as it turns the screen's backlight
+  on (`3F C11D`; idle.md), 10 in every Logitech image. A twelve-hour clock has the Time of
+  Day picker, so its image draws AM and PM in its language; a 24-hour one draws neither, which
+  is only taken as said when all of the image's text reads. The Remote Assistant starts hidden
+  when this backend's `RemoteAssistant_4` starts at 3; Logitech's images do not name its
+  state, so theirs is not read. The language is the translation whose own words the image
+  draws most, five at least.
+- **A letter another script draws alike is read in its word's script.** A Cyrillic а, е
+  and о are a Latin a, e and o's shapes in this scaffold's fonts; the letters of the word
+  that read one way only say which ("сега", not "ceгa"), the line's when the word has
+  none. A blank as wide as a space is a space, never French's narrow no-break space.
 - **A row's icon is its type's**, the same pixels in every Logitech configuration, so a
   fingerprint of it names the type (`platform/type-icons.json`, written by
   `tools/harmony_one_type_icons.py` from the household configurations).

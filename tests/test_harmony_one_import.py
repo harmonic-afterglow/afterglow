@@ -499,3 +499,31 @@ def test_a_pad_label_wraps_as_logitech_s_and_its_name_comes_back(tmp_path):
     device = _device("tv", "Living Room TV", "Television", 4, {name: None for name in names})
     project = _imported(generate.build({"devices": [device]})["image"], tmp_path)
     assert sorted(entry[0] for entry in project["devices"][0]["commands"]) == sorted(names)
+
+
+def test_the_remote_s_own_settings_come_back_as_they_were_built(tmp_path):
+    settings = {"backlight_timeout": "45", "time_format": "Military",
+                "remote_assistant": False, "locale": "fr"}
+    project = _imported(generate.build(dict(PROJECT, settings=settings))["image"], tmp_path)
+    assert {key: project["settings"].get(key) for key in settings} == settings
+
+
+def test_a_build_in_cyrillic_reads_back_in_cyrillic_and_its_language_with_it(tmp_path):
+    # a Cyrillic a, e and o are Latin ones' shapes: the word they are in says which
+    image = generate.build(dict(PROJECT, settings={"locale": "bg"}))["image"]
+    drawn, text = _all_text(image)
+    assert text.unknown == 0
+    assert '"Help" ви задава' in drawn and "OK" in drawn
+    assert _imported(image, tmp_path)["settings"]["locale"] == "bg"
+
+
+def test_logitech_s_backlight_and_clock_are_read_from_a_real_one():
+    if not LIVING_ROOM.is_file():
+        pytest.skip("the maintainer's household configuration is not here")
+    import contextlib
+    import io
+    from afterglow import importer
+    with contextlib.redirect_stdout(io.StringIO()):
+        settings = importer.import_file(str(LIVING_ROOM)).project["settings"]
+    # every Logitech compile: lit for 10 seconds, a twelve-hour clock with its AM and PM
+    assert (settings["backlight_timeout"], settings["time_format"]) == ("10", "Civilian")

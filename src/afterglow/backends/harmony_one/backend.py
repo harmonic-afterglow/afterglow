@@ -138,7 +138,9 @@ def import_project(source, profile, context) -> ImportResult:
         notes.append("this configuration wears a custom theme; Afterglow builds it in the "
                      "default look unless a theme is chosen in Remote Settings")
     notes += [f"could not read the image's {item}" for item in image.unreadable]
-    settings = {"remote": profile.id}
+    # the remote's own settings it was compiled with: how long it stays lit, its clock,
+    # the Remote Assistant, its language
+    settings = {**importing.read_settings(image), "remote": profile.id}
     if context.get("out_file"):
         settings["out_file"] = str(context["out_file"])
     return ImportResult(
