@@ -5,6 +5,7 @@ Format reference: docs/harmony_800/README.md
 
 from __future__ import annotations
 
+import re
 import struct
 import zipfile
 
@@ -881,3 +882,37 @@ def test_the_app_can_tell_one_of_our_builds_by_its_mark():
     assert backend.afterglow_built(bytes(unsigned)) is False
     assert backend.afterglow_built(b"") is False
     assert backend.afterglow_built(b"GSGD" + bytes(200)) is False
+
+
+def test_a_build_in_cyrillic_reads_back_in_cyrillic():
+    """A Cyrillic a, e and o are drawn like Latin ones: the word they are in says which
+    script they are read in, every character a translation uses is a shape the reader
+    knows, and "OK" does not read as "0K" (labels.py, as the One's). The 800 reads back the
+    firmware's own screens' text, which is what this checks."""
+    from afterglow.backends.harmony_800 import importing
+
+    image = importing.Image(generate.build({**WATCHING, "settings": {"locale": "bg"}})["image"])
+    drawn = {item["text"] for screen in image.screens for slot in screen["slots"]
+             for item in image.page_text(slot["program_offset"])}
+    # every letter reads (before this, 47 lines had Cyrillic letters it could not name);
+    # the reader still takes one stray character before a line, in every language
+    unread = sorted(line for line in drawn if "\ufffd" in line[1:])
+    assert not unread, unread
+    mixed = [word for line in drawn for word in re.findall(r"\w+", line)
+             if re.search("[\u0400-\u04ff]", word) and re.search("[A-Za-z]", word)]
+    assert not mixed, mixed
+    # a lone Cyrillic e after a Latin word, and a line that mixes both scripts
+    assert any(line.endswith("USB \u0435 свързан") for line in drawn)
+    assert any(line.endswith("Грешка в PLL") for line in drawn)
+    assert any(line.endswith("Няма какво да се направи") for line in drawn)
+    assert any(line.endswith("OK") and "0K" not in line for line in drawn)
+
+
+def test_a_look_alike_is_read_in_the_script_of_its_word():
+    from afterglow.backends.harmony_800 import labels
+
+    # the Latin and Cyrillic "o" are one shape: a Cyrillic word keeps a Cyrillic o
+    assert labels._in_script("o\u043e", "CYRILLIC") == "\u043e"
+    assert labels._in_script("o\u043e", "LATIN") == "o"
+    assert labels._scripts(["\u0434", "o\u043e", " ", "o\u043e", "k"]) == [
+        "CYRILLIC", "CYRILLIC", "", "LATIN", "LATIN"]

@@ -48,6 +48,22 @@ OWN_CHARACTERS = "".join(chr(code) for code in range(0x20, 0x7F)) + "".join(
     chr(code) for code in range(0xC0, 0x100))
 
 
+@lru_cache(maxsize=1)
+def _translated_characters() -> frozenset[str]:
+    """Every character the translations here draw - French's narrow no-break space,
+    Bulgarian's Cyrillic - so this scaffold's fonts are asked their shapes too, and a
+    translated build reads back."""
+    from ... import po
+    from .catalogue import LOCALE_DIR
+
+    out = set()
+    for path in LOCALE_DIR.glob("*.po"):
+        for forms in po.parse(path.read_text("utf-8")).messages.values():
+            out.update(character for form in forms for character in form
+                       if character.isprintable() or character == "\u202f")
+    return frozenset(out)
+
+
 def shape(body: bytes) -> str:
     """A glyph's fingerprint, as font_index records it: its pixels, not their colours."""
     return ui_index._glyph_shape(body, 0)["shape"]
@@ -78,7 +94,7 @@ def known_shapes(directory: str | None = None) -> dict[str, str]:
     directory = Path(paths.scaffolds("harmony-800") if directory is None else directory)
     out = dict(logitech_shapes(str(directory)))
     try:
-        loaded = assets.load(directory, set(OWN_CHARACTERS))
+        loaded = assets.load(directory, set(OWN_CHARACTERS) | _translated_characters())
     except (FileNotFoundError, ValueError):
         return out
     own = defaultdict(set)
@@ -87,7 +103,12 @@ def known_shapes(directory: str | None = None) -> dict[str, str]:
             if item.get("char"):
                 own[shape(item["body"])].add(item["char"])
     for fingerprint, characters in own.items():
-        out[fingerprint] = "".join(sorted(characters | set(out.get(fingerprint, ""))))
+        characters = characters | set(out.get(fingerprint, ""))
+        if " " in characters:
+            # a blank as wide as a space is one: the narrow no-break space is read only
+            # where a face draws it a blank of its own
+            characters.discard("\u202f")
+        out[fingerprint] = "".join(sorted(characters))
     return out
 
 
@@ -141,6 +162,9 @@ class Text:
 
     def decode(self, glyphs: bytes, attribute: int | None) -> str:
         read = [self._read(code, attribute) for code in drawing.glyph_codes(bytes(glyphs))]
+        # a Cyrillic a is a Latin a's shape: the word's own script says which
+        read = [_in_script(characters, script)
+                for characters, script in zip(read, _scripts(read))]
         out = []
         for index, characters in enumerate(read):
             if len(characters) == 1:
@@ -155,6 +179,36 @@ class Text:
         return "".join(out)
 
 
+def _script(character: str) -> str:
+    """A letter's script, as Unicode names it: LATIN, CYRILLIC, GREEK."""
+    return unicodedata.name(character, "").split(" ", 1)[0]
+
+
+def _in_script(characters: str, script: str) -> str:
+    """The characters a glyph may be that are not a letter of another script."""
+    if len(characters) < 2 or not script:
+        return characters
+    return "".join(character for character in characters
+                   if not character.isalpha() or _script(character) == script) or characters
+
+
+def _scripts(read: list[str]) -> list[str]:
+    """The script each glyph's word is in, by the letters in it that read one way only -
+    the line's when the word has none; "" when nothing says."""
+    def majority(characters):
+        found = Counter(_script(c) for c in characters if len(c) == 1 and c.isalpha())
+        return found.most_common(1)[0][0] if found else ""
+    line = majority(read)
+    out, word = [], []
+    for characters in read + [" "]:
+        if characters == " ":
+            out += [majority(word) or line] * len(word) + [""]
+            word = []
+        else:
+            word.append(characters)
+    return out[:len(read)]
+
+
 def _by_neighbours(characters: str, text: str, following: str) -> str:
     """Which of look-alike ``characters`` a glyph is, from the ``text`` read before it
     and what the next glyph may be."""
@@ -165,7 +219,9 @@ def _by_neighbours(characters: str, text: str, following: str) -> str:
     title_case = before == " " and bool(words) and words[-1][:1].isupper()
     digits = [character for character in characters if character.isdigit()]
     # among digits - "360" - or with no letter beside it, a look-alike is a digit
-    if digits and (before.isdigit() or not (before.isalpha() or after.isalpha())):
+    # a letter whichever script it is - K or Cyrillic K - is a letter all the same
+    letter_after = after.isalpha() or (bool(following) and following.isalpha())
+    if digits and (before.isdigit() or not (before.isalpha() or letter_after)):
         return digits[0]
     # ending a name after a lowercase letter - "Sirius0", "Hdmi1" - it is a digit
     if digits and not following and before.islower():
