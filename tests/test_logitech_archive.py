@@ -834,8 +834,10 @@ def test_published_device_control_replaces_the_command_name_heuristic(tmp_path):
     ], ("a stepped input keeps its whole sequence and must not be flattened to its first "
         "command; a directly selectable one stays a bare name; and InputNext must not "
         "become an input of its own")
-    # the wait before the next device too, which the archive has for every device
-    assert template["timing"] == {"press_interkey": 100, "inter_device_delay": 500}
+    # the wait before the next device too, which the archive has for every device, and
+    # the fewest frames a press sends
+    assert template["timing"] == {"press_interkey": 100, "inter_device_delay": 500,
+                                  "press_minimum": 3}
 
     device = device_json.to_project_device(template, "40000001")
     assert device["power_cmd"] == "PowerToggle"
