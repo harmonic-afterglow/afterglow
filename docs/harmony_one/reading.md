@@ -48,6 +48,12 @@ three household configurations and on generated ones:
   when this backend's `RemoteAssistant_4` starts at 3; Logitech's images do not name its
   state, so theirs is not read. The language is the translation whose own words the image
   draws most, five at least.
+- **What a project cannot say is named, not dropped.** A key, a button or an activity's
+  steps are read as sends and waits; a write to a variable that is no device's power or
+  input - a "TV + AVR" activity's own channel mode, `TV_+_AVR_Channel_3` - has no field in a
+  project, and neither has a send no device's command is. Each is counted into the import's
+  notes ("left out, as a project cannot say them: ..."). Changing screens is not: the build
+  makes its own navigation.
 - **A letter another script draws alike is read in its word's script.** A Cyrillic а, е
   and о are a Latin a, e and o's shapes in this scaffold's fonts; the letters of the word
   that read one way only say which ("сега", not "ceгa"), the line's when the word has

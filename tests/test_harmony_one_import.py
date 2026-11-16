@@ -527,3 +527,29 @@ def test_logitech_s_backlight_and_clock_are_read_from_a_real_one():
         settings = importer.import_file(str(LIVING_ROOM)).project["settings"]
     # every Logitech compile: lit for 10 seconds, a twelve-hour clock with its AM and PM
     assert (settings["backlight_timeout"], settings["time_format"]) == ("10", "Civilian")
+
+
+def test_what_a_project_cannot_say_is_named_in_the_notes_not_dropped_unseen(tmp_path):
+    assert not [note for note in _import_warnings(generate.build(PROJECT)["image"], tmp_path)
+                if note.startswith("left out")]
+    if not LIVING_ROOM.is_file():
+        pytest.skip("the maintainer's household configuration is not here")
+    import contextlib
+    import io
+    from afterglow import importer
+    with contextlib.redirect_stdout(io.StringIO()):
+        warnings = importer.import_file(str(LIVING_ROOM)).warnings
+    # its "TV + AVR" activity keeps a channel mode of its own, which a project has no
+    # field for
+    assert any("TV_+_AVR_Channel_3" in note for note in warnings
+               if note.startswith("left out"))
+
+
+def _import_warnings(image: bytes, tmp_path) -> tuple[str, ...]:
+    from afterglow import ezhex, importer, payloads, remotes
+
+    profile = remotes.get("harmony-one")
+    source = tmp_path / "warned"
+    payloads.get(profile.payload).unpack(image, str(source))
+    (source / ".ezhex_header").write_bytes(ezhex.header_for_profile(profile))
+    return importer.import_result(source).warnings
