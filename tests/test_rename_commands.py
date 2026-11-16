@@ -54,7 +54,7 @@ def test_the_activities_follow_a_renamed_command():
 
 
 def test_save_says_why_a_device_cannot_be_saved(qapp_or_skip, monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from afterglow.qt.QtWidgets import QMessageBox
 
     from afterglow.gui import device_wizard
     project = {"settings": {"remote": "harmony-one"}, "devices": [_device()],

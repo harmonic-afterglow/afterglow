@@ -65,6 +65,11 @@ datas = [
 # Each backend's translations, found rather than named, so removing a backend removes them.
 datas += [(str(locale), f"afterglow/backends/{locale.parent.name}/locale")
           for locale in sorted((PACKAGE / "backends").glob("*/locale")) if locale.is_dir()]
+# A backend family's shared modules (backends/_gspm/shared/) are source its members run
+# in their own packages (`share()`), never imported, so the analysis does not see them:
+# they ship as files. Found rather than named, as the locales are.
+datas += [(str(shared), f"afterglow/backends/{shared.parent.name}/shared")
+          for shared in sorted((PACKAGE / "backends").glob("_*/shared")) if shared.is_dir()]
 
 # ## libconcord
 #
