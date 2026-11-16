@@ -61,7 +61,9 @@ class ActivityWizard(StepWizard):
         self._taken_ids = list(taken_ids or [])
         self.devices = devices
         self.result_spec = None
-        e = self._existing = existing or {}
+        # the editor's own copy: no page edits the project's activity in place, so Cancel
+        # leaves it as it was (the physical buttons' page once changed it directly)
+        e = self._existing = copy.deepcopy(existing or {})
 
         self.identity = ActivityIdentityPage(
             e, remote=profile, holders=button_holders(activities, existing))
@@ -174,19 +176,9 @@ def link_favourites_button(favourites, screen, profile) -> None:
     """On a remote whose activity screen opens its favourites with a button of its own,
     the screen page draws that button while the favourites page lists any."""
     label = getattr(profile, "favourites_button", None)
-    show = getattr(screen, "show_favourites_button", None)
-    if not label or show is None:
+    if not label or not hasattr(screen, "follow_favourites"):
         return
-    model = favourites.table.model()
-
-    def follow(*_args):
-        try:
-            show(label if model.rowCount() else None)
-        except RuntimeError:        # the editor closing: its pages are going first
-            pass
-    for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset):
-        signal.connect(follow)
-    follow()
+    screen.follow_favourites(favourites.table.model(), label)
 
 
 def button_holders(activities, editing=None) -> dict:
@@ -763,7 +755,9 @@ class ActivityEditor(SectionDialog):
         super().__init__("Edit Activity", parent)
         profile = vocabulary.for_remote(remote)
         self.result_spec  = None
-        e = self._existing = existing or {}
+        # the editor's own copy: no page edits the project's activity in place, so Cancel
+        # leaves it as it was (the physical buttons' page once changed it directly)
+        e = self._existing = copy.deepcopy(existing or {})
 
         self.p0 = ActivityIdentityPage(
             e, remote=profile, holders=button_holders(activities, existing))

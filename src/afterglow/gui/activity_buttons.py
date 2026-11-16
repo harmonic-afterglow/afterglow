@@ -578,6 +578,19 @@ class ScreenButtonsPage(QWizardPage):
     def _offset(self) -> int:
         return 1 if self._lead else 0
 
+    def follow_favourites(self, model, label: str) -> None:
+        """Draw ``label`` first while ``model`` - the favourites page's list - has rows.
+        Connected to this page's own method, so Qt drops the connections with the page:
+        a plain function outlived it and ran while an editor was being destroyed."""
+        self._favourites_model, self._favourites_label = model, label
+        for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset):
+            signal.connect(self._favourites_changed)
+        self._favourites_changed()
+
+    def _favourites_changed(self, *_args) -> None:
+        self.show_favourites_button(
+            self._favourites_label if self._favourites_model.rowCount() else None)
+
     def show_favourites_button(self, label: str | None):
         """Draw ``label`` first on the page, as the remote puts its favourites' button,
         or nothing there."""
