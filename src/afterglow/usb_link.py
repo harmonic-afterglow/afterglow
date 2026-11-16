@@ -332,6 +332,12 @@ def _no_agent(done) -> bool:
     return any(marker in text for marker in _NO_AGENT)
 
 
+def _changed_helper(script) -> str:
+    return (f"The scripts in {script.parent} changed between Afterglow copying them "
+            "there and running them, so nothing was run. Something on this computer is "
+            "writing to that folder.")
+
+
 def _no_way_to_ask(action: str) -> str:
     return ("Nothing on this system could ask for your password - there is no polkit "
             "agent and no graphical password helper. Run this in a terminal instead, and "
@@ -348,6 +354,8 @@ def _run_installer(args: list[str], installed: str) -> tuple[bool, str]:
     script = paths.usable_helper("install_harmony_udev.sh")
     attempts = []
     for name, prefix, extra in elevators():
+        if not paths.helper_is_shipped(script):
+            return False, _changed_helper(script)
         try:
             done = subprocess.run([*prefix, str(script), *args], capture_output=True,
                                   text=True, timeout=300, env={**os.environ, **extra})
@@ -400,6 +408,8 @@ def start_helper() -> tuple[bool, str]:
         return False, _no_way_to_ask("session")
     _name, prefix, extra = available[0]
     script = paths.usable_helper("harmony_net.sh")
+    if not paths.helper_is_shipped(script):
+        return False, _changed_helper(script)
     lock = hold_instance_lock()
     try:
         # Not waited on, and no failure is visible from here: the process outlives this

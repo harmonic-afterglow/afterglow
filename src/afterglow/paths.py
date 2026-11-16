@@ -343,6 +343,21 @@ def usable_helper(name: str) -> Path:
     return target
 
 
+def helper_is_shipped(copy: Path) -> bool:
+    """Whether the copy `usable_helper` made, and the files beside it, are still the
+    shipped ones. Checked just before a copy is run as root: it sits in a folder the
+    user's own programs can write to, and one of them could have changed it since."""
+    source = helper(copy.name)
+    if not source.is_file():
+        return copy == source                      # a checkout runs its own
+    for candidate in source.parent.iterdir():
+        if candidate.is_file():
+            beside = copy.parent / candidate.name
+            if not beside.is_file() or beside.read_bytes() != candidate.read_bytes():
+                return False
+    return True
+
+
 def scaffolds(*parts) -> Path:
     """The unpacked configuration each build starts from, per remote model."""
     return root().joinpath("scaffolds", *parts)

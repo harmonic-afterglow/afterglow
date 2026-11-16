@@ -1173,3 +1173,31 @@ def test_a_bundled_libconcord_that_will_not_load_names_what_it_lacks(monkeypatch
         concord._load()
     assert "libcrypt.so.1" in str(raised.value)
     assert "not found" not in str(raised.value)
+
+
+def test_a_helper_changed_after_it_was_copied_is_not_run_as_root(monkeypatch, tmp_path):
+    """The copy run under pkexec sits in a folder the user's own programs can write; it
+    is compared with the shipped one just before it is run."""
+    from afterglow import paths, usb_link
+
+    monkeypatch.setattr(paths, "data_dir", lambda: tmp_path)
+    real = paths.usable_helper
+
+    def tampered(name):
+        copy = real(name)
+        (copy.parent / "install_harmony_udev.sh").write_text("#!/bin/sh\nrm -rf /\n")
+        return copy
+    monkeypatch.setattr(paths, "usable_helper", tampered)
+    ran = []
+    monkeypatch.setattr(usb_link.subprocess, "run", lambda cmd, **k: ran.append(cmd))
+    monkeypatch.setattr(usb_link.subprocess, "Popen", lambda cmd, **k: ran.append(cmd))
+    monkeypatch.setattr(usb_link, "elevators", lambda: [("pkexec", ["/usr/bin/pkexec"], {})])
+    monkeypatch.setattr(usb_link, "rule_state", lambda: usb_link.ABSENT)
+    monkeypatch.setattr(usb_link, "helper_running", lambda: False)
+    monkeypatch.setattr(usb_link, "host_address_present", lambda: False)
+    monkeypatch.setattr(usb_link, "link_handled", lambda: False, raising=False)
+    for action in (usb_link.install_rule, usb_link.start_helper):
+        ok, message = action()
+        assert ok is False and "nothing was run" in message
+    assert ran == []
+    assert paths.helper_is_shipped(real("harmony_net.sh"))
