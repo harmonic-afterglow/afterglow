@@ -644,6 +644,87 @@ def _filled_area(face: list, bounds) -> list:
 
 _SHAPES: dict = {}       # a drawing's case and key shapes, worked out once a session
 
+# Kept on disk as well: working them out flood-fills a large render of the drawing and
+# took a second on first use each session, on the interface thread. A cache file is
+# named by everything the shapes come from, so a redrawn remote is worked out afresh.
+_SHAPES_VERSION = 2
+_SHAPES_MAGIC = f"afterglow-remote-shapes/{_SHAPES_VERSION}"
+_MOST_KEYS = 500                 # far more than any remote has; a bigger count is garbage
+
+
+def _qstring_bytes(text: str) -> bytes:
+    """How QDataStream writes a QString: its length in bytes, then UTF-16 big-endian."""
+    encoded = text.encode("utf-16-be")
+    return len(encoded).to_bytes(4, "big") + encoded
+
+
+_SHAPES_MAGIC_BYTES = _qstring_bytes(_SHAPES_MAGIC)
+
+
+def _shapes_file(svg, view: QRectF, art: dict):
+    import hashlib
+
+    from ..qt.QtCore import QT_VERSION_STR
+    from .. import paths
+    digest = hashlib.sha256()
+    for part in (svg.read_bytes(), repr(view.getRect()).encode(),
+                 repr(sorted(art["keys"].items())).encode(),
+                 repr(sorted(art["unassignable"].items())).encode(),
+                 f"{QT_VERSION_STR} {_SHAPES_VERSION}".encode()):
+        digest.update(part + b"\0")
+    return paths.cache_dir() / "remote-shapes" / f"{digest.hexdigest()[:32]}.bin"
+
+
+def _write_shapes(path, body, keys: dict, fixed: dict) -> None:
+    from ..qt.QtCore import QByteArray, QDataStream, QIODevice
+    data = QByteArray()
+    stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+    stream.writeQString(_SHAPES_MAGIC)
+    stream << body
+    for group in (keys, fixed):
+        stream.writeInt32(len(group))
+        for name, shape in group.items():
+            stream.writeQString(name)
+            stream << shape
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(bytes(data))
+    except OSError:
+        pass                                    # a cache: without it, only slower
+
+
+def _read_shapes(path):
+    """(body, keys, fixed) from a cache file, or None if there is none to trust."""
+    from ..qt.QtCore import QByteArray, QDataStream, QIODevice
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    data = QByteArray(raw)                  # held: the stream reads it, not a copy
+    stream = QDataStream(data, QIODevice.OpenModeFlag.ReadOnly)
+    # Checked before anything is believed: a count read from a file that is not one of
+    # these once had this allocate shapes until the machine ran out of memory.
+    if not raw.startswith(_SHAPES_MAGIC_BYTES) or stream.readQString() != _SHAPES_MAGIC:
+        return None
+    body = QPainterPath()
+    stream >> body
+    groups = []
+    for _group in range(2):
+        shapes = {}
+        count = stream.readInt32()
+        if stream.status() != QDataStream.Status.Ok or not 0 <= count <= _MOST_KEYS:
+            return None
+        for _n in range(count):
+            name, shape = stream.readQString(), QPainterPath()
+            stream >> shape
+            if stream.status() != QDataStream.Status.Ok:
+                return None
+            shapes[name] = shape
+        groups.append(shapes)
+    if stream.status() != QDataStream.Status.Ok or not stream.atEnd():
+        return None
+    return body, groups[0], groups[1]
+
 
 def _shapes(renderer, art: dict, view: QRectF):
     """(the case, {key: shape}, {remote's own key: shape}) for ``art``, the drawing's
@@ -654,6 +735,12 @@ def _shapes(renderer, art: dict, view: QRectF):
     if known in _SHAPES:
         body, keys, fixed = _SHAPES[known]
         return QPainterPath(body), dict(keys), dict(fixed)
+    cache = _shapes_file(svg, view, art)
+    stored = _read_shapes(cache)
+    if stored is not None and set(stored[1]) <= set(art["keys"]) \
+            and set(stored[2]) == set(art["unassignable"]):
+        _SHAPES[known] = stored
+        return QPainterPath(stored[0]), dict(stored[1]), dict(stored[2])
     outlines = _outlines(svg)
     faces = _Faces(renderer, view)
     # the case, filled white under the drawing - a guide may draw it as a line only,
@@ -670,6 +757,7 @@ def _shapes(renderer, art: dict, view: QRectF):
     keys = _without_inner({key: shape(("key", key), box) for key, box in art["keys"].items()})
     fixed = {name: shape(("fixed", name), box) for name, box in art["unassignable"].items()}
     _SHAPES[known] = (body, keys, fixed)
+    _write_shapes(cache, body, keys, fixed)
     return QPainterPath(body), dict(keys), dict(fixed)
 
 

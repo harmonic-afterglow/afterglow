@@ -89,3 +89,26 @@ def test_the_keys_can_be_walked_and_picked_from_the_keyboard(qapp_or_skip):
     QTest.keyClick(widget, Qt.Key.Key_Left)
     QTest.keyClick(widget, Qt.Key.Key_Space)
     assert picked == [order[1], order[0]]
+
+
+def test_shapes_are_kept_on_disk_and_read_back_the_same(qapp_or_skip):
+    """Working them out takes about a second; the next start reads them instead."""
+    from afterglow.qt.QtCore import QRectF
+
+    from afterglow.gui import keys_view
+    profile = remotes.get("harmony-650")
+    art = profile.hard_key_art
+    keys_view._SHAPES.clear()
+    first = keys_view.RemoteKeys(profile)
+    cache = keys_view._shapes_file(art["svg"], QRectF(*art["view"]), art)
+    assert cache.is_file()
+    keys_view._SHAPES.clear()
+    body, keys, fixed = keys_view._read_shapes(cache)
+    again = keys_view.RemoteKeys(profile)
+    assert set(again._keys) == set(first._keys)
+    for key, shape in again._keys.items():
+        assert shape.boundingRect() == first._keys[key].boundingRect()
+    cache.write_bytes(b"not shapes")                # a broken file is worked out again
+    keys_view._SHAPES.clear()
+    assert set(keys_view.RemoteKeys(profile)._keys) == set(first._keys)
+    del body, keys, fixed
