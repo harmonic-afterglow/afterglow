@@ -47,7 +47,9 @@ The shape may also be:
 - an open end: no trailer, the last bit read by its mark, its space the frame's gap (a
   pulse-width fan code);
 - two bits a symbol: one mark and four spaces a step apart (RC-MM's, a Foxtel's);
-- frames sent on release, of the same shape, padded to a period of their own.
+- frames sent on release, of the same shape, padded to a period of their own;
+- a frame of the same bits behind a leader of its own: a frame of its own (an RCA's
+  first, behind a 20 ms leader, then the usual 4.3 ms one).
 
 Frames are split at spaces of 6 ms or more (RCA's 8.2 ms between frames), not the code
 index's 10 ms, which the archive's copy keeps.
@@ -67,10 +69,9 @@ fixed waveform it then is. The element plays one run of bits, so a separator's f
 goes as a fixed waveform. The project keeps the recordings: a project moved back to the
 One still has them.
 
-On the 600/650/665/700 dumps (2026-11-16), of 3078 distinct commands with a repeat or a
-release, all but one build for the 900: 2932 as protocols, 145 as fixed waveforms (Flirc,
-Samsung DVD, a 600's RC6 mode 0 DVD). The one left is an RCA command whose first frame
-has a 20 ms leader of its own.
+On the 600/650/665/700 dumps (2026-11-16), every one of the 3078 distinct commands with
+a repeat or a release builds for the 900: 2934 as protocols, 144 as fixed waveforms
+(Flirc, Samsung DVD, a 600's RC6 mode 0 DVD).
 
 ## The code index
 

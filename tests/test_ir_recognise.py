@@ -201,3 +201,16 @@ def test_each_kind_of_650_recording_builds_for_the_900():
     # so goes as the one fixed waveform its press is
     assert lowered["signals"]["Eject"]["kind"] == "waveform"
     assert "sections" not in lowered["signals"]["Eject"]
+
+
+def test_a_first_frame_behind_a_leader_of_its_own_is_a_frame_of_its_own():
+    # an RCA input toggle: its first frame behind a 20 ms leader, then the usual one
+    bits = _distance(0xF8E1C6, 24, 540, 980, 1980) + [1000, -8200]
+    first, usual = [20000, -4100] + bits, [4300, -4700] + bits
+    signal = _waveform(first + usual * 3, usual, carrier=56000)
+    assert ir_recognise.repeated(signal) is None
+    definition, command = ir_recognise.infer(signal)
+    assert definition["bursts"]["header2"] == [4300, -4700]
+    assert [item["frame"] for item in command["transmission"]["press"]] \
+        == ["data", "data2", "data2", "data2"]
+    assert ir_recognise._same(usual, _renders(definition, command, "hold"))

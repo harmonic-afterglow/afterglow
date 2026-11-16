@@ -512,8 +512,9 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
     """A protocol of the recording's own frame shape, and the command in it: ``(protocol
     definition, protocol signal)``, each frame's bits a payload of its own, as Logitech's
     generic protocols store theirs (a Roku sends a different code while a key is held).
-    A short frame with no bits is a ditto, the same each time (NEC's "still held"). The
-    frames sent on release are frames of the same shape, padded to a period of their own.
+    A short frame with no bits is a ditto, the same each time (NEC's "still held"). A
+    frame of the same bits behind a leader of its own is a frame of its own (an RCA's
+    first, behind a 20 ms leader). The frames sent on release are frames of the same shape, padded to a period of their own.
     None when the frames are not one shape of header, bit shapes, separator and trailer
     and dittos, or the protocol does not render the recording back."""
     if signal.get("kind") != "waveform" or signal.get("alternate"):
@@ -532,15 +533,34 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
     if shape is None:
         return None
     ditto = None
+    # the leaders a data frame is sent behind: the first frame's, then any other
+    leaders = [list(shape["header"])]
     periods = {"data": [], "ditto": [], "release": []}
     occurrences = {phase: [] for phase in PHASES}
     for phase in PHASES:
         for frame in split[phase]:
             other = _shape(frame)
+            led = (other is not None and other["header"] and shape["header"]
+                   and len(other["header"]) == len(shape["header"])
+                   and _same_shape({**shape, "header": other["header"]}, other))
             values = _read(frame, shape)
             if values is not None and (other is None or _same_shape(shape, other)):
                 kind = "release" if phase == "release" else "data"
-                occurrences[phase].append(values)
+                occurrences[phase].append((kind if kind == "release" else "data", values))
+            elif led and phase != "release":
+                number = next((number for number, leader in enumerate(leaders)
+                               if len(leader) == len(other["header"]) and all(
+                                   _close(a, b) for a, b in zip(leader, other["header"]))),
+                              None)
+                if number is None:
+                    number = len(leaders)
+                    leaders.append(list(other["header"]))
+                    periods[f"data{number + 1}"] = []
+                kind = "data" if number == 0 else f"data{number + 1}"
+                values = _read(frame, {**shape, "header": leaders[number]})
+                if values is None:
+                    return None
+                occurrences[phase].append((kind, values))
             elif (phase != "release" and len(_body(frame)) <= DITTO_PULSES
                   and _body(frame)[0] > 0):
                 kind = "ditto"
@@ -549,7 +569,7 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
                 elif len(ditto) != len(_body(frame)) or not all(
                         _close(a, b) for a, b in zip(_body(frame), ditto)):
                     return None
-                occurrences[phase].append(None)
+                occurrences[phase].append(("ditto", None))
             else:
                 return None
             if len(_body(frame)) < len(frame):
@@ -595,6 +615,11 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
     if ditto is not None:
         frames["ditto"] = {"segments": [{"burst": "ditto"}],
                            "minimum_period_us": period(periods["ditto"])}
+    for number, leader in enumerate(leaders[1:], 2):
+        bursts[f"header{number}"] = leader
+        frames[f"data{number}"] = {
+            "segments": [{"burst": f"header{number}"}] + segments[1:], "parameters": local,
+            "minimum_period_us": period(periods[f"data{number}"] or periods["data"])}
     codes = [f"Code{number}" for number in range(len(widths))]
     data = {"frame": "data", "bind": dict(zip(fields, codes))}
     symbols = {format(number, f"0{width}b"): name for number, name in enumerate(names)}
@@ -617,13 +642,13 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
                   "provenance": {"kind": "inferred-from-recording",
                                  "source": (signal.get("provenance") or {}).get("kind", "")}}
 
-    def sequence(items, frame="data"):
+    def sequence(items, release=False):
         out = []
-        for values in items:
+        for frame, values in items:
             if values is None:
                 out.append({"frame": "ditto"})
                 continue
-            out.append({"frame": frame, "arguments": {
+            out.append({"frame": release_frame if release else frame, "arguments": {
                 field: f"0x{value:0{(size + 3) // 4}X}"
                 for field, size, value in zip(fields, widths, values)}})
         return out
@@ -631,7 +656,7 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
         definition["id"], {}, name=signal.get("name", ""),
         transmission={"press": sequence(occurrences["press"]),
                       "hold": sequence(occurrences["hold"]),
-                      "release": sequence(occurrences["release"], release_frame)},
+                      "release": sequence(occurrences["release"], release=True)},
         provenance={"kind": "recognised-waveform", "protocol": definition["id"],
                     "source": (signal.get("provenance") or {}).get("kind", "")})
     try:
