@@ -83,10 +83,33 @@ def validate(device: dict, *, allow_opaque: bool = True) -> None:
                     f"{definition['id']!r}")
 
 
+# A device's delays, in milliseconds. The editors write whole numbers; a hand-edited or
+# older project can hold "500" or 500.0, which each builder then did arithmetic on and
+# stopped with a TypeError naming nothing.
+MILLISECOND_FIELDS = ("power_delay", "press_presilence", "press_interkey", "hold_presilence",
+                      "hold_interkey", "input_delay", "app_power_delay", "inter_device_delay")
+
+
+def _milliseconds(device: dict) -> None:
+    for field in MILLISECOND_FIELDS:
+        value = device.get(field)
+        if value is None or isinstance(value, int) and not isinstance(value, bool):
+            continue
+        try:
+            number = float(str(value).strip())
+        except ValueError:
+            number = None
+        if number is None or number != int(number) or number < 0:
+            raise ValueError(f"device {device.get('label') or device.get('id')!r}: {field} "
+                             f"is {value!r}, not a number of milliseconds")
+        device[field] = int(number)
+
+
 def clean(device: dict) -> dict:
     """Return a defensive copy after enforcing the portable boundary."""
     out = deepcopy(device)
     validate(out)
+    _milliseconds(out)
     out["commands"] = [list(command) for command in out["commands"]]
     return out
 

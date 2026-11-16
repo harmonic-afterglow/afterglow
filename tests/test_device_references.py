@@ -120,3 +120,13 @@ def test_the_dialogs_take_no_button_or_favourite_that_sends_nothing(qapp_or_skip
     favourite.action.channel.setText("101")
     favourite.accept()
     assert favourite.result_data == ("BBC", "channel", "101", "")
+
+
+def test_a_delay_written_as_text_is_read_as_a_number():
+    device = _device("tv", "TV", "PowerToggle")
+    device.update(power_delay="500", input_delay=250.0)
+    cleaned = project_devices.clean(device)
+    assert cleaned["power_delay"] == 500 and cleaned["input_delay"] == 250
+    device["power_delay"] = "half a second"
+    with pytest.raises(ValueError, match="power_delay is 'half a second'"):
+        project_devices.clean(device)
