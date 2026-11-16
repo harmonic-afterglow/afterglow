@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.7] - 2026-11-16
+
 ### Added
 
 - **The Harmony 650, 665 and 700, experimental.** Afterglow reads their configurations,
@@ -27,8 +29,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   a warning that saving takes it from that one.
 - **The Harmony 650 and 700 can be translated.** Every word a build draws - the menus,
   Help and Delay Fixing, the Remote Assistant's note, the welcome tour, the firmware's
-  notices - comes from the remote's catalogue (`locale/harmony-650.pot`,
-  `harmony-700.pot`), English for now; a translation is a `<language>.po` beside it, and
+  notices - comes from one catalogue (`backends/harmony_650/locale/arch14.pot`), English
+  for now; a translation is a `<language>.po` beside it, and
   a word longer than its English is wrapped or cut rather than stopping the build.
 - **The Harmony 650's and 700's editors look like the remote**: the Screen buttons page
   draws the screen's four corners a page, Favorite Channels first while the activity has
@@ -91,6 +93,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **Builds of the Harmony One, 800, 650 and 700 are several seconds quicker.** Every build
+  encoded each of the scaffold's pictures pixel by pixel, twice; the encoded pictures are
+  now kept until their file changes. What is built is byte for byte the same.
+- **The status bar names the model a project is for** - Harmony 600 rather than Harmony
+  600 / 650 / 665 - and Change remote offers the project's own remote's other models: a
+  650 project can become a 600's.
+- **Saving a device adds no timing fields its remote does not use.**
+- **A delay written as text in a project file is read as a number**, or refused by name.
+- **The remote's picture in the editors can be used from the keyboard**: arrows move
+  between keys, Enter or Space chooses one.
+- **Online device catalogues are opened in the background**, with a Cancel, instead of
+  freezing the window while their indexes download.
+- **The 650 and 700 builds name the activity each activity key starts** in the project,
+  so the editor shows what the remote will do instead of "None".
+
 - **Harmony One and 800 button labels wrap as Logitech's do**: before a capital after a
   lower case letter, so "DirectionDown" reads "Direction" over "Down"; three lines on the
   One's buttons.
@@ -114,7 +131,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
-- **The Linux AppImage reaches the remote on Arch and other systems without
+- **A Harmony 600, 650, 665 or 700 build was questioned by every flash**: its header said
+  `<BOARD>None</BOARD>`, so each write asked whether the remote was the right one, and
+  Flash a Configuration File refused the file Afterglow had just made.
+- **Cancel in the activity editor kept the changes** to its keys, which the next save or
+  flash took along. Cancel now leaves the activity as it was.
+- **Moving a project to a 650 or 700 removed its screen buttons and favourites** as "no
+  touchscreen", though both remotes have pages of them. Only what the target cannot show
+  is taken away, and the move says what.
+- **Deleting a device that activities use** left steps, buttons and favourites pointing at
+  nothing, and the 900 and 1100 then failed to build with a Python error. Deleting one now
+  lists what uses it and removes those uses, and a build refuses a project naming a device
+  or command it does not have, with a sentence saying where. A screen button or favourite
+  that sends nothing - no command, no channel - is refused by its dialog.
+- **Closing the window or opening another project during a read, build or write** threw
+  away the window the operation was reporting to. Afterglow now asks you to wait.
+- **A save that failed was not said**, and could leave half a file. A save now writes the
+  whole project or nothing and says when it could not, and Save As adds `.json`.
+- **Afterglow would not open with an unwritable Documents folder**, or when more than one
+  remote was verified and none chosen.
+- **A configuration whose header names no model was taken for a Harmony 900.** It is
+  refused as no known remote.
+- **Backups of two projects with the same name, and two logos with the same file name,
+  overwrote each other.** They keep apart.
+- **An Example theme you had edited was replaced** when Afterglow updated it. Your copy is
+  kept beside the new one.
+- **A translated firmware notice on the 650 and 700 could run off the screen**, and a
+  translation with a misspelt field stopped the build. The notice is kept on the screen,
+  and the misspelt message falls back to English.
+- **The helper scripts Afterglow runs as root are checked against the shipped ones**
+  just before running, not only at install.
+- **Every note at start-up is shown**, not only the first.
+ reaches the remote on Arch and other systems without
   `libcrypt.so.1`.** Its libconcord loads Kerberos through libcurl, which needs that library,
   and the bundle left it to the system; it now carries it, and the build fails if anything
   else libconcord loads is missing from the bundle. When a bundled libconcord does not load,
