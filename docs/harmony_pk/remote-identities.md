@@ -49,14 +49,14 @@ An `experimental` profile can also build an artifact, but normal writing is refu
 wrong on a remote nobody has tested means bricking hardware that can no longer be
 recovered from a vendor server, so the default is no.
 
-**Only the Harmony 900 is verified.** The Harmony 1100 is `experimental`: its
+**The Harmony 900 and the Harmony One are verified.** The Harmony 1100 is `experimental`: its
 configurations import and build - every command rendered into recorded sequences
 ([ssir-sequences.md](ssir-sequences.md)), a Logitech configuration rebuilding to the same
 sequence table byte for byte - but no build has yet been flashed to one. The 1000
 stores configurations the same way as the 900 and has donor evidence, but has not been
-flashed. Harmony One is `experimental`: its configurations are generated from a project
-([generating.md](../harmony_one/generating.md)) and have booted and run activities on testers' remotes, but
-none has gone through the first-write process. The 880, 890 and 76x use a different
+flashed. The Harmony One's configurations are generated from a project
+([generating.md](../harmony_one/generating.md)); they have booted and run activities on testers' remotes
+since 0.3.0-beta.2.1, with no failure reported, and it was verified in 0.3.0-beta.7.1. The 880, 890 and 76x use a different
 architecture and nothing in these documents applies to them.
 
 ## Adding a remote
