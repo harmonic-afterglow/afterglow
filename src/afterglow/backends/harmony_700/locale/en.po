@@ -240,7 +240,7 @@ msgctxt "tour.1"
 msgid "Welcome to your {model} remote."
 msgstr "Welcome to your {model} remote."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.1.prompt"
 msgid "Press the right arrow to learn more."
 msgstr "Press the right arrow to learn more."
@@ -250,7 +250,7 @@ msgctxt "tour.2"
 msgid "Use the arrow buttons below the screen to move between pages."
 msgstr "Use the arrow buttons below the screen to move between pages."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.2.prompt"
 msgid "Press the right arrow now."
 msgstr "Press the right arrow now."
@@ -260,7 +260,7 @@ msgctxt "tour.3"
 msgid "The activity buttons above give you simple one-touch control."
 msgstr "The activity buttons above give you simple one-touch control."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.3.prompt"
 msgid "Press the right arrow to continue."
 msgstr "Press the right arrow to continue."
@@ -270,7 +270,7 @@ msgctxt "tour.4"
 msgid "The Watch TV button turns on the devices you use for watching TV."
 msgstr "The Watch TV button turns on the devices you use for watching TV."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.4.prompt"
 msgid "Press Watch TV now."
 msgstr "Press Watch TV now."
@@ -280,7 +280,7 @@ msgctxt "tour.5"
 msgid "Buttons beside the screen select commands you can't find elsewhere on the remote."
 msgstr "Buttons beside the screen select commands you can't find elsewhere on the remote."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.5.prompt"
 msgid "Try one now."
 msgstr "Try one now."
@@ -290,7 +290,7 @@ msgctxt "tour.6"
 msgid "The center button below lets you select the item above it."
 msgstr "The center button below lets you select the item above it."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.6.prompt"
 msgid "Press the center button now."
 msgstr "Press the center button now."
@@ -300,7 +300,7 @@ msgctxt "tour.7"
 msgid "Use the help button if your activity doesn't start properly."
 msgstr "Use the help button if your activity doesn't start properly."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.7.prompt"
 msgid "Press Help now."
 msgstr "Press Help now."
@@ -310,7 +310,7 @@ msgctxt "tour.8"
 msgid "The More Activities button lists all your activities on the screen."
 msgstr "The More Activities button lists all your activities on the screen."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.8.prompt"
 msgid "Press More Activities now."
 msgstr "Press More Activities now."
@@ -320,7 +320,7 @@ msgctxt "tour.9"
 msgid "The All Off button turns off all your devices."
 msgstr "The All Off button turns off all your devices."
 
-#. Below a tour page's words, what to press to go on; a write, from the left; about 124 pixels a line, wrapped between its words
+#. Below a tour page's words, what to press to go on; about 124 pixels a line, wrapped between its words
 msgctxt "tour.9.prompt"
 msgid "Press All Off now."
 msgstr "Press All Off now."

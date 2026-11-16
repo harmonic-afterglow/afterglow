@@ -124,3 +124,25 @@ def test_a_translated_build_reads_back_as_afterglows(remote, tmp_path, monkeypat
     read = backend.import_project(str(folder), remotes.get(remote), {"name": "t"}).project
     assert read["settings"]["remote_assistant"] is True
     assert backend.afterglow_built(image) is True
+
+
+@pytest.mark.parametrize("remote", REMOTES)
+def test_a_translation_with_a_misspelt_field_falls_back_to_english(remote, tmp_path,
+                                                                    monkeypatch):
+    """A translator's {feild} used to stop the build with a bare KeyError."""
+    from afterglow import po
+    catalogue = _backend(remote, "catalogue")
+    message = next(m for m in catalogue.MESSAGES if m.brace_format and m.plural is None
+                   and re.search(r"\{(\w+)\}", m.text))
+    field = re.search(r"\{(\w+)\}", message.text).group(1)
+
+    def answers(m):
+        if m is message:
+            return [message.text.replace("{" + field + "}", "{misspelt}")]
+        return [m.text] if m.plural is None else [m.text, m.plural]
+    (tmp_path / "xx.po").write_text(
+        po.template(catalogue.MESSAGES, catalogue.DOMAIN, answers, "xx"), "utf-8")
+    monkeypatch.setattr(catalogue, "LOCALE_DIR", tmp_path)
+    words = catalogue.load("xx")
+    values = {name: "X" for name in re.findall(r"\{(\w+)\}", message.text)}
+    assert words(message.context, **values) == message.text.format(**values)

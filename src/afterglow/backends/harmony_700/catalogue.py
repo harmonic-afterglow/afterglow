@@ -84,9 +84,9 @@ ANSWER = "over one of the two bottom keys, in the answer font; about 40 pixels"
 ROW = "a row of a menu, beside its two keys; about 120 pixels"
 FIXED_LINES = ("Each line break is a line of the screen, as Logitech's remote breaks it; a "
                "line too wide is wrapped again between its words")
-TOUR_NOTE = ("A page of the welcome tour after a write, from the left; about 124 pixels a "
-             "line, wrapped between its words")
-TOUR_PROMPT = "Below a tour page's words, what to press to go on; " + TOUR_NOTE[33:]
+TOUR_WIDTH = "about 124 pixels a line, wrapped between its words"
+TOUR_NOTE = "A page of the welcome tour after a write, from the left; " + TOUR_WIDTH
+TOUR_PROMPT = "Below a tour page's words, what to press to go on; " + TOUR_WIDTH
 
 
 def _messages() -> list[po.Message]:
@@ -267,7 +267,18 @@ class Words:
         message = _ENGLISH[key]
         found = self.catalogue.get(key, message.text) if self.catalogue else None
         text = found if found is not None else message.text
-        return text.format(**values) if message.brace_format else text
+        if not message.brace_format:
+            return text
+        try:
+            return text.format(**values)
+        except (KeyError, IndexError, ValueError) as exc:
+            # a translation's misspelt {field}: the English, and a word in the log naming
+            # the message, rather than a build stopped with a bare KeyError
+            import logging
+            logging.getLogger("afterglow").warning(
+                "%s.po, message %s: %r does not fit (%s); English used", self.language,
+                key, text, exc)
+            return message.text.format(**values)
 
     def fixed(self, key: str) -> str:
         """The words of a message without what is filled into it: the characters it
