@@ -10,37 +10,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- **The Harmony 650, 665 and 700, experimental.** Afterglow reads their configurations,
-  and builds and writes new ones from a project: the Activities menu and Devices list, each
-  device's and activity's pages with Logitech's own layout, Starting and Turning off,
-  the sending mark, the activity keys (Watch a Movie, Watch TV, Listen to Music) as the
-  configuration had them, Help and its Delay Fixing, devices' power-on, inter-device,
-  input and inter-key delays, menu inputs (Source, Up or Down, OK), RC5/RC6 commands and
-  favourite channels behind an activity's "Favorite Channels" button, MyHarmony's backlight time and tilt-to-wake settings, the Remote Assistant's note after a start, and Logitech's activity key fill-ins (page arrows from the pad, a disc player's skips on Channel up and down). The 665 is the 650
-  under its own skin, and the 600 too, in its own grey pictures and light levels; a 600's
-  favourite channels read from Logitech's number sender, and its codes with a repeat frame
-  but no lead-in. Testers' own configurations rebuild and read back the same.
-  Favourites are edited by name on the activity's Favourites page, which offers no logos
-  on these remotes: no configuration Logitech built for them has one.
-- **Choose which activity each activity button starts** on the Harmony 650, 665 and 700:
-  "Button" on an activity's first page - Watch TV, Watch a Movie, Listen to Music or none -
-  or a click on the key in the Physical buttons picture. One activity a button, as
-  MyHarmony's "Customize Activity Buttons": a key another activity has can be chosen, with
-  a warning that saving takes it from that one.
-- **The Harmony 650 and 700 can be translated.** Every word a build draws - the menus,
-  Help and Delay Fixing, the Remote Assistant's note, the welcome tour, the firmware's
-  notices - comes from one catalogue (`backends/harmony_650/locale/arch14.pot`), English
-  for now; a translation is a `<language>.po` beside it, and
-  a word longer than its English is wrapped or cut rather than stopping the build.
-- **The Harmony 650's and 700's editors look like the remote**: the Screen buttons page
-  draws the screen's four corners a page, Favorite Channels first while the activity has
-  favourites, and offers no icons, which these screens cannot draw; the colour keys are
-  coloured in the remote's picture.
-- **A welcome after the first flash.** The Harmony 650, 665 and 700 show Logitech's
-  ten-page welcome tour once after a write, as MyHarmony did after an account's first
-  sync: on "First flash only" (the default) when the remote does not already hold a
-  configuration made with Afterglow, or on every flash, or never - Settings, "Welcome after
-  flashing".
+- **New: the Harmony 600, 650, 665 and 700, experimental.** Afterglow reads their
+  configurations and builds and writes new ones from a project, with what these remotes do:
+  - Logitech's own layout: the Activities menu, the Devices list, each device's and
+    activity's pages, Starting and Turning off, Help and Delay Fixing, the Remote
+    Assistant's note, and a welcome tour after the first flash (Settings, "Welcome after
+    flashing").
+  - The activity keys - Watch TV, Watch a Movie, Listen to Music - each set to the activity
+    you choose, on the activity's first page or in the remote's picture.
+  - Favourite channels by name; these remotes draw no logos.
+  - Devices' delays, menu inputs, RC5/RC6 commands, and MyHarmony's backlight time and
+    tilt-to-wake.
+  - The 600 and 665 are 650s under their own model numbers, the 600 in its own grey look;
+    the status bar names the exact model, and Change remote moves a project between them.
+  - Every word they show comes from one translatable catalogue, English for now.
 - **Menu inputs on every remote.** A device whose inputs are a menu - Source, then Up or
   Down, then OK, as Logitech's database has many televisions - keeps its way in and out
   when it comes from the database or a configuration, and the 900, 1100, One and 800
@@ -93,20 +76,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- **Builds of the Harmony One, 800, 650 and 700 are several seconds quicker.** Every build
+- **Builds of the Harmony One and 800 are several seconds quicker.** Every build
   encoded each of the scaffold's pictures pixel by pixel, twice; the encoded pictures are
   now kept until their file changes. What is built is byte for byte the same.
-- **The status bar names the model a project is for** - Harmony 600 rather than Harmony
-  600 / 650 / 665 - and Change remote offers the project's own remote's other models: a
-  650 project can become a 600's.
 - **Saving a device adds no timing fields its remote does not use.**
 - **A delay written as text in a project file is read as a number**, or refused by name.
 - **The remote's picture in the editors can be used from the keyboard**: arrows move
   between keys, Enter or Space chooses one.
 - **Online device catalogues are opened in the background**, with a Cancel, instead of
   freezing the window while their indexes download.
-- **The 650 and 700 builds name the activity each activity key starts** in the project,
-  so the editor shows what the remote will do instead of "None".
 
 - **Harmony One and 800 button labels wrap as Logitech's do**: before a capital after a
   lower case letter, so "DirectionDown" reads "Direction" over "Down"; three lines on the
@@ -131,14 +109,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
-- **A Harmony 600, 650, 665 or 700 build was questioned by every flash**: its header said
-  `<BOARD>None</BOARD>`, so each write asked whether the remote was the right one, and
-  Flash a Configuration File refused the file Afterglow had just made.
 - **Cancel in the activity editor kept the changes** to its keys, which the next save or
   flash took along. Cancel now leaves the activity as it was.
-- **Moving a project to a 650 or 700 removed its screen buttons and favourites** as "no
-  touchscreen", though both remotes have pages of them. Only what the target cannot show
-  is taken away, and the move says what.
 - **Deleting a device that activities use** left steps, buttons and favourites pointing at
   nothing, and the 900 and 1100 then failed to build with a Python error. Deleting one now
   lists what uses it and removes those uses, and a build refuses a project naming a device
@@ -156,9 +128,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   overwrote each other.** They keep apart.
 - **An Example theme you had edited was replaced** when Afterglow updated it. Your copy is
   kept beside the new one.
-- **A translated firmware notice on the 650 and 700 could run off the screen**, and a
-  translation with a misspelt field stopped the build. The notice is kept on the screen,
-  and the misspelt message falls back to English.
 - **The helper scripts Afterglow runs as root are checked against the shipped ones**
   just before running, not only at install.
 - **Every note at start-up is shown**, not only the first.
