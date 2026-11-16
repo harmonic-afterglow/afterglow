@@ -34,6 +34,7 @@ Nothing is sent anywhere.
   the `Dumps` folder, and **Settings › Flash a Configuration File** puts it back.
   - Harmony 1100
   - Harmony One
+  - Harmony 600, 650, 665 and 700
   - Harmony 800 - a prototype Logitech never sold
 
 ## Before you start

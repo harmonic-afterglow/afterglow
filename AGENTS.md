@@ -68,6 +68,8 @@ src/afterglow/
   themes.py               a remote's themes in Documents/Afterglow/Themes/<remote>, for a
                           profile that offers "theme"; seeds the Example copy
   ezhex.py                the .ezhex container: unpack / pack_standalone / rehash
+  migrate.py              move a project to another remote, every change reported
+  po.py                   gettext catalogues (.pot/.po) for the backends' drawn words
   project_devices.py      canonical portable device shape stored in projects
   remotes.py              remote profiles + the build/write safety gates
   importer.py             profile-selected backend import dispatcher
@@ -90,7 +92,13 @@ src/afterglow/
                           XmlUserRfSetting format) and rf_pairing (reached through
                           backends.rf_link(profile), only for a remote offering them)
     harmony_one/          GSPM images (Harmony One) - generated, never edited. See §2d
+    harmony_650/          GSPM images for arch 14 - the Harmony 600 / 650 / 665 (one
+    harmony_700/          profile, told apart by skin) and the 700; locale/ has the words
+    harmony_800/          GSGD images over MH USB (the 800 prototype)
+    contracts.py          BuildResult / ImportResult, what a backend hands back
   payloads/               container formats, selected by profile.payload: pk, blob
+  qt/                     PyQt6 / PyQt5 shim: gui/ imports Qt from here, never directly
+  linux/                  udev rules + harmony_net.sh to bring the USB link up
   gui/                    PyQt6 authoring app ONLY
     app.py                MainWindow + main() entry point
     tabs.py               the four tabs: Devices / Activities / Remote Settings / Flash
@@ -100,10 +108,15 @@ src/afterglow/
                           remotes/*/art.svg is Logitech's drawing (its NOTICE.md)
   icons/                  Logitech artwork from app-main.swf - NOT under this repo's GPL
   scaffolds/              per-remote platform state each build starts from; bundled
-                          (Logitech's) or synthesised (ours) - see its README
+                          (Logitech's) or synthesised (ours) - see its README. A model
+                          sold under another name has its own look here
+                          (harmony-600/look.json: the 600's grey artwork)
 tests/                    regression-first pytest suite; conftest.py holds fixtures
-tools/                    standalone CLI utilities (compare_configs, learn_ir, rf_pair...)
-linux/                    udev rules + harmony_net.sh to bring the USB link up
+tools/                    standalone CLI utilities (compare_configs, learn_ir, rf_pair...);
+                          each answers --help without doing anything
+packaging/                PyInstaller spec and per-platform bundle scripts
+docs/                     format references, one folder per backend; profile-reference.md
+                          for what a remote profile and its art.json say
 ```
 
 **Rules**
