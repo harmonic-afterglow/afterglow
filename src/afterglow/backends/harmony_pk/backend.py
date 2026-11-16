@@ -549,6 +549,34 @@ def _lower_for_playback(devices: list[dict], library) -> list[dict]:
     return lowered
 
 
+def _recognise_recordings(devices: list[dict], library):
+    """Each recording this remote cannot store - a press and a different repeat, as a
+    Harmony One keeps every command - replaced in place by the protocol command it is
+    (ir_recognise): one of the library's, else one of the recording's own frame shape,
+    added to its device. One SsIr entry holds a single waveform; a protocol keeps the
+    repeat. The library returned holds the added protocols."""
+    from ... import ir_recognise
+
+    catalog = dict(library) if isinstance(library, dict) else ir_protocol.catalog(library)
+    for device in devices:
+        for name, signal in list((device.get("signals") or {}).items()):
+            sections = signal.get("sections") or {}
+            if (signal.get("kind") != "waveform" or not sections.get("intro_pulses")
+                    or not sections.get("repeat_pulses")):
+                continue
+            known = ir_recognise.recognise(signal, catalog)
+            if known is None:
+                inferred = ir_recognise.infer(signal)
+                if inferred is None:
+                    continue
+                definition, known = inferred
+                catalog.setdefault(definition["id"], definition)
+                device.setdefault("portable_protocol_definitions", {}).setdefault(
+                    definition["id"], definition)
+            device["signals"][name] = known
+    return catalog
+
+
 def lower_devices(devices: list[dict], profile, *, library=None) -> list[dict]:
     """Portable project devices -> transient dictionaries consumed by arch-15 builder."""
     library = ir_protocol.LIBRARY if library is None else library
@@ -556,6 +584,8 @@ def lower_devices(devices: list[dict], profile, *, library=None) -> list[dict]:
         return _lower_for_playback(devices, library)
     lowered = []
     emissions = {}
+    devices = deepcopy(devices)                   # recognition replaces signals in place
+    library = _recognise_recordings(devices, library)
     for source in devices:
         device = project_devices.clean(source)
         device.pop("schema", None)
@@ -609,6 +639,8 @@ def capability(signal: dict, profile, *, library=None) -> dict:
     }
     try:
         lowered = lower_devices([probe], profile, library=library)[0]
+        # a recording lowering recognised is the protocol command it was found to be
+        signal = (lowered.get("signals") or {}).get("Probe", signal)
         code = (lowered.get("raw_codes") or {}).get("Probe")
         if code and ssir.is_raw(code):
             index = ssir.raw_index(code)
