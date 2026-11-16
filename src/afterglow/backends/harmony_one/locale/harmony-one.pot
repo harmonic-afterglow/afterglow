@@ -26,22 +26,22 @@ msgctxt "hub.no-devices"
 msgid "No devices"
 msgstr ""
 
-#. Opens Options: a softkey label, bottom of the screen; about 70 pixels
+#. Opens Options: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.options"
 msgid "Options"
 msgstr ""
 
-#. Back to Activities: a softkey label, bottom of the screen; about 70 pixels
+#. Back to Activities: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.activities"
 msgid "Activities"
 msgstr ""
 
-#. Opens the device list: a softkey label, bottom of the screen; about 70 pixels
+#. Opens the device list: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.devices"
 msgid "Devices"
 msgstr ""
 
-#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; about 70 pixels
+#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.current-activity"
 msgid "Current Activity"
 msgstr ""
@@ -74,12 +74,12 @@ msgctxt "activity.power-off"
 msgid "Power Off"
 msgstr ""
 
-#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; about 70 pixels
+#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.commands"
 msgid "Commands"
 msgstr ""
 
-#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; about 70 pixels
+#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.favourites"
 msgid "Favorites"
 msgstr ""
@@ -140,17 +140,17 @@ msgctxt "assistant.now-off"
 msgid "Now is the {device} off?"
 msgstr ""
 
-#. An answer, bottom left: a softkey label, bottom of the screen; about 70 pixels
+#. An answer, bottom left: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.yes"
 msgid "Yes"
 msgstr ""
 
-#. An answer, bottom right: a softkey label, bottom of the screen; about 70 pixels
+#. An answer, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.no"
 msgid "No"
 msgstr ""
 
-#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; about 70 pixels
+#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.ok"
 msgid "OK"
 msgstr ""
@@ -216,7 +216,7 @@ msgctxt "tutorial.title"
 msgid "Tutorial"
 msgstr ""
 
-#. Leaves the Tutorial: a softkey label, bottom of the screen; about 70 pixels
+#. Leaves the Tutorial: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "softkey.exit"
 msgid "Exit"
 msgstr ""
@@ -336,7 +336,7 @@ msgctxt "options.sounds-on"
 msgid "Turn Screen Sounds On"
 msgstr ""
 
-#. Steps back a screen: a softkey label, bottom of the screen; about 70 pixels
+#. Steps back a screen: a softkey label, bottom of the screen; two lines of about 84 pixels
 msgctxt "options.back"
 msgid "Back"
 msgstr ""

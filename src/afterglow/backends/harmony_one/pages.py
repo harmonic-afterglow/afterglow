@@ -268,15 +268,24 @@ def softkey_x(width: int, x: int) -> int:
     return start + max(0, (SOFTKEY_HALF - width) // 2)
 
 
+# A softkey label too wide for its half of the bar is wrapped onto two lines, as
+# Logitech's own images draw "Current Activity": "Current" 6 pixels above the label's
+# baseline and "Activity" 5 below, each line centred on its own (196 and 207 for 202).
+SOFTKEY_LINE_OFFSETS = (-6, 5)
+
+
 def softkey_label(text: str, font: dict, attribute: int, xy) -> list[dict]:
-    """A softkey's label: one line in its own font, cut to the half-strip it sits in and
-    centred on it."""
-    lines = fit_label(text, font, SOFTKEY_HALF - 4, lines=1)
+    """A softkey's label in its own font: one line when it fits the half-strip it sits
+    in, else two (SOFTKEY_LINE_OFFSETS), cut after the second; each line centred on the
+    half-strip."""
+    lines = fit_label(text, font, SOFTKEY_HALF - 4, lines=2)
     widths, _codes = measure(font)
-    width = sum(widths[code] for code in lines[0])
-    return [{"opcode": "attribute", "value": attribute},
-            {"opcode": "inline_text", "x": softkey_x(width, xy[0]), "y": xy[1],
-             "glyphs": lines[0].hex()}]
+    out = [{"opcode": "attribute", "value": attribute}]
+    for glyphs, y in zip(lines, line_ys(xy[1], len(lines), SOFTKEY_LINE_OFFSETS)):
+        width = sum(widths[code] for code in glyphs)
+        out.append({"opcode": "inline_text", "x": softkey_x(width, xy[0]), "y": y,
+                    "glyphs": glyphs.hex()})
+    return out
 
 
 # A screen's title and page counter, as every donor draws them: the title at (6,4) in a

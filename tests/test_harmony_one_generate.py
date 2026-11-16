@@ -1648,3 +1648,24 @@ def test_a_menu_input_opens_its_menu_steps_the_shorter_way_and_chooses():
     assert _command_ids(image, moves[(0, 4)]) == [source, down, ok]
     assert _command_ids(image, moves[(3, 1)]) == [source, down, down, ok]
     assert _waits(image, moves[(0, 1)]) == [(0 << 8) | 10] * 3
+
+
+def test_a_softkey_label_too_wide_for_its_half_wraps_as_logitech_s_current_activity():
+    from afterglow import paths
+    from afterglow.backends.harmony_one import assets, catalogue
+    from afterglow.backends.harmony_one.generate import font_from_scaffold
+
+    def drawn(language, key):
+        words = catalogue.load(language)
+        loaded = assets.load(paths.scaffolds("harmony-one"), catalogue.characters(words))
+        fonts = [font_from_scaffold(loaded["fonts"][role]) for role in sorted(loaded["fonts"])]
+        font = fonts[pages.SOFTKEY_FONTS["activities"]]
+        metrics = font.get("metrics") or font["glyphs"]
+        return [(item["y"], "".join(metrics[code]["char"]
+                                    for code in bytes.fromhex(item["glyphs"])))
+                for item in pages.softkey_label(words(f"softkey.{key}"), font, 6,
+                                                pages.SOFTKEYS["activities"])[1:]]
+    # Logitech's own images draw "Current" at 196 and "Activity" at 207
+    assert drawn("en", "current-activity") == [(196, "Current"), (207, "Activity")]
+    assert drawn("fr", "current-activity") == [(196, "Activité en"), (207, "cours")]
+    assert drawn("en", "activities") == [(202, "Activities")]
