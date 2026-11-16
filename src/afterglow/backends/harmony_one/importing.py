@@ -1200,9 +1200,11 @@ class Activities:
         a macro cannot say."""
         out = []
         for step in steps:
-            if step[0] == WRITE and step[1] not in self.variables:
-                # a state of its own - an activity's channel mode - not a device's power
-                # or input, which the project says another way
+            if (step[0] == WRITE and step[1] not in self.variables
+                    and step[1] not in self.image.channel_variables):
+                # a state of its own, not a device's power or input, which the project
+                # says another way, nor a favourite's channel, which dials as the
+                # favourite does
                 name = self.image.names.get(step[1]) or f"variable {step[1]}"
                 self.left_out[f"a write to {name}"] += 1
             if step[0] == SEND and self.command(step[1]):

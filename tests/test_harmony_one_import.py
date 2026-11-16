@@ -539,10 +539,9 @@ def test_what_a_project_cannot_say_is_named_in_the_notes_not_dropped_unseen(tmp_
     from afterglow import importer
     with contextlib.redirect_stdout(io.StringIO()):
         warnings = importer.import_file(str(LIVING_ROOM)).warnings
-    # its "TV + AVR" activity keeps a channel mode of its own, which a project has no
-    # field for
-    assert any("TV_+_AVR_Channel_3" in note for note in warnings
-               if note.startswith("left out"))
+    # its writes to "TV_+_AVR_Channel_3" are favourites dialling, which come across as
+    # the favourites: nothing it does is left out
+    assert not [note for note in warnings if note.startswith("left out")]
 
 
 def _import_warnings(image: bytes, tmp_path) -> tuple[str, ...]:

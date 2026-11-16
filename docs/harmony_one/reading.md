@@ -50,8 +50,8 @@ three household configurations and on generated ones:
   draws most, five at least.
 - **What a project cannot say is named, not dropped.** A key, a button or an activity's
   steps are read as sends and waits; a write to a variable that is no device's power or
-  input - a "TV + AVR" activity's own channel mode, `TV_+_AVR_Channel_3` - has no field in a
-  project, and neither has a send no device's command is. Each is counted into the import's
+  input, nor a favourite's channel (`TV_+_AVR_Channel_3`, whose transition dials it), has
+  no field in a project, and neither has a send no device's command is. Each is counted into the import's
   notes ("left out, as a project cannot say them: ..."). Changing screens is not: the build
   makes its own navigation.
 - **A letter another script draws alike is read in its word's script.** A Cyrillic а, е
