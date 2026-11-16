@@ -168,6 +168,7 @@ class DevicesTab(QWidget):
             rf_set(self.project, wiz.result_spec.get("id"), wiz.rf_token())
             self.refresh()
             self.changed.emit()
+        wiz.deleteLater()          # an editor is made for one use, not kept until exit
 
     def edit_device(self, idx):
         spec = self.project["devices"][idx]
@@ -183,6 +184,7 @@ class DevicesTab(QWidget):
             rf_set(self.project, wiz.result_spec.get("id"), wiz.rf_token())
             self.refresh()
             self.changed.emit()
+        wiz.deleteLater()
 
     def delete_device(self, idx):
         import copy
@@ -313,6 +315,7 @@ class ActivitiesTab(QWidget):
             self._keep_assets(wiz)
             self.refresh()
             self.changed.emit()
+        wiz.deleteLater()
 
     def _keep_assets(self, dialog):
         """Record any picture a favourite uses, so the build copies it in.
@@ -341,6 +344,7 @@ class ActivitiesTab(QWidget):
             self._keep_assets(editor)
             self.refresh()
             self.changed.emit()
+        editor.deleteLater()
 
     def delete_activity(self, idx):
         lbl = self.project["activities"][idx].get("label","activity")

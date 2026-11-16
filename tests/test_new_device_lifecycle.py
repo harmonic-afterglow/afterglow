@@ -60,6 +60,9 @@ def test_add_device_marks_the_wizard_result_new(qapp_or_skip, monkeypatch):
         def rf_token(self):
             return "front"
 
+        def deleteLater(self):
+            pass
+
     monkeypatch.setattr(tabs, "DeviceWizard", Wizard)
     project = {"devices": [], "activities": [], "settings": {}}
     tab = tabs.DevicesTab(project, [])
