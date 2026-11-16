@@ -58,6 +58,26 @@ A configuration read *off* a remote shows `0600`, which is correct there only be
 
 Plain XML: the devices, the activities, and how the remote should behave.
 
+### A device's manufacturer and model
+
+Never empty. `HAO.lua` logs every command it sends, `io.write("\tDevice Model: ",
+eventdevice.model, ...)`, and an empty `<Model />` reads as nil, which `io.write` refuses:
+the Lua handler stops before the command is queued and before the queue reports done. So an
+activity's start spins forever and a key does nothing. That is what a configuration
+imported from a Harmony One does, because the One stores no manufacturer or model. A device
+without them is written with its label as the model and `Unknown` as the manufacturer (seen
+on a 900, firmware 7.5, 2026-11-16).
+
+### Device ids
+
+Numbers. The Lua handler passes a command's `DeviceId` to the native `sendCommand` as its
+first argument (`HAO.lua`), which takes a number: Lua converts `"40009001"`, but
+`"harmony-one-0"` fails with `bad argument #1 to 'sendCommand' (number expected, got
+string)`, and activities spin as they do with an empty model. The UI and the rest of the
+Lua treat ids as text, so nothing else notices. A device whose project id is not a number
+is given one from 40009001 up at build time, and every activity, step and Off list that
+names it follows (seen on a 900, firmware 7.5, 2026-11-16).
+
 ### Device states
 
 A Harmony tracks what everything is set to rather than firing codes blindly. That

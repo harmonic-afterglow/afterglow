@@ -348,9 +348,12 @@ def _gen_device(spec):
                                         **({"AlwaysOn": always} if always else {})
                                         }.items())
                  + "</Properties>")
+    # Never empty: the firmware logs the model of every command it sends, and an empty one
+    # stops it there - an activity spins forever (configuration.md, "A device's
+    # manufacturer and model"). A Harmony One's devices come with neither.
     identity = (f"<Device><Id>{did}</Id><Type>{spec['type']}</Type>"
-                f"<Manufacturer>{esc(spec.get('mfr', ''))}</Manufacturer>"
-                f"<Model>{esc(spec.get('model', ''))}</Model>")
+                f"<Manufacturer>{esc(spec.get('mfr') or 'Unknown')}</Manufacturer>"
+                f"<Model>{esc(spec.get('model') or spec['label'])}</Model>")
     commands = f"<Commands>{cmd_props}{cmd_xml}</Commands></Device>"
     if sequence_refs is not None:
         # Logitech's 1100 order: the controller, then Properties before Presentation.

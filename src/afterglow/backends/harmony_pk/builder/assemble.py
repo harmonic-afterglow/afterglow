@@ -54,6 +54,42 @@ def _build_time() -> str:
     return time.strftime("%Y%m%d %H%M%S", moment)
 
 
+# Where numbers given to devices that have none start: the editor's own first device id.
+FIRST_NUMERIC_ID = 40009001
+
+
+def _numeric_device_ids(specs, activities, power_off_all):
+    """Every device id a number, and everything that names a device following it.
+
+    The firmware hands a command's device id to its native sender as a number
+    (`HAO.lua`, `sendCommand`): Lua turns "40009001" into one, not "harmony-one-0", and
+    the handler stops there - an activity's start spins forever and a key does nothing
+    (configuration.md, "Device ids"). A Harmony One's devices are imported with ids like
+    that. The specs are this build's own copy; the activities and Off list are copied.
+    """
+    taken = {str(item.get("id")) for item in [*specs, *(activities or [])]}
+    renamed, number = {}, FIRST_NUMERIC_ID
+    for spec in specs:
+        if str(spec.get("id")).isdigit():
+            continue
+        while str(number) in taken:
+            number += 1
+        renamed[str(spec["id"])] = str(number)
+        taken.add(str(number))
+    if not renamed:
+        return specs, activities, power_off_all
+
+    def follow(value):
+        if isinstance(value, str):
+            return renamed.get(value, value)
+        if isinstance(value, list):
+            return [follow(item) for item in value]
+        if isinstance(value, dict):
+            return {follow(key): follow(item) for key, item in value.items()}
+        return value
+    return follow(specs), follow(activities), follow(power_off_all)
+
+
 def _check_unique_ids(specs, activities):
     """Two things sharing an id is silent data loss.
 
@@ -188,6 +224,7 @@ def build(specs, work, request: BuildRequest | None = None):
     # pass a transient it owns; copying here makes that a property of this function
     # instead of something each caller has to know.
     specs = deepcopy(specs)
+    specs, activities, power_off_all = _numeric_device_ids(specs, activities, power_off_all)
     _check_unique_ids(specs, activities)
     references.check(specs, activities)
     # A remote that plays recorded sequences (the Harmony 1100) has no protocol table:

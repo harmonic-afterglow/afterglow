@@ -97,6 +97,75 @@ def test_a_built_config_has_the_same_element_order_as_a_real_one(build, unpacked
     assert order_of(root) == REAL_ORDER
 
 
+@pytest.mark.parametrize("path", donors_of("harmony-900"),
+                         ids=lambda p: "/".join(p.split("/")[-2:]))
+def test_a_real_config_names_every_device_s_manufacturer_and_model(path, unpacked):
+    root = ET.parse(f'{unpacked(path)}/userconfig/UserConfiguration.xml').getroot()
+    for device in root.findall("Device"):
+        assert device.findtext("Manufacturer") and device.findtext("Model")
+
+
+def test_a_device_with_no_manufacturer_or_model_is_built_with_its_label_and_unknown(
+        build, unpacked):
+    """The firmware logs the model of every command it sends and stops at an empty one,
+    so an activity's start spins forever. A Harmony One's devices have neither."""
+    tree = unpacked(build({"devices": [one_device()], "activities": [], "assets": []}),
+                    "anonymous")
+    [device] = ET.parse(tree / "userconfig" / "UserConfiguration.xml").getroot().findall(
+        "Device")
+    assert (device.findtext("Manufacturer"), device.findtext("Model")) == ("Unknown", "TV")
+
+
+def test_a_device_s_own_manufacturer_and_model_are_kept(build, unpacked):
+    device = one_device() | {"mfr": "Sony", "model": "STR-K750P"}
+    tree = unpacked(build({"devices": [device], "activities": [], "assets": []}), "named")
+    [built] = ET.parse(tree / "userconfig" / "UserConfiguration.xml").getroot().findall(
+        "Device")
+    assert (built.findtext("Manufacturer"), built.findtext("Model")) == ("Sony", "STR-K750P")
+
+
+@pytest.mark.parametrize("path", donors_of("harmony-900"),
+                         ids=lambda p: "/".join(p.split("/")[-2:]))
+def test_a_real_config_numbers_every_device(path, unpacked):
+    root = ET.parse(f'{unpacked(path)}/userconfig/UserConfiguration.xml').getroot()
+    assert all(device.findtext("Id").isdigit() for device in root.findall("Device"))
+
+
+@pytest.mark.parametrize("remote", ["harmony-900", "harmony-1100"])
+def test_a_device_whose_id_is_not_a_number_is_built_with_one_and_followed(
+        remote, tmp_path, unpacked):
+    """The firmware's sender takes a device id as a number and stops at "harmony-one-0",
+    so an activity's start spins forever. A Harmony One's devices are imported so. The
+    1100 runs the same Lua."""
+    import contextlib
+    import io
+
+    from conftest import ROOT
+    from afterglow.build_service import ConfigBuildService
+
+    def build(project):
+        out = tmp_path / f"{remote}.ezhex"
+        project["settings"] = {"out_file": str(out), "remote": remote}
+        with contextlib.redirect_stdout(io.StringIO()):
+            ConfigBuildService(ROOT, lambda _m: None).build(project)
+        return out
+    device = one_device() | {"id": "harmony-one-0"}
+    activity = {"id": "10000000", "label": "Watch TV", "type": "VirtualTelevisionN",
+                "power_on_devices": ["harmony-one-0"], "enter": [], "leave": [],
+                "control": "harmony-one-0", "volume": "harmony-one-0",
+                "display": "harmony-one-0"}
+    tree = unpacked(build({"devices": [device], "activities": [activity], "assets": [],
+                           "power_off_all": ["harmony-one-0"]}), remote)
+    config = (tree / "userconfig" / "UserConfiguration.xml").read_text()
+    lists = tree / "userconfig" / "ActionLists.xml"          # the 1100 has none
+    actions = lists.read_text() if lists.is_file() else ""
+    assert "harmony-one-0" not in config + actions
+    [built] = ET.fromstring(config).findall("Device")
+    assert built.findtext("Id") == "40009001"
+    roles = [role.findtext("DeviceId") for role in ET.fromstring(config).iter("Role")]
+    assert roles and set(roles) == {"40009001"}
+
+
 def test_the_two_new_device_signals_can_never_disagree(build, unpacked):
     """The invariant itself, whichever way round. A remote told to walk devices it
     cannot enumerate shows an empty power-on test and then offers to turn off
