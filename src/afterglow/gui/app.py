@@ -1,5 +1,6 @@
 """The main window: menu bar, tabs, project load and save."""
 
+import contextlib
 import logging
 import sys
 import json
@@ -626,19 +627,39 @@ class MainWindow(QMainWindow):
             self, "Save Project As", str(user_folder("projects") / "project.json"),
             "JSON Project (*.json);;All (*)")
         if path:
-            self._project_path = path
-            self._write_project(path)
+            # a name typed without its extension is still a project the Open dialog lists
+            if not Path(path).suffix:
+                path += ".json"
+            if self._write_project(path):
+                self._project_path = path
 
-    def _write_project(self, path):
-        from .. import project_backups
+    def _write_project(self, path) -> bool:
+        """Save the project to ``path``, whole or not at all; False, said, if it failed.
+        Written beside it first and moved over it, so a crash or a full disk part-way
+        leaves the previous version where it was, not half of the new one."""
+        import os
+        from .. import project_backups, recording_repair
         self.settings_tab.save()
-        project_backups.back_up(path)        # the version this save replaces
-        from .. import recording_repair
+        try:
+            project_backups.back_up(path)    # the version this save replaces
+        except OSError as exc:               # a backup is a kindness, not a condition
+            logging.getLogger(__name__).warning("backup of %s: %s", path, exc)
         recording_repair.stamp(self.project)
-        Path(path).write_text(json.dumps(self.project, indent=2), encoding="utf-8")
+        target = Path(path)
+        temporary = target.with_name(target.name + ".saving")
+        try:
+            temporary.write_text(json.dumps(self.project, indent=2), encoding="utf-8")
+            os.replace(temporary, target)
+        except OSError as exc:
+            with contextlib.suppress(OSError):
+                temporary.unlink()
+            QMessageBox.critical(self, "Save Failed",
+                                 f"The project could not be saved to {target}:\n\n{exc}")
+            return False
         self._mark_clean()
         _remember_project(str(path))
         self.status.showMessage(f"Saved {path}", 5000)
+        return True
 
     def _show_log(self):
         """Open the folder that holds the log, for attaching it to a bug report."""
@@ -1060,6 +1081,24 @@ def _join_title_bar(window):
         changed.connect(lambda _scheme: paint())
 
 
+def _error_notice(window):
+    """Say, without stopping anything, that something went wrong and where the details
+    are. One notice at a time: a fault that repeats on every repaint opens one box."""
+    shown = []
+
+    def notice(summary):
+        if shown and shown[0].isVisible():
+            return
+        box = QMessageBox(QMessageBox.Icon.Warning, "Something went wrong",
+                          f"{summary}\n\nWhat was being done may not have finished. "
+                          "Help > Show log file has the details, for a bug report.",
+                          QMessageBox.StandardButton.Ok, window)
+        box.setModal(False)
+        box.show()
+        shown[:] = [box]
+    return notice
+
+
 def main():
     from .. import applog
     applog.setup()
@@ -1080,6 +1119,7 @@ def main():
     app.setWindowIcon(_application_icon())
 
     win = MainWindow()
+    applog.LISTENERS.append(_error_notice(win))
     win.show()
     _join_title_bar(win)
     _folder_access_check(win)

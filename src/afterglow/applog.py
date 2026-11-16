@@ -52,12 +52,22 @@ def setup() -> Path | None:
     return written
 
 
+# Told of each unexpected error on the main thread, after it is logged: the interface
+# puts up a notice, so a menu action that failed is not simply nothing happening.
+LISTENERS: list = []
+
+
 def _catch_uncaught():
     previous, previous_thread = sys.excepthook, threading.excepthook
 
     def hook(kind, value, trace):
         LOG.error("Unexpected error", exc_info=(kind, value, trace))
         previous(kind, value, trace)
+        for listener in list(LISTENERS):
+            try:
+                listener(f"{kind.__name__}: {value}")
+            except Exception:                    # a notice must not raise a second error
+                LOG.exception("telling of an error")
 
     def thread_hook(args):
         LOG.error("Unexpected error in %s", getattr(args.thread, "name", "a thread"),
