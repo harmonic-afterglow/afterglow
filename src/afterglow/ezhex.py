@@ -84,8 +84,15 @@ def read(raw: bytes) -> Contents:
 
 def stated(header: bytes) -> tuple[str, ...]:
     """The identity fields a file of this header can say: an MH configuration's
-    description names only the skin; an `.ezhex` header all of them."""
-    return ("skin",) if MH_MARK in header else IDENTITY_FIELDS
+    description names only the skin; an `.ezhex` header all of them but one it leaves
+    empty - a build for a remote whose profile names no board or flash (the 650's, whose
+    boards differ remote to remote) says nothing of it rather than something false."""
+    if MH_MARK in header:
+        return ("skin",)
+    intended = header.split(b"<INTENDEDVERSION>", 1)[-1].split(b"</INTENDEDVERSION>", 1)[0]
+    blank = {field for field, tag in (("flash", b"FLASH"), ("board", b"BOARD"))
+             if re.search(rb"<%s>\s*</%s>" % (tag, tag), intended)}
+    return tuple(field for field in IDENTITY_FIELDS if field not in blank)
 
 
 def _mh(raw: bytes) -> Contents | None:
@@ -285,8 +292,10 @@ _EZHEX_HEADER = (
 
 def header_for_profile(profile, bds=0, cks=0):
     """Generate a header that declares `profile`'s remote."""
+    # a field the profile does not name is left empty - the file cannot say it - never
+    # written as "None", which every check then reads as a board or flash called None
     return _EZHEX_HEADER.format(bds=bds, cks=cks, arch=profile.arch, skin=profile.skin,
-                                flash=profile.flash, board=profile.board,
+                                flash=profile.flash or "", board=profile.board or "",
                                 software_type=profile.software_type or 0).encode("utf-8")
 
 

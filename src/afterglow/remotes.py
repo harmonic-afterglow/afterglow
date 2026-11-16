@@ -855,7 +855,7 @@ def identity_of(header: bytes) -> dict:
             out[key] = int(match.group(1))
     for key, pattern in _TEXT_FIELDS.items():
         match = re.search(pattern, intended)
-        if match:
+        if match and match.group(1).strip():          # an empty one says nothing
             out[key] = match.group(1).decode("ascii", "replace")
     return out
 
