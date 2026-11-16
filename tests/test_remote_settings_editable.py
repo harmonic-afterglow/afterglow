@@ -78,6 +78,8 @@ def test_a_harmony_one_offers_its_themes_by_name_and_a_900_does_not(qapp_or_skip
     from afterglow.gui.tabs import SettingsTab
 
     folder = themes.folder("harmony-one")
+    # from nothing: an import earlier in the run may have read a look as a theme there
+    shutil.rmtree(folder, ignore_errors=True)
     for name in ("Mario", themes.EXAMPLE):
         (folder / name).mkdir(parents=True, exist_ok=True)
         (folder / name / themes.MANIFEST).write_text("{}")
