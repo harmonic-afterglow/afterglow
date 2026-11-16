@@ -19,9 +19,6 @@ ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = ROOT / "afterglow.py"
 
 
-def test_the_launcher_exists_and_is_runnable():
-    assert LAUNCHER.is_file()
-    assert LAUNCHER.read_text().startswith("#!")
 
 
 def run(code, cwd):

@@ -360,10 +360,10 @@ def test_a_build_is_the_configuration_concordance_sends(tmp_path, image):
     assert backend.read_configuration_file(path) == image
 
 
-def test_the_profile_is_experimental_never_verified_without_hardware():
+def test_the_profile_builds_on_its_own_backend():
     from afterglow import remotes
     profile = remotes.get("harmony-800")
-    assert profile.status == "experimental" and profile.backend == "harmony-800"
+    assert profile.buildable and profile.backend == "harmony-800"
     profile.require_buildable()
 
 

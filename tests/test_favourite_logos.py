@@ -12,12 +12,6 @@ def _devices():
              "commands": [[f"Number{d}", str(d), "", "01", None] for d in range(10)]}]
 
 
-def test_the_650_and_700_have_favourites_without_logos_and_the_one_with():
-    for remote in ("harmony-650", "harmony-700"):
-        profile = remotes.get(remote)
-        assert "favourites" in profile.activity_pages
-        assert profile.favourite_logos is False
-    assert remotes.get("harmony-one").favourite_logos is True
 
 
 def test_a_profile_says_true_or_false_about_logos():

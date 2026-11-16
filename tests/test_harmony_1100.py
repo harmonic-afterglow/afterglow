@@ -54,9 +54,9 @@ def test_both_skin_numbers_are_the_harmony_1100():
     assert not remotes.get("harmony-900").matches({"arch": 11, "skin": 62})
 
 
-def test_it_is_experimental_and_builds_and_writes():
+def test_it_builds_and_writes():
     profile = remotes.get("harmony-1100")
-    assert profile.status == remotes.EXPERIMENTAL
+    assert profile.buildable
     profile.require_buildable()
     profile.require_writable()
 

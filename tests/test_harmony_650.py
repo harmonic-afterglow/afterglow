@@ -86,11 +86,11 @@ def test_a_sized_picture_and_a_wide_switch_round_trip():
 
 
 @pytest.mark.parametrize("remote, skin", [("harmony-650", 72), ("harmony-700", 66)])
-def test_the_profile_names_its_remote_and_is_experimental(remote, skin):
+def test_the_profile_names_its_remote_and_builds(remote, skin):
     profile = remotes.get(remote)
     assert (profile.arch, profile.skin) == (14, skin)
     assert profile.backend == "harmony-650"
-    assert profile.status == "experimental"
+    assert profile.buildable
     # a Favourites page, of names: Logitech never gave these remotes' favourites logos
     assert "favourites" in profile.interface["activity_pages"]
     assert profile.favourite_logos is False

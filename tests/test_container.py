@@ -58,10 +58,14 @@ def test_container_layer_names_no_payload_format():
 
 
 def test_roundtrip_is_byte_identical(configs, unpacked, tmp_path):
-    """unpack -> pack must reproduce the file exactly.
+    """unpack -> pack must reproduce the file exactly - the regression gate.
 
     This is the property whose absence let a malformed header ship: the rebuilt config
-    unzipped fine, verified fine, and the remote rejected it.
+    unzipped fine, verified fine, and the remote rejected it. `pack_standalone` wrote a
+    doubled `\\r\\r\\n` after every header line, flattened every entry's Unix mode,
+    deflated entries the original stored, and dropped the Info-ZIP extra that lives only in
+    the local header: each invisible to "does it unzip?", fatal to "will the remote take
+    it". test_synthetic_roundtrip.py checks the same without real configurations, in CI.
     """
     for index, config in enumerate(configs):
         tree = unpacked(config, f"t{index}")

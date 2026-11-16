@@ -251,14 +251,14 @@ def test_no_shared_module_names_a_particular_remote():
 
     import afterglow
     root = Path(afterglow.__file__).parent
+    ids = {profile.id for profile in remotes.load_all()}
     offenders = []
     for path in root.rglob("*.py"):
         if "backends" in path.relative_to(root).parts:
             continue
         with path.open("rb") as handle:
             for token in tokenize.tokenize(handle.readline):
-                if token.type == tokenize.STRING and token.string.strip("\"'rbf") in {
-                        profile.id for profile in remotes.load_all()}:
+                if token.type == tokenize.STRING and token.string.strip("\"'rbf") in ids:
                     offenders.append(f"{path.relative_to(root)}:{token.start[0]}")
     assert offenders == []
 

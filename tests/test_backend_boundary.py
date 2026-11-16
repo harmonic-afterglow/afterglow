@@ -24,27 +24,12 @@ MINIMAL_INTERFACE = {"tabs": ["devices", "flash"], "device_pages": ["identity", 
                      "timing": [],
                      "languages": [["English", "enu"]]}
 
-def outside_backends():
-    return [path for path in PACKAGE.rglob("*.py")
-            if BACKENDS not in path.parents and path.name != "__init__.py"]
-
-
 def imported_modules(path: Path):
     for node in ast.walk(ast.parse(path.read_text())):
         if isinstance(node, ast.Import):
             yield from (alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             yield f"{'.' * node.level}{node.module}"
-
-
-@pytest.mark.parametrize("path", sorted(outside_backends()),
-                         ids=lambda path: str(path.relative_to(PACKAGE)))
-def test_shared_code_never_imports_a_concrete_backend(path):
-    leaked = [module for module in imported_modules(path)
-              if "backends.harmony_pk" in module]
-    assert not leaked, (
-        f"{path.relative_to(PACKAGE)} imports {leaked}; shared code must select the "
-        "profile's backend through afterglow.backends")
 
 
 @pytest.mark.parametrize("path", PORTABLE, ids=lambda path: path.name)

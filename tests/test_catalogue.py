@@ -95,10 +95,10 @@ def test_an_unshipped_remote_is_still_named_on_import():
         remotes.identify(header)
 
 
-def test_harmony_one_is_experimental_and_not_firmware_allowlisted():
+def test_harmony_one_builds_and_is_not_firmware_allowlisted():
     profile = remotes.get("harmony-one")
 
-    assert profile.status == remotes.EXPERIMENTAL
+    assert profile.buildable
     profile.require_buildable()
     profile.require_writable()
     assert profile.payload == "blob"

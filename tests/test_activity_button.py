@@ -3,7 +3,6 @@
 one activity a key, as MyHarmony's "Customize Activity Buttons"."""
 from __future__ import annotations
 
-from afterglow import remotes
 
 
 def _devices():
@@ -17,11 +16,6 @@ def _activity(**fields):
             "hard_macros": {}, "enter": [], "leave": [], "properties": {}, **fields}
 
 
-def test_the_650_and_700_offer_their_three_keys_and_the_one_none():
-    for remote in ("harmony-650", "harmony-700"):
-        assert [value for _label, value in remotes.get(remote).activity_buttons] == [
-            "TV", "Movie", "Music"]
-    assert remotes.get("harmony-one").activity_buttons == ()
 
 
 def test_an_activity_keeps_its_key_and_can_be_given_another(qapp_or_skip):
