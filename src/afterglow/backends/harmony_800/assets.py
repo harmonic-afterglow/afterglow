@@ -252,6 +252,45 @@ def read_manifest(directory) -> dict:
     return manifest
 
 
+# Each picture as the remote stores it, by its file as it stands: encoding a scaffold's
+# pictures pixel by pixel took four or five seconds, twice a build. Only the encoded
+# bytes are kept - their pixels would be tens of megabytes - and a changed file is a new
+# key.
+_ENCODED: dict[tuple, tuple] = {}
+_MOST_ENCODED = 4096
+
+
+class _Picture(dict):
+    """A loaded picture. Its pixels, "rows", are read back from its encoded bytes the
+    first time they are asked for: a build needs only the bytes."""
+
+    def __missing__(self, key):
+        if key != "rows":
+            raise KeyError(key)
+        rows = self["rows"] = bitmap.decode(self["body"], 0)["rows"]
+        return rows
+
+
+def _encoded(path: Path, mode: str, role: str) -> tuple[int, int, bytes, dict]:
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size, mode)
+    found = _ENCODED.get(key)
+    if found is None:
+        try:
+            image = imaging.decode(path.read_bytes())
+        except ValueError as exc:
+            raise ValueError(f"picture {role!r} at {path} cannot be read: {exc}") from exc
+        rows, report = to_rows(image)
+        try:
+            body = bitmap.encode(rows, mode=MODES[mode])
+        except ValueError as exc:
+            raise ValueError(f"picture {role!r} at {path} cannot be stored: {exc}") from exc
+        if len(_ENCODED) >= _MOST_ENCODED:
+            _ENCODED.clear()
+        found = _ENCODED[key] = (image["width"], image["height"], body, report)
+    return found
+
+
 def load(directory, characters=None) -> dict:
     """Load every picture and font a scaffold declares, encoded as the remote stores them.
 
@@ -264,28 +303,16 @@ def load(directory, characters=None) -> dict:
         path = directory / entry["file"]
         if not path.is_file():
             raise FileNotFoundError(f"picture {role!r} names {path}, which does not exist")
-        try:
-            image = imaging.decode(path.read_bytes())
-        except ValueError as exc:
-            raise ValueError(f"picture {role!r} at {path} cannot be read: {exc}") from exc
+        width, height, body, report = _encoded(path, entry.get("mode", "shorter"), role)
         declared = entry.get("size")
-        if declared is not None:
-            width, height = declared
-            if (image["width"], image["height"]) != (width, height):
-                raise ValueError(
-                    f"picture {role!r} at {path} is "
-                    f"{image['width']}x{image['height']}, but the manifest says "
-                    f"{width}x{height}")
-        rows, report = to_rows(image)
-        try:
-            body = bitmap.encode(rows, mode=MODES[entry.get("mode", "shorter")])
-        except ValueError as exc:
-            raise ValueError(f"picture {role!r} at {path} cannot be stored: {exc}") from exc
-        pictures[role] = {
-            "file": entry["file"], "width": image["width"], "height": image["height"],
-            "rows": rows, "body": body,
+        if declared is not None and (width, height) != tuple(declared):
+            raise ValueError(
+                f"picture {role!r} at {path} is {width}x{height}, but the manifest says "
+                f"{declared[0]}x{declared[1]}")
+        pictures[role] = _Picture({
+            "file": entry["file"], "width": width, "height": height, "body": body,
             "mode": body[0], "bytes": len(body), **report,
-        }
+        })
         if report["partial_alpha"] or report["colour_reduced"]:
             notes[role] = report
     fonts = {}

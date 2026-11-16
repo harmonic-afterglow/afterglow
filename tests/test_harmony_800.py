@@ -539,8 +539,12 @@ def test_the_checksum_folds_to_the_byte_at_a_time_sum_odd_ends_included():
 
 
 def test_a_write_is_reported_section_by_section():
-    image = generate.build(WATCHING)["image"]
-    other = generate.build({**WATCHING, "activities": WATCHING["activities"][:1]})["image"]
+    """Built at the same moment: two builds a clock apart differ in their stamp, which
+    once hid that the second project here was the first (WATCHING has one activity)."""
+    stamp = (0, 0, 12, 0, 0, 2026)
+    image = generate.build(WATCHING, stamp_fields=stamp)["image"]
+    renamed = [{**activity, "label": "Renamed"} for activity in WATCHING["activities"]]
+    other = generate.build({**WATCHING, "activities": renamed}, stamp_fields=stamp)["image"]
     same = backend.compare_payloads(image, image, None)
     assert same["changed"] == [] and same["unchanged"] == 20
     assert backend.compare_payloads(image, other, None)["changed"]
