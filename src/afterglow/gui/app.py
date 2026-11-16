@@ -1,5 +1,6 @@
 """The main window: menu bar, tabs, project load and save."""
 
+import logging
 import sys
 import json
 from pathlib import Path
@@ -39,12 +40,27 @@ class MainWindow(QMainWindow):
         from .activity_buttons import previous_prepared_dir
         # Earlier versions kept the library and logos in application data. Brought into
         # Documents/Afterglow once, here, before anything reads them.
-        self._adopted = paths.adopt_previous_library(previous_prepared_dir())
-        paths.prepare_user_folders()
-        paths.user_library("devices").mkdir(parents=True, exist_ok=True)
+        # A folder that cannot be made - Windows' Controlled folder access, a read-only
+        # Documents - must not stop the window opening: `_folder_access_check` then says
+        # why nothing can be saved, which a crash on first start never let it do.
         from .. import themes
-        self._adopted += themes.seed_examples()
-        self.templates = load_repo_templates(paths.user_library())
+        self._adopted = []
+        for step, adopts in (
+                (lambda: paths.adopt_previous_library(previous_prepared_dir()), True),
+                (paths.prepare_user_folders, False),
+                (lambda: paths.user_library("devices").mkdir(parents=True, exist_ok=True),
+                 False),
+                (themes.seed_examples, True)):
+            try:
+                done = step()
+            except OSError as exc:
+                logging.getLogger(__name__).warning("user folder: %s", exc)
+                continue
+            if adopts:
+                self._adopted += done
+        library = paths.user_library()
+        self.templates = (load_repo_templates(library) if (library / "devices").is_dir()
+                          else [])
         self.source_preferences = SourcePreferences.load()
         self._project_path = None
         self._dirty = False

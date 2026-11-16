@@ -20,6 +20,8 @@ sys.path.insert(0, str(ROOT / "src"))
 # test prepares pictures there - all of which reached a real home directory before
 # these were set. Set before `afterglow` is imported, since `paths` caches its answers.
 _SANDBOX = Path(__import__("tempfile").mkdtemp(prefix="afterglow-tests-"))
+# and taken away afterwards: every run used to leave its sandbox in the temp folder
+__import__("atexit").register(__import__("shutil").rmtree, _SANDBOX, ignore_errors=True)
 for _name, _folder in (("AFTERGLOW_HOME", "Documents/Afterglow"),
                        ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"),
                        ("XDG_CONFIG_HOME", "config")):
