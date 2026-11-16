@@ -96,7 +96,8 @@ src/afterglow/
     tabs.py               the four tabs: Devices / Activities / Remote Settings / Flash
     device_wizard.py activity_wizard.py macro.py properties_editor.py ...
     constants.py          re-exports paths/vocabulary so windows import from one place
-  library/                SHAREABLE data - portable protocols and remote profiles (JSON)
+  library/                SHAREABLE data - portable protocols and remote profiles (JSON);
+                          remotes/*/art.svg is Logitech's drawing (its NOTICE.md)
   icons/                  Logitech artwork from app-main.swf - NOT under this repo's GPL
   scaffolds/              per-remote platform state each build starts from; bundled
                           (Logitech's) or synthesised (ours) - see its README

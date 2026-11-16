@@ -699,7 +699,7 @@ class MainWindow(QMainWindow):
             "<br><br>"
             "Free software, GPL-3.0-or-later. Some artwork and data files are "
             "Logitech's and are not covered by that licence - see the NOTICE.md in the "
-            "icons and scaffolds folders.")
+            "icons, scaffolds and library/remotes folders.")
         box.exec()
 
     def closeEvent(self, event):
