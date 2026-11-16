@@ -833,3 +833,27 @@ def test_with_the_assistant_hidden_a_first_start_still_opens_the_welcome_tour():
     skipped = _fresh(generate.build({**PROJECT, "settings": {
         "remote_assistant": False, "welcome": "never"}}))
     assert skipped.mode == scaffold.SYSTEM_SCREENS
+
+
+def test_the_activities_key_on_the_menu_goes_to_its_first_page_when_nothing_runs():
+    # As Logitech's: on the Activities menu the key switches on CurrentActivityState -
+    # the running activity's screen, or with none (8) the menu's first page (a tester:
+    # from the menu's second page it went back to the first).
+    many = {**PROJECT, "activities": [
+        dict(PROJECT["activities"][0], id=str(number), label=f"Watch {number}")
+        for number in range(1, 5)]}
+    machine = _fresh(generate.build(many))
+    machine.press(keys.code(keys.ACTIVITIES))
+    first = machine.mode
+    assert first == scaffold.SYSTEM_SCREENS
+    machine.touch(pages.SIDE_NEXT_KEY)
+    assert machine.mode != first
+    machine.press(keys.code(keys.ACTIVITIES))
+    assert machine.mode == first
+    # and with one running, the key on the menu's second page goes back to it
+    _start(machine, 0)
+    activity_screen = machine.mode
+    machine.press(keys.code(keys.ACTIVITIES))
+    machine.touch(pages.SIDE_NEXT_KEY)
+    machine.press(keys.code(keys.ACTIVITIES))
+    assert machine.mode == activity_screen
