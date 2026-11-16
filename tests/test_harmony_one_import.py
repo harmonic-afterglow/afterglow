@@ -552,3 +552,58 @@ def _import_warnings(image: bytes, tmp_path) -> tuple[str, ...]:
     payloads.get(profile.payload).unpack(image, str(source))
     (source / ".ezhex_header").write_bytes(ezhex.header_for_profile(profile))
     return importer.import_result(source).warnings
+
+
+LOOKS = {
+    "Ocean": lambda r, g, b: (b, g, r),
+    "Ember": lambda r, g, b: (min(255, r + 70), g, max(0, b - 60)),
+    "Mono": lambda r, g, b: ((r * 3 + g * 6 + b) // 10,) * 3,
+}
+
+
+def _theme(tmp_path, name) -> Path:
+    """The scaffold with every picture recoloured: a theme as someone makes one."""
+    import json
+    import shutil
+    from afterglow import imaging, paths
+
+    target = tmp_path / name
+    shutil.copytree(paths.scaffolds("harmony-one"), target)
+    look = LOOKS[name]
+    for item in json.loads((target / "assets.json").read_text())["pictures"].values():
+        path = target / item["file"]
+        rows = imaging.decode(path.read_bytes())["rows"]
+        path.write_bytes(imaging.encode([[(*look(*pixel[:3]), pixel[3]) for pixel in row]
+                                         for row in rows]))
+    return target
+
+
+# How far a picture blended onto a read-back frame may be from the original's: the image
+# keeps red and blue in steps of 8, so a frame read back is the stored one, and a row
+# icon blended onto it rounds up to a step either way of one blended onto the original.
+# Every picture drawn as itself comes back exact.
+DEPTH_ROUNDING = 16
+
+
+@pytest.mark.parametrize("look", sorted(LOOKS))
+def test_a_configuration_in_a_theme_of_its_own_comes_back_with_that_theme(look, tmp_path):
+    from afterglow import themes
+    from afterglow.backends.harmony_one import theme_reading
+
+    themed = bytes(generate.build(PROJECT, directory=_theme(tmp_path, look))["image"])
+    project = _imported(themed, tmp_path)
+    read = themes.path("harmony-one", project["settings"]["theme"])
+    # built in the theme read back, it draws what it drew
+    again = bytes(generate.build(PROJECT, directory=read)["image"])
+    drawn = [theme_reading._rows(themed, target)
+             for _where, target in theme_reading._draws(themed)]
+    redrawn = [theme_reading._rows(again, target)
+               for _where, target in theme_reading._draws(again)]
+    assert len(drawn) == len(redrawn)
+    for before, after in zip(drawn, redrawn):
+        assert all(a[3] == b[3] and max(abs(a[i] - b[i]) for i in range(3)) <= DEPTH_ROUNDING
+                   for row_a, row_b in zip(before, after) for a, b in zip(row_a, row_b))
+
+
+def test_a_configuration_in_the_default_look_names_no_theme(built, tmp_path):
+    assert "theme" not in _imported(built["image"], tmp_path)["settings"]

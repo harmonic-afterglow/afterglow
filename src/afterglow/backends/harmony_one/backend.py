@@ -134,13 +134,23 @@ def import_project(source, profile, context) -> ImportResult:
     # Logitech's look or a theme: a build wears the default look unless Remote Settings
     # names a theme, so a configuration in a theme of its own says so.
     theme = importing.read_theme(image)
-    if theme == importing.CUSTOM:
-        notes.append("this configuration wears a custom theme; Afterglow builds it in the "
-                     "default look unless a theme is chosen in Remote Settings")
     notes += [f"could not read the image's {item}" for item in image.unreadable]
     # the remote's own settings it was compiled with: how long it stays lit, its clock,
     # the Remote Assistant, its language
     settings = {**importing.read_settings(image), "remote": profile.id}
+    if theme == importing.CUSTOM:
+        # its look, read back as a theme of its own: the pictures it draws where the
+        # default build of what was read draws the scaffold's (theme_reading)
+        from . import theme_reading
+        pictures = theme_reading.theme_pictures(payload, {
+            "devices": devices, "activities": activities, "settings": settings, **off})
+        if pictures:
+            settings["theme"] = theme_reading.write_theme(name, pictures)
+            notes.append(f"this configuration's own look is the theme {settings['theme']!r} "
+                         f"({len(pictures)} pictures), chosen in Remote Settings")
+        else:
+            notes.append("this configuration wears a custom theme; Afterglow builds it in "
+                         "the default look unless a theme is chosen in Remote Settings")
     if context.get("out_file"):
         settings["out_file"] = str(context["out_file"])
     return ImportResult(

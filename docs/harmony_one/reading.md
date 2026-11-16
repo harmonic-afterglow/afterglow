@@ -58,6 +58,16 @@ three household configurations and on generated ones:
   and о are a Latin a, e and o's shapes in this scaffold's fonts; the letters of the word
   that read one way only say which ("сега", not "ceгa"), the line's when the word has
   none. A blank as wide as a space is a space, never French's narrow no-break space.
+- **A theme is read by the default it replaces.** A theme changes pictures only, so the
+  project read back, built again in the default look, draws the same pictures in the same
+  places - screen, slot and the calls to the drawing. Laid side by side, wherever the
+  default draws a scaffold role's picture the configuration draws its theme's, and those
+  become a theme folder named after the configuration, which its settings choose. A role
+  it never draws keeps the default's. The image keeps red and blue in steps of 8, so a
+  picture comes back as it is stored, and a row icon blended onto a read-back frame is
+  within two steps of the one it drew; every picture drawn as itself comes back exact.
+  Checked on three made themes (recoloured, warmed, grey); no themed One configuration
+  from anyone else exists to check against.
 - **A row's icon is its type's**, the same pixels in every Logitech configuration, so a
   fingerprint of it names the type (`platform/type-icons.json`, written by
   `tools/harmony_one_type_icons.py` from the household configurations).
