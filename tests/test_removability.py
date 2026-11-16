@@ -32,7 +32,21 @@ DATA_DIRS = ("library", "icons", "scaffolds")
 
 def backend_names():
     return sorted(path.name for path in (PACKAGE / "backends").iterdir()
-                  if path.is_dir() and not path.name.startswith("__"))
+                  if path.is_dir() and not path.name.startswith("_"))
+
+
+def family_names():
+    """Code several backends share (`backends/_gspm/`): not a backend, and gone with the
+    last backend that uses it."""
+    return sorted(path.name for path in (PACKAGE / "backends").iterdir()
+                  if path.is_dir() and path.name.startswith("_")
+                  and not path.name.startswith("__"))
+
+
+def family_members(family: str) -> list[str]:
+    return [name for name in backend_names()
+            if any(f"from ..{family} import" in path.read_text("utf-8")
+                   for path in (PACKAGE / "backends" / name).rglob("*.py"))]
 
 
 def payload_names():
@@ -40,7 +54,7 @@ def payload_names():
                   if not path.name.startswith("__"))
 
 
-def _tree_without(tmp_path: Path, removed: Path) -> Path:
+def _tree_without(tmp_path: Path, *removed: Path) -> Path:
     """A copy of the package with ``removed`` absent, data directories symlinked."""
     src = tmp_path / "src"
     target = src / "afterglow"
@@ -55,9 +69,10 @@ def _tree_without(tmp_path: Path, removed: Path) -> Path:
                             ignore=shutil.ignore_patterns("__pycache__"))
         else:
             shutil.copy2(entry, target / entry.name)
-    doomed = target / removed.relative_to(PACKAGE)
-    assert doomed.exists(), f"{removed} is not part of the package"
-    shutil.rmtree(doomed) if doomed.is_dir() else doomed.unlink()
+    for gone in removed:
+        doomed = target / gone.relative_to(PACKAGE)
+        assert doomed.exists(), f"{gone} is not part of the package"
+        shutil.rmtree(doomed) if doomed.is_dir() else doomed.unlink()
     return src
 
 
@@ -94,6 +109,18 @@ def test_removing_one_remote_backend_breaks_nothing(name, tmp_path):
     assert not broken, (
         f"deleting backends/{name}/ broke:\n{broken}\n"
         "Shared code must reach a backend through afterglow.backends, never by import.")
+
+
+@pytest.mark.parametrize("family", family_names())
+def test_removing_a_family_with_its_last_member_breaks_nothing(family, tmp_path):
+    members = family_members(family)
+    assert members, f"backends/{family}/ is shared by no backend: delete it"
+    src = _tree_without(tmp_path, PACKAGE / "backends" / family,
+                        *(PACKAGE / "backends" / name for name in members))
+    broken = _import_everything(src)
+    assert not broken, (
+        f"deleting backends/{family}/ with {members} broke:\n{broken}\n"
+        "Only its members may use a family's code.")
 
 
 @pytest.mark.parametrize("name", payload_names())
@@ -162,7 +189,7 @@ def test_shared_code_never_imports_a_concrete_component(path):
             base = f"{'.' * node.level}{node.module or ''}"
             imported.update(f"{base}.{alias.name}" for alias in node.names)
             imported.add(base)
-    for name in set(backend_names()) | set(payload_names()):
+    for name in set(backend_names()) | set(payload_names()) | set(family_names()):
         leaked = sorted(module for module in imported
                         if module.split(".")[-1] == name
                         or f"backends.{name}" in module or f"payloads.{name}" in module)

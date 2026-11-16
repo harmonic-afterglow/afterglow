@@ -42,8 +42,15 @@ the format and the safety gates as load-bearing, because they are.
 > remote or a container format must be `rm -r` - never a refactor. No tight coupling in
 > either direction.
 >
+> Code several backends of one lineage share is a *family*, `backends/_<family>/` (the
+> One, the 800 and arch 14 share `_gspm/`). Only its members may use it, and it goes with
+> the last of them. Share a module only while it says the same thing for every member;
+> one whose behaviour differs stays in each backend. A remote of an architecture already
+> built - the 700 beside the 650 - is a profile and a scaffold, not a backend.
+>
 > `tests/test_removability.py` enforces this by *doing* it: it builds the package with
-> one backend, then one payload type, deleted, and imports everything that is left. It
+> one backend, then one payload type, then a family with its members, deleted, and
+> imports everything that is left. It
 > also fails any shared module that imports a concrete component or resolves one by a
 > hardcoded name.
 >
@@ -86,6 +93,8 @@ src/afterglow/
   concord.py, flipper.py ...
   backends/               ONE ARCHITECTURE'S ENCODING. Selected by the remote profile.
     __init__.py           dynamic registry + required backend contract
+    _gspm/                the GSPM family's shared modules (shared/), run by the One, the
+                          800 and arch 14 in their own packages (share())
     harmony_pk/           PK\x03\x04 payload import, lowering and build: builder/, importer,
                           states, irproto, ssir, protocol_json, ir_emit, ir_vm, the
                           generated-native registry, and its RF blasters: rf (the

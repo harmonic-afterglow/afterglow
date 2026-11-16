@@ -218,7 +218,7 @@ def test_glyph_mapping_selects_the_native_repertoire_not_one_fixed_suffix():
 def test_glyph_mapping_refuses_an_unknown_repertoire():
     report = glyph_codec.resolve_mapping({code: {"shape"} for code in range(1, 79)})
 
-    assert report["error"] == "unsupported Harmony One glyph repertoire: 78"
+    assert report["error"] == "unsupported glyph repertoire: 78"
     with pytest.raises(ValueError, match="unresolved codes"):
         glyph_codec.decode(b"\x07", report)
 

@@ -218,7 +218,7 @@ def test_a_command_object_retains_both_native_ids_and_tags():
 
 
 def test_command_records_refuse_unmeasured_flags_and_inconsistent_carriers():
-    with pytest.raises(ValueError, match="unknown Harmony One command flag"):
+    with pytest.raises(ValueError, match="unknown command flag"):
         records.command_record(0x100, 0x200, None, 26315, 13157, flag=2)
     with pytest.raises(ValueError, match="half-period"):
         records.command_record(0x100, 0x200, None, 26315, 13158)

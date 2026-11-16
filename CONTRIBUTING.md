@@ -50,7 +50,10 @@ ir_protocol
 
 Everything below `gui/` uses only the standard library. A backend is removable: deleting
 `backends/<id>/` and its remote's folder removes that remote, and needs no change anywhere
-else (AGENTS.md, rule 1).
+else (AGENTS.md, rule 1). Modules the One, the 800 and the arch-14 backend read and write
+alike live once, in `backends/_gspm/shared/`. Each of those backends keeps a short module
+of the same name that runs the shared source in its own package, so a fix there reaches
+all three.
 
 ## Registries, not lists
 
