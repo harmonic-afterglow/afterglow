@@ -66,6 +66,8 @@ afterglow-first-write = "afterglow.first_write:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `pytest -m "not slow"` for a quick run; CI runs everything
+markers = ["slow: builds many images or runs subprocesses; deselect for a quick run"]
 
 [tool.ruff]
 line-length = 100

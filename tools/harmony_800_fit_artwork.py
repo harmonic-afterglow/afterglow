@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fit the Harmony One's frames and fonts to the Harmony 800's screens (scaffolds/harmony-800).
 
-    python3 tools/harmony_800_fit_artwork.py
+    python3 tools/harmony_800_fit_artwork.py --apply
 
 The 800's scaffold began as a copy of the One's. The screens this backend builds for the
 800 are 240 pixels wide (backends/harmony_800/pages.py): two columns of 114-pixel buttons
@@ -104,4 +104,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if {"-h", "--help"} & set(sys.argv[1:]):        # says what it does, and does nothing
+        print(__doc__)
+        raise SystemExit(0)
+    if sys.argv[1:] != ["--apply"]:
+        # it rewrites the shipped scaffold in place, and its one run is done: it is kept
+        # to show how the scaffold was made, not to be run by someone looking around
+        print("This rewrites scaffolds/harmony-800 in place, and the scaffold in the "
+              "repository is already fitted. Run it with --apply only on a fresh copy of "
+              "the One's pictures.", file=sys.stderr)
+        raise SystemExit(2)
     sys.exit(main())

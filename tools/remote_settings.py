@@ -48,6 +48,9 @@ def post(name, value):
 
 
 if __name__ == "__main__":
+    if {"-h", "--help"} & set(sys.argv[1:]):        # says what it does, and does nothing
+        print(__doc__)
+        raise SystemExit(0)
     if sys.argv[1:2] == ["set"]:
         post(sys.argv[2], sys.argv[3])
         print(f"{sys.argv[2]} = {get(sys.argv[2])!r}")
