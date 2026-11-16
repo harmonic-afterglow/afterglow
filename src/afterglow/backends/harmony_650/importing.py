@@ -603,7 +603,31 @@ def remote_settings(image: Image) -> dict[str, str]:
         out["remote_assistant"] = any(
             item["text"] in titles for screen in image.screens
             for slot in screen["slots"] for item in image.page_text(slot["program_offset"]))
+    language = drawn_language(image)
+    if language:
+        out["locale"] = language
     return out
+
+
+# What an import takes as a language: at least this many of its own words drawn.
+LANGUAGE_EVIDENCE = 5
+
+
+def drawn_language(image: Image) -> str | None:
+    """The translation whose own words the image draws most - five at least - by its
+    gettext code; None for English, or text no translation here knows."""
+    languages = {code: catalogue.load(code) for code in catalogue.translations()}
+    if not languages or not image.screens:
+        return None
+    drawn = {item["text"] for screen in image.screens for slot in screen["slots"]
+             for item in image.page_text(slot["program_offset"])}
+    plain = [message for message in catalogue.MESSAGES
+             if not message.brace_format and message.plural is None]
+    english = {catalogue.ENGLISH(message.context) for message in plain}
+    scores = {code: len(drawn & ({words(message.context) for message in plain} - english))
+              for code, words in languages.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] >= LANGUAGE_EVIDENCE else None
 
 
 def online_gates(image: Image) -> dict[int, dict]:
@@ -1405,6 +1429,9 @@ class Activities:
         self.device_pages = {ordinal for ordinals in command_pages(image).values()
                              for ordinal in ordinals}
         self.device_labels = {device.get("label") for device in devices}
+        # what a key, a button or an activity does that a project cannot say, and so is
+        # left out: told in the notes rather than dropped unseen
+        self.left_out: Counter = Counter()
 
     def hooks(self, context: dict) -> dict[int, list[tuple]]:
         """A context's rows, as what each does, by key code."""
@@ -1468,6 +1495,13 @@ class Activities:
         a macro cannot say."""
         out = []
         for step in steps:
+            if step[0] == WRITE and step[1] not in self.variables \
+                    and step[1] not in self.image.channel_variables:
+                # a state of its own - an activity's channel mode - not a device's power
+                # or input, which the project says another way, nor a favourite's channel,
+                # whose transition dials the digits the steps that follow already carry
+                name = self.image.names.get(step[1]) or f"variable {step[1]}"
+                self.left_out[f"a write to {name}"] += 1
             if step[0] == SEND and self.command(step[1]):
                 device, name, *held = self.command(step[1])
                 if not held and step[2] > 1:
@@ -1480,6 +1514,7 @@ class Activities:
                 else:
                     out.append(["delay", self.ids[step[1]], step[2]])
             elif step[0] in (SEND, WAIT):
+                self.left_out["a command or wait no device has"] += 1
                 return None
         return out
 
@@ -1509,6 +1544,9 @@ class Activities:
                        if kind == "power"}
             if listed and set(listed) != powered:
                 extra["power_off_all"] = listed
+        if self.left_out:
+            self.notes.append("left out, as a project cannot say them: " + ", ".join(
+                f"{what} ({count})" for what, count in sorted(self.left_out.items())))
         return activities, extra
 
     def activity(self, ordinal: int, label: str | None) -> dict:
