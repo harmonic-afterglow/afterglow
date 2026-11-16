@@ -72,7 +72,7 @@ NOTICES = {
 }
 
 TITLE = "a screen's title, top left; about 96 pixels in the title font"
-SOFTKEY = "a softkey label, bottom of the screen; two lines of about 84 pixels"
+SOFTKEY = "a softkey label, bottom of the screen; one line of about 116 pixels"
 BUTTON = "a button label, centred on a 81-pixel button; may wrap to two lines"
 ROW = "a row label, centred on a 164-pixel row"
 MESSAGE = "a message centred on the screen; about 160 pixels a line"

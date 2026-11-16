@@ -68,22 +68,22 @@ msgctxt "lighttest.next"
 msgid "Touch the screen for the next"
 msgstr ""
 
-#. Opens Options: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Opens Options: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.options"
 msgid "Options"
 msgstr ""
 
-#. Back to Activities: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Back to Activities: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.activities"
 msgid "Activities"
 msgstr ""
 
-#. Opens the device list: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Opens the device list: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.devices"
 msgid "Devices"
 msgstr ""
 
-#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.current-activity"
 msgid "Current Activity"
 msgstr ""
@@ -116,22 +116,22 @@ msgctxt "activity.power-off"
 msgid "Power Off"
 msgstr ""
 
-#. On an activity's commands, opens its number keypad: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's commands, opens its number keypad: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.numbers"
 msgid "123"
 msgstr ""
 
-#. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.back"
 msgid "Back"
 msgstr ""
 
-#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.commands"
 msgid "Commands"
 msgstr ""
 
-#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.favourites"
 msgid "Favorites"
 msgstr ""
@@ -192,17 +192,17 @@ msgctxt "assistant.now-off"
 msgid "Now is the {device} off?"
 msgstr ""
 
-#. An answer, bottom left: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. An answer, bottom left: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.yes"
 msgid "Yes"
 msgstr ""
 
-#. An answer, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. An answer, bottom right: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.no"
 msgid "No"
 msgstr ""
 
-#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.ok"
 msgid "OK"
 msgstr ""
@@ -268,7 +268,7 @@ msgctxt "tutorial.title"
 msgid "Tutorial"
 msgstr ""
 
-#. Leaves the Tutorial: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Leaves the Tutorial: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.exit"
 msgid "Exit"
 msgstr ""
@@ -383,7 +383,7 @@ msgctxt "options.sounds-on"
 msgid "Turn Screen Sounds On"
 msgstr ""
 
-#. Steps back a screen: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Steps back a screen: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "options.back"
 msgid "Back"
 msgstr ""

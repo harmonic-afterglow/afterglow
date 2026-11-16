@@ -69,22 +69,22 @@ msgctxt "lighttest.next"
 msgid "Touch the screen for the next"
 msgstr "Докоснете екрана за следващия"
 
-#. Opens Options: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Opens Options: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.options"
 msgid "Options"
 msgstr "Опции"
 
-#. Back to Activities: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Back to Activities: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.activities"
 msgid "Activities"
 msgstr "Дейности"
 
-#. Opens the device list: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Opens the device list: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.devices"
 msgid "Devices"
 msgstr "Устройства"
 
-#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Back to the activity that is running, from the device list and a device's screens: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.current-activity"
 msgid "Current Activity"
 msgstr "Текуща дейност"
@@ -117,22 +117,22 @@ msgctxt "activity.power-off"
 msgid "Power Off"
 msgstr "Изключване"
 
-#. On an activity's commands, opens its number keypad: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's commands, opens its number keypad: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.numbers"
 msgid "123"
 msgstr "123"
 
-#. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On the number keypad, back to the activity's commands: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.back"
 msgid "Back"
 msgstr "Назад"
 
-#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's favourite channels, opens its commands: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.commands"
 msgid "Commands"
 msgstr "Команди"
 
-#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. On an activity's commands, opens its favourite channels: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.favourites"
 msgid "Favorites"
 msgstr "Любими"
@@ -193,17 +193,17 @@ msgctxt "assistant.now-off"
 msgid "Now is the {device} off?"
 msgstr "А сега изключено ли е {device}?"
 
-#. An answer, bottom left: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. An answer, bottom left: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.yes"
 msgid "Yes"
 msgstr "Да"
 
-#. An answer, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. An answer, bottom right: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.no"
 msgid "No"
 msgstr "Не"
 
-#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Closes a Remote Assistant note, bottom right: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.ok"
 msgid "OK"
 msgstr "OK"
@@ -269,7 +269,7 @@ msgctxt "tutorial.title"
 msgid "Tutorial"
 msgstr "Ръководство"
 
-#. Leaves the Tutorial: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Leaves the Tutorial: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "softkey.exit"
 msgid "Exit"
 msgstr "Изход"
@@ -384,7 +384,7 @@ msgctxt "options.sounds-on"
 msgid "Turn Screen Sounds On"
 msgstr "Включи звуците"
 
-#. Steps back a screen: a softkey label, bottom of the screen; two lines of about 84 pixels
+#. Steps back a screen: a softkey label, bottom of the screen; one line of about 116 pixels
 msgctxt "options.back"
 msgid "Back"
 msgstr "Назад"
