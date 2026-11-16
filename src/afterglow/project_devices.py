@@ -484,6 +484,10 @@ def normalise_project(project: dict) -> dict:
     rename_hard_keys(project, profile.hard_key_aliases)
     fill_free_keys(project, profile.hard_keys)
     backend = backends.for_profile(profile)
+    # what a remote's build would do unasked, written into the project so it shows
+    name_keys = getattr(backend, "name_activity_keys", None)
+    if name_keys is not None:
+        name_keys(project)
     migrated = []
     for device in project.get("devices") or []:
         migrated.append(clean(device) if is_portable(device)

@@ -250,7 +250,13 @@ class ActivityIdentityPage(QWizardPage):
                 holder = self.holders.get(value)
                 self.button_combo.addItem(
                     f'{label} (now starts "{holder}")' if holder else label, value)
-            at = self.button_combo.findData(existing.get("activity_button"))
+            chosen = existing.get("activity_button")
+            if not existing.get("id") and "activity_button" not in existing:
+                # a new activity takes the first key no activity has, as the remote's own
+                # setup did; said here, so the key is never bound without the editor showing it
+                chosen = next((value for _label, value in buttons
+                               if value not in self.holders), None)
+            at = self.button_combo.findData(chosen)
             self.button_combo.setCurrentIndex(max(at, 0))
             self.button_combo.setToolTip(
                 "The button above the screen that starts this activity. Each button "

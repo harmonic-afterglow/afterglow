@@ -199,6 +199,20 @@ def build_project(project, profile, context) -> BuildResult:
     )
 
 
+def name_activity_keys(project) -> int:
+    """Write down which activity each activity key starts, in a project that names
+    none: the build gives them to the first three activities, Watch a Movie's key first
+    (compose.activity_keys), and the editor showed "None" for every one. Returns how many
+    were named."""
+    from .keys import ACTIVITY_BUTTONS
+    activities = project.get("activities") or []
+    if any(activity.get("activity_button") for activity in activities):
+        return 0
+    for name, activity in zip(ACTIVITY_BUTTONS, activities):
+        activity["activity_button"] = name
+    return min(len(ACTIVITY_BUTTONS), len(activities))
+
+
 def capability(signal: dict, profile, *, library=None) -> dict:
     """Whether the One can send a portable signal: its lowering takes it or says why."""
     from ... import ir_signal

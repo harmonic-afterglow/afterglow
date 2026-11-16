@@ -99,3 +99,27 @@ def test_a_key_another_activity_has_can_be_taken_with_a_warning(qapp_or_skip):
     assert "activity_button" not in movie
     combo.setCurrentIndex(combo.findData("TV"))        # a free key: no warning
     assert not editor.p0.button_warning.isVisibleTo(editor.p0)
+
+
+def test_a_project_naming_no_key_is_given_the_keys_its_build_would_bind():
+    """The build gives the keys to the first three activities when none names one; the
+    editor showed None for all of them. Written into the project as it is opened, the
+    keys are what the editor shows, and they build the same."""
+    from afterglow import project_devices
+    project = {"settings": {"remote": "harmony-650"}, "devices": [],
+               "activities": [_activity(id=str(i), label=f"A{i}") for i in range(4)]}
+    project_devices.normalise_project(project)
+    assert [a.get("activity_button") for a in project["activities"]] == [
+        "Movie", "TV", "Music", None]
+    # and a project that names one is left as it is
+    project["activities"][1].pop("activity_button")
+    project_devices.normalise_project(project)
+    assert [a.get("activity_button") for a in project["activities"]] == [
+        "Movie", None, "Music", None]
+
+
+def test_a_new_activity_takes_the_first_free_key(qapp_or_skip):
+    from afterglow.gui.activity_wizard import ActivityWizard
+    taken = [_activity(id="1", activity_button="TV")]
+    wizard = ActivityWizard(_devices(), activities=taken, remote="harmony-650")
+    assert wizard.identity.button_combo.currentData() == "Movie"
