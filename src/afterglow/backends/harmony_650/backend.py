@@ -170,7 +170,11 @@ def build_project(project, profile, context) -> BuildResult:
     skin = settings.get("skin")
     if skin is not None and skin not in profile.skins:
         raise ValueError(f"skin {skin} is not a {profile.model}'s")
-    built = compose.build(project, directory=directory)
+    from ... import remotes
+    built = compose.build(project, directory=directory,
+                          look=profile.looks.get(skin) if skin is not None else None,
+                          model=remotes.model_name(
+                              profile, skin if skin is not None else profile.skin))
     payload = built["image"]
     validation = validate_payload(payload, profile)
 

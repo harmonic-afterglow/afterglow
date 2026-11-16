@@ -1119,9 +1119,13 @@ def test_a_600_is_built_in_its_own_grey_look_and_light_levels():
     grey, _notes = assets.load_pictures(paths.scaffolds("harmony-600"),
                                         {"backdrop": look["pictures"]["backdrop"]})
 
+    profile = remotes.get("harmony-650")
+    assert profile.looks == {71: "harmony-600", 73: "harmony-600"}
+
     def built(skin):
         project = dict(_household(), settings={"skin": skin} if skin else {})
-        return compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+        return compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026),
+                             look=profile.looks.get(skin))["image"]
     for skin in (71, 73):
         image = built(skin)
         assert _references_out_of_range(image) == []

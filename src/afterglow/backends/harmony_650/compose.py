@@ -103,11 +103,9 @@ TOUR = [
     ((0x84,), None), ((0x86,), None), ((), "softkey.exit"),
 ]
 TOUR_TOP, TOUR_PROMPT_Y, TOUR_ROOM = 1, 90, SCREEN - 4
-MODEL_BY_SKIN = {66: "Harmony 700", 71: "Harmony 600", 72: "Harmony 650", 73: "Harmony 600",
-                 75: "Harmony 665"}
-# The looks of remotes that run this firmware under another skin: the scaffold whose
-# look.json gives their pictures and light levels (the Harmony 600's grey artwork)
-LOOKS = {71: "harmony-600", 73: "harmony-600"}
+# A remote sold under this one's firmware with a look of its own names the scaffold whose
+# look.json gives its pictures and light levels - the Harmony 600's grey artwork - in its
+# profile ("looks": {skin: scaffold}); the backend passes it to build()
 LOOK_FILE = "look.json"
 NOTICE_LINES_Y = 82
 NOTICE_KEYS = range(0x81, 0xB7)
@@ -271,7 +269,8 @@ class Numbers:
 class Image:
     """One image being built."""
 
-    def __init__(self, project: dict, directory: Path, stamp_fields: tuple, words):
+    def __init__(self, project: dict, directory: Path, stamp_fields: tuple, words,
+                 look: str | None = None, model: str | None = None):
         from ... import paths
         from . import assets, firmware_screens
 
@@ -290,7 +289,7 @@ class Image:
         self.constants = load_json(directory, PLATFORM_FILE)
         # a remote sold under this one's firmware with a look of its own - the Harmony
         # 600, skins 71 and 73: its pictures and light levels over the scaffold's
-        look = LOOKS.get((project.get("settings") or {}).get("skin"))
+        self.model = model
         if look is not None:
             folder = Path(paths.scaffolds(look))
             manifest = load_json(folder, LOOK_FILE)
@@ -1406,9 +1405,7 @@ class Image:
         fonts = self.fonts
         message, softkey = fonts.roles["message"], fonts.roles["softkey"]
         height = fonts.records[message]["height"]
-        skin = (self.project.get("settings") or {}).get("skin")
-        model = MODEL_BY_SKIN.get(skin) or (
-            "Harmony 700" if "700" in WIRING_SCHEMA else "Harmony 650")
+        model = self.model or ("Harmony 700" if "700" in WIRING_SCHEMA else "Harmony 650")
         for number, (onward, word) in enumerate(TOUR):
             ordinal = self.tour_screens[number]
             if len(self.screens) != ordinal:
@@ -2101,12 +2098,14 @@ def build_stamp(now=None) -> tuple:
     return (now.second, now.minute, now.hour, now.day - 1, now.month - 1, now.year)
 
 
-def build(project: dict, *, directory=None, stamp_fields=None) -> dict:
-    """Build an image for ``project`` from the scaffold."""
+def build(project: dict, *, directory=None, stamp_fields=None, look=None,
+          model=None) -> dict:
+    """Build an image for ``project`` from the scaffold. ``look`` is the scaffold of the
+    model's own look, ``model`` its name for the welcome tour - from its profile."""
     from ... import paths
 
     directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
     stamp_fields = build_stamp() if stamp_fields is None else stamp_fields
     words = catalogue.for_project(project)
-    image = Image(project, directory, stamp_fields, words)
+    image = Image(project, directory, stamp_fields, words, look=look, model=model)
     return {"image": image.build(), "skipped": list(image.plan["skipped"])}

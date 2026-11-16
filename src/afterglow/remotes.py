@@ -232,6 +232,9 @@ class RemoteProfile:
     # Matched like `board`.
     other_boards: tuple = ()
     notes: str = ""
+    # {skin: scaffold}: a model sold under this firmware with a look of its own - the
+    # Harmony 600's grey pictures, scaffolds/harmony-600 - for its backend to build with
+    looks: dict = field(default_factory=dict)
     # The remote's own folder (`<id>/profile.json`), which holds what belongs to this
     # remote alone - its drawing. None for a profile that is a bare JSON file.
     folder: Path | None = None
@@ -764,6 +767,7 @@ def _from_json(data: dict) -> RemoteProfile:
         other_skins=tuple(ident.get("other_skins") or ()),
         other_boards=tuple(ident.get("other_boards") or ()),
         notes=data.get("notes", ""),
+        looks={int(skin): scaffold for skin, scaffold in (data.get("looks") or {}).items()},
     )
 
 

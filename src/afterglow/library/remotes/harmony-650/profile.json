@@ -8,6 +8,10 @@
     "flash": "0x15:0x1C",
     "software_type": 0
   },
+  "looks": {
+    "71": "harmony-600",
+    "73": "harmony-600"
+  },
   "payload": "blob",
   "backend": "harmony-650",
   "status": "experimental",
