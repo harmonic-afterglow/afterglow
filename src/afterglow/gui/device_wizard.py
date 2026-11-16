@@ -5,13 +5,14 @@ from collections import Counter
 from pathlib import Path
 
 from ..qt.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
     QCheckBox, QSpinBox, QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
     QMenu, QMessageBox, QAbstractItemView, QHeaderView, QWizardPage
 )
 from ..qt.QtCore import Qt, pyqtSignal
 from ..qt.QtGui import QCursor
 
+from . import background
 from .ui_helpers import FilterCombo
 
 from .. import remotes
@@ -384,16 +385,14 @@ class SearchPage(QWizardPage):
                 from .widgets import load_repo_templates
                 number = int(mode.partition(":")[2])
                 repository = self._sources.external_repositories[number]
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
                 try:
-                    root = sync_repository(repository)
-                    templates = load_repo_templates(root)
+                    templates = background.call(
+                        self, "Fetching the device library...",
+                        lambda: load_repo_templates(sync_repository(repository)))
                     self._external_repo_indexes[mode] = build_repo_index(templates)
-                except (OSError, ValueError) as exc:
+                except Exception as exc:          # anything at all is said, not swallowed
                     self._external_repo_indexes[mode] = {}
                     self._source_errors[mode] = str(exc)
-                finally:
-                    QApplication.restoreOverrideCursor()
             self._repo_index = self._external_repo_indexes.get(mode, {})
             self._mfr_box.set_choices(sorted(self._repo_index))
             self._model_section_wanted = False
@@ -428,9 +427,14 @@ class SearchPage(QWizardPage):
         }
         for mode_key, opener in openers.items():
             if getattr(self._sources, mode_key, False) and mode_key not in self._online_catalogs:
+                def open_and_list(opener=opener):
+                    catalog = opener()
+                    catalog.manufacturers(limit=1)      # its index, fetched here
+                    return catalog
                 try:
-                    self._online_catalogs[mode_key] = opener()
-                except (OSError, ValueError) as exc:
+                    self._online_catalogs[mode_key] = background.call(
+                        self, "Opening the online device catalogues...", open_and_list)
+                except Exception as exc:
                     self._source_errors[mode_key] = str(exc)
 
     def _merged_repo_index(self) -> dict:
@@ -450,8 +454,8 @@ class SearchPage(QWizardPage):
             try:
                 for entry in cat.manufacturers(limit=100_000):
                     merged.setdefault(entry.name, [])
-            except (OSError, ValueError):
-                pass
+            except Exception as exc:
+                self._source_errors[mode_key] = str(exc)
         return merged
 
     def _on_mfr_typed(self, text):
@@ -530,9 +534,16 @@ class SearchPage(QWizardPage):
             for mode_key, cat in self._online_catalogs.items():
                 try:
                     m_obj = cat.manufacturer(mfr)
-                    self._matched_online_cats.append((m_obj.name, cat))
-                except (LookupError, OSError, ValueError):
-                    pass
+                except LookupError:
+                    continue
+                try:
+                    background.call(self, f"Fetching {m_obj.name}'s devices...",
+                                    lambda cat=cat, name=m_obj.name:
+                                    cat.models(name, limit=1))
+                except Exception as exc:
+                    self._source_errors[mode_key] = str(exc)
+                    continue
+                self._matched_online_cats.append((m_obj.name, cat))
 
             if not matched and not self._matched_online_cats:
                 self._model_section_wanted = False
@@ -557,7 +568,16 @@ class SearchPage(QWizardPage):
                 return
             try:
                 matched = self._archive.manufacturer(mfr).name
+                background.call(self, f"Fetching {matched}'s devices...",
+                                lambda: self._archive.models(matched, limit=1))
             except LookupError:
+                self._model_section_wanted = False
+                self._model_section.setVisible(False)
+                return
+            except Exception as exc:
+                self._status_lbl.setText(f"Could not list {mfr}'s devices: {exc}")
+                self._status_lbl.setStyleSheet("color: #b00020;")
+                self._status_lbl.setVisible(True)
                 self._model_section_wanted = False
                 self._model_section.setVisible(False)
                 return
@@ -624,9 +644,12 @@ class SearchPage(QWizardPage):
                     remote_id=self._profile.id),
                 "irdb_online": lambda: IrdbCatalog(remote_id=self._profile.id),
             }
-            self._archive = openers[mode]()
-            manufacturers = self._archive.manufacturers(limit=100_000)
-        except (OSError, ValueError) as exc:
+            def open_and_list():
+                catalog = openers[mode]()
+                return catalog, catalog.manufacturers(limit=100_000)
+            self._archive, manufacturers = background.call(
+                self, "Opening the online device catalogue...", open_and_list)
+        except Exception as exc:
             self._archive = None
             message = f"Could not open archive: {exc}"
             self._status_lbl.setText(message)
@@ -644,10 +667,11 @@ class SearchPage(QWizardPage):
         if not cat:
             return
         try:
-            result = cat.materialize(model)
+            result = background.call(self, f"Fetching {model.name}'s commands...",
+                                     lambda: cat.materialize(model))
             from .. import device_json
             template = device_json.to_project_device(result["template"], device_id="")
-        except (OSError, ValueError) as exc:
+        except Exception as exc:
             self._status_lbl.setText(f"Cannot use this device: {exc}")
             self._status_lbl.setStyleSheet("color: #b00020;")
             self._status_lbl.setVisible(True)
