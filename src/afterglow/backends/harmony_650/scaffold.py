@@ -39,9 +39,6 @@ from .structures import COMPARE, ENTER_MODE, OBJECT_ATOM, object_body
 # and linking it, not copying a blob.
 #
 # `generate.build` does exactly that: it emits them from the scaffold's
-# `platform/system-screens.json`, and a project's own screens start after them. A 650 has
-# 44 (docs/harmony_650_700/gspm.md, "Firmware-owned screens").
-SYSTEM_SCREENS = 44
 
 # Section 16 indexes section 15's tail at these offsets, in every image measured
 # including the factory configuration in firmware 54.2.5.
@@ -145,8 +142,7 @@ PLATFORM_TAIL_SIZE = 151
 
 def platform_tail(directory=None) -> bytes:
     """The 151 bytes section 16 indexes, which are measured rather than derivable."""
-    from ... import paths
-    directory = paths.scaffolds("harmony-650") if directory is None else directory
+    directory = default_directory() if directory is None else directory
     tail = (Path(directory) / PLATFORM_TAIL).read_bytes()
     if len(tail) != PLATFORM_TAIL_SIZE:
         raise ValueError(
@@ -273,9 +269,8 @@ def mode_zero_handler(index: int, platform: dict[int, int] | None = None) -> byt
 
 def touch_templates(directory=None) -> dict[int, list[dict]]:
     """The panel geometry a page of a given button count uses."""
-    from ... import paths
 
-    directory = paths.scaffolds("harmony-650") if directory is None else directory
+    directory = default_directory() if directory is None else directory
     text = (Path(directory) / TOUCH_TEMPLATES).read_text("utf-8")
     return {int(key): value for key, value in json.loads(text).items()}
 
@@ -288,9 +283,8 @@ MENU_TEMPLATE_FILE = "platform/menu-template.json"
 
 def menu_template(directory=None) -> list[dict]:
     """The device-menu touch geometry the scaffold carries."""
-    from ... import paths
 
-    directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
+    directory = Path(default_directory() if directory is None else directory)
     return json.loads((directory / MENU_TEMPLATE_FILE).read_text("utf-8"))
 
 
@@ -308,3 +302,19 @@ def platform_index(tail_offset: int) -> bytes:
     return (bytes([len(SECTION_16_OFFSETS)])
             + b"".join((gspm.BASE + tail_offset + offset).to_bytes(3, "little")
                        for offset in SECTION_16_OFFSETS))
+
+
+BACKEND = "harmony-650"
+
+
+def default_directory() -> Path:
+    """The scaffold an image is read against when no remote is named: the first remote
+    this backend serves that has one. Every arch-14 remote's scaffold carries the same
+    fonts and glyph shapes, so reading a 650's or a 700's image takes either; a build
+    always names its remote's own (backend.build_project)."""
+    from ... import paths, remotes
+
+    for profile in remotes.load_all():
+        if profile.backend == BACKEND and paths.scaffolds(profile.id).is_dir():
+            return paths.scaffolds(profile.id)
+    raise FileNotFoundError("no remote this backend serves has a scaffold")

@@ -1,8 +1,11 @@
-"""The Harmony 650 backend: arch-14 images read as the 650's firmware lays them out, and the
-scaffold a 650 build starts from.
+"""The arch-14 backend - the Harmony 600, 650, 665 and 700: images read as their firmware
+lays them out, and the scaffolds a build starts from. The 700 is the 650's body with a
+battery: the same backend, its own profile and scaffold (49 firmware screens to the 650's
+44, and charging pictures).
 
-Logitech's own 650 configurations are checked when the maintainer has them (configs/650/),
-and skipped otherwise.
+Logitech's own configurations are checked when the maintainer has them (configs/650/,
+665/, 600/ and 700/), each read and rebuilt as the remote its header names, and skipped
+otherwise.
 
 Format reference: docs/harmony_650_700/gspm.md
 """
@@ -17,16 +20,26 @@ import pytest
 from afterglow import ezhex, payloads, paths, remotes
 from afterglow.backends.harmony_650 import (
     assets, backend, bitmap, catalogue, command_index, drawing, firmware_screens, gspm, keys,
-    importing, labels, platform_text, scaffold, ui_index)
+    importing, labels, platform_text, ui_index)
 
 ROOT = Path(__file__).resolve().parents[1]
 # the 665 is a 650 that says skin 75, and the 600 one that says 71 or 73: their
-# configurations are the 650's
-CONFIGS_650 = sorted(path for folder in ("650", "665", "600")
-                     if (ROOT / "configs" / folder).is_dir()
-                     for path in (ROOT / "configs" / folder).glob("*.ezhex"))
+# configurations are the 650's. A 700's are its own remote's, on the same backend. A link
+# is another name for a dump already here (650-favourites).
+CONFIGS = sorted(path for folder in ("650", "665", "600", "700")
+                 if (ROOT / "configs" / folder).is_dir()
+                 for path in (ROOT / "configs" / folder).glob("*.ezhex")
+                 if not path.is_symlink())
 
 SCAFFOLD = paths.scaffolds("harmony-650")
+# the firmware's own screens come first; a project's start after them
+FIRMWARE = len(firmware_screens.load_system(SCAFFOLD)["screens"])
+
+
+def _remote(path: Path):
+    """The profile a configuration's header names: the 650's or the 700's."""
+    header, _start, _size, _checksum = ezhex._split(path.read_bytes())
+    return remotes.identify(header)
 
 
 def _image(sections: list[bytes]) -> bytes:
@@ -72,9 +85,10 @@ def test_a_sized_picture_and_a_wide_switch_round_trip():
     assert drawing.encode_program(read) == bytes(image[at:])
 
 
-def test_the_profile_names_the_650_and_is_experimental():
-    profile = remotes.get("harmony-650")
-    assert (profile.arch, profile.skin) == (14, 72)
+@pytest.mark.parametrize("remote, skin", [("harmony-650", 72), ("harmony-700", 66)])
+def test_the_profile_names_its_remote_and_is_experimental(remote, skin):
+    profile = remotes.get(remote)
+    assert (profile.arch, profile.skin) == (14, skin)
     assert profile.backend == "harmony-650"
     assert profile.status == "experimental"
     # a Favourites page, of names: Logitech never gave these remotes' favourites logos
@@ -91,22 +105,28 @@ def test_no_key_is_both_a_command_key_and_one_the_flow_owns():
     assert len(set(keys.SCANS.values())) == len(keys.SCANS)
 
 
-def test_the_scaffold_loads_and_every_picture_fits_the_screen():
-    loaded = assets.load(SCAFFOLD)
+@pytest.mark.parametrize("remote, charging", [("harmony-650", 0), ("harmony-700", 4)])
+def test_the_scaffold_loads_and_every_picture_fits_the_screen(remote, charging):
+    loaded = assets.load(paths.scaffolds(remote))
     assert {"backdrop", "softkey", "title-bar"} <= set(loaded["pictures"])
-    # a 650 runs on batteries and shows no charging
-    assert not [role for role in loaded["pictures"] if role.startswith("charging/")]
+    # a 650 runs on batteries and shows no charging; a 700 charges in four pictures
+    assert [role for role in loaded["pictures"] if role.startswith("charging/")] == [
+        f"charging/{n}" for n in range(charging)]
     for role, picture in loaded["pictures"].items():
         assert picture["width"] <= 128 and picture["height"] <= 128, role
     assert not loaded["notes"]
     assert all(font["glyphs"] for font in loaded["fonts"].values())
 
 
-def test_the_firmware_screens_are_the_650s_44_and_every_word_is_in_the_catalogue():
-    model = json.loads((SCAFFOLD / firmware_screens.SYSTEM_SCREENS_FILE).read_text("utf-8"))
+@pytest.mark.parametrize("remote, count", [("harmony-650", 44), ("harmony-700", 49)])
+def test_the_firmware_screens_are_counted_and_every_word_is_in_the_catalogue(remote, count):
+    folder = paths.scaffolds(remote)
+    model = json.loads((folder / firmware_screens.SYSTEM_SCREENS_FILE).read_text("utf-8"))
     assert model["schema"] == firmware_screens.SYSTEM_SCHEMA
-    assert len(model["screens"]) == scaffold.SYSTEM_SCREENS == 44
-    pictures = json.loads((SCAFFOLD / "assets.json").read_text("utf-8"))["pictures"]
+    assert len(model["screens"]) == count
+    notices = model["notices"]
+    assert set(notices.values()) <= set(catalogue.NOTICES)
+    pictures = json.loads((folder / "assets.json").read_text("utf-8"))["pictures"]
     lines: dict[str, int] = {}
     for block in model["blocks"]:
         for item in block:
@@ -114,15 +134,17 @@ def test_the_firmware_screens_are_the_650s_44_and_every_word_is_in_the_catalogue
                 assert item["target"]["picture"] in pictures
             if item["opcode"] == "label" and item["key"].startswith("screen-"):
                 lines[item["key"]] = lines.get(item["key"], 0) + 1
-    for key, count in lines.items():
-        assert len(catalogue.NOTICES[int(key.split("-")[1])].split("\n")) == count, key
-    assert set(lines) == {f"screen-{n}" for n in catalogue.NOTICES}
-    platform_text.render(model, lambda text, font, room: ("41", 6 * len(text)))
+    for key, drawn in lines.items():
+        name = notices[key.split("-")[1]]
+        assert len(catalogue.NOTICES[name].split("\n")) == drawn, key
+    assert set(lines) == {f"screen-{n}" for n in notices}
+    platform_text.render(firmware_screens.load_system(folder),
+                         lambda text, font, room: ("41", 6 * len(text)))
     # nothing a firmware screen does is left behind, and its own variables are carried
     assert model["dropped_header_rows"] == 0
     # the platform's own variables, shared with the wiring: the battery notice flag and the
     # USB screen's state among them
-    wiring = json.loads((SCAFFOLD / "platform" / "wiring.json").read_text("utf-8"))
+    wiring = json.loads((folder / "platform" / "wiring.json").read_text("utf-8"))
     assert model["variables"] == wiring["variables"]
     assert {1, 3} <= {variable["limit"] for variable in model["variables"]}
 
@@ -133,8 +155,8 @@ def _payload(path: Path) -> bytes:
     return raw[start:start + size]
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_a_650_configuration_reads_and_every_drawing_block_re_encodes(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_configuration_reads_and_every_drawing_block_re_encodes(path):
     payload = _payload(path)
     gspm.validate(payload)
     roots = [slot["program_offset"] for screen in ui_index.screen_slots(payload)
@@ -146,8 +168,8 @@ def test_a_650_configuration_reads_and_every_drawing_block_re_encodes(path):
         assert payload[offset:offset + len(encoded)] == encoded, hex(offset)
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_every_command_of_a_650_configuration_has_its_object(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_every_command_of_a_configuration_has_its_object(path):
     report = command_index.inspect(_payload(path))
     # a command may have a second object of its own: Logitech's copy of an input sent
     # with the device's input delay (`7C dd0A`), as two of a Dutch 650's TV inputs have
@@ -157,8 +179,8 @@ def test_every_command_of_a_650_configuration_has_its_object(path):
     assert "command_without_object" not in report["rejected"]
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_every_picture_of_a_650_configuration_round_trips(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_every_picture_of_a_configuration_round_trips(path):
     payload = _payload(path)
     start, end = gspm.section_ranges(payload)[19]
     assert payload[start:start + 2] == b"\x00\x00"       # no touch templates
@@ -171,8 +193,8 @@ def test_every_picture_of_a_650_configuration_round_trips(path):
     assert at == end
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_every_glyph_an_650_configuration_draws_reads(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_every_glyph_a_configuration_draws_reads(path):
     payload = _payload(path)
     text = labels.Text(payload)
     for screen in ui_index.screen_slots(payload):
@@ -181,8 +203,8 @@ def test_every_glyph_an_650_configuration_draws_reads(path):
     assert text.unknown == 0
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_every_command_record_of_an_650_configuration_decodes(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_every_command_record_of_a_configuration_decodes(path):
     counts = command_index.inspect(_payload(path))["counts"]
     # a command that sends silence - Logitech's stand-in for a device it does not reach by
     # infrared, a Sony PS4's power off - is counted, not decoded
@@ -211,10 +233,10 @@ def _used_objects(reader) -> set[int]:
                     ["instructions"] if item["opcode"] == "atom" and item["category"] == 0x7F}
     return out
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_an_650_configuration_imports_its_devices_by_name(path, tmp_path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_configuration_imports_its_devices_by_name(path, tmp_path):
     payloads.get("blob").unpack(_payload(path), str(tmp_path))
-    result = backend.import_project(str(tmp_path), remotes.get("harmony-650"),
+    result = backend.import_project(str(tmp_path), _remote(path),
                                     {"name": path.stem})
     devices = result.project["devices"]
     assert devices and all(device["label"] for device in devices)
@@ -233,14 +255,14 @@ def test_an_650_configuration_imports_its_devices_by_name(path, tmp_path):
     assert all("placeholder" in note for note in result.warnings)
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_a_650_devices_power_on_delay_is_its_delay_variable(path, tmp_path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_devices_power_on_delay_is_its_delay_variable(path, tmp_path):
     payload = _payload(path)
     image = importing.Image(payload)
     delays = {name.split("_")[1]: record["initial"] * 100 for record in image.engine
               if (name := image.names.get(record["property_id"], "")).startswith("PowerOnDelay_")}
     payloads.get("blob").unpack(payload, str(tmp_path))
-    devices = backend.import_project(str(tmp_path), remotes.get("harmony-650"),
+    devices = backend.import_project(str(tmp_path), _remote(path),
                                      {"name": path.stem}).project["devices"]
     powered = [device for device in devices
                if device.get("power_cmd") or device.get("power_on_cmd")]
@@ -265,7 +287,7 @@ def test_a_project_with_nothing_builds_an_image_every_reader_reads(empty_image, 
     # the firmware's screens at their ordinals, then the Activities menu, the Devices list,
     # All Off's "Turning system off" and the welcome tour's pages
     from afterglow.backends.harmony_650.compose import TOUR
-    assert len(screens) == scaffold.SYSTEM_SCREENS + 3 + len(TOUR)
+    assert len(screens) == FIRMWARE + 3 + len(TOUR)
     assert len(font_index.fonts(empty_image)) == len(json.loads(
         (SCAFFOLD / "assets.json").read_text("utf-8"))["fonts"])
     names = [record["name"] for record in named_index.inspect(empty_image)["records"]]
@@ -438,7 +460,7 @@ def test_more_activities_opens_the_menu_with_an_activity_running():
     switches = [operand >> 8 for item in reader.objects for operand, opcode in item["atoms"]
                 if opcode == 0x72 and operand & 0xFF == location]
     assert switches
-    menu = scaffold.SYSTEM_SCREENS
+    menu = FIRMWARE
     for group in switches:
         [(value, block)] = tables[group]["cases"]
         assert value == 0
@@ -457,8 +479,8 @@ def test_every_page_with_a_sending_mark_redraws_it_as_sending_starts_and_stops()
     image = compose.build(_household(), stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
     reader = importing.Image(image)
     checked = 0
-    for ordinal, screen in enumerate(reader.screens[scaffold.SYSTEM_SCREENS:],
-                                     scaffold.SYSTEM_SCREENS):
+    for ordinal, screen in enumerate(reader.screens[FIRMWARE:],
+                                     FIRMWARE):
         program = ui_index.drawing_program(image, screen["slots"][0]["program_offset"])
         queued = [item["operand"] for item in program["instructions"]
                   if item["opcode"] == "atom" and item["category"] == 0x73]
@@ -578,17 +600,18 @@ def _by_label(project: dict) -> dict:
     return out
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_a_650_configuration_imported_builds_and_imports_the_same(path, tmp_path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_configuration_imported_builds_and_imports_the_same(path, tmp_path):
     from afterglow.backends.harmony_650 import compose
     payloads.get("blob").unpack(_payload(path), str(tmp_path / "first"))
-    first = backend.import_project(str(tmp_path / "first"), remotes.get("harmony-650"),
+    first = backend.import_project(str(tmp_path / "first"), _remote(path),
                                    {"name": "rt"}).project
     first = json.loads(json.dumps(first, default=str))
-    built = compose.build(first, stamp_fields=(0, 0, 12, 0, 0, 2026))
+    built = compose.build(first, directory=paths.scaffolds(_remote(path).id),
+                          stamp_fields=(0, 0, 12, 0, 0, 2026))
     assert built["skipped"] == []
     payloads.get("blob").unpack(built["image"], str(tmp_path / "second"))
-    second = backend.import_project(str(tmp_path / "second"), remotes.get("harmony-650"),
+    second = backend.import_project(str(tmp_path / "second"), _remote(path),
                                     {"name": "rt"})
     assert not second.warnings
     assert _by_label(json.loads(json.dumps(second.project, default=str))) == _by_label(first)
@@ -674,15 +697,16 @@ def test_a_build_names_nothing_it_does_not_have(project):
     assert _references_out_of_range(image) == []
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_a_650_configuration_and_its_rebuild_name_nothing_they_do_not_have(path, tmp_path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_configuration_and_its_rebuild_name_nothing_they_do_not_have(path, tmp_path):
     from afterglow.backends.harmony_650 import compose
     assert _references_out_of_range(_payload(path)) == []
     payloads.get("blob").unpack(_payload(path), str(tmp_path))
-    project = backend.import_project(str(tmp_path), remotes.get("harmony-650"),
+    project = backend.import_project(str(tmp_path), _remote(path),
                                      {"name": "rt"}).project
     project = json.loads(json.dumps(project, default=str))
-    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    image = compose.build(project, directory=paths.scaffolds(_remote(path).id),
+                          stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
     assert _references_out_of_range(image) == []
 
 
@@ -703,7 +727,7 @@ def test_devices_returns_to_the_running_activity():
     def opened(block):
         return [item["operand"] for item in ui_index.drawing_program(image, block)["instructions"]
                 if item["opcode"] == "atom" and item["category"] == 0x7E]
-    menu = scaffold.SYSTEM_SCREENS
+    menu = FIRMWARE
     [(kind, operand)] = centre_of(menu)
     assert kind == "switch"
     cases = dict(tables[operand >> 8]["cases"])
@@ -1172,8 +1196,8 @@ def test_the_665_is_the_650_under_another_skin(tmp_path):
             {**project, "settings": {"skin": 66}}, promoted, context)
 
 
-@pytest.mark.parametrize("path", CONFIGS_650, ids=lambda path: path.name)
-def test_a_650_configurations_firmware_screens_read_as_their_words(path):
+@pytest.mark.parametrize("path", CONFIGS, ids=lambda path: path.name)
+def test_a_configurations_firmware_screens_read_as_their_words(path):
     """Readable is not enough: a reader that took a 700's "problem" for "probgem" read
     every glyph. The firmware's screens say the catalogue's words, so each must read
     back as them exactly - but on a configuration in another language, whose screens
@@ -1181,8 +1205,10 @@ def test_a_650_configurations_firmware_screens_read_as_their_words(path):
     payload = _payload(path)
     text = labels.Text(payload)
     screens = ui_index.screen_slots(payload)
+    notices = firmware_screens.load_system(paths.scaffolds(_remote(path).id))["notices"]
     pairs = []
-    for number, words in catalogue.NOTICES.items():
+    for number, name in notices.items():
+        number, words = int(number), catalogue.NOTICES[name]
         if number >= len(screens) or not screens[number]["slots"]:
             continue
         drawn = [item["text"] for item in labels.screen_text(
@@ -1192,3 +1218,49 @@ def test_a_650_configurations_firmware_screens_read_as_their_words(path):
     if sum(found for _line, found, _drawn in pairs) * 2 < len(pairs):
         pytest.skip("its firmware screens are in another language")
     assert [(line, drawn) for line, found, drawn in pairs if not found] == []
+
+
+def test_a_700_builds_on_its_own_scaffold_and_reads_back_as_a_650_does(tmp_path):
+    """The 700 is data for the arch-14 backend: a build for it takes the 700's scaffold -
+    its 49 firmware screens, where the project's own start - and says skin 66; the same
+    household reads back from it as from a 650's."""
+    from afterglow import backends
+    from afterglow.backends.contracts import BuildContext
+    from afterglow.backends.harmony_650.compose import TOUR
+
+    read = {}
+    for remote in ("harmony-650", "harmony-700"):
+        profile = remotes.get(remote)
+        context = BuildContext(root=tmp_path, log=lambda _line: None,
+                               find_scaffold=lambda name, _root: paths.scaffolds(name))
+        project = {**_household(), "settings": {"out_file": remote}}
+        raw = backends.for_profile(profile).build_project(project, profile, context) \
+            .artifact.read_bytes()
+        header, start, size, _checksum = ezhex._split(raw)
+        assert remotes.identify(header).id == remote
+        image = raw[start:start + size]
+        firmware = len(firmware_screens.load_system(paths.scaffolds(remote))["screens"])
+        assert len(ui_index.screen_slots(image)) >= firmware + 3 + len(TOUR)
+        assert _references_out_of_range(image) == []
+        payloads.get("blob").unpack(image, str(tmp_path / remote))
+        result = backend.import_project(str(tmp_path / remote), profile, {"name": "t"})
+        assert result.project["settings"].pop("remote") == remote
+        read[remote] = _by_label(json.loads(json.dumps(result.project, default=str)))
+    assert read["harmony-700"] == read["harmony-650"]
+
+
+@pytest.mark.parametrize("gone, left", [("harmony-650", "harmony-700"),
+                                        ("harmony-700", "harmony-650")])
+def test_either_arch14_remote_can_be_removed_alone(monkeypatch, gone, left):
+    """A remote of this backend is its profile and its scaffold: with one taken away, an
+    image is still read against the other's (both carry the same fonts and shapes)."""
+    from afterglow.backends.harmony_650 import scaffold as arch14
+
+    everything = remotes.load_all()
+    monkeypatch.setattr(remotes, "load_all", lambda *_args: [
+        profile for profile in everything if profile.id != gone])
+    assert arch14.default_directory() == paths.scaffolds(left)
+    monkeypatch.setattr(remotes, "load_all", lambda *_args: [
+        profile for profile in everything if profile.backend != arch14.BACKEND])
+    with pytest.raises(FileNotFoundError):
+        arch14.default_directory()

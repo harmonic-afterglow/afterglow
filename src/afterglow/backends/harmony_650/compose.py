@@ -53,7 +53,7 @@ LOAD_ONE = (0xFB01, 0x1F)           # `1F FB01`: the byte register := 1
 DEVICE_ATOM = 0x7C                  # `7C dd01`: the device a command is sent to
 WIRING_FILE = "platform/wiring.json"
 PLATFORM_FILE = "platform/platform.json"
-WIRING_SCHEMA = "afterglow-harmony-650-wiring/1"
+WIRING_SCHEMA = "afterglow-arch14-wiring/1"
 # The status screens - "Go to Website", the diagnostics - the firmware's event map names
 # by position: the last thirty of its own (docs/harmony_650_700/gspm.md, "Firmware-owned
 # screens"); section 4's head maps them.
@@ -1052,10 +1052,10 @@ class Image:
 
     def add_activity_screen(self) -> int:
         """The firmware screen that asks for an Activity on this button."""
-        for number, words in catalogue.NOTICES.items():
-            if "add an Activity on" in words.replace("\n", " "):
-                return number
-        raise ValueError("the catalogue has no 'add an Activity' notice")
+        for number, name in (self.system.get("notices") or {}).items():
+            if name == "add-an-activity-on-this-button":
+                return int(number)
+        raise ValueError("the scaffold names no screen for the 'add an Activity' notice")
 
     def place_hub(self):
         """The Activities menu and the Devices list, each opening the other with the centre
@@ -1405,7 +1405,7 @@ class Image:
         fonts = self.fonts
         message, softkey = fonts.roles["message"], fonts.roles["softkey"]
         height = fonts.records[message]["height"]
-        model = self.model or ("Harmony 700" if "700" in WIRING_SCHEMA else "Harmony 650")
+        model = self.model or _model_named_by(self.manifest)
         for number, (onward, word) in enumerate(TOUR):
             ordinal = self.tour_screens[number]
             if len(self.screens) != ordinal:
@@ -2102,10 +2102,26 @@ def build(project: dict, *, directory=None, stamp_fields=None, look=None,
           model=None) -> dict:
     """Build an image for ``project`` from the scaffold. ``look`` is the scaffold of the
     model's own look, ``model`` its name for the welcome tour - from its profile."""
-    from ... import paths
 
-    directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
+    directory = Path(_default_scaffold() if directory is None else directory)
     stamp_fields = build_stamp() if stamp_fields is None else stamp_fields
     words = catalogue.for_project(project)
     image = Image(project, directory, stamp_fields, words, look=look, model=model)
     return {"image": image.build(), "skipped": list(image.plan["skipped"])}
+
+
+def _default_scaffold():
+    from .scaffold import default_directory
+    return default_directory()
+
+
+def _model_named_by(manifest: dict) -> str:
+    """The remote's name for the welcome tour when the build was given none: the model
+    the scaffold was drawn for (assets.json's "remote")."""
+    from ... import remotes
+
+    try:
+        profile = remotes.get(manifest.get("remote") or "")
+    except (KeyError, LookupError, ValueError):
+        return "Harmony"
+    return remotes.model_name(profile, profile.skin)

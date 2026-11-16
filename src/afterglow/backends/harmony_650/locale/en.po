@@ -1,7 +1,7 @@
-# Translations for harmony-650.
+# Translations for arch14.
 msgid ""
 msgstr ""
-"Project-Id-Version: harmony-650\n"
+"Project-Id-Version: arch14\n"
 "Language: en\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -351,208 +351,213 @@ msgctxt "system.message"
 msgid "System Message: {number}"
 msgstr "System Message: {number}"
 
-#. Firmware screen 0, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.0"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.add-an-activity-on-this-button"
 msgid "Use the Harmony\nsetup software to\nadd an Activity on\nthis button."
 msgstr "Use the Harmony\nsetup software to\nadd an Activity on\nthis button."
 
-#. Firmware screen 1, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.1"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.add-activities"
 msgid "Use the Harmony\nsetup software to\nadd Activities."
 msgstr "Use the Harmony\nsetup software to\nadd Activities."
 
-#. Firmware screen 2, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.2"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.usb-connected"
 msgid "USB Connected"
 msgstr "USB Connected"
 
-#. Firmware screen 3, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.3"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.low-battery"
 msgid "Low Battery"
 msgstr "Low Battery"
 
-#. Firmware screen 5, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.5"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.please-charge-your-remote"
+msgid "Please charge your\nremote"
+msgstr "Please charge your\nremote"
+
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.insert-batteries"
 msgid "Insert batteries"
 msgstr "Insert batteries"
 
-#. Firmware screen 6, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.6"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.unable-to-charge-batteries"
 msgid "Unable to charge\nbatteries"
 msgstr "Unable to charge\nbatteries"
 
-#. Firmware screen 7, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.7"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.update-successful"
 msgid "Update Successful"
 msgstr "Update Successful"
 
-#. Firmware screen 8, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.8"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.upgrade-successful"
 msgid "Upgrade\nSuccessful"
 msgstr "Upgrade\nSuccessful"
 
-#. Firmware screen 10, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.10"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.ready-to-learn"
 msgid "Ready to learn\ncommand from\nother remote."
 msgstr "Ready to learn\ncommand from\nother remote."
 
-#. Firmware screen 11, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.11"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.command-received"
 msgid "Command\nReceived"
 msgstr "Command\nReceived"
 
-#. Firmware screen 13, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.13"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.terminate-entry"
 msgid "Terminate Entry"
 msgstr "Terminate Entry"
 
-#. Firmware screen 14, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.14"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.go-to-website"
 msgid "Go to Website\nto update settings"
 msgstr "Go to Website\nto update settings"
 
-#. Firmware screen 15, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.15"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.usb-initialization"
 msgid "USB\nInitialization"
 msgstr "USB\nInitialization"
 
-#. Firmware screen 16, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.16"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.bootloader-locked"
 msgid "Bootloader\nLocked"
 msgstr "Bootloader\nLocked"
 
-#. Firmware screen 17, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.17"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.real-time-clock"
 msgid "Real Time Clock"
 msgstr "Real Time Clock"
 
-#. Firmware screen 18, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.18"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.ir-leds-and-photodiode"
 msgid "IR LEDs\nand\nPhotodiode"
 msgstr "IR LEDs\nand\nPhotodiode"
 
-#. Firmware screen 19, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.19"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.flash-memory-id"
 msgid "FLASH Memory\nID"
 msgstr "FLASH Memory\nID"
 
-#. Firmware screen 20, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.20"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.flash-memory-erase"
 msgid "FLASH Memory\nErase"
 msgstr "FLASH Memory\nErase"
 
-#. Firmware screen 21, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.21"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.flash-memory-write"
 msgid "FLASH Memory\nWrite"
 msgstr "FLASH Memory\nWrite"
 
-#. Firmware screen 22, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.22"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.flash-memory-clear"
 msgid "FLASH Memory\nClear"
 msgstr "FLASH Memory\nClear"
 
-#. Firmware screen 23, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.23"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.lcd-module-failed"
 msgid "LCD Module\nFailed"
 msgstr "LCD Module\nFailed"
 
-#. Firmware screen 24, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.24"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.pll-failure"
 msgid "PLL Failure"
 msgstr "PLL Failure"
 
-#. Firmware screen 25, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.25"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.bootram-truncated"
 msgid "BootRAM\nTruncated"
 msgstr "BootRAM\nTruncated"
 
-#. Firmware screen 26, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.26"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.safe-mode"
 msgid "Safe Mode"
 msgstr "Safe Mode"
 
-#. Firmware screen 27, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.27"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.safe-mode-requested"
 msgid "Safe Mode\nRequested"
 msgstr "Safe Mode\nRequested"
 
-#. Firmware screen 28, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.28"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.battery-low"
 msgid "Battery Low"
 msgstr "Battery Low"
 
-#. Firmware screen 29, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.29"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.battery-fast-charge"
 msgid "Battery Fast\nCharge"
 msgstr "Battery Fast\nCharge"
 
-#. Firmware screen 30, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.30"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.battery-trickle-charge"
 msgid "Battery\nTrickle Charge"
 msgstr "Battery\nTrickle Charge"
 
-#. Firmware screen 31, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.31"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.battery-charge-complete"
 msgid "Battery Charge\nComplete"
 msgstr "Battery Charge\nComplete"
 
-#. Firmware screen 32, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.32"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.ir-sending"
 msgid "IR Sending"
 msgstr "IR Sending"
 
-#. Firmware screen 33, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.33"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.invalid-configuration"
 msgid "Invalid\nConfiguration"
 msgstr "Invalid\nConfiguration"
 
-#. Firmware screen 34, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.34"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.bootloader-bad-image"
 msgid "Bootloader\nBad Image"
 msgstr "Bootloader\nBad Image"
 
-#. Firmware screen 35, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.35"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.bootloader-upgrade-failed"
 msgid "Bootloader\nUpgrade Failed"
 msgstr "Bootloader\nUpgrade Failed"
 
-#. Firmware screen 36, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.36"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.battery-adc-not-calibrated"
 msgid "Battery ADC\nNot Calibrated"
 msgstr "Battery ADC\nNot Calibrated"
 
-#. Firmware screen 37, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.37"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.lightsense-adc-not-calibrated"
 msgid "LightSense ADC\nNot Calibrated"
 msgstr "LightSense ADC\nNot Calibrated"
 
-#. Firmware screen 38, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.38"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.revision-adc-not-calibrated"
 msgid "Revision ADC\nNot Calibrated"
 msgstr "Revision ADC\nNot Calibrated"
 
-#. Firmware screen 39, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.39"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.application-terminated"
 msgid "Application\nTerminated"
 msgstr "Application\nTerminated"
 
-#. Firmware screen 40, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.40"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.configuration-corrupted"
 msgid "Configuration\nCorrupted"
 msgstr "Configuration\nCorrupted"
 
-#. Firmware screen 41, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.41"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.missing-license"
 msgid "Missing\nLicense"
 msgstr "Missing\nLicense"
 
-#. Firmware screen 42, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.42"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.usb-connected-capitals"
 msgid "USB CONNECTED"
 msgstr "USB CONNECTED"
 
-#. Firmware screen 43, one line per line break, centred; about 120 pixels a line
-msgctxt "system.screen.43"
+#. A firmware notice, one line per line break, centred; about 120 pixels a line
+msgctxt "notice.needs-setup-battery-charging"
 msgid "Needs to be\nsetup.\nBattery\nCharging"
 msgstr "Needs to be\nsetup.\nBattery\nCharging"
 

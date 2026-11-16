@@ -36,8 +36,8 @@ The first 44 screens of every Harmony 650 configuration belong to the firmware: 
 battery and USB notices, the update and learning notices and the diagnostics. A build has to supply them at exactly those ordinals, so they ship here as a
 model, `platform/system-screens.json`, whose targets are names - a block, a picture role,
 an object - rather than addresses. Their words are labels naming entries in
-`backends/harmony_650/catalogue.py` (`system.screen.<n>`, and `system.exit` for the
-softkey).
+`backends/harmony_650/catalogue.py`: `notice.<name>` for a notice - the model's
+`notices` says which screen shows which - and `system.exit` for the softkey.
 
 Two variables are the firmware screens' own though a configuration numbers them among its
 own: the battery notice flag and the USB screen's state. The model names them by position

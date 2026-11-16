@@ -496,7 +496,7 @@ def system_screens(image: Image, roles: dict[str, int], platform: list[int]) -> 
         model_screens.append({"flag": payload[screen["trailer_offset"]], "header": header,
                               "slots": slots})
     return {
-        "schema": f"afterglow-{REMOTE}-system-screens/1",
+        "schema": "afterglow-arch14-system-screens/1",
         "blocks": model_blocks,
         "objects": carried_objects,
         "timers": carried_timers,
@@ -706,7 +706,7 @@ class Wiring:
         mode_zero = [[p[at + 1 + 4 * k]] + self.atom(
             int.from_bytes(p[at + 2 + 4 * k:at + 4 + 4 * k], "little"), p[at + 4 + 4 * k])
             for k in range(p[at])]
-        return {"schema": f"afterglow-{REMOTE}-wiring/1", "lead": lead, "timers": timers,
+        return {"schema": "afterglow-arch14-wiring/1", "lead": lead, "timers": timers,
                 "contexts": contexts, "mode_zero": mode_zero, "objects": self.objects,
                 "groups": self.groups_out, "off_context": self.off,
                 "holes": dict(sorted(self.holes.items()))}
@@ -955,6 +955,11 @@ def main() -> int:
     variables = [{"initial": initial[variable]["initial"], "limit": initial[variable]["limit"]}
                  for variable in shared]
     model["variables"] = wiring["variables"] = variables
+    # which notice each screen with words shows (catalogue.NOTICES, by name) is the
+    # scaffold's own record: kept from the one being redrawn, and checked on load
+    previous = platform / "system-screens.json"
+    if previous.is_file():
+        model["notices"] = json.loads(previous.read_text("utf-8")).get("notices", {})
     (platform / "system-screens.json").write_text(json.dumps(model) + "\n", "utf-8")
     (platform / "wiring.json").write_text(json.dumps(wiring) + "\n", "utf-8")
     (platform / "platform.json").write_text(

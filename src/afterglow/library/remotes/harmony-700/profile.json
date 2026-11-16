@@ -8,7 +8,7 @@
     "software_type": 0
   },
   "payload": "blob",
-  "backend": "harmony-700",
+  "backend": "harmony-650",
   "status": "experimental",
   "capabilities": {
     "ir_learning": false,
@@ -19,10 +19,10 @@
     "waveform": "carrier-period",
     "notes": "Every command is lowered to the press, hold and release waveform records the 700 shares with the Harmony One (ir_lowering.py)."
   },
-  "notes": "The Harmony 700: architecture 14, the 650's body with a rechargeable NiMH battery and its charging screens. Configurations are generated from the project alone (backends/harmony_700/compose.py) onto a scaffold drawn from Logitech's own: the Activities menu and Devices list, each device's and activity's pages, Starting and Turning off, the sending mark, Help and Help held's Delay Fixing, favourite channels. Testers' configurations import, rebuild and import the same. Not yet: favourites' logos. Learning is off: the 700 can learn, but Afterglow does not drive it yet.",
+  "notes": "The Harmony 700: architecture 14, the 650's body with a rechargeable NiMH battery and its charging screens. Configurations are generated from the project alone (backends/harmony_650/compose.py) onto a scaffold drawn from Logitech's own: the Activities menu and Devices list, each device's and activity's pages, Starting and Turning off, the sending mark, Help and Help held's Delay Fixing, favourite channels. Testers' configurations import, rebuild and import the same. Not yet: favourites' logos. Learning is off: the 700 can learn, but Afterglow does not drive it yet.",
   "schema": "afterglow-remote/1",
   "vocabulary": {
-    "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; on the 700 a type names nothing it draws. The keys are the 700's command keys (backends/harmony_700/keys.py) - the activity keys, Off, Help and the keys around the screen belong to the remote's own flow.",
+    "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; on the 700 a type names nothing it draws. The keys are the 700's command keys (backends/harmony_650/keys.py) - the activity keys, Off, Help and the keys around the screen belong to the remote's own flow.",
     "device_types": {
       "Amplifier": "Amplifier",
       "AudioVideoSwitch": "A/V switch",
@@ -248,7 +248,7 @@
   },
   "properties": {},
   "interface": {
-    "_comment": "No RF blasters, no owner name (nothing on the 700 shows it) and no preferences file; a theme folder instead. No Advanced pages: the device and activity properties they edit are the Harmony 900's, which the 700's builder does not read. Timing offers what the remote keeps - power-on and inter-device delays, the delay between digits, Always on. Languages are the ones the Harmony 700 backend has a catalogue for (backends/harmony_700/locale). The Favourites page offers no logos: no configuration Logitech built for these remotes has one, and the builder makes favourites by name.",
+    "_comment": "No RF blasters, no owner name (nothing on the 700 shows it) and no preferences file; a theme folder instead. No Advanced pages: the device and activity properties they edit are the Harmony 900's, which the 700's builder does not read. Timing offers what the remote keeps - power-on and inter-device delays, the delay between digits, Always on. Languages are the ones the Harmony 700 backend has a catalogue for (backends/harmony_650/locale). The Favourites page offers no logos: no configuration Logitech built for these remotes has one, and the builder makes favourites by name.",
     "tabs": [
       "devices",
       "activities",
@@ -305,7 +305,7 @@
     ]
   },
   "preferences": {
-    "_comment": "MyHarmony's Remote Backlight Settings, kept in the configuration's wiring: GlowTime is the first timer whose list opens 1F E910, TiltSensor the 3F F101 that arms the sensor (backends/harmony_700 compose and importing).",
+    "_comment": "MyHarmony's Remote Backlight Settings, kept in the configuration's wiring: GlowTime is the first timer whose list opens 1F E910, TiltSensor the 3F F101 that arms the sensor (backends/harmony_650 compose and importing).",
     "_note": "These are written into the configuration when you flash, as MyHarmony's Remote Backlight Settings were.",
     "backlight_timeout": {
       "compiled": true,

@@ -93,7 +93,8 @@ src/afterglow/
                           backends.rf_link(profile), only for a remote offering them)
     harmony_one/          GSPM images (Harmony One) - generated, never edited. See §2d
     harmony_650/          GSPM images for arch 14 - the Harmony 600 / 650 / 665 (one
-    harmony_700/          profile, told apart by skin) and the 700; locale/ has the words
+                          profile, told apart by skin) and the 700 (a profile and a
+                          scaffold of its own); locale/ has the words
     harmony_800/          GSGD images over MH USB (the 800 prototype)
     contracts.py          BuildResult / ImportResult, what a backend hands back
   payloads/               container formats, selected by profile.payload: pk, blob

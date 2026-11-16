@@ -110,8 +110,7 @@ def test_a_device_left_as_it_is_is_in_neither_list_of_a_built_activity(build):
     assert power == "<On>1</On><Off>2</Off>"          # 3 neither on nor off
 
     import importlib
-    for backend, remote in (("harmony_one", "harmony-one"), ("harmony_650", "harmony-650"),
-                            ("harmony_700", "harmony-700")):
+    for backend, remote in (("harmony_one", "harmony-one"), ("harmony_650", "harmony-650")):
         activities = importlib.import_module(f"afterglow.backends.{backend}.activities")
         devices = importlib.import_module(f"afterglow.backends.{backend}.devices")
         built = dict(project, settings={"remote": remote})

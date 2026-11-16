@@ -126,7 +126,7 @@ row spans the screen: both keys of a side open it, and its label is centred acro
 | `81`, `85`, `87` | the activity keys; `85` is Watch TV |
 
 The rest are the keys that send a device's commands, `0x80 | scan` with the scans in
-`backends/harmony_700/keys.py`. They were named by the codes devices are sent - NEC codes of
+`backends/harmony_650/keys.py`. They were named by the codes devices are sent - NEC codes of
 an LG and a Vizio television, a Samsung receiver's - looked up in Logitech's database, and the
 firmware's own keys by the Tutorial screens that ask for each. `9A` and `9B` are bound only
 in activities' contexts, where they send the display device's DirectionUp and DirectionDown -
@@ -296,7 +296,7 @@ database names code 0 of that protocol. An import leaves it out of the device, a
 
 ## Building an image
 
-A build (`backends/harmony_700/compose.py`, and the 650's copy) numbers everything itself:
+A build (`backends/harmony_650/compose.py`, for the 650 and the 700 alike) numbers everything itself:
 the firmware's screens at their ordinals from the scaffold's model, the wiring's objects,
 contexts, timers, start-up list and mode 0's list with every hole filled from the project,
 then the household's screens. The engine numbers the clock and the platform's properties,

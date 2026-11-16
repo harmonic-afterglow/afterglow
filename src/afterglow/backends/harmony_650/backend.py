@@ -1,4 +1,5 @@
-"""The Harmony 650 backend: build a configuration from a project, and read one back.
+"""The arch-14 backend (the Harmony 600, 650, 665 and 700): build a configuration from a
+project, and read one back.
 
 A build generates the whole arch-14 image from the project's devices, activities and
 settings and the scaffold's platform models (compose.py) - nothing is carried from a
@@ -179,7 +180,7 @@ def build_project(project, profile, context) -> BuildResult:
     validation = validate_payload(payload, profile)
 
     carrier = payloads.get(profile.payload)
-    work = Path(tempfile.mkdtemp(prefix="harmony_650_build_"))
+    work = Path(tempfile.mkdtemp(prefix="arch14_build_"))
     output = Path(settings.get("out_file") or "home.ezhex")
     if not output.is_absolute():
         output = Path(context.root) / output
@@ -218,7 +219,8 @@ def name_activity_keys(project) -> int:
 
 
 def capability(signal: dict, profile, *, library=None) -> dict:
-    """Whether the One can send a portable signal: its lowering takes it or says why."""
+    """Whether an arch-14 remote can send a portable signal: its lowering takes it or says
+    why."""
     from ... import ir_signal
     from . import ir_lowering
 
@@ -232,4 +234,4 @@ def capability(signal: dict, profile, *, library=None) -> dict:
         return {"supported": False, "strategy": "unavailable", "reason": str(exc)}
     strategy = "waveform" if signal["kind"] == "waveform" else "protocol"
     return {"supported": True, "strategy": strategy,
-            "reason": "lowered to the One's own waveform records"}
+            "reason": "lowered to the remote's own waveform records"}

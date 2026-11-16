@@ -15,7 +15,7 @@ import zipfile
 
 import pytest
 
-from afterglow import ezhex, remotes
+from afterglow import ezhex, paths, remotes
 from afterglow.payloads import pk
 
 # Info-ZIP's "UT" extended timestamp: the local header carries mtime and atime, the
@@ -104,9 +104,10 @@ def test_modes_and_local_extras_survive(synthetic, tmp_path):
 @pytest.mark.parametrize("remote", ["harmony-650", "harmony-700"])
 def test_a_gspm_blob_round_trips(remote, tmp_path):
     import importlib
-    compose = importlib.import_module(f"afterglow.backends.{remote.replace('-', '_')}.compose")
-    household = importlib.import_module(f"test_{remote.replace('-', '_')}")._household()
-    image = compose.build(household, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    compose = importlib.import_module("afterglow.backends.harmony_650.compose")
+    household = importlib.import_module("test_harmony_650")._household()
+    image = compose.build(household, directory=paths.scaffolds(remote),
+                          stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
     path = tmp_path / "built.ezhex"
     path.write_bytes(_ezhex(image, remote))
     assert _repack(path, tmp_path) == path.read_bytes()

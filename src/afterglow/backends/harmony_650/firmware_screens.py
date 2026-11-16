@@ -43,7 +43,7 @@ def owned_handlers(system, first: int) -> list[tuple[int, int, int]]:
 
 SYSTEM_SCREENS_FILE = "platform/system-screens.json"
 SYSTEM_TEMPLATES_FILE = "platform/system-templates.json"
-SYSTEM_SCHEMA = "afterglow-harmony-650-system-screens/1"
+SYSTEM_SCHEMA = "afterglow-arch14-system-screens/1"
 
 # Addresses for blocks built from a model rather than read out of an image. A pointer is
 # 24 bits past the mapping base, so these sit inside that range but far above anything
@@ -53,14 +53,24 @@ MODEL_BLOCK = 0xF00000
 
 def load_system(directory=None) -> dict:
     """The firmware's own screens, as the scaffold carries them."""
-    from ... import paths
 
-    directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
+    directory = Path(_default_scaffold() if directory is None else directory)
     model = json.loads((directory / SYSTEM_SCREENS_FILE).read_text("utf-8"))
     if model.get("schema") != SYSTEM_SCHEMA:
         raise ValueError(
             f"{SYSTEM_SCREENS_FILE} declares {model.get('schema')!r}, not {SYSTEM_SCHEMA!r}")
-    # a 700 has no touchscreen, so its screens name no touch templates
+    # each notice's lines name the notice its screen shows ("notices"): the same words
+    # are on screen 0 of a 650 and screen 4 of a 700
+    notices = model.get("notices") or {}
+    for block in model["blocks"]:
+        for item in block:
+            if item.get("opcode") == "label" and item["key"].startswith("screen-"):
+                number = item["key"].split("-")[1]
+                if number not in notices:
+                    raise ValueError(f"{SYSTEM_SCREENS_FILE} draws words on screen {number} "
+                                     "but its \"notices\" name none")
+                item["key"] = f"notice-{notices[number]}"
+    # an arch-14 remote has no touchscreen, so its screens name no touch templates
     templates = directory / SYSTEM_TEMPLATES_FILE
     model["templates"] = json.loads(templates.read_text("utf-8")) if templates.is_file() else []
     return model
@@ -152,3 +162,8 @@ def place(layout, system, household, platform_handlers, navigate, roles, first_p
             owned.append(blocks)
         for blocks, placed in zip(owned, layout.mode(header, screen["flag"], mode_pages)):
             layout.fixed_blocks.update(zip(blocks, placed))
+
+
+def _default_scaffold():
+    from .scaffold import default_directory
+    return default_directory()

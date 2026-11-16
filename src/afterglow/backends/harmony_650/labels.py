@@ -39,7 +39,7 @@ from pathlib import Path
 from . import drawing, font_index, glyph_codec, ui_index
 
 SHAPES_FILE = "platform/glyph-shapes.json"
-SHAPES_SCHEMA = "afterglow-harmony-650-glyph-shapes/1"
+SHAPES_SCHEMA = "afterglow-arch14-glyph-shapes/1"
 UNKNOWN = "\N{REPLACEMENT CHARACTER}"
 # What this backend's own fonts are asked to draw, to know their shapes: printable ASCII,
 # Latin-1's and Latin Extended-A's letters - a Polish 600's ł and ś - and the quotes and
@@ -56,9 +56,8 @@ def shape(body: bytes) -> str:
 @lru_cache(maxsize=4)
 def logitech_shapes(directory: str | None = None) -> dict[str, str]:
     """The shapes Logitech's configurations are known to draw (platform/glyph-shapes.json)."""
-    from ... import paths
 
-    directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
+    directory = Path(_default_scaffold() if directory is None else directory)
     path = directory / SHAPES_FILE
     if not path.is_file():
         return {}
@@ -72,10 +71,9 @@ def logitech_shapes(directory: str | None = None) -> dict[str, str]:
 def known_shapes(directory: str | None = None) -> dict[str, str]:
     """Every shape whose character is known - the characters, when a face draws more
     than one alike: Logitech's, then this scaffold's fonts'."""
-    from ... import paths
     from . import assets
 
-    directory = Path(paths.scaffolds("harmony-650") if directory is None else directory)
+    directory = Path(_default_scaffold() if directory is None else directory)
     out = dict(logitech_shapes(str(directory)))
     try:
         loaded = assets.load(directory, set(OWN_CHARACTERS))
@@ -378,3 +376,8 @@ def screen_text(payload: bytes, program: int, text: Text, *, depth: int = 6) -> 
                 return
     walk(program, 0)
     return out
+
+
+def _default_scaffold():
+    from .scaffold import default_directory
+    return default_directory()

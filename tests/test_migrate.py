@@ -12,7 +12,7 @@ from dataclasses import replace
 
 import pytest
 
-from afterglow import ir_signal, migrate, remotes
+from afterglow import ir_signal, migrate, paths, remotes
 
 
 def _small_remote(**changes):
@@ -224,9 +224,10 @@ def test_a_gap_between_screen_buttons_closes_up_in_a_650_or_700_build(remote):
     """These pages fill their places in turn; a gap a project brings - hand-made, or
     from a remote that keeps them - is closed up, not a crash."""
     import importlib
-    household = importlib.import_module(f"test_{remote.replace('-', '_')}")._household()
-    compose = importlib.import_module(f"afterglow.backends.{remote.replace('-', '_')}.compose")
+    household = importlib.import_module("test_harmony_650")._household()
+    compose = importlib.import_module("afterglow.backends.harmony_650.compose")
     buttons = household["activities"][0].get("soft_buttons") or []
     household["activities"][0]["soft_buttons"] = [None, *buttons, None]
-    built = compose.build(household, stamp_fields=(0, 0, 12, 0, 0, 2026))
+    built = compose.build(household, directory=paths.scaffolds(remote),
+                          stamp_fields=(0, 0, 12, 0, 0, 2026))
     assert built["image"] and built["skipped"] == []

@@ -1,7 +1,8 @@
 """The words on the firmware's own screens and in the status bar, drawn by each build.
 
-The first 44 screens of a Harmony 650 configuration belong to the firmware - the
-battery and USB notices, the update notices and the system messages. The scaffold carries their pictures and their logic
+The first screens of an arch-14 configuration belong to the firmware - 44 on a 650, 49 on
+a 700: the battery and USB notices, the update notices, the system messages and a 700's
+charging animation. The scaffold carries their pictures and their logic
 (platform/system-screens.json), but every piece of text in them is a ``label`` item that
 names a message of the catalogue (catalogue.py), so no donor's words come along and they
 follow the project's language. A build draws each label in its slot's font, placed by the
@@ -32,7 +33,7 @@ def _on_screen(texts: list, middle: int, spacing: int) -> tuple[list, int]:
 def text(item: dict, words) -> str:
     """The words a ``label`` item stands for (one line of a notice: see ``lines``)."""
     key = item["key"]
-    if key.startswith("screen-"):
+    if key.startswith("notice-"):
         return lines(item, words)[item["line"]]
     if key == "ok":
         return words("system.ok")
@@ -50,7 +51,7 @@ def text(item: dict, words) -> str:
 
 
 def lines(item: dict, words) -> list[str]:
-    return words(f"system.screen.{item['key'].split('-')[1]}").split("\n")
+    return words(f"notice.{item['key'].removeprefix('notice-')}").split("\n")
 
 
 def _width(label, text: str, font: int) -> int:
@@ -91,7 +92,7 @@ def render(model: dict, label, words=None) -> dict:
         out, font = [], None
         notice_ys = {}
         for item in block:
-            if item.get("opcode") == "label" and item["key"].startswith("screen-"):
+            if item.get("opcode") == "label" and item["key"].startswith("notice-"):
                 notice_ys.setdefault(item["key"], []).append(item["y"])
 
         def draw(words_, item, y, x=None):
@@ -114,7 +115,7 @@ def render(model: dict, label, words=None) -> dict:
                 continue
             if label is None:          # no fonts to draw with: the words are left out
                 continue
-            if item["key"].startswith("screen-"):
+            if item["key"].startswith("notice-"):
                 # the whole notice is drawn at its first line, centred on the English lines
                 if item["line"]:
                     continue

@@ -8,7 +8,7 @@ without them, and nothing else looks right on it.
 The 49 screens the firmware itself shows - the charging animation, battery and USB notices
 and diagnostics - are carried too, as drawing programs in `platform/system-screens.json`:
 their pictures and logic. Their words are this project's, drawn from
-`backends/harmony_700/catalogue.py`. Those programs are Logitech's as well.
+`backends/harmony_650/catalogue.py`. Those programs are Logitech's as well.
 
 Only artwork and platform state were taken. Nothing that identifies a remote or its owner -
 no device names, activities, favourites or account data - was read from the donor

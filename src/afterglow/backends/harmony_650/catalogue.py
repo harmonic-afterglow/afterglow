@@ -1,10 +1,10 @@
-"""Every word a generated Harmony 650 draws, in English, and its translations.
+"""Every word a generated arch-14 remote (600, 650, 665, 700) draws, and its translations.
 
 Text on the remote comes from two places - the screens this backend builds and the
 firmware's own notices and clock - and all of it is named here: a stable key (the gettext
 context), the English, and a note telling a translator where it is drawn and how much room
 it has, since they cannot see the screen. Where Logitech's remote breaks a text into fixed
-lines, its English keeps them as line breaks. `locale/harmony-650.pot` is written from this
+lines, its English keeps them as line breaks. `locale/arch14.pot` is written from this
 list (tools/arch14_pot.py) and `locale/<language>.po` answers it;
 English is a catalogue like the others (`en.po`), so its wording is edited the same way,
 and the text here is only what stands when a catalogue gives none.
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from ... import po
 
-DOMAIN = "harmony-650"
+DOMAIN = "arch14"
 LOCALE_DIR = Path(__file__).resolve().parent / "locale"
 
 # The project's language setting (settings.locale) uses Logitech's codes, which the other
@@ -28,50 +28,52 @@ LOCALES = {"enu": "en", "esp": "es", "rus": "ru", "deu": "de", "nld": "nl", "dan
            "fin": "fi", "ita": "it", "sve": "sv"}
 
 WEEKDAYS = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-# The words on the 650's firmware screens (scaffold platform/system-screens.json), by
-# screen, read off a 650's own configuration. Screens 4, 9 and 12 are pictures only.
+# The words on the firmware's own screens, by name. Which screen shows which is the
+# scaffold's (platform/system-screens.json, "notices"): a 650 and a 700 number them
+# differently, and only a 700 asks to be charged.
 NOTICES = {
-    0: 'Use the Harmony\nsetup software to\nadd an Activity on\nthis button.',
-    1: 'Use the Harmony\nsetup software to\nadd Activities.',
-    2: 'USB Connected',
-    3: 'Low Battery',
-    5: 'Insert batteries',
-    6: 'Unable to charge\nbatteries',
-    7: 'Update Successful',
-    8: 'Upgrade\nSuccessful',
-    10: 'Ready to learn\ncommand from\nother remote.',
-    11: 'Command\nReceived',
-    13: 'Terminate Entry',
-    14: 'Go to Website\nto update settings',
-    15: 'USB\nInitialization',
-    16: 'Bootloader\nLocked',
-    17: 'Real Time Clock',
-    18: 'IR LEDs\nand\nPhotodiode',
-    19: 'FLASH Memory\nID',
-    20: 'FLASH Memory\nErase',
-    21: 'FLASH Memory\nWrite',
-    22: 'FLASH Memory\nClear',
-    23: 'LCD Module\nFailed',
-    24: 'PLL Failure',
-    25: 'BootRAM\nTruncated',
-    26: 'Safe Mode',
-    27: 'Safe Mode\nRequested',
-    28: 'Battery Low',
-    29: 'Battery Fast\nCharge',
-    30: 'Battery\nTrickle Charge',
-    31: 'Battery Charge\nComplete',
-    32: 'IR Sending',
-    33: 'Invalid\nConfiguration',
-    34: 'Bootloader\nBad Image',
-    35: 'Bootloader\nUpgrade Failed',
-    36: 'Battery ADC\nNot Calibrated',
-    37: 'LightSense ADC\nNot Calibrated',
-    38: 'Revision ADC\nNot Calibrated',
-    39: 'Application\nTerminated',
-    40: 'Configuration\nCorrupted',
-    41: 'Missing\nLicense',
-    42: 'USB CONNECTED',
-    43: 'Needs to be\nsetup.\nBattery\nCharging',
+    'add-an-activity-on-this-button': 'Use the Harmony\nsetup software to\nadd an Activity on\nthis button.',
+    'add-activities': 'Use the Harmony\nsetup software to\nadd Activities.',
+    'usb-connected': 'USB Connected',
+    'low-battery': 'Low Battery',
+    'please-charge-your-remote': 'Please charge your\nremote',
+    'insert-batteries': 'Insert batteries',
+    'unable-to-charge-batteries': 'Unable to charge\nbatteries',
+    'update-successful': 'Update Successful',
+    'upgrade-successful': 'Upgrade\nSuccessful',
+    'ready-to-learn': 'Ready to learn\ncommand from\nother remote.',
+    'command-received': 'Command\nReceived',
+    'terminate-entry': 'Terminate Entry',
+    'go-to-website': 'Go to Website\nto update settings',
+    'usb-initialization': 'USB\nInitialization',
+    'bootloader-locked': 'Bootloader\nLocked',
+    'real-time-clock': 'Real Time Clock',
+    'ir-leds-and-photodiode': 'IR LEDs\nand\nPhotodiode',
+    'flash-memory-id': 'FLASH Memory\nID',
+    'flash-memory-erase': 'FLASH Memory\nErase',
+    'flash-memory-write': 'FLASH Memory\nWrite',
+    'flash-memory-clear': 'FLASH Memory\nClear',
+    'lcd-module-failed': 'LCD Module\nFailed',
+    'pll-failure': 'PLL Failure',
+    'bootram-truncated': 'BootRAM\nTruncated',
+    'safe-mode': 'Safe Mode',
+    'safe-mode-requested': 'Safe Mode\nRequested',
+    'battery-low': 'Battery Low',
+    'battery-fast-charge': 'Battery Fast\nCharge',
+    'battery-trickle-charge': 'Battery\nTrickle Charge',
+    'battery-charge-complete': 'Battery Charge\nComplete',
+    'ir-sending': 'IR Sending',
+    'invalid-configuration': 'Invalid\nConfiguration',
+    'bootloader-bad-image': 'Bootloader\nBad Image',
+    'bootloader-upgrade-failed': 'Bootloader\nUpgrade Failed',
+    'battery-adc-not-calibrated': 'Battery ADC\nNot Calibrated',
+    'lightsense-adc-not-calibrated': 'LightSense ADC\nNot Calibrated',
+    'revision-adc-not-calibrated': 'Revision ADC\nNot Calibrated',
+    'application-terminated': 'Application\nTerminated',
+    'configuration-corrupted': 'Configuration\nCorrupted',
+    'missing-license': 'Missing\nLicense',
+    'usb-connected-capitals': 'USB CONNECTED',
+    'needs-setup-battery-charging': 'Needs to be\nsetup.\nBattery\nCharging',
 }
 
 TITLE = "a screen's title, top left; about 100 pixels in the title font"
@@ -221,10 +223,10 @@ def _messages() -> list[po.Message]:
     out.append(po.Message("system.message", "System Message: {number}",
                           "Title of a firmware diagnostic screen: " + TITLE,
                           brace_format=True))
-    out += [po.Message(f"system.screen.{n}", text,
-                       f"Firmware screen {n}, one line per line break, centred; about 120 "
+    out += [po.Message(f"notice.{name}", text,
+                       "A firmware notice, one line per line break, centred; about 120 "
                        "pixels a line")
-            for n, text in sorted(NOTICES.items())]
+            for name, text in NOTICES.items()]
     out += [po.Message(f"clock.weekday.{n}", name,
                        "The status bar's clock, before the time; about 20 pixels in the "
                        "11-pixel font")

@@ -1829,9 +1829,8 @@ def _known_icons() -> dict[str, dict[str, str]]:
     """Logitech's row icons by fingerprint, with their types (platform/type-icons.json)."""
     import json
 
-    from ... import paths
 
-    path = paths.scaffolds("harmony-650") / TYPE_ICONS_FILE
+    path = _default_scaffold() / TYPE_ICONS_FILE
     if not path.is_file():
         return {"devices": {}, "activities": {}}
     data = json.loads(path.read_text("utf-8"))
@@ -1859,3 +1858,8 @@ def read_types(image: Image) -> dict[tuple[str, int], str]:
         if found is not None:
             out[(row["kind"], row["key"])] = found
     return out
+
+
+def _default_scaffold():
+    from .scaffold import default_directory
+    return default_directory()
