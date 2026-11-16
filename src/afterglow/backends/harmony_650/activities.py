@@ -283,6 +283,8 @@ def _buttons(activity: dict) -> list[tuple[str, list]]:
     entries = ([button for _name, buttons in groups for button in buttons] if groups
                else activity.get("soft_buttons") or [])
     for entry in entries:
+        if entry is None:
+            continue        # a gap: these pages fill their places in turn, so it closes up
         if isinstance(entry, dict):
             label = entry.get("label") or ""
             macro = entry.get("macro") or [["command", entry.get("device"),

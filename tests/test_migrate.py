@@ -31,6 +31,10 @@ def _small_remote(**changes):
     # No RF and none of the 900's own settings files: its interface says so.
     data["preferences"] = {}
     data["interface"]["settings"] = ["output_file", "owner", "language"]
+    # No touchscreen, and so no page of screen buttons or favourites.
+    data["interface"]["activity_pages"] = [
+        page for page in data["interface"]["activity_pages"]
+        if page not in ("screen_buttons", "favourites")]
     profile = remotes._from_json(data)
     return replace(profile, **changes) if changes else profile
 
@@ -102,8 +106,11 @@ def test_every_loss_is_in_the_report():
 
 
 def test_commands_the_target_cannot_send_go_with_whatever_sends_them():
-    target = _small_remote(infrared={"native_protocols": [], "waveform": None},
-                           capabilities={"hard_keys": True, "touchscreen": True})
+    small = _small_remote()
+    target = replace(small, infrared={"native_protocols": [], "waveform": None},
+                     capabilities={"hard_keys": True, "touchscreen": True},
+                     interface={**small.interface, "activity_pages": [
+                         *small.interface["activity_pages"], "screen_buttons"]})
     migrated, report = migrate.migrate(_project(), target)
     assert all(not device["signals"] for device in migrated["devices"])
     assert all(not device["commands"] for device in migrated["devices"])
@@ -166,3 +173,60 @@ def test_a_device_saved_in_the_editor_moves_to_a_remote_with_fewer_keys(qapp_or_
     rows = {row[0]: row[4] for row in moved["devices"][0]["commands"]}
     assert rows == {"Red": None, "Menu": "Menu"}
     assert any("Red" in row["detail"] for row in report)
+
+
+def _screen_project(remote, skin=None):
+    project = _project()
+    project["settings"] = {"remote": remote, **({"skin": skin} if skin else {})}
+    project["activities"][0].update(
+        soft_buttons=[{"label": "Menu", "device": "1", "command": "Menu", "icon": "myTV"},
+                      None, {"label": "Guide", "device": "1", "command": "Guide"}],
+        image_buttons=[["BBC One", "channel", "101", "bbc.png"]])
+    return project
+
+
+@pytest.mark.parametrize("source, target", [("harmony-650", "harmony-700"),
+                                            ("harmony-one", "harmony-650"),
+                                            ("harmony-900", "harmony-700")])
+def test_a_650_or_700_keeps_screen_buttons_and_favourites_as_far_as_it_shows_them(
+        source, target):
+    """The 650 and 700 have pages of both, with no touchscreen: buttons and favourites
+    come along, losing only what these screens cannot draw - icons, logos, gaps."""
+    migrated, report = migrate.migrate(_screen_project(source), target)
+    watch = migrated["activities"][0]
+    assert watch["soft_buttons"] == [{"label": "Menu", "device": "1", "command": "Menu"},
+                                     {"label": "Guide", "device": "1", "command": "Guide"}]
+    assert watch["image_buttons"] == [["BBC One", "channel", "101", ""]]
+    details = " ".join(row["detail"] for row in report)
+    assert "touchscreen" not in details
+    assert "icons" in details and "logos" in details and "gaps" in details
+
+
+def test_a_remote_with_pages_of_its_own_keeps_icons_logos_and_gaps():
+    migrated, report = migrate.migrate(_screen_project("harmony-900"), "harmony-one")
+    watch = migrated["activities"][0]
+    assert watch["soft_buttons"][1] is None and watch["soft_buttons"][0]["icon"] == "myTV"
+    assert watch["image_buttons"][0][3] == "bbc.png"
+
+
+def test_the_model_comes_along_only_where_the_target_has_it():
+    """A 600 project (skin 71) moved to the 700 is for a 700, not for a skin the 700's
+    build refuses; moved within its own remote it stays a 600."""
+    to_700, report = migrate.migrate(_screen_project("harmony-650", skin=71), "harmony-700")
+    assert "skin" not in to_700["settings"]
+    assert any(row["subject"] == "Remote model" for row in report)
+    same, _report = migrate.migrate(_screen_project("harmony-650", skin=71), "harmony-650")
+    assert same["settings"]["skin"] == 71
+
+
+@pytest.mark.parametrize("remote", ["harmony-650", "harmony-700"])
+def test_a_gap_between_screen_buttons_closes_up_in_a_650_or_700_build(remote):
+    """These pages fill their places in turn; a gap a project brings - hand-made, or
+    from a remote that keeps them - is closed up, not a crash."""
+    import importlib
+    household = importlib.import_module(f"test_{remote.replace('-', '_')}")._household()
+    compose = importlib.import_module(f"afterglow.backends.{remote.replace('-', '_')}.compose")
+    buttons = household["activities"][0].get("soft_buttons") or []
+    household["activities"][0]["soft_buttons"] = [None, *buttons, None]
+    built = compose.build(household, stamp_fields=(0, 0, 12, 0, 0, 2026))
+    assert built["image"] and built["skipped"] == []

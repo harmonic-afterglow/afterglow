@@ -2,8 +2,8 @@
 
 A project is portable by design: devices are named commands with portable signals,
 activities refer to them by role. What is not portable is what each remote can be told -
-its device and activity types, the keys on its case, whether it has a touchscreen or RF
-blasters, which properties it has, which signals its backend can reproduce. All of that
+its device and activity types, the keys on its case, which pages of screen buttons and
+favourites it has and what they can show, its models (skins), whether it has RF blasters, which properties it has, which signals its backend can reproduce. All of that
 is in the target's profile, so migrating is reading the project against that profile.
 
 Nothing is dropped quietly. Every rename, substitution and removal is a row in the
@@ -46,10 +46,10 @@ def migrate(project: dict, target) -> tuple[dict, list[dict]]:
     settings = out.setdefault("settings", {})
     settings["remote"] = target.id
 
+    _model(out, target, report)
     _keys(out, target, report)
     _types(out, target, report)
-    if not target.can("touchscreen"):
-        _touchscreen(out, report)
+    _screen(out, target, report)
     if not target.can("rf_blaster"):
         _rf(out, report)
     if source is not None:
@@ -121,14 +121,68 @@ def _types(project, target, report):
                      f"type {kind} is not on {target.model}; it is now {new}")
 
 
-def _touchscreen(project, report):
+def _model(project, target, report):
+    """Which of the target's models the project is for (its skin: a 600, 650 or 665):
+    kept when the target is sold under it, else the target's own; and a theme folder only
+    where the target offers themes."""
+    settings = project["settings"]
+    skin = settings.get("skin")
+    if skin is not None and skin not in target.skins:
+        settings.pop("skin")
+        _row(report, "Remote model", "substituted",
+             f"skin {skin} is not a {target.model}'s; the project is for its own")
+    if settings.get("theme_folder") and "theme" not in target.settings_fields:
+        _row(report, "Theme", "removed",
+             f"{target.model} has no themes; {settings.pop('theme_folder')!r} is not used")
+
+
+def _screen(project, target, report):
+    """What an activity shows on the screen, as far as the target shows it: its buttons
+    where it has an activity page of them, without icons where it draws none and without
+    gaps where its pages fill their places in turn; its favourites where it has them,
+    without logos where it draws none (the 650's and 700's are names alone)."""
+    from . import backends
+
+    pages = set(target.activity_pages)
     for activity in project.get("activities") or []:
-        dropped = [key for key in ("soft_buttons", "image_buttons", "channels")
-                   if activity.get(key)]
-        for key in dropped:
-            count = sum(entry is not None for entry in activity.pop(key))
-            _row(report, f"Activity {activity.get('label')!r}", "removed",
-                 f"{count} {key.replace('_', ' ')}: the remote has no touchscreen")
+        where = f"Activity {activity.get('label')!r}"
+        buttons = activity.get("soft_buttons")
+        if buttons and "screen_buttons" not in pages:
+            count = sum(entry is not None for entry in activity.pop("soft_buttons"))
+            _row(report, where, "removed",
+                 f"{count} screen buttons: {target.model} has no page of them")
+        elif buttons:
+            if not target.screen_icons:
+                icons = 0
+                for entry in buttons:
+                    if isinstance(entry, dict) and entry.pop("icon", None):
+                        icons += 1
+                if icons:
+                    _row(report, where, "removed",
+                         f"{icons} screen button icons: {target.model} draws labels alone")
+            if None in buttons and not backends.screen_gaps(target):
+                activity["soft_buttons"] = [entry for entry in buttons if entry is not None]
+                _row(report, where, "substituted",
+                     f"gaps between screen buttons closed up: {target.model} leaves "
+                     "no place on its screen empty")
+        favourites = [key for key in ("image_buttons", "channels") if activity.get(key)]
+        if favourites and "favourites" not in pages:
+            for key in favourites:
+                count = len(activity.pop(key))
+                _row(report, where, "removed",
+                     f"{count} {'favourites' if key == 'image_buttons' else 'channels'}: "
+                     f"{target.model} has no favourites")
+        elif favourites and not target.favourite_logos:
+            logos = 0
+            for entry in activity.get("image_buttons") or []:
+                if len(entry) > 3 and entry[3]:
+                    entry[3], logos = "", logos + 1
+            for entry in activity.get("channels") or []:
+                if len(entry) > 2 and entry[2]:
+                    entry[2], logos = "", logos + 1
+            if logos:
+                _row(report, where, "removed",
+                     f"{logos} favourite logos: {target.model}'s favourites are names alone")
 
 
 def _rf(project, report):
