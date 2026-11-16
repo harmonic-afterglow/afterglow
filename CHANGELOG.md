@@ -6,6 +6,47 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0-beta.7.1] - 2026-11-16
+
+### Changed
+
+- **The Harmony One is supported.** Configurations built for it have booted and run on
+  testers' remotes since 0.3.0-beta.2.1, with no failure reported, and a One's own
+  configuration now reads back with its settings, its look and its text. A write asks
+  once, as the 900's does, and no longer saves the remote first: use Read from Remote to
+  keep what is on it.
+
+### Added
+
+- **A One's, 650's or 700's commands go across to the Harmony 900 and 1100.** These
+  remotes keep a command as a recording of its press and of what it repeats while held,
+  which the 900 cannot store; each is now sent as the command it is, recognised by
+  rendering it back - NEC and its "still held" frame, Sony, RC5 and RC6 with their toggle,
+  Samsung, RC-MM and what it sends on release, and codes of their own shape. Every
+  command in the configurations testers have shared now goes across, where hundreds per
+  remote used to be dropped.
+- **Find model**, on the Devices tab: a device with no manufacturer or model - as a
+  One's devices come - is matched against Logitech's database by the codes it sends and
+  its name, and the model you pick names the device and the commands the configuration
+  left unnamed.
+- **Reading a Harmony One back keeps more of it:** how long the screen stays lit, the
+  12- or 24-hour clock, whether the Remote Assistant is shown, the language, and a
+  custom look, which comes back as a theme of its own. The One, 650, 700 and 800 read
+  text in any script their fonts draw, Cyrillic included, and say what an import leaves
+  out.
+- **Long softkey labels wrap onto two lines on the Harmony One**, as Logitech's "Current
+  Activity" does; French reads "Activité en cours" again.
+- **A press sends at least the frames Logitech's database asks for** on the 900 and
+  1100, for devices that need a code repeated before they act.
+
+### Fixed
+
+- **Harmony 900 and 1100: an activity no longer hangs while it starts** when a device
+  has no model or a non-numeric id, as a configuration converted from a One had.
+- **A letter Afterglow cannot read in an imported configuration reads as "?"** and no
+  longer stops the build; the import names what had one, and asks for the configuration
+  in an Issue so the letter can be learned.
+
 ## [0.3.0-beta.7] - 2026-11-16
 
 ### Added
