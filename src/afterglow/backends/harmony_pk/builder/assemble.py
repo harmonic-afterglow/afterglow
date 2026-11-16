@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from ....preferences import apply as apply_preferences
 from ..rf import apply_rf_setting
 from .. import irproto, ssir
-from . import protocols
+from . import protocols, references
 from .activities import _gen_activity
 from .codes import esc
 from .devices import _gen_device
@@ -189,6 +189,7 @@ def build(specs, work, request: BuildRequest | None = None):
     # instead of something each caller has to know.
     specs = deepcopy(specs)
     _check_unique_ids(specs, activities)
+    references.check(specs, activities)
     # A remote that plays recorded sequences (the Harmony 1100) has no protocol table:
     # lowering gave every command a press and a hold sequence, which are numbered here -
     # presses 0..n-1, then holds n..2n-1, as Logitech's are - and written to SsIr.bin.

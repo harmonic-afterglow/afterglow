@@ -313,6 +313,120 @@ def command_rows(device: dict) -> list[list]:
     return rows
 
 
+def _names(entry, ours: str) -> bool:
+    """Whether one step, key, button or favourite payload points at device ``ours``."""
+    if isinstance(entry, dict):
+        if entry.get("macro"):
+            return any(_names(inner, ours) for inner in entry["macro"])
+        return str(entry.get("device")) == ours
+    if isinstance(entry, (list, tuple)):
+        if len(entry) == 2:                            # (device, command) shorthand
+            return str(entry[0]) == ours
+        if len(entry) >= 2:                            # [kind, device, ...] or a button
+            return str(entry[1]) == ours
+    return False
+
+
+def remove_device(project: dict, device_id) -> list[str]:
+    """Take a device out of a project with everything that points at it, and say what
+    went: one line per activity that used it.
+
+    A step, key or favourite that sends to it goes; a screen button leaves its place
+    empty; a role it played is left unset for the owner to choose again. Removing only
+    the device left activities naming it, which the 900 and 1100 then wrote into the
+    file. ``remove_device(deepcopy(project), id)`` says what a removal would take."""
+    ours = str(device_id)
+    project["devices"] = [d for d in project.get("devices") or []
+                          if str(d.get("id")) != ours]
+    if project.get("power_off_all") is not None:
+        project["power_off_all"] = [d for d in project["power_off_all"] if str(d) != ours]
+    lines = []
+    for activity in project.get("activities") or []:
+        what = []
+        for role in ("display", "control", "volume"):
+            if str(activity.get(role)) == ours:
+                activity[role] = None
+                what.append(f"its {role} device (choose another)")
+                if role == "control" and isinstance(activity.get("channel_confirm"), str):
+                    del activity["channel_confirm"]
+        roles = activity.get("roles") or {}
+        for name in [name for name, did in roles.items() if str(did) == ours]:
+            del roles[name]
+            what.append(f"its {name.lower()} role")
+        if isinstance(activity.get("input"), (list, tuple)) \
+                and str(activity["input"][0]) == ours:
+            del activity["input"]
+            what.append("its input")
+        for field in ("power_on_devices", "power_off_devices", "power_leave_devices"):
+            if activity.get(field) is not None:
+                activity[field] = [d for d in activity[field] if str(d) != ours]
+        steps = 0
+        for field in ("enter", "leave"):
+            kept = [s for s in activity.get(field) or [] if not _names(s, ours)]
+            steps += len(activity.get(field) or []) - len(kept)
+            if field in activity:
+                activity[field] = kept
+        if steps:
+            what.append(f"{steps} starting or ending step(s)")
+        macros = activity.get("hard_macros") or {}
+        keys = 0
+        for slot in list(macros):
+            kept = [s for s in macros[slot] or [] if not _names(s, ours)]
+            if len(kept) != len(macros[slot] or []):
+                keys += 1
+                if kept:
+                    macros[slot] = kept
+                else:
+                    del macros[slot]
+        if keys:
+            what.append(f"steps on {keys} key(s)")
+        buttons, gone = [], 0
+        for button in activity.get("soft_buttons") or []:
+            if button is not None and isinstance(button, dict) and button.get("macro"):
+                kept = [s for s in button["macro"] if not _names(s, ours)]
+                if len(kept) != len(button["macro"]):
+                    gone += 1
+                    button = {**button, "macro": kept} if kept else None
+            elif button is not None and _names(button, ours):
+                gone += 1
+                button = None                          # its place stays, empty
+            buttons.append(button)
+        while buttons and buttons[-1] is None:
+            buttons.pop()
+        if "soft_buttons" in activity:
+            activity["soft_buttons"] = buttons
+        for group in activity.get("screen_groups") or []:
+            kept = [b for b in group[1] if b.get("blank") or not _names(b, ours)]
+            gone += len(group[1]) - len(kept)
+            group[1] = kept
+        if gone:
+            what.append(f"{gone} screen button(s)")
+        favourites = []
+        for favourite in activity.get("image_buttons") or []:
+            favourite = list(favourite)
+            if len(favourite) > 2 and favourite[1] == "command" \
+                    and isinstance(favourite[2], (list, tuple)) \
+                    and str(favourite[2][0]) == ours:
+                continue
+            if len(favourite) > 2 and favourite[1] == "macro":
+                favourite[2] = [s for s in favourite[2] or [] if not _names(s, ours)]
+                if not favourite[2]:
+                    continue
+            favourites.append(favourite)
+        lost = len(activity.get("image_buttons") or []) - len(favourites)
+        if "image_buttons" in activity:
+            activity["image_buttons"] = favourites
+        if lost:
+            what.append(f"{lost} favourite(s)")
+        confirm = activity.get("channel_confirm")
+        if isinstance(confirm, (list, tuple)) and confirm and str(confirm[0]) == ours:
+            del activity["channel_confirm"]
+            what.append("the key pressed after a favourite's number")
+        if what:
+            lines.append(f"{activity.get('label') or 'Activity'}: " + ", ".join(what))
+    return lines
+
+
 def fill_free_keys(project: dict, available) -> int:
     """Bind each device's skip keys to its own equivalent, once per device. Returns how
     many were bound. A device is marked when done, so a key its owner clears later stays

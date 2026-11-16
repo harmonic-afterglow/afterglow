@@ -185,13 +185,24 @@ class DevicesTab(QWidget):
             self.changed.emit()
 
     def delete_device(self, idx):
-        lbl = self.project["devices"][idx].get("label","device")
+        import copy
+        from .. import project_devices
+        device = self.project["devices"][idx]
+        lbl = device.get("label", "device")
+        # what the activities would lose with it, said before anything is taken
+        uses = project_devices.remove_device(copy.deepcopy(self.project), device.get("id"))
+        text = f"Remove '{lbl}'?"
+        if uses:
+            text += ("\n\nThese activities use it, and lose what does:\n"
+                     + "\n".join(f"- {line}" for line in uses))
         if QMessageBox.question(
-            self, "Delete Device",
-            f"Remove '{lbl}'?",
+            self, "Delete Device", text,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         ) == QMessageBox.StandardButton.Yes:
-            del self.project["devices"][idx]
+            if device.get("id") is None:
+                del self.project["devices"][idx]
+            else:
+                project_devices.remove_device(self.project, device.get("id"))
             self.refresh()
             self.changed.emit()
 class ActivityCard(QWidget):

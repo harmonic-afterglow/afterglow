@@ -16,6 +16,7 @@ both show what was picked instead of a filename.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..qt.QtCore import Qt
@@ -148,6 +149,18 @@ class _ActionEditor(QWidget):
                        if d["id"] == self.device.currentData()), None)
         self.command.set_items([(c[0], c[0]) for c in (device or {}).get("commands", [])])
 
+    def problem(self) -> str | None:
+        """What is missing for this to send anything, said for a message box."""
+        kind, payload = self.value()
+        if kind == "channel" and not re.fullmatch(r"\d+([.-]\d+)?", payload):
+            return "Give the channel's number, in digits - 101, for example."
+        if kind == "command" and (payload[0] is None or not payload[1]):
+            return ("Choose a device and one of its commands. A device with no "
+                    "commands has nothing to send: learn or add one first.")
+        if kind == "macro" and not payload:
+            return "Give the sequence at least one step."
+        return None
+
     def value(self):
         kind = self.kind.currentData()
         if kind == "channel":
@@ -235,6 +248,10 @@ class FavouriteDialog(QDialog):
                                 "Give the favourite a name to show "
                                 + ("under its logo." if self.logos else "on the remote."))
             return
+        problem = self.action.problem()
+        if problem:
+            QMessageBox.warning(self, "Nothing to send", problem)
+            return
         kind, payload = self.action.value()
         image = (Path(self.image_path).name if self.image_path
                  else getattr(self, "_kept_image", ""))
@@ -319,6 +336,10 @@ class ScreenButtonDialog(QDialog):
         if not label and "label" in self.shows:
             QMessageBox.warning(self, "A label is needed",
                                 "Give the button a name to show on screen.")
+            return
+        problem = self.action.problem()
+        if problem:
+            QMessageBox.warning(self, "Nothing to send", problem)
             return
         kind, payload = self.action.value()
         entry = {"label": label}
