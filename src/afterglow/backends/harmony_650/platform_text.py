@@ -13,7 +13,20 @@ again between its words, and a word or a label too wide is cut, "..".
 from __future__ import annotations
 
 SCREEN_WIDTH = 128
+SCREEN_HEIGHT = 128
 LINE_SPACING = 12                  # a notice's lines, where the original had only one
+
+
+def _on_screen(texts: list, middle: int, spacing: int) -> tuple[list, int]:
+    """A notice's lines and the y of the first, centred on ``middle`` and kept on the
+    screen: a translation that wraps to more lines than the English is moved up or down
+    to stay whole, and one with more lines than the screen holds loses the last, marked
+    "..". Centring alone ran a long one off the top and bottom."""
+    fit = max(1, SCREEN_HEIGHT // spacing)
+    if len(texts) > fit:
+        texts = [*texts[:fit - 1], f"{texts[fit - 1]} .."]
+    top = middle - spacing * (len(texts) - 1) // 2
+    return texts, min(max(0, top), SCREEN_HEIGHT - spacing * len(texts))
 
 
 def text(item: dict, words) -> str:
@@ -108,7 +121,7 @@ def render(model: dict, label, words=None) -> dict:
                 ys = notice_ys[item["key"]]
                 spacing = (max(ys) - min(ys)) // (len(ys) - 1) if len(ys) > 1 else LINE_SPACING
                 texts = _wrapped(label, lines(item, words), item["font"])
-                top = (min(ys) + max(ys)) // 2 - spacing * (len(texts) - 1) // 2
+                texts, top = _on_screen(texts, (min(ys) + max(ys)) // 2, spacing)
                 for index, words_ in enumerate(texts):
                     draw(words_, item, top + spacing * index)
                 continue

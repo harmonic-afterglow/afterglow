@@ -146,3 +146,15 @@ def test_a_translation_with_a_misspelt_field_falls_back_to_english(remote, tmp_p
     words = catalogue.load("xx")
     values = {name: "X" for name in re.findall(r"\{(\w+)\}", message.text)}
     assert words(message.context, **values) == message.text.format(**values)
+
+
+@pytest.mark.parametrize("remote", REMOTES)
+def test_a_notice_longer_than_the_english_stays_on_the_screen(remote):
+    platform_text = _backend(remote, "platform_text")
+    height, spacing = platform_text.SCREEN_HEIGHT, 12
+    texts, top = platform_text._on_screen(["word"] * 4, 120, spacing)
+    assert top >= 0 and top + spacing * len(texts) <= height
+    texts, top = platform_text._on_screen(["word"] * 30, 64, spacing)
+    assert len(texts) == height // spacing and texts[-1].endswith("..")
+    assert top >= 0 and top + spacing * len(texts) <= height
+    assert platform_text._on_screen(["a", "b"], 64, spacing) == (["a", "b"], 58)
