@@ -45,3 +45,15 @@ def test_the_window_opens_with_two_verified_remotes_and_none_chosen(qapp_or_skip
     assert window.project["settings"].get("remote") is None
     window._dirty = False
     window.close()
+
+
+def test_every_note_from_the_start_is_shown(qapp_or_skip, monkeypatch):
+    from afterglow import themes
+    monkeypatch.setattr(themes, "seed_examples",
+                        lambda: ["copied the example theme in A", "copied the example theme in B"])
+    from afterglow.gui.app import MainWindow
+    window = MainWindow()
+    shown = window.status.currentMessage()
+    assert "theme in A" in shown and "theme in B" in shown
+    window._dirty = False
+    window.close()

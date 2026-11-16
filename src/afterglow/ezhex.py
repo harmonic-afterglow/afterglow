@@ -194,6 +194,20 @@ def unpack(ezhex, out_dir, log=print):
 
 
 
+# The header Logitech's own files carry, for a configuration built from scratch. What
+# reads which part:
+#   <INTENDEDVERSION>        the remote the file is for. Afterglow's write checks compare
+#                            it with the attached remote (concord.file_mismatches,
+#                            Remote._verify_intended_for), and identify() picks the
+#                            profile by its <SKIN>. A field left empty says nothing.
+#   <BINARYDATASIZE>         where the payload ends; libconcord finds the payload by it.
+#   <CHECKSUM>               what the payload sums to (`checksum`), checked on reading.
+#   <USERMESSAGES>           Logitech's desktop software's messages for a mismatched
+#                            remote; nothing Afterglow or libconcord acts on.
+#   <POSTOPTIONS>, <COMPLETEPOSTOPTIONS>, <SERVER> ...
+#                            where Logitech's software reported a write. The service is gone
+#                            and Afterglow binds none of libconcord's web calls (concord.py);
+#                            kept so a built file looks like Logitech's, inert.
 _EZHEX_HEADER = (
     '<?xml version="1.0"?>\r\n'
     '<INFORMATION>\r\n'

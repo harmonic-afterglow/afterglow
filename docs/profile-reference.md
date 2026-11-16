@@ -24,6 +24,7 @@ what its remote has is refused. It never inherits the Harmony 900's answer.
 | `status` | `read-only`, `experimental` or `verified`. This is a safety gate, not a label. **Anyone** can write an experimental remote from the Flash tab. See AGENTS.md §2b and `docs/first-write.md`. |
 | `capabilities` | what the remote has: `hard_keys`, `touchscreen`, `keyboard`, `ir_learning`, `rf_blaster`, `first_time_setup` |
 | `infrared` | what the backend can send natively |
+| `looks` | `{skin: scaffold}`: a model with a look of its own, such as `{"71": "harmony-600"}`, the 600's grey pictures and light levels |
 | `vocabulary` | device types, activity types, hard keys, their aliases, layout and labels |
 | `properties` | the `<Property>` entries a device or activity can carry (the 900 / 1100) |
 | `preferences` | the remote's own settings files, offered on Remote Settings |
@@ -34,9 +35,9 @@ Some remotes were sold under several names. The 650's profile covers the Harmony
 71 and 73), the 650 (72) and the 665 (75). A project records the model it is for in
 `settings.skin`. The skin is what the status bar shows (`remotes.model_name`). It is a
 separate entry in the remote chooser, and it is kept through a move to another remote when
-the target has it. A model can also look different. `scaffolds/harmony-600/look.json`
-gives the 600 its grey pictures and light levels, and a 650 build that states skin 71 or 73
-uses it.
+the target has it. A model can also look different. The profile's `looks` names the
+scaffold whose `look.json` gives it its own pictures and light levels:
+`scaffolds/harmony-600/look.json` for the 600's skins 71 and 73.
 
 ### `interface`: what the editors offer
 

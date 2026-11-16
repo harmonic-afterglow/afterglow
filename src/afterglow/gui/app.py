@@ -107,8 +107,10 @@ class MainWindow(QMainWindow):
         self._setup_menu()
         self._show_state()
         self._show_tabs()
-        for note in self._adopted:
-            self.status.showMessage(note[0].upper() + note[1:], 15000)
+        # all of them at once: shown one after another, only the last was ever seen
+        if self._adopted:
+            notes = [note[0].upper() + note[1:] for note in self._adopted]
+            self.status.showMessage("; ".join(notes), 15000 + 5000 * (len(notes) - 1))
 
     # Menu bar
     def _setup_menu(self):
