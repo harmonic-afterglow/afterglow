@@ -42,8 +42,9 @@ def test_each_themed_remote_gets_an_example_that_is_never_offered():
         assert themes.seed_examples() == []
         # unless the scaffold has changed since: then it is replaced, and the owner's
         # copy is left alone
-        (example / themes.STAMP).write_text("an older scaffold\n")
+        # (an Example copied from an older scaffold, as it was copied)
         (example / "images" / "backdrop.png").unlink()
+        (example / themes.STAMP).write_text(themes.fingerprint(example) + "\n")
         notes = themes.seed_examples()
         assert notes and notes[0].startswith("updated")
         assert (example / "images" / "backdrop.png").is_file()
@@ -51,5 +52,22 @@ def test_each_themed_remote_gets_an_example_that_is_never_offered():
         assert themes.names("harmony-one") == ["Mario"]
         # only a remote whose profile offers themes gets a folder
         assert not themes.folder("harmony-900").exists()
+    finally:
+        shutil.rmtree(paths.user_folder("themes"), ignore_errors=True)
+
+
+def test_an_example_its_owner_edited_is_kept_when_it_is_updated():
+    try:
+        themes.seed_examples()
+        example = themes.folder("harmony-one") / themes.EXAMPLE
+        (example / "images" / "mine.png").write_bytes(b"my own picture")
+        # the shipped scaffold changes: the Example is copied again
+        (example / themes.STAMP).write_text("an older scaffold\n")
+        notes = themes.seed_examples()
+        kept = [name for name in themes.names("harmony-one") if name.startswith("Example (yours")]
+        assert len(kept) == 1 and kept[0] in notes[0]
+        assert (themes.folder("harmony-one") / kept[0] / "images" / "mine.png").is_file()
+        assert not (example / "images" / "mine.png").exists()
+        assert themes.seed_examples() == []
     finally:
         shutil.rmtree(paths.user_folder("themes"), ignore_errors=True)

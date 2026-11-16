@@ -61,7 +61,7 @@ def fingerprint(scaffold: Path) -> str:
     """Every file of a scaffold, by path and contents."""
     digest = hashlib.sha256()
     for item in sorted(scaffold.rglob("*")):
-        if item.is_file() and "__pycache__" not in item.parts:
+        if item.is_file() and "__pycache__" not in item.parts and item.name != STAMP:
             digest.update(item.relative_to(scaffold).as_posix().encode() + b"\0")
             digest.update(hashlib.sha256(item.read_bytes()).digest())
     return digest.hexdigest()
@@ -69,7 +69,10 @@ def fingerprint(scaffold: Path) -> str:
 
 def seed_examples() -> list[str]:
     """Copy each themed remote's scaffold in as its `Example` where it is missing, and
-    again where the scaffold has changed since it was copied."""
+    again where the scaffold has changed since it was copied. An Example its owner has
+    edited is kept, renamed `Example (yours, <date>)`, never deleted: people start from
+    it, and editing it in place used to lose the work at the next update."""
+    import datetime
     from .build_service import find_scaffold
 
     notes = []
@@ -84,12 +87,24 @@ def seed_examples() -> list[str]:
         try:
             if present and stamp.is_file() and stamp.read_text("utf-8").strip() == wanted:
                 continue
+            kept = None
             if target.exists():
-                shutil.rmtree(target)
+                edited = not stamp.is_file() or \
+                    fingerprint(target) != stamp.read_text("utf-8").strip()
+                if edited:
+                    day = datetime.date.today().isoformat()
+                    kept = target.with_name(f"{EXAMPLE} (yours, {day})")
+                    n = 2
+                    while kept.exists():
+                        kept, n = target.with_name(f"{EXAMPLE} (yours, {day}) {n}"), n + 1
+                    target.rename(kept)
+                else:
+                    shutil.rmtree(target)
             shutil.copytree(scaffold, target, ignore=shutil.ignore_patterns("__pycache__"))
             stamp.write_text(wanted + "\n", "utf-8")
         except OSError as exc:
             notes.append(f"could not copy the example theme to {target}: {exc}")
             continue
-        notes.append(f"{'updated' if present else 'copied'} the example theme in {target}")
+        notes.append(f"{'updated' if present else 'copied'} the example theme in {target}"
+                     + (f"; your changes to it are kept in {kept}" if kept else ""))
     return notes
