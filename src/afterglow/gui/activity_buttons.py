@@ -812,6 +812,17 @@ def prepare_logo(src_path) -> Path:
 
     # Always PNG, whatever came in: every logo in every real configuration is one, and
     # the name has to be settled here so the <Image> reference and the file agree.
-    out = prepared_dir() / (Path(src_path).stem.replace(" ", "").lower() + ".png")
-    canvas.save(out, "PNG")
+    # Named after the picture; another picture already under that name - two called
+    # logo.png, or "BBC One.jpg" and bbcone.png - gets a mark of its own contents added,
+    # rather than replacing the logo of every project that used the first.
+    import hashlib
+    import io
+    encoded = io.BytesIO()
+    canvas.save(encoded, "PNG")
+    data = encoded.getvalue()
+    stem = Path(src_path).stem.replace(" ", "").lower()
+    out = prepared_dir() / f"{stem}.png"
+    if out.is_file() and out.read_bytes() != data:
+        out = out.with_name(f"{stem}-{hashlib.sha256(data).hexdigest()[:6]}.png")
+    out.write_bytes(data)
     return out

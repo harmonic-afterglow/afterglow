@@ -77,3 +77,15 @@ def test_a_prepared_logo_can_be_found_again(prepare, tmp_path):
     from afterglow.gui.activity_buttons import _find_image
     out = prepare(source(tmp_path, (200, 200)))
     assert _find_image(out.name) == out
+
+
+def test_two_pictures_of_one_name_do_not_replace_each_other(prepare, tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    red = prepare(source(tmp_path / "a", (90, 54), "logo.png", (255, 0, 0, 255)))
+    blue = prepare(source(tmp_path / "b", (90, 54), "logo.png", (0, 0, 255, 255)))
+    assert red != blue
+    assert Image.open(red).getpixel((45, 27))[:3] == (255, 0, 0)
+    assert Image.open(blue).getpixel((45, 27))[:3] == (0, 0, 255)
+    # the same picture again is the same file
+    assert prepare(source(tmp_path / "a", (90, 54), "logo.png", (255, 0, 0, 255))) == red
