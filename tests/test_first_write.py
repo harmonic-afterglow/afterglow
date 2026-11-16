@@ -324,18 +324,9 @@ class OneRemote(FakeRemote):
         shutil.copyfile(self.writes[-1] if self.writes else self.source, target)
 
 
-def test_test_write_runs_through_on_the_harmony_one(tmp_path, monkeypatch):
+def test_test_write_runs_through_on_the_harmony_one(tmp_path):
     """Its backup step ended in "backend 'harmony-one' cannot produce a change report":
-    the One had nothing to say what a write changes, so Write was never offered. The
-    One is verified now, and test write is for experimental remotes: it runs as one
-    here, which is the GSPM path the flow has to cover."""
-    import dataclasses
-
-    profile_of, get = ezhex.profile_of, remotes.get
-    monkeypatch.setattr(ezhex, "profile_of", lambda path: dataclasses.replace(
-        profile_of(path), status=remotes.EXPERIMENTAL))
-    monkeypatch.setattr(remotes, "get", lambda remote_id, *args: dataclasses.replace(
-        get(remote_id, *args), status=remotes.EXPERIMENTAL))
+    the One had nothing to say what a write changes, so Write was never offered."""
     on_remote = _one_build(tmp_path, "Old receiver", "on-remote.ezhex")
     artifact = _one_build(tmp_path, "New receiver", "new.ezhex")
     header, *_rest = ezhex._split(Path(artifact).read_bytes())

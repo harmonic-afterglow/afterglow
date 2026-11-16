@@ -29,11 +29,11 @@ Nothing is sent anywhere.
 
 - **Supported**
   - Harmony 900
-  - Harmony One
 - **Experimental** - configurations are read, imported, built and written, but not yet
   confirmed on every remote. Before each write Afterglow saves what is on the remote to
   the `Dumps` folder, and **Settings › Flash a Configuration File** puts it back.
   - Harmony 1100
+  - Harmony One
   - Harmony 600, 650, 665 and 700
   - Harmony 800 - a prototype Logitech never sold
 
