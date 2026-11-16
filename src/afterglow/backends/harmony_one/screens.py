@@ -101,12 +101,15 @@ class Screens:
         page_build = build
         if numbered:
             def page_build(picture, prologue):
-                # each page ends with its own number, right-aligned to the slash
+                # each page ends with its own number, right-aligned to the slash - before
+                # a switch drawn last, whose cases end the program, or it is never drawn
+                # (the softkey's "Current Activity" switch, softkeys_with_current)
                 program = build(picture, prologue)
-                return program[:-1] + [
+                at = -2 if len(program) > 1 and program[-2]["opcode"] == "switch" else -1
+                return program[:at] + [
                     {"opcode": "attribute", "value": counter_font},
                     counter_text(str(page[0] + 1), PAGE_SLASH_XY[0], right=True),
-                    counter_text("/", PAGE_SLASH_XY[0])] + program[-1:]
+                    counter_text("/", PAGE_SLASH_XY[0])] + program[at:]
 
         builds = ([fragment] if backdrop else []) + [page_build]
         layout = self.layout

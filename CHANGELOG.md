@@ -46,6 +46,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **A letter Afterglow cannot read in an imported configuration reads as "?"** and no
   longer stops the build; the import names what had one, and asks for the configuration
   in an Issue so the letter can be learned.
+- **Harmony One: the Devices list and a device's pages show which page you are on**;
+  only the number of pages was drawn, as the "Current Activity" softkey ended the page
+  before its number.
 
 ## [0.3.0-beta.7] - 2026-11-16
 

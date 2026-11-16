@@ -1669,3 +1669,29 @@ def test_a_softkey_label_too_wide_for_its_half_wraps_as_logitech_s_current_activ
     assert drawn("en", "current-activity") == [(196, "Current"), (207, "Activity")]
     assert drawn("fr", "current-activity") == [(196, "Activité en"), (207, "cours")]
     assert drawn("en", "activities") == [(202, "Activities")]
+
+
+def test_a_page_s_number_is_drawn_before_the_softkey_switch_that_ends_the_page():
+    # The "Current Activity" softkey is a switch whose arms end the page program (a tester:
+    # "only the total of pages" on the device list and a device's pages): what comes
+    # after it is never drawn on the remote, so a paged screen's number goes before it.
+    devices = [{"id": str(n + 1), "label": f"Device {n}",
+                "signals": {f"Key {k}": _nec(n, k) for k in range(14)}} for n in range(5)]
+    built = generate.build({"devices": devices, "activities": [
+        {"id": "1001", "label": "Watch", "display": "1", "control": "1"}]})
+    image = built["image"]
+    numbered = 0
+    for screen in ui_index.screen_slots(image):
+        for slot in screen["slots"]:
+            program = ui_index.drawing_program(image, slot["program_offset"])["instructions"]
+            for at, item in enumerate(program):
+                if item["opcode"] != "switch":
+                    continue
+                arms = [target for _value, target in item["cases"]] + [
+                    target for _low, _high, target in item["ranges"]]
+                if all(ui_index.drawing_program(image, arm)["instructions"][-1]["opcode"]
+                       == "end" for arm in arms):
+                    assert [later["opcode"] for later in program[at + 1:]] == ["end"]
+            numbered += any(item["opcode"] == "inline_text" and item["y"] == 18
+                            and item["x"] < 20 for item in program)
+    assert numbered >= 4          # the device list's two pages and a device's
