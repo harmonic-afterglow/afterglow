@@ -80,3 +80,20 @@ def test_reading_another_model_of_the_remote_offers_to_move(window, tmp_path, mo
     if offered:
         assert "Harmony 650" in asked[0] and "Harmony 600" in asked[0]
         assert moved == [("harmony-650", 72)]
+
+
+def test_the_chooser_lists_each_model_and_searches_them(qapp_or_skip):
+    from afterglow.gui.remote_bar import ChooseRemoteDialog
+    profiles = [p for p in remotes.load_all() if p.buildable]
+    dialog = ChooseRemoteDialog(profiles, "New project", "", known=profiles)
+
+    def shown():
+        return [dialog.list.item(i).text().split(" · ")[0] for i in range(dialog.list.count())
+                if not dialog.list.item(i).isHidden() and dialog.list.item(i).data(256)]
+    assert {"Harmony 600", "Harmony 650", "Harmony 665", "Harmony 700"} <= set(shown())
+    dialog.search.setText("harmony 6")
+    assert set(shown()) >= {"Harmony 600", "Harmony 650", "Harmony 665"}
+    assert "Harmony 700" not in shown() and "Harmony 900" not in shown()
+    assert dialog.chosen() == "harmony-650"           # the current one is among those shown
+    dialog.search.setText("665")
+    assert shown() == ["Harmony 665"] and dialog.chosen_skin() == 75
