@@ -18,7 +18,7 @@ from .structures import OBJECT_ATOM, object_body
 # does other than what the editor showed.
 POWER_DELAY_DEFAULT, PRESS_INTERKEY_DEFAULT = 1500, 500
 
-# "From any value", as upstairs' and a tester's direct inputs all have it: it runs on every
+# "From any value", as upstairs' and the living room's direct inputs all have it: it runs on every
 # write, the same value included, which is how picking the running activity again
 # re-sends its inputs. (Downstairs has one television with `0xFFFD` instead.)
 TRANSITION_FROM_ANY = 0xFFFE
@@ -57,7 +57,7 @@ def device_state_records(device: dict, place_object, online: int | None = None,
     variable ``online``, which says its apps are up: power-on clears it, and choosing an
     online input while it is clear first waits out the rest of the apps' delay, then
     sets it - so only the first app after power-on waits. Logitech's One configurations
-    gate an input on the same delay (a tester's: a 45-second timer from the TV's power-on).
+    gate an input on the same delay (the living room's: a 45-second timer from the TV's power-on).
     """
     label = device["label"].replace(" ", "_")
     index = device["index"]

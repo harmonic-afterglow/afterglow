@@ -137,7 +137,7 @@ activities.
 Section 9 is not only key registers. It opens with one ordinary action list of its own,
 `u8 count; {u16 operand; u8 opcode}[count]`, and the page registers follow it. On the Harmony
 One the list is a single call, `01 xx xx 7f`: object 0 in the factory image (`Region_3.EZHex`)
-and object `0xEE` in all four household images (both donors and both of a tester's). Danny Bloe's
+and object `0xEE` in all four household images (both donors and both of the living room's). Danny Bloe's
 reading (`harmony-explorations`, config-format "Base slot 8", findings sections 83 and 286) has
 the firmware use this list as a table of entry points it indexes and queues, and on the 650 it is
 what starts the introduction tour after a reload.

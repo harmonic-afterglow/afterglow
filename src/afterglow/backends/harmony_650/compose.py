@@ -940,7 +940,7 @@ class Image:
                 for number in range(len(self.devices))]
             at += 2 + 5 * len(self.devices)
         # then each activity's favourite channels, which its first page's first button
-        # opens, as Logitech's "Favorite Channels" (a 650 of Grim Leaper's)
+        # opens, as Logitech's "Favorite Channels" (a tester's 650)
         self.favourite_screens = {}
         for index, act in enumerate(self.acts):
             if act.get("favourites"):

@@ -18,7 +18,7 @@ the One until a One donor bears them out; each one below has been checked agains
   fails; `07` with `FD`/`FC` pushes and pops the current mode. The 800's handler reads bit 7
   of the high byte as inverting the test. The One's configurations do not use it that way:
   upstairs chooses the Remote Assistant's first note with `== 0` *with* bit 7 and skips it
-  with `== 3` *without*, shows its welcome on `<= 1` with bit 7, and a tester's waits for a smart
+  with `== 3` *without*, shows its welcome on `<= 1` with bit 7, and the living room's waits for a smart
   TV's apps on `OnlinePower == 0` with bit 7 before marking them up - each the obvious intent
   only if the test runs the next instruction when it holds. A build copies bit 7 only where
   a donor has it, and new logic uses plain tests.
@@ -40,7 +40,7 @@ the One until a One donor bears them out; each one below has been checked agains
 ## What a build had carried without knowing
 
 Instructions a build had carried from the donors without knowing what they do, read in
-the Harmony 800's firmware (a tester's `discord_reports/.../ghidra`, decompiled with
+the Harmony 800's firmware (a tester's dump, decompiled with
 `decomp_at.sh`) and each checked against what the donors do with it:
 
 - **The key stack.** A key or event (`0x65` in the queue, `FUN_0800b154`) is looked up from

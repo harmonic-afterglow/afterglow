@@ -13,7 +13,7 @@ As downstairs and upstairs build them (arch 12):
 - **`<Label>_Input_<n>`**, values 0 to n-1: inputs chosen directly get one transition each from
   "any value" to the input, running its send; inputs reached by stepping get one transition
   per ordered pair, stepping as many times as it takes. Every input variable in upstairs and
-  in a tester's configuration writes "any" as `0xFFFE`, and downstairs' amplifier does too; only
+  in the living room's configuration writes "any" as `0xFFFE`, and downstairs' amplifier does too; only
   downstairs' television uses `0xFFFD`. An activity's tag 5 writes its inputs again to re-send
   them, which only works if the transition fires on the value already held, so `0xFFFE` is
   read as "from any value, the same included" and is what a build writes.
@@ -29,7 +29,7 @@ A generated image builds them from the project's device fields - `power_on_cmd`,
 variables, and activities set them by writing a device's power and input variables.
 
 **The input delay and a smart TV's apps.** Logitech keeps a device's input delay (the
-archive's `InputDelay`) in each input's own command object: a tester's Hisense 50R6 has
+archive's `InputDelay`) in each input's own command object: the living room's Hisense 50R6 has
 InputDelay 1000 and its ten input sends carry `0x7C` low byte 10, which no other command of
 it does (its power send has 1). That byte is how long the code is sent, in tenths, not a
 wait after it: probe BO gave three copies of the Hisense's Volume Up the bytes 1, 10 and 30,
@@ -37,7 +37,7 @@ and each raised the volume one step - and 30 followed at once by 1 was one step 
 a 3-second wait would have made two. A send held that long keeps its device busy as long,
 so the input's 1 s is both: the code held, and the next command a second later. An import
 reads it as the device's input delay, which a build writes as a press and a 1 s wait. Its apps' delay (`ConnectedAppPowerOnDelay`, 45 s) is a variable
-`TV_OnlinePower_2`: power-on starts timer 2 (`1F EB02`), which after 45 s writes it 1;
+`<TV>_OnlinePower_2`: power-on starts timer 2 (`1F EB02`), which after 45 s writes it 1;
 power-off writes it 0; the Netflix input loads the byte register with 0 and, behind a test
 of it, waits 45.2 s and writes it 1, then sends. A generated image has `<Label>_Online_2`
 instead, with no timer: power-on clears it, and the first app after waits only what the
@@ -48,7 +48,7 @@ and the input delay either way (importing.py).
 
 An activity is a value of `CurrentActivityState`, a context in section 10, and four kinds of
 screen; everything it does is a state write, as Danny Bloe's "how an activity is built"
-found and the three household donors agree. Read from upstairs, downstairs and a tester's
+found and the three household donors agree. Read from upstairs, downstairs and the living room's
 configuration with `one-tools/disasm.py` (contexts, modes and now switch tables), and
 checked where it matters against the Harmony 800's firmware:
 
@@ -88,14 +88,14 @@ checked where it matters against the Harmony 800's firmware:
   device pages' left softkey reads "Current Activity" while one runs.
 
 **Keys by scan code.** A row binds key `0x80 | scan`. Danny's key table gives 32 scans;
-the rest are read here. Scan 34 (`0xA2`) opens the Activities menu from a tester's events
+the rest are read here. Scan 34 (`0xA2`) opens the Activities menu from the living room's events
 context, 37 (`0xA5`) selects Off's context in all three, 38 (`0xA6`) enters Help in every
 activity context, and 13 is the remaining keypad scan, `NumberEnter`. Danny left two pairs
 undecided because every activity binds both members the same way; upstairs' Xbox One page
 does not: scan 36 sends its `Chptr+` and 26 its `Chptr-`, while 27 and 29 send its
 direction keys, so 27/29 are `DirectionUp`/`DirectionDown` and 36/26 `UpArrow`/`DownArrow`.
 
-**Favourite channels.** A tester's configuration opens a favourites activity on its favourites:
+**Favourite channels.** The living room's configuration opens a favourites activity on its favourites:
 a page of buttons, "Commands" on the left softkey and Devices on the right. Logitech tunes
 each one by writing a channel variable whose transition loads the number (`7A`) and runs
 the firmware's number sender (`1F F3`) over a digit table in section 17. A build sends the
@@ -110,7 +110,7 @@ tables of ten digit instructions, for the first place of several, the middle one
 last. A write of a variable whose transitions dial is read as what its transition sends,
 the twin variable it writes silently after (`TV_+_AVR_DiscreteChannel_3` beside
 `TV_+_AVR_Channel_3`) firing nothing; the digits it sends are one-block copies, read as
-their keys' commands "(press)". A tester's three favourites came back as channels 2, 3 and 4,
+their keys' commands "(press)". The living room's three favourites came back as channels 2, 3 and 4,
 where before they were lost. A favourite's logo is composed onto the frame of the button place it is
 drawn in; a favourite without one shows its name. An activity with favourites and buttons
 opens on its favourites, the left softkey going between them ("Commands"/"Favorites"),

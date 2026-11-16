@@ -612,7 +612,7 @@ everyone else's setups.
 - **Harmony One:** a device's pages leave out what its keys already send - VolumeUp on
   VolumeUp, 1 on Number1 - as Logitech's do, and keep a command put on a key in another's
   place (Return on Exit). An imported configuration's press-only copies and nameless
-  codes are on no page either. A tester's devices now show the buttons Logitech showed.
+  codes are on no page either. The living room's devices now show the buttons Logitech showed.
 
 - **Harmony One: Help, the Remote Assistant and the Tutorial are Logitech's.** Help re-sends
   what the activity set, asks whether that fixed it, then asks after each device and input

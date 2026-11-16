@@ -3,7 +3,7 @@
 
 A Harmony One draws all its text as glyph codes, and the code a character gets differs
 from image to image: four household layouts are established (glyph_codec.py), and others
-exist - a tester's living-room configuration counts 74 and orders them its own way. The shapes
+exist - the living room's configuration counts 74 and orders them its own way. The shapes
 do not differ: Logitech's fonts are the same faces in every image. So a configuration
 whose layout is established says which character each of its shapes is, and that reads
 the text of any other.

@@ -892,7 +892,7 @@ def test_a_toggling_rc5_device_builds_both_states_and_reads_them_back(tmp_path):
 
 
 def test_a_menu_input_builds_and_comes_back(tmp_path):
-    """Logitech's menu inputs, as Grim Leaper's Soniq television has them on a 650:
+    """Logitech's menu inputs, as a tester's Soniq television has them on a 650:
     Source, Up or Down whichever is fewer presses, then OK, each code a second apart."""
     from afterglow.backends.harmony_650 import compose
     names = ("PowerToggle", "Source", "DirectionUp", "DirectionDown", "OK")
@@ -1043,12 +1043,12 @@ def test_favourite_channels_build_and_come_back(tmp_path):
     assert [button[0] for button in watch["soft_buttons"]] == ["Netflix", "Menu"]
 
 
-FAVOURITES_650 = ROOT / "configs" / "650" / "650-e-favourites-backup.ezhex"
+FAVOURITES_650 = ROOT / "configs" / "650" / "650-favourites-backup.ezhex"
 
 
-@pytest.mark.skipif(not FAVOURITES_650.exists(), reason="Grim Leaper's favourites dump")
+@pytest.mark.skipif(not FAVOURITES_650.exists(), reason="the favourites dump (650-favourites)")
 def test_logitechs_favourite_channels_read_as_the_channels_they_dial(tmp_path):
-    """Grim Leaper's 650 with MyHarmony favourites: each favourite writes a channel
+    """A tester's 650 with MyHarmony favourites: each favourite writes a channel
     variable, whose change loads its number and runs section 17's number sender - his
     Humax's at least three digits, so channel 1 goes out as 0, 0, 1."""
     payloads.get("blob").unpack(_payload(FAVOURITES_650), str(tmp_path))
@@ -1062,7 +1062,7 @@ def test_logitechs_favourite_channels_read_as_the_channels_they_dial(tmp_path):
 
 def test_a_devices_inter_key_delay_holds_the_codes_help_sends(tmp_path):
     """MyHarmony's inter-key delay is how long each code Help's answers send to fix a
-    device is held: Grim Leaper's Soniq dumped at 200, 100 and 0 ms holds them 2, 1 and
+    device is held: a tester's Soniq dumped at 200, 100 and 0 ms holds them 2, 1 and
     0 tenths. A build holds them so and an import reads it back."""
     from afterglow.backends.harmony_650 import compose
     from test_harmony_one_import import _interkey_project

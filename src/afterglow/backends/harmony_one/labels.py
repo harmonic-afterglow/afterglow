@@ -20,7 +20,7 @@ does not apply to them, and Galmuri draws a capital O and a zero alike. A shape 
 drawing two characters is read by its neighbours: a zero among digits, a letter among
 letters, a capital starting a word. Those reads are counted too (``inferred``).
 
-A letter with an accent no known configuration draws - a tester's Finnish ä and ö - is the
+A letter with an accent no known configuration draws - the living room's Finnish ä and ö - is the
 image's own unaccented letter with a mark above it: a glyph whose pixels are exactly a
 letter the image has read, with ink only above that letter's own, is that letter with the
 mark its extra ink makes - two dots, a ring, or a stroke leaning one way or the other.

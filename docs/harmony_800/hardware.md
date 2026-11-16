@@ -30,7 +30,7 @@ LED 1, 4/5 on LED 2 and 6/7 on LED 3, each pair the One's two colours of one lig
 ## Keys
 
 Each front-panel key posts `0xC000 | scan` (key_test.py names what it gets); `keys.py` holds
-the table from a tester's 800:
+the table from that 800:
 
 | scan | key | scan | key | scan | key | scan | key |
 |---|---|---|---|---|---|---|---|

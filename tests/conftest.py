@@ -52,8 +52,8 @@ CONFIGS = ["configs/mine/dump.ezhex",
            "configs/donor-4/backup.ezhex",
            # A Harmony 900 owner's own backups from 2020 on: eleven configurations
            # Logitech generated, several of one household over the years.
-           *sorted(f"configs/martin/{path.name}"
-                   for path in (ROOT / "configs" / "martin").glob("*.ezhex"))]
+           *sorted(f"configs/donor-5/{path.name}"
+                   for path in (ROOT / "configs" / "donor-5").glob("*.ezhex"))]
 
 
 # Harmony 1100 configurations, kept apart: every test written against CONFIGS assumes a

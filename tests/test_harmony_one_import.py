@@ -148,20 +148,20 @@ def test_a_smart_tv_comes_back_with_its_input_delay_and_its_apps(tmp_path):
     assert all(isinstance(entry[1], str) for entry in tv["inputs"])
 
 
-LIVINGROOM_2 = Path(__file__).resolve().parents[2] / "new_donors" / "one-livingroom-2.ezhex"
+LIVING_ROOM = Path(__file__).resolve().parents[2] / "new_donors" / "one-livingroom.ezhex"
 
 
-@pytest.mark.skipif(not LIVINGROOM_2.is_file(), reason="needs a tester's Harmony One configuration")
+@pytest.mark.skipif(not LIVING_ROOM.is_file(), reason="needs the living-room Harmony One configuration")
 def test_logitech_s_apps_gate_and_input_delay_are_read_from_a_real_one():
-    """A tester's Hisense: Logitech waits 45 s for its apps (a timer from power-on, and the
+    """The living room's Hisense: Logitech waits 45 s for its apps (a timer from power-on, and the
     Netflix input held behind it) and keeps its InputDelay, 1000, in each input's own
     command object, in tenths."""
     import contextlib
     import io
     from afterglow import importer
     with contextlib.redirect_stdout(io.StringIO()):
-        project = importer.import_file(str(LIVINGROOM_2)).project
-    [tv] = [device for device in project["devices"] if device["label"].endswith(" TV")]
+        project = importer.import_file(str(LIVING_ROOM)).project
+    [tv] = [device for device in project["devices"] if device.get("online_inputs")]
     assert (tv["power_delay"], tv["input_delay"], tv["app_power_delay"]) == (8000, 1000, 45000)
     assert tv["online_inputs"] == ["Netflix"]
 

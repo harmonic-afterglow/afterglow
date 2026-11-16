@@ -449,7 +449,7 @@ def help_holds(image: Image) -> dict[int, dict[int, Counter]]:
     """How long each code an answer sends before it shows the next screen is held
     (`7C`'s low byte, in tenths), by device and command: Help's "No" sending a device's
     power or input again. The commonest over a device's own commands is its inter-key
-    delay, MyHarmony's 0 to 1000 ms - Grim Leaper's 650 Soniq television dumped at 200,
+    delay, MyHarmony's 0 to 1000 ms - a tester's 650 Soniq television dumped at 200,
     100 and 0 ms holds them 2, 1 and 0; 1 is an ordinary press. Logitech's help
     placeholder, which every first question sends and which is no device's, is filed
     under one device: the caller counts only the device's real commands."""
@@ -551,7 +551,7 @@ def _state(states: dict, record: dict, power, image: Image, gates=None, others=N
                 app = (gates[variable]["timer_ms"] or held if not gates[variable]["ours"]
                        else held + states.get("power", {}).get("delay_ms", 0))
             # Logitech's configurations carry the input delay in the input's own command object,
-            # its 0x7C in tenths (a tester's Hisense: InputDelay 1000, 10 there and on no other
+            # its 0x7C in tenths (the living room's Hisense: InputDelay 1000, 10 there and on no other
             # command): the code held that long, which keeps the device busy as long
             # (harmony_one/activities.md, probe BO). Ours is a wait after the send. Either way
             # the next command comes that much later, which is what the input delay says.

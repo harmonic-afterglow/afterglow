@@ -143,7 +143,7 @@ upstairs does.
 
 While a One charges, every donor shows the same four whole-screen pictures in a ring: a
 battery for 5, then three photographs for 1 each, round again (upstairs' screens 174, 178,
-177, 179; downstairs' and a tester's are the same pictures). Each is a screen of one bitmap at
+177, 179; downstairs' and the living room's are the same pictures). Each is a screen of one bitmap at
 (0, 0) and nothing else - no title, no status bar - and each screen's enter handler runs
 `07 FFFB` (which also stops the keypad's off timer, so the screen stays lit), pushes a
 context binding every key to "enter the battery again", puts the USB charge context under

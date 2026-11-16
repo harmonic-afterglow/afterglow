@@ -227,7 +227,7 @@ MyHarmony's Remote Backlight Settings live in the wiring (Danny Bloemendaal's
 harmony-explorations, `reference/remotes/harmony-650/features.md`, found it first; read
 again here on all fourteen dumps). **GlowTime**, how long the screen stays lit, is the
 duration in seconds of the first section-13 timer whose list opens `1F E910`: timer 1 on a
-650 (20; 650-c's 5, 665-b's 15), timer 5 on a 700 (20; 700-d's 10). **TiltSensor**,
+650 (20; 5 in one dump, 15 in another), timer 5 on a 700 (20; 10 in one dump). **TiltSensor**,
 waking when the remote is picked up, is the `3F F101` that arms the sensor, run by the
 start-up list, timer 0's list and one more; Logitech compiles none of them with it off, and
 a build leaves every `3F F101` out. Every dump has it on. An import reads both into the
@@ -243,7 +243,7 @@ variable `vv` - unnamed, 0 to 1, no transition - is 0, else its screen. The note
 "Remote Assistant" and says "If any devices are not setup correctly, press "Help" now.", with
 "Turn off Assistant" over the left side key - which writes 1 into `vv` and enters the
 activity's screen - and Exit, the centre key, entering it too; Help is the activity's own.
-Only five of the fourteen dumps carry it (650-a, 650-d and 650-f, 700-backup and downloads):
+Only five of the fourteen dumps carry it (three 650s and two 700s):
 the rest had it turned off in MyHarmony. A build makes it unless the project's settings say
 `remote_assistant: false`; an import says which. The welcome tour, and the note after All
 Off ("If any devices are still On"), are not built.
@@ -266,7 +266,7 @@ means the welcome goes on.
 
 ## Favourites
 
-MyHarmony's favourite channels, in Grim Leaper's 650 (the only dump with any): the activity's
+MyHarmony's favourite channels, in one tester's 650 (the only dump with any): the activity's
 first page gains a "Favorite Channels" button, which enters a screen of its own titled with
 the activity's name, "Commands" first (back to the activity's buttons) and the favourites
 after, four a page, each its name or nothing. A favourite's key writes a channel variable -
@@ -280,7 +280,7 @@ number of digits (zero-padded), the instructions sent first (+5), last (+8, a co
 a prefix (+11; flags bit 2 from 100, bit 1 from 10, else from 10000), then pointers to three
 tables of ten `{u16, u8}` instructions - the first place's, the middle ones' and the last's.
 The transition then writes a twin variable silently (`07 FFFF` first), which fires nothing.
-Grim Leaper's Humax pads to three digits, so its channel 1 goes out 0, 0, 1 and reads back
+That 650's Humax pads to three digits, so its channel 1 goes out 0, 0, 1 and reads back
 as "001". The importer is the Harmony One's (one-explorations 5c3be6d), the same code. A build sends the digits itself instead - each followed by the
 project's key delay when it has one - which needs no table and no channel variable, and a
 favourite without a name is named "Channel <number>". Logos are not in the sample.

@@ -338,7 +338,7 @@ def test_an_import_leaves_nothing_beside_the_file_and_keeps_its_pictures(configs
     from afterglow import paths
     from afterglow.importer import import_file
 
-    with_pictures = [config for config in configs if config.parent.name == "martin"
+    with_pictures = [config for config in configs if config.parent.name == "donor-5"
                      and config.stem == "a-1"] or configs
     source = tmp_path / "dumps" / "mine.ezhex"
     source.parent.mkdir()
