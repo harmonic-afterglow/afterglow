@@ -21,6 +21,10 @@ from afterglow.backends.harmony_one import (
     structures, ui_index)
 
 
+# builds whole images: deselect with -m "not slow" for a quick run
+pytestmark = pytest.mark.slow
+
+
 SCAFFOLD = paths.scaffolds("harmony-one")
 
 # Activities, then Options and the screens carried behind it, then the charging screens,

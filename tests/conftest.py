@@ -30,6 +30,23 @@ for _name, _folder in (("AFTERGLOW_HOME", "Documents/Afterglow"),
 # same stamp in both. `test_last_updated.py` clears this to check the real clock.
 os.environ.setdefault("SOURCE_DATE_EPOCH", "1767225600")
 
+# The suite does not go online: a dialog test that opened the online catalogues fetched
+# GitHub's indexes, two seconds on a good day and fifty on a bad one, and failed with no
+# network. A host name other than this machine's is refused as no network would refuse it
+# (an OSError the application already handles). AFTERGLOW_TESTS_ONLINE=1 lets it through.
+if not os.environ.get("AFTERGLOW_TESTS_ONLINE"):
+    import socket as _socket
+
+    _getaddrinfo = _socket.getaddrinfo
+
+    def _offline(host, *args, **kwargs):
+        name = host.decode() if isinstance(host, bytes) else str(host or "")
+        if name not in ("", "localhost", "::1") and not name.startswith("127."):
+            raise OSError(f"the tests do not go online (asked for {name})")
+        return _getaddrinfo(host, *args, **kwargs)
+
+    _socket.getaddrinfo = _offline
+
 from afterglow import ezhex, ir_protocol  # noqa: E402
 
 # The suite builds with the protocol definitions the application ships (library/

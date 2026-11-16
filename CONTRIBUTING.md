@@ -27,8 +27,10 @@ python3 -m pytest -q -m "not slow"
 ruff check src tests tools
 ```
 
-The last `pytest` command is the quick run. The full suite takes several minutes, mostly
-building images. Tests that need real configurations look for them under `configs/`, and
+The last `pytest` command is the quick run, about a minute: it leaves out the files that
+build whole images for the One, the 800 and the arch-14 remotes. The full suite takes about
+five minutes. Neither goes online; `AFTERGLOW_TESTS_ONLINE=1` lets a test reach the
+network. Tests that need real configurations look for them under `configs/`, and
 skip when they are not there. Real configurations, dumps and firmware images are never
 committed. `tests/test_synthetic_roundtrip.py` keeps the byte-identity gate running without
 them, so it runs in CI too.

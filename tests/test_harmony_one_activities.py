@@ -19,6 +19,10 @@ from afterglow.backends.harmony_one import (
 ENTER, LEAVE, REFRESH = activity_index.ENTER, activity_index.LEAVE, activity_index.REFRESH
 
 
+# builds whole images: deselect with -m "not slow" for a quick run
+pytestmark = pytest.mark.slow
+
+
 def _nec(address: int, command: int):
     pulses = [9000, -4500]
     for byte in (address, ~address & 0xFF, command, ~command & 0xFF):

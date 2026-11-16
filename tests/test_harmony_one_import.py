@@ -14,6 +14,10 @@ from afterglow.backends.harmony_one import generate, labels, ui_index
 
 from test_harmony_one_activities import PROJECT
 
+# builds whole images: deselect with -m "not slow" for a quick run
+pytestmark = pytest.mark.slow
+
+
 ROOT = Path(__file__).resolve().parents[1]
 ONE_CONFIGS = sorted((ROOT / "configs" / "one").glob("*.ezhex")) if (
     ROOT / "configs" / "one").is_dir() else []

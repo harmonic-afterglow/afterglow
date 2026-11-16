@@ -22,6 +22,10 @@ from afterglow.backends.harmony_650 import (
     assets, backend, bitmap, catalogue, command_index, drawing, firmware_screens, gspm, keys,
     importing, labels, platform_text, ui_index)
 
+# builds whole images: deselect with -m "not slow" for a quick run
+pytestmark = pytest.mark.slow
+
+
 ROOT = Path(__file__).resolve().parents[1]
 # the 665 is a 650 that says skin 75, and the 600 one that says 71 or 73: their
 # configurations are the 650's. A 700's are its own remote's, on the same backend. A link
