@@ -57,12 +57,15 @@ jobs:
         # annotated a parameter with a name it never imported; that only ran on 3.14,
         # where PEP 649 made annotations lazy, and raised NameError on import for
         # everyone on 3.11 or 3.12. A single-version matrix would not have caught it.
-        python-version: ["3.11", "3.12", "3.13"]
+        # 3.14 is where users' distributions are going, and where annotations are lazy.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         exclude:
           # Keep the non-Linux legs to the declared floor and the newest supported
           # version; the middle one adds cost without adding coverage.
           - {os: windows-latest, python-version: "3.12"}
           - {os: macos-latest, python-version: "3.12"}
+          - {os: windows-latest, python-version: "3.13"}
+          - {os: macos-latest, python-version: "3.13"}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -83,10 +86,12 @@ jobs:
 
       # Real-config tests skip when their private fixtures are absent, which is the
       # normal state here: no configuration, dump or firmware image is ever committed.
+      # tests/test_synthetic_roundtrip.py keeps the byte-identity gate running anyway;
+      # -rs lists every skip with its reason, so a rise in them shows.
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest -q
+        run: python -m pytest -q -rs
 
   lint:
     runs-on: ubuntu-latest
