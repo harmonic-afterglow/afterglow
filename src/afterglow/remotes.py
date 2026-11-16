@@ -865,8 +865,15 @@ def identity_of(header: bytes) -> dict:
 
 
 def identify(header: bytes, library: Path | str = LIBRARY) -> RemoteProfile:
-    """Match a config header against the profile library."""
+    """Match a config header against the profile library.
+
+    The skin names the model, so a header must state it: one that states nothing
+    conflicts with no profile, and used to come out as the first of them - a Harmony
+    900 - which is how an unidentifiable file was opened as one."""
     identity = identity_of(header)
+    if "skin" not in identity:
+        raise UnknownRemote(
+            f"the file does not say which remote it is for (no skin in {identity or 'its header'})")
     for profile in load_all(library):
         if profile.matches(identity):
             return profile

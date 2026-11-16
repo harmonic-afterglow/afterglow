@@ -495,3 +495,14 @@ def test_a_translation_is_offered_because_its_file_is_there(remote):
     generate = importlib.import_module(f"afterglow.backends.{profile.backend.replace('-', '_')}.generate")
     built = generate.build({**PROJECT, "settings": {"locale": "bg"}})
     assert built["image"] and not built["skipped"]
+
+
+@pytest.mark.parametrize("header", [
+    b"", b"junk", b"<INTENDEDVERSION><PROTOCOL>14</PROTOCOL></INTENDEDVERSION>"])
+def test_a_header_that_names_no_model_is_no_remote(header):
+    """Stating nothing conflicts with no profile; it used to come out as the first one,
+    a Harmony 900. A payload is then asked what it is instead."""
+    with pytest.raises(remotes.UnknownRemote):
+        remotes.identify(header)
+    from afterglow import ezhex, payloads
+    assert ezhex.backend_for(header, b"GSPM and then some") is payloads.get("blob")
