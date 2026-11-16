@@ -31,7 +31,7 @@ def project_remote(project):
 
 class DeviceCard(QWidget):
     """Single device row displayed in the list."""
-    def __init__(self, spec, on_edit, on_delete, parent=None, project=None):
+    def __init__(self, spec, on_edit, on_delete, parent=None, project=None, on_find=None):
         super().__init__(parent)
         self.spec = spec
         self.project = project
@@ -70,6 +70,14 @@ class DeviceCard(QWidget):
         delete_btn.clicked.connect(on_delete)
 
         layout.addLayout(info, stretch=1)
+        # a device read off a remote that keeps no make or model - a Harmony One's -
+        # can be looked up by what it sends (device_match)
+        if on_find is not None and not make:
+            find_btn = QPushButton("Find model")
+            find_btn.setToolTip("Look this device up in the Logitech database by the codes "
+                                "it sends and its name, and pick the model it is.")
+            find_btn.clicked.connect(on_find)
+            layout.addWidget(find_btn)
         layout.addWidget(edit_btn)
         layout.addWidget(delete_btn)
 
@@ -148,7 +156,8 @@ class DevicesTab(QWidget):
             DeviceCard(spec,
                        on_edit   = lambda _, idx=i: self.edit_device(idx),
                        on_delete = lambda _, idx=i: self.delete_device(idx),
-                       project   = self.project)
+                       project   = self.project,
+                       on_find   = lambda _, idx=i: self.find_model(idx))
             for i, spec in enumerate(self.project["devices"])],
             "No devices yet. Click '+ Add Device' to get started.")
 
@@ -185,6 +194,56 @@ class DevicesTab(QWidget):
             self.refresh()
             self.changed.emit()
         wiz.deleteLater()
+
+    def find_model(self, idx):
+        """Which archive model this device is, from its codes and its name: the
+        suggestions listed best first, the one picked named onto the device, and the
+        commands it could not name called what that model calls them."""
+        from ..qt.QtWidgets import QInputDialog
+        from .. import device_match, harmony_archive, paths
+        from ..corpus_provider import logitech_archive_url
+        from . import background
+        spec = self.project["devices"][idx]
+
+        def look_up():
+            archive = harmony_archive.ApiArchive(
+                logitech_archive_url(), paths.cache_dir() / "sources" / "harmony-ir-archive")
+            return device_match.suggest(spec, archive)
+        try:
+            found = background.call(self, f"Looking up {spec.get('label', 'the device')}...",
+                                    look_up)
+        except background.Cancelled:
+            return
+        except Exception as exc:                   # offline, or the archive is down
+            QMessageBox.warning(self, "Find model", f"The database could not be read: {exc}")
+            return
+        choices = []
+        for suggestion in found:
+            for model in suggestion["models"][:5]:
+                choices.append((
+                    f"{model.get('manufacturer')} {model.get('model')} - sends "
+                    f"{suggestion['matched']} of {suggestion['keyed']} of its commands",
+                    suggestion, model))
+        if not choices:
+            QMessageBox.information(
+                self, "Find model",
+                f"No model in the database sends {spec.get('label', 'this device')}'s codes.")
+            return
+        picked, chosen = QInputDialog.getItem(
+            self, "Find model", f"Which model is {spec.get('label', 'this device')}?",
+            [text for text, _suggestion, _model in choices], 0, False)
+        if not chosen:
+            return
+        _text, suggestion, model = next(item for item in choices if item[0] == picked)
+        renames = device_match.apply(spec, suggestion, model,
+                                     self.project.get("activities") or [])
+        if renames:
+            QMessageBox.information(
+                self, "Find model",
+                f"{len(renames)} command(s) it could not name are now called what "
+                f"{model.get('model')} calls them.")
+        self.refresh()
+        self.changed.emit()
 
     def delete_device(self, idx):
         import copy

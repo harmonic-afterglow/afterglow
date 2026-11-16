@@ -45,3 +45,28 @@ for replays as the One sent it, tapped and held.
 The 900/1100 builder (`harmony_pk.backend.lower_devices`) replaces each recording it
 cannot store - a press and a different repeat - with the command it is, before lowering.
 The project keeps the recordings: a project moved back to the One still has them.
+
+## The code index
+
+`fingerprint` reads a command's first frame as the recording's own shape does - a header,
+bits in one of two shapes, a trailer - and keys it as `"<header class>-<bits>-<hex>"`: the
+header's first mark in classes of 250 us, how many bits, their value. It names no
+protocol, so a code recorded off a remote and Logitech's Pronto of it give one key.
+
+Afterglow's IR archive (harmonic-afterglow/harmony-ir-archive, `build_index.py`) keys every
+command of every command set that has a Pronto with the same rules - the functions are a
+copy, and the manifest's `code_key` is their version - into
+`codes/<sha1(key)[:2]>.json.gz` (key -> command set and name) and
+`codeset_devices/<codeset[:3]>.json.gz` (command set -> the models that use it). 1,771,049
+of the archive's 2,214,024 commands are keyed, into 92,295 keys.
+
+`device_match.suggest` looks up a dozen of a device's keys, ranks the command sets by how
+many of them each sends and, among equals, by how much a model's manufacturer, model and
+type agree with the device's name - "Sony AV Receiver" finds Sony's receivers - and reads
+the best few sets whole to count every command they send. On a tester's One: the Vizio is a
+Vizio E320i-A0 set (78 of 83 commands), the PS3 a Sony PlayStation 3 (69 of 69), the Sony
+DVD a BDP-S590 set (43 of 43), the Roku a Roku Express 4K Plus (27 of 27).
+
+A suggestion is offered, never applied: the Devices tab's "Find model" lists them, and the
+model picked gives the device its manufacturer and model, and each command the import could
+not name (`Command 1F`) the name that model's set gives it.

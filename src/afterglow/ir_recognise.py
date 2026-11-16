@@ -334,3 +334,25 @@ def infer(signal: dict) -> tuple[dict, dict] | None:
     if repeat and (again is None or not _same(repeat, again["pulses_us"])):
         return None
     return definition, command
+
+
+# The width of a header class: Logitech's recordings draw NEC's 9000 us leader 8990.
+HEADER_CLASS_US = 250
+
+
+def fingerprint(pulses: list[int]) -> str | None:
+    """A command's first frame as the IR archive's code index keys it (docs/ir-
+    recognition.md, "The code index"): its header's first mark in classes of 250 us, how
+    many bits it carries and their value, as ``"<class>-<bits>-<hex>"``. Two renderings
+    of one code - Logitech's recording, the archive's Pronto - give one key; a frame that
+    is not a header, two bit shapes and a trailer gives None."""
+    for frame in _frames(list(pulses)):
+        layout = _layout(frame)
+        if layout is None:
+            continue
+        value = _payload(frame, layout)
+        if value is None:
+            continue
+        header = abs(layout["header"][0]) if layout["header"] else 0
+        return f"{round(header / HEADER_CLASS_US)}-{layout['bits']}-{value:x}"
+    return None

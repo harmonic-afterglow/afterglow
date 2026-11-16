@@ -19,6 +19,7 @@ same capture (tests/test_harmony_archive.py).
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 from urllib.request import Request, urlopen
@@ -222,6 +223,11 @@ def _decode(relative: str, payload: bytes):
         raise ArchiveError(f"archive file is not JSON: {relative}") from exc
 
 
+# The code index this reader understands (the manifest's `code_key`), and how its
+# shards are named: the first two hex digits of a key's SHA-1.
+CODE_KEY, CODE_SHARD = 1, 2
+
+
 class ApiArchive(logitech_archive.Archive):
     """Afterglow's archive over HTTPS (or a local checkout's `docs/`), a few files a
     device, kept in ``cache``. The manifest is fetched afresh each time the archive is
@@ -302,6 +308,32 @@ class ApiArchive(logitech_archive.Archive):
         if found is None:
             raise ArchiveError(f"device {device_id} is not in the archive")
         return found
+
+    # -- the reverse indexes (build_index.py in the archive)
+
+    @property
+    def has_code_index(self) -> bool:
+        """Whether this build keys its commands as `ir_recognise.fingerprint` does."""
+        return self.api_manifest.get("code_key") == CODE_KEY and \
+            "code" in (self.api_manifest.get("layout") or {})
+
+    def code_sets_sending(self, key: str) -> list[tuple[str, str]]:
+        """``(codeset, command name)`` of every command whose first frame is ``key``."""
+        shard = hashlib.sha1(key.encode()).hexdigest()[:CODE_SHARD]
+        return [tuple(item) for item in self._bucket(f"codes/{shard}.json.gz").get(key, [])]
+
+    def code_set_users(self, codeset: str) -> list[dict]:
+        """The models that use ``codeset``: ``{id, manufacturer, model, type}`` each."""
+        rows = self._bucket(
+            f"codeset_devices/{codeset[:self.api_manifest['codeset_prefix']]}.json.gz"
+        ).get(codeset, [])
+        return [dict(zip(("id", "manufacturer", "model", "type"), row)) for row in rows]
+
+    def code_set(self, codeset: str) -> list[dict]:
+        """A command set's commands as the API keeps them: Name, KeyCode, pronto..."""
+        return self._bucket(
+            f"codesets/{codeset[:self.api_manifest['codeset_prefix']]}.json.gz"
+        ).get(codeset, [])
 
     # -- the paths logitech_archive reads
 
