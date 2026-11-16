@@ -506,3 +506,28 @@ def test_a_header_that_names_no_model_is_no_remote(header):
         remotes.identify(header)
     from afterglow import ezhex, payloads
     assert ezhex.backend_for(header, b"GSPM and then some") is payloads.get("blob")
+
+
+def _library_with_the_one(tmp_path):
+    import shutil
+    one = remotes.LIBRARY / "harmony-one"
+    shutil.copytree(one, tmp_path / "harmony-one")
+    return tmp_path
+
+
+def test_a_drawing_that_cannot_be_drawn_from_is_a_grid_not_a_crash(tmp_path):
+    library = _library_with_the_one(tmp_path)
+    (library / "harmony-one" / "art.json").write_text('{"view": [0, 0, 1, 1]}')
+    profile = remotes.get("harmony-one", library)
+    assert profile.art is None and profile.hard_key_art is None
+
+
+def test_profiles_are_read_again_when_a_file_changes(tmp_path):
+    import json
+    library = _library_with_the_one(tmp_path)
+    assert remotes.get("harmony-one", library).model == "Harmony One"
+    path = library / "harmony-one" / remotes.PROFILE
+    data = json.loads(path.read_text())
+    data["model"] = "Harmony One (renamed)"
+    path.write_text(json.dumps(data))
+    assert remotes.get("harmony-one", library).model == "Harmony One (renamed)"

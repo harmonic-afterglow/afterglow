@@ -782,6 +782,49 @@ def load_all(library: Path | str = LIBRARY) -> list[RemoteProfile]:
              if (path / PROFILE).is_file()] if library.is_dir() else []
     found += [(path, None) for path in sorted(library.glob("*.json"))
               if path.name != "models.json"]
+    # Read once, and again only when a file changed: this is asked per device card,
+    # per window refresh and twice per identify, and parsing every profile each time
+    # was most of what some of those cost.
+    files = [path for path, _folder in found] + [
+        folder / ART for _path, folder in found if folder is not None]
+    try:
+        signature = (str(library.resolve()),
+                     tuple((str(f), f.stat().st_mtime_ns, f.stat().st_size)
+                           for f in files if f.is_file()))
+    except OSError:
+        signature = None
+    if signature is not None and _LOADED.get("signature") == signature:
+        return list(_LOADED["profiles"])
+    profiles = _read_profiles(found)
+    if signature is not None:
+        _LOADED.update(signature=signature, profiles=profiles)
+    return list(profiles)
+
+
+_LOADED: dict = {}
+
+
+def _art_problem(drawn) -> str | None:
+    """Why a remote's art.json cannot be drawn from, or None."""
+    if not isinstance(drawn, dict):
+        return "it is not an object"
+    if not isinstance(drawn.get("svg"), str):
+        return "it names no svg"
+    # a box, [x, y, width, height], or the corners of a wedge cut from a ring
+    if not isinstance(drawn.get("keys"), dict) or not all(
+            isinstance(box, list) and len(box) >= 4 and len(box) % 2 == 0
+            and all(isinstance(n, (int, float)) for n in box)
+            for box in drawn["keys"].values()):
+        return "its keys are not {key: [x, y, width, height]}"
+    for part in ("view", "cut"):
+        if drawn.get(part) is not None and not (
+                isinstance(drawn[part], list)
+                and all(isinstance(n, (int, float)) for n in drawn[part])):
+            return f"its {part} is not a list of numbers"
+    return None
+
+
+def _read_profiles(found) -> list[RemoteProfile]:
     profiles = []
     for path, folder in found:
         try:
@@ -795,6 +838,10 @@ def load_all(library: Path | str = LIBRARY) -> list[RemoteProfile]:
                 else None
         except json.JSONDecodeError as exc:            # the keys then show as a grid
             print(f"[warn] ignoring remote drawing {art}: {exc}")
+            drawn = None
+        problem = _art_problem(drawn) if drawn is not None else None
+        if problem:                                     # a grid, not a crash in the editor
+            print(f"[warn] ignoring remote drawing {art}: {problem}")
             drawn = None
         profiles.append(replace(profile, folder=folder, art=drawn))
     return sorted(profiles, key=lambda p: (not p.verified, p.model))
