@@ -10,7 +10,8 @@ Recognition is by synthesis, never by resemblance: a protocol's frame is walked 
 recording to read its fields, and the command is accepted only when that protocol,
 rendered with those values, gives the recording back - its press followed by any number
 of repeats, then its repeat - within a measuring tolerance. A protocol with sender state
-(an RC5 toggle) is not tried: one recording cannot show the state it was made in.
+(an RC5 toggle) is read with the state the recording shows, and sent with the state the
+sender keeps: a recording is one press, its toggle whichever it was made with.
 
 Format reference: docs/ir-recognition.md
 """
@@ -42,37 +43,83 @@ def _close(actual: int, expected: int, *, gap: bool = False) -> bool:
 
 def _same(actual: list[int], expected: list[int]) -> bool:
     """Whether two pulse trains are the same, a frame's last space - its padding to the
-    period - measured more loosely."""
+    period - measured more loosely, and the recording's very last space at least as
+    long: the silence after a recording's last frame is no part of the code."""
     if len(actual) != len(expected):
         return False
-    return all(_close(a, e, gap=(index == len(expected) - 1 or abs(e) > 10000))
+    last = len(expected) - 1
+    return all(_close(a, e, gap=(index == last or abs(e) > 10000))
+               or (index == last and a < 0 and e < 0 and -a > -e)
                for index, (a, e) in enumerate(zip(actual, expected)))
 
 
 class _Walk:
-    """A cursor over a recording, reading a frame's bursts and fields from it."""
+    """A cursor over a recording, reading a frame's bursts and fields from it.
 
-    def __init__(self, pulses: list[int]):
-        self.pulses, self.at = pulses, 0
+    A bi-phase code (RC5, RC6) draws a bit as a mark and a space in either order, so two
+    of its half-bits that meet are one pulse of the recording: a burst may take part of a
+    pulse, and the next takes the rest (``used``, how much of the pulse at ``at`` is
+    taken). With ``partial`` False every burst takes whole pulses."""
+
+    def __init__(self, pulses: list[int], *, partial: bool = True):
+        self.pulses, self.at, self.used, self.partial = pulses, 0, 0, partial
 
     def take(self, durations: list[int]) -> bool:
-        if self.at + len(durations) > len(self.pulses):
-            return False
-        if not all(_close(self.pulses[self.at + i], d) for i, d in enumerate(durations)):
-            return False
-        self.at += len(durations)
+        saved = self.at, self.used
+        for duration in durations:
+            if self.at >= len(self.pulses):
+                self.at, self.used = saved
+                return False
+            pulse = self.pulses[self.at]
+            sign = -1 if pulse < 0 else 1
+            rest = sign * (abs(pulse) - self.used)
+            allowed = max(TOLERANCE_US, abs(duration) * TOLERANCE)
+            if _close(rest, duration):
+                self.at, self.used = self.at + 1, 0
+            elif (self.partial and (pulse < 0) == (duration < 0)
+                    and abs(rest) > abs(duration) + allowed):
+                self.used += abs(duration)
+            else:
+                self.at, self.used = saved
+                return False
         return True
 
     def symbol(self, alphabet: dict, bursts: dict) -> str | None:
-        """The symbol of ``alphabet`` the recording has next, or None."""
+        """The symbol of ``alphabet`` the recording has next, or None - one that ends
+        where a pulse ends before one that ends inside it: NEC's 0 is the start of its 1,
+        and only a bi-phase half-bit runs on into the next."""
+        saved, inside = (self.at, self.used), None
         for value, burst in alphabet["symbols"].items():
             if self.take(list(bursts[burst])):
-                return value
-        return None
+                if not self.used:
+                    return value
+                if inside is None:
+                    inside = value, (self.at, self.used)
+                self.at, self.used = saved
+        if inside is None:
+            return None
+        self.at, self.used = inside[1]
+        return inside[0]
+
+    def end_frame(self) -> None:
+        """Past the frame's padding to its period, if the recording goes on."""
+        if self.at < len(self.pulses) and self.pulses[self.at] < 0:
+            self.at, self.used = self.at + 1, 0
+
+
+def _read_bits(walk: _Walk, alphabet: dict, bursts: dict, width: int) -> int | None:
+    bits = []
+    for _ in range(width):
+        value = walk.symbol(alphabet, bursts)
+        if value is None:
+            return None
+        bits.append(int(value))
+    return int("".join(map(str, bits)), 2)
 
 
 def _read_frame(spec: dict, frame: str, walk: _Walk, parameters: dict) -> bool:
-    """Read one frame's fields into ``parameters``; False when the recording is not it."""
+    """Read one frame's fields into ``parameters``; False when the recording is not it.
+    A toggle is read and let go: the render back tries both."""
     bursts, alphabets = spec["bursts"], spec["alphabets"]
     definitions = spec.get("parameters") or {}
     for segment in spec["frames"][frame]["segments"]:
@@ -80,22 +127,24 @@ def _read_frame(spec: dict, frame: str, walk: _Walk, parameters: dict) -> bool:
             if not walk.take(list(bursts[segment["burst"]])):
                 return False
             continue
+        alphabet = alphabets[segment.get("alphabet", next(iter(alphabets)))]
+        if alphabet.get("bits_per_symbol", 1) != 1:
+            return False
+        if "state" in segment:
+            if _read_bits(walk, alphabet, bursts, 1) is None:
+                return False
+            continue
         if "field" not in segment:
-            return False                              # sender state: not tried
+            return False                              # a constant: not tried
         name = segment["field"]
         width = segment.get("bits", definitions.get(name, {}).get("bits"))
-        alphabet = alphabets[segment.get("alphabet", next(iter(alphabets)))]
-        if not width or alphabet.get("bits_per_symbol", 1) != 1:
+        if not width:
             return False
-        bits = []
-        for _ in range(width):
-            value = walk.symbol(alphabet, bursts)
-            if value is None:
-                return False
-            bits.append(int(value))
+        value = _read_bits(walk, alphabet, bursts, width)
+        if value is None:
+            return False
         if segment.get("order", "msb") == "lsb":
-            bits.reverse()
-        value = int("".join(map(str, bits)), 2)
+            value = int(format(value, f"0{width}b")[::-1], 2)
         if segment.get("transform") == "invert":
             value = ~value & ((1 << width) - 1)
         elif segment.get("transform"):
@@ -106,9 +155,7 @@ def _read_frame(spec: dict, frame: str, walk: _Walk, parameters: dict) -> bool:
         offset = segment.get("offset", 0)
         if name not in parameters or not (current >> offset) & ((1 << width) - 1):
             parameters[name] = current | value << offset
-    # the frame's padding to its period, if the recording goes on
-    if walk.at < len(walk.pulses) and walk.pulses[walk.at] < 0:
-        walk.at += 1
+    walk.end_frame()
     return True
 
 
@@ -122,32 +169,59 @@ def _parameters(spec: dict, press: list[int]) -> dict | None:
     return parameters if parameters else None
 
 
-def _renders_back(spec: dict, parameters: dict, press: list[int], repeat: list[int]) -> bool:
-    try:
-        pressed, _state = ir_protocol.transmission(spec, parameters, "press")
-        held, _state = ir_protocol.transmission(spec, parameters, "hold")
-    except (KeyError, LookupError, ValueError):
-        return False
-    if not held:
-        return not repeat and _same(press, pressed)
-    if not any(_same(press, pressed + held * count) for count in range(MOST_REPEATS + 1)):
-        return False
-    if not repeat:
-        return True
-    return len(repeat) % len(held) == 0 and _same(repeat, held * (len(repeat) // len(held)))
+def _states(spec: dict) -> list[dict]:
+    """Every sender state a protocol may be in before a press: each toggle 0 or 1."""
+    names = sorted(spec.get("state") or {})
+    return [{name: count >> index & 1 for index, name in enumerate(names)}
+            for count in range(1 << len(names))]
+
+
+def _renders_back(spec: dict, parameters: dict, press: list[int],
+                  repeat: list[int]) -> list[dict]:
+    """The sender states before a press with which the protocol, with ``parameters``,
+    renders the recording back: none when it does not."""
+    out = []
+    for state in _states(spec):
+        try:
+            pressed, after = ir_protocol.transmission(spec, parameters, "press", state=state)
+            held, _after = ir_protocol.transmission(spec, parameters, "hold", state=after)
+        except (KeyError, LookupError, ValueError):
+            return []
+        if not held:
+            if not repeat and _same(press, pressed):
+                out.append(state)
+            continue
+        if not any(_same(press, pressed + held * count) for count in range(MOST_REPEATS + 1)):
+            continue
+        if not repeat or (len(repeat) % len(held) == 0
+                          and _same(repeat, held * (len(repeat) // len(held)))):
+            out.append(state)
+    return out
+
+
+def _split(recording: dict) -> tuple[list[int], list[int]]:
+    """A recording's press and its repeat."""
+    pulses = list(recording["pulses_us"])
+    sections = recording.get("sections") or {}
+    intro = sections.get("intro_pulses", len(pulses)) if sections else len(pulses)
+    return pulses[:intro], pulses[intro:intro + sections.get("repeat_pulses", 0)]
 
 
 def recognise(signal: dict, library=None) -> dict | None:
     """The protocol command a waveform signal is, or None when no protocol in ``library``
-    renders it back. The name is kept; the recording is not, as the protocol says it."""
-    if signal.get("kind") != "waveform" or signal.get("alternate"):
+    renders it back. The name is kept; the recording is not, as the protocol says it.
+
+    A recording with an alternate - the 650's two recordings of a toggling code, one for
+    each toggle - is a protocol with sender state whose one state renders the recording
+    and whose other renders the alternate."""
+    if signal.get("kind") != "waveform":
         return None
-    pulses = list(signal["pulses_us"])
-    sections = signal.get("sections") or {}
-    if sections.get("release_pulses"):
+    if (signal.get("sections") or {}).get("release_pulses"):
         return None
-    intro = sections.get("intro_pulses", len(pulses)) if sections else len(pulses)
-    press, repeat = pulses[:intro], pulses[intro:intro + sections.get("repeat_pulses", 0)]
+    press, repeat = _split(signal)
+    alternate = signal.get("alternate")
+    if alternate is not None and (alternate.get("sections") or {}).get("release_pulses"):
+        return None
     carrier = signal.get("carrier_hz") or 0
     # the narrowest protocol first: NEC1, whose address is checked by its inverted
     # copy, before extended NEC, which renders the same frame with a 16-bit address
@@ -156,7 +230,7 @@ def recognise(signal: dict, library=None) -> dict | None:
         item.get("bits", 0) for item in (catalog[pid].get("parameters") or {}).values()), pid))
     for protocol_id in narrowest:
         spec = catalog[protocol_id]
-        if spec.get("state"):
+        if alternate is not None and not spec.get("state"):
             continue
         modulation = spec.get("modulation") or {}
         expected = modulation.get("carrier_hz") or 0
@@ -164,8 +238,15 @@ def recognise(signal: dict, library=None) -> dict | None:
                 expected and abs(carrier - expected) > expected * CARRIER_TOLERANCE):
             continue
         parameters = _parameters(spec, press)
-        if parameters is None or not _renders_back(spec, parameters, press, repeat):
+        if parameters is None:
             continue
+        states = _renders_back(spec, parameters, press, repeat)
+        if not states:
+            continue
+        if alternate is not None:
+            others = _renders_back(spec, parameters, *_split(alternate))
+            if not any(state != other for state in states for other in others):
+                continue
         return ir_signal.protocol_signal(
             protocol_id, parameters, name=signal.get("name", ""),
             provenance={"kind": "recognised-waveform", "protocol": protocol_id,
@@ -173,16 +254,46 @@ def recognise(signal: dict, library=None) -> dict | None:
     return None
 
 
+def repeated(signal: dict) -> dict | None:
+    """The recording as one fixed waveform, when its press is its repeat sent a whole
+    number of times: a tap sends the press, and a held key sends it again and again,
+    which is the repeat over and over. None when it is not. Its alternate, the other
+    toggle's recording, goes with it when it is so too, and is let go when not."""
+    if signal.get("kind") != "waveform":
+        return None
+
+    def fixed(recording):
+        sections = recording.get("sections") or {}
+        if sections.get("release_pulses"):
+            return None
+        press, repeat = _split(recording)
+        if not press or not repeat or len(press) % len(repeat):
+            return None
+        if not _same(press, repeat * (len(press) // len(repeat))):
+            return None
+        out = {key: value for key, value in recording.items() if key != "sections"}
+        out["pulses_us"] = press
+        return out
+    out = fixed(signal)
+    if out is None:
+        return None
+    alternate = fixed(signal["alternate"]) if signal.get("alternate") else None
+    out.pop("alternate", None)
+    if alternate is not None:
+        out["alternate"] = alternate
+    return out
+
+
 # What separates a recording's frames: a space this long is a frame's padding, not a bit.
 FRAME_GAP_US = 10000
 
 
-def _frames(pulses: list[int]) -> list[list[int]]:
+def _frames(pulses: list[int], gap: int = FRAME_GAP_US) -> list[list[int]]:
     """A recording's frames, each with the space that ends it."""
     out, current = [], []
     for pulse in pulses:
         current.append(pulse)
-        if pulse < 0 and -pulse >= FRAME_GAP_US:
+        if pulse < 0 and -pulse >= gap:
             out.append(current)
             current = []
     if current:
@@ -227,7 +338,7 @@ def _layout(frame: list[int]) -> dict | None:
 
 def _payload(frame: list[int], layout: dict) -> int | None:
     """The bits a frame of ``layout`` carries, first bit most significant."""
-    walk = _Walk(frame)
+    walk = _Walk(frame, partial=False)
     if not walk.take(list(layout["header"])):
         return None
     value = 0
@@ -241,97 +352,299 @@ def _payload(frame: list[int], layout: dict) -> int | None:
     return value if walk.take(list(layout["trailer"])) else None
 
 
-def _same_layout(a: dict, b: dict) -> bool:
-    flat = lambda layout: (list(layout["header"]) + [p for s in layout["symbols"] for p in s]
-                           + list(layout["trailer"]))
-    return (a["bits"] == b["bits"] and len(flat(a)) == len(flat(b))
+# What separates a recorded code's frames when its shape is read: RCA's 8 ms between
+# frames, a fan's 7 ms, but not the 4.5 ms of NEC's leader or the separator in the
+# middle of a Samsung36 frame. The code index keeps FRAME_GAP_US, as the archive's copy
+# of it does.
+SHAPE_GAP_US = 6000
+# A frame this short that carries no bits is a ditto: NEC's "still held" frame.
+DITTO_PULSES = 6
+
+
+def _body(frame: list[int]) -> list[int]:
+    return frame[:-1] if frame and frame[-1] < 0 and -frame[-1] >= SHAPE_GAP_US else frame
+
+
+def _levels(pairs: list[tuple[int, int]], groups: list[list[int]]):
+    """The four symbols of a two-bit pulse-distance code (RC-MM's), when the pairs are
+    one mark and spaces a whole number of steps apart, at most three steps: shortest
+    first, a level the frame does not use put in its place. None when they are not."""
+    if not 3 <= len(groups) <= 4:
+        return None
+    mark = round(sum(pairs[i][0] for i in range(len(pairs))) / len(pairs))
+    if not all(_close(pair[0], mark) for pair in pairs) or mark < 0:
+        return None
+    spaces = sorted(round(sum(pairs[i][1] for i in group) / len(group)) for group in groups)
+    spaces.reverse()                      # spaces are negative: shortest first
+    step = min(abs(b - a) for a, b in zip(spaces, spaces[1:]))
+    if step < 2 * TOLERANCE_US:
+        return None
+    base = abs(spaces[0])
+    steps = [(abs(space) - base) / step for space in spaces]
+    if any(abs(k - round(k)) > 0.15 or round(k) > 3 for k in steps):
+        return None
+    return [(mark, -(base + k * step)) for k in range(4)]
+
+
+def _shapes(pairs: list[tuple[int, int]]):
+    """``(the bit shapes, separator)`` of a frame's pairs: two shapes, shortest first, or
+    the four of a two-bit code; and one pair in the middle with a longer space that
+    splits the bits (a Samsung36's), as ``(index, pair)``, or None. None when the pairs
+    are none of these."""
+    groups: list[list[int]] = []
+    for index, pair in enumerate(pairs):
+        for group in groups:
+            first = pairs[group[0]]
+            if _close(pair[0], first[0]) and _close(pair[1], first[1]):
+                group.append(index)
+                break
+        else:
+            groups.append([index])
+    levels = _levels(pairs, groups)
+    if levels is not None:
+        return levels, None
+    separator = None
+    if len(groups) == 3:
+        lone = [group for group in groups if len(group) == 1]
+        if len(lone) != 1 or lone[0][0] in (0, len(pairs) - 1):
+            return None
+        index = lone[0][0]
+        groups.remove(lone[0])
+        separator = index, pairs[index]
+    elif len(groups) != 2:
+        return None
+    shapes = [tuple(round(sum(pairs[i][k] for i in group) / len(group)) for k in (0, 1))
+              for group in groups]
+    # shortest first, and of two as long (a pulse-width code's) the shorter mark
+    shapes.sort(key=lambda shape: (abs(shape[0]) + abs(shape[1]), abs(shape[0])))
+    if separator is not None:
+        mark, space = separator[1]
+        if (mark < 0 or not any(_close(mark, shape[0]) for shape in shapes)
+                or abs(space) < 1.5 * max(abs(shape[1]) for shape in shapes)):
+            return None
+    return shapes, separator
+
+
+def _shape(frame: list[int]) -> dict | None:
+    """A frame's shape for a protocol of its own: its header, its bit shapes, a
+    separator, its trailer - or an open end, its last bit's space the frame's gap - and
+    how many bits; None when it is none of these. A header or trailer that is one of the
+    bits is not one."""
+    body = _body(frame)
+    for header, trailer, open_end in ((2, 1, False), (1, 0, False), (2, 0, True),
+                                      (0, 1, False), (0, 0, True)):
+        rest = len(body) - header - trailer - open_end
+        if rest < 16 or rest % 2:
+            continue
+        bits = body[header:header + rest]
+        found = _shapes([(bits[i], bits[i + 1]) for i in range(0, rest, 2)])
+        if found is None:
+            continue
+        shapes, separator = found
+        width = len(shapes).bit_length() - 1
+        marks_differ = len(shapes) == 2 and not _close(shapes[0][0], shapes[1][0])
+        if header == 2 and any(_close(body[0], s[0]) and _close(body[1], s[1])
+                               for s in shapes):
+            continue
+        if trailer and marks_differ and any(_close(body[-1], s[0]) for s in shapes):
+            continue
+        if open_end and (not marks_differ or body[-1] < 0
+                         or not any(_close(body[-1], s[0]) for s in shapes)):
+            continue
+        return {"header": body[:header], "trailer": body[len(body) - trailer:] if trailer
+                else [], "symbols": shapes, "separator": separator, "open": open_end,
+                "width": width,
+                "bits": (rest // 2 - (separator is not None)) * width + open_end}
+    return None
+
+
+def _same_shape(a: dict, b: dict) -> bool:
+    def flat(shape):
+        out = list(shape["header"]) + [p for s in shape["symbols"] for p in s]
+        return out + list(shape["trailer"]) + list((shape["separator"] or (0, ()))[1])
+    where = lambda shape: (shape["separator"] or (None,))[0]
+    return (a["bits"] == b["bits"] and a["open"] == b["open"] and where(a) == where(b)
+            and len(flat(a)) == len(flat(b))
             and all(_close(x, y) for x, y in zip(flat(a), flat(b))))
+
+
+def _read(frame: list[int], shape: dict) -> list[int] | None:
+    """The bits a frame of ``shape`` carries, first bit most significant: one value, or
+    two either side of its separator."""
+    walk = _Walk(frame, partial=False)
+    if not walk.take(list(shape["header"])):
+        return None
+    values, value = [], 0
+    separator, width = shape["separator"], shape["width"]
+    pairs = (shape["bits"] - shape["open"]) // width + (separator is not None)
+    for index in range(pairs):
+        if separator and index == separator[0]:
+            if not walk.take(list(separator[1])):
+                return None
+            values.append(value)
+            value = 0
+            continue
+        for symbol, burst in enumerate(shape["symbols"]):
+            if walk.take(list(burst)):
+                value = value << width | symbol
+                break
+        else:
+            return None
+    if shape["open"]:
+        if walk.at >= len(frame) or frame[walk.at] < 0:
+            return None
+        marks = [bit for bit, symbol in enumerate(shape["symbols"])
+                 if _close(frame[walk.at], symbol[0])]
+        if len(marks) != 1:
+            return None
+        value = value << 1 | marks[0]
+        walk.at += 1
+    elif not walk.take(list(shape["trailer"])):
+        return None
+    walk.end_frame()
+    return values + [value] if walk.at == len(frame) else None
+
+
+PHASES = ("press", "hold", "release")
 
 
 def infer(signal: dict) -> tuple[dict, dict] | None:
     """A protocol of the recording's own frame shape, and the command in it: ``(protocol
     definition, protocol signal)``, each frame's bits a payload of its own, as Logitech's
     generic protocols store theirs (a Roku sends a different code while a key is held).
-    None when the frames are not one shape of header, two bit shapes and trailer, or the
-    protocol does not render the recording back."""
+    A short frame with no bits is a ditto, the same each time (NEC's "still held"). The
+    frames sent on release are frames of the same shape, padded to a period of their own.
+    None when the frames are not one shape of header, bit shapes, separator and trailer
+    and dittos, or the protocol does not render the recording back."""
     if signal.get("kind") != "waveform" or signal.get("alternate"):
         return None
     pulses = list(signal["pulses_us"])
     sections = signal.get("sections") or {}
-    if sections.get("release_pulses"):
+    lengths = ([sections.get("intro_pulses", 0), sections.get("repeat_pulses", 0),
+                sections.get("release_pulses", 0)] if sections else [len(pulses), 0, 0])
+    recorded, at = {}, 0
+    for phase, length in zip(PHASES, lengths):
+        recorded[phase], at = pulses[at:at + length], at + length
+    split = {phase: _frames(recorded[phase], SHAPE_GAP_US) for phase in PHASES}
+    if not split["press"]:
         return None
-    intro = sections.get("intro_pulses", len(pulses)) if sections else len(pulses)
-    press, repeat = pulses[:intro], pulses[intro:intro + sections.get("repeat_pulses", 0)]
-    pressed, held = _frames(press), _frames(repeat)
-    if not pressed:
+    shape = _shape(split["press"][0])
+    if shape is None:
         return None
-    layout = _layout(pressed[0])
-    if layout is None:
-        return None
-    periods, payloads = [], {"press": [], "hold": []}
-    for phase, frames in (("press", pressed), ("hold", held)):
-        for frame in frames:
-            other = _layout(frame)
-            value = _payload(frame, layout)
-            if value is None or (other is not None and not _same_layout(layout, other)):
+    ditto = None
+    periods = {"data": [], "ditto": [], "release": []}
+    occurrences = {phase: [] for phase in PHASES}
+    for phase in PHASES:
+        for frame in split[phase]:
+            other = _shape(frame)
+            values = _read(frame, shape)
+            if values is not None and (other is None or _same_shape(shape, other)):
+                kind = "release" if phase == "release" else "data"
+                occurrences[phase].append(values)
+            elif (phase != "release" and len(_body(frame)) <= DITTO_PULSES
+                  and _body(frame)[0] > 0):
+                kind = "ditto"
+                if ditto is None:
+                    ditto = _body(frame)
+                elif len(ditto) != len(_body(frame)) or not all(
+                        _close(a, b) for a, b in zip(_body(frame), ditto)):
+                    return None
+                occurrences[phase].append(None)
+            else:
                 return None
-            payloads[phase].append(value)
-            if frame[-1] < 0 and -frame[-1] >= FRAME_GAP_US:
-                periods.append(sum(abs(pulse) for pulse in frame))
-    if not periods:
+            if len(_body(frame)) < len(frame):
+                periods[kind].append(sum(abs(pulse) for pulse in frame))
+    if not periods["data"] or (ditto is not None and not periods["ditto"]):
         return None
-    period = round(sorted(periods)[len(periods) // 2] / 100) * 100
+
+    def period(values):
+        return round(sorted(values)[len(values) // 2] / 100) * 100
     carrier = signal.get("carrier_hz")
-    bits = layout["bits"]
-    segments = [{"burst": "header"}] if layout["header"] else []
-    segments.append({"field": "payload", "bits": bits, "order": "msb", "alphabet": "bits"})
-    if layout["trailer"]:
+    bits, width = shape["bits"], shape["width"]
+    widths = ([shape["separator"][0] * width, bits - shape["separator"][0] * width]
+              if shape["separator"] else [bits])
+    fields = ["payload", "payload2"][:len(widths)]
+    segments = [{"burst": "header"}] if shape["header"] else []
+    for number, (field, size) in enumerate(zip(fields, widths)):
+        if number:
+            segments.append({"burst": "separator"})
+        segments.append({"field": field, "bits": size, "order": "msb", "alphabet": "bits"})
+    if shape["trailer"]:
         segments.append({"burst": "trailer"})
-    shape = {
+    names = (["zero", "one"] if width == 1
+             else [f"symbol{number}" for number in range(len(shape["symbols"]))])
+    bursts = {"header": list(shape["header"]), "trailer": list(shape["trailer"]),
+              **{name: list(symbol) for name, symbol in zip(names, shape["symbols"])}}
+    if shape["separator"]:
+        bursts["separator"] = list(shape["separator"][1])
+    if ditto is not None:
+        bursts["ditto"] = list(ditto)
+    for name in ("header", "trailer"):
+        if not bursts[name]:
+            del bursts[name]
+    local = {field: {"bits": size} for field, size in zip(fields, widths)}
+    frames = {"data": {"segments": segments, "parameters": local,
+                       "minimum_period_us": period(periods["data"])}}
+    # a frame sent on release that is padded to a period of its own is a frame of its own
+    release_frame = "data"
+    if periods["release"] and period(periods["release"]) != frames["data"][
+            "minimum_period_us"]:
+        release_frame = "release"
+        frames["release"] = {"segments": segments, "parameters": local,
+                             "minimum_period_us": period(periods["release"])}
+    if ditto is not None:
+        frames["ditto"] = {"segments": [{"burst": "ditto"}],
+                           "minimum_period_us": period(periods["ditto"])}
+    codes = [f"Code{number}" for number in range(len(widths))]
+    data = {"frame": "data", "bind": dict(zip(fields, codes))}
+    symbols = {format(number, f"0{width}b"): name for number, name in enumerate(names)}
+    shape_definition = {
         "modulation": ({"kind": "carrier", "carrier_hz": round(carrier)} if carrier
                        else {"kind": "unmodulated"}),
-        "parameters": {"Code0": {"bits": bits}},
-        "bursts": {"header": list(layout["header"]), "trailer": list(layout["trailer"]),
-                   "zero": list(layout["symbols"][0]), "one": list(layout["symbols"][1])},
-        "alphabets": {"bits": {"bits_per_symbol": 1, "symbols": {"0": "zero", "1": "one"}}},
-        "frames": {"data": {"segments": segments, "parameters": {"payload": {"bits": bits}},
-                            "minimum_period_us": period}},
-        "transmission": {"press": [{"frame": "data", "bind": {"payload": "Code0"}}],
-                         "hold": [{"frame": "data", "bind": {"payload": "Code0"}}],
+        "parameters": {code: {"bits": size} for code, size in zip(codes, widths)},
+        "bursts": bursts,
+        "alphabets": {"bits": {"bits_per_symbol": width, "symbols": symbols}},
+        "frames": frames,
+        "transmission": {"press": [data],
+                         "hold": [{"frame": "ditto"}] if ditto is not None else [data],
                          "release": []},
     }
-    if not layout["header"]:
-        del shape["bursts"]["header"]
-    if not layout["trailer"]:
-        del shape["bursts"]["trailer"]
-    fingerprint = hashlib.sha256(json.dumps(shape, sort_keys=True).encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps(shape_definition, sort_keys=True).encode()
+                                 ).hexdigest()
     definition = {"schema": ir_protocol.SCHEMA, "id": f"recorded-{fingerprint[:12]}",
                   "name": f"Recorded {bits}-bit code",
-                  **shape,
+                  **shape_definition,
                   "provenance": {"kind": "inferred-from-recording",
                                  "source": (signal.get("provenance") or {}).get("kind", "")}}
-    hexes = (bits + 3) // 4
 
-    def occurrences(values):
-        return [{"frame": "data", "arguments": {"payload": f"0x{value:0{hexes}X}"}}
-                for value in values]
+    def sequence(items, frame="data"):
+        out = []
+        for values in items:
+            if values is None:
+                out.append({"frame": "ditto"})
+                continue
+            out.append({"frame": frame, "arguments": {
+                field: f"0x{value:0{(size + 3) // 4}X}"
+                for field, size, value in zip(fields, widths, values)}})
+        return out
     command = ir_signal.protocol_signal(
         definition["id"], {}, name=signal.get("name", ""),
-        transmission={"press": occurrences(payloads["press"]),
-                      "hold": occurrences(payloads["hold"]), "release": []},
+        transmission={"press": sequence(occurrences["press"]),
+                      "hold": sequence(occurrences["hold"]),
+                      "release": sequence(occurrences["release"], release_frame)},
         provenance={"kind": "recognised-waveform", "protocol": definition["id"],
                     "source": (signal.get("provenance") or {}).get("kind", "")})
     try:
         ir_protocol.validate(definition)
         library = {definition["id"]: definition}
-        rendered = ir_protocol.render_transmission(command, phase="press", library=library)[0]
-        again = (ir_protocol.render_transmission(command, phase="hold", library=library)[0]
-                 if payloads["hold"] else None)
+        for phase in PHASES:
+            if not recorded[phase]:
+                continue
+            rendered = ir_protocol.render_transmission(command, phase=phase,
+                                                       library=library)[0]
+            if rendered is None or not _same(recorded[phase], rendered["pulses_us"]):
+                return None
     except (KeyError, LookupError, ValueError):
-        return None
-    if rendered is None or not _same(press, rendered["pulses_us"]):
-        return None
-    if repeat and (again is None or not _same(repeat, again["pulses_us"])):
         return None
     return definition, command
 

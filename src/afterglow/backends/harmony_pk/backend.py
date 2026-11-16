@@ -556,9 +556,21 @@ def _recognise_recordings(devices: list[dict], library):
     """Each recording this remote cannot store - a press and a different repeat, as a
     Harmony One keeps every command - replaced in place by the protocol command it is
     (ir_recognise): one of the library's, else one of the recording's own frame shape,
-    added to its device. One SsIr entry holds a single waveform; a protocol keeps the
-    repeat. The library returned holds the added protocols."""
+    added to its device, when this remote's generic protocol element can play it; else,
+    when its press is only its repeat sent a few times, the one fixed waveform it then is
+    (a Samsung36's frame, split by a space no element plays). One SsIr entry holds a
+    single waveform; a protocol keeps the repeat, in less room. The library returned
+    holds the added protocols."""
     from ... import ir_recognise
+    from . import ir_emit
+
+    def playable(definition, command):
+        try:
+            ir_emit.emit_generic(definition, parameters=command["parameters"],
+                                 transmission=command.get("transmission"))
+        except (LookupError, ValueError, ir_emit.NativeEmissionError):
+            return False
+        return True
 
     catalog = dict(library) if isinstance(library, dict) else ir_protocol.catalog(library)
     for device in devices:
@@ -570,13 +582,15 @@ def _recognise_recordings(devices: list[dict], library):
             known = ir_recognise.recognise(signal, catalog)
             if known is None:
                 inferred = ir_recognise.infer(signal)
-                if inferred is None:
-                    continue
-                definition, known = inferred
-                catalog.setdefault(definition["id"], definition)
-                device.setdefault("portable_protocol_definitions", {}).setdefault(
-                    definition["id"], definition)
-            device["signals"][name] = known
+                if inferred is not None and playable(*inferred):
+                    definition, known = inferred
+                    catalog.setdefault(definition["id"], definition)
+                    device.setdefault("portable_protocol_definitions", {}).setdefault(
+                        definition["id"], definition)
+                else:
+                    known = ir_recognise.repeated(signal)
+            if known is not None:
+                device["signals"][name] = known
     return catalog
 
 
