@@ -144,3 +144,16 @@ def test_the_editor_can_say_which_commands_activities_rely_on(templates):
     used = DeviceEditor(templates, existing=device, project=project)._commands_activities_use()
     assert used == {"MyTV": ["Watch TV"], "MyMusic": ["Music"]}
     assert "NotOurs" not in used, "picked up a command belonging to another device"
+
+
+def test_saving_a_device_adds_no_timing_its_remote_does_not_have(qapp_or_skip):
+    """The One's builder uses a few of the timing fields; a save used to write all nine
+    at their defaults, which a move to the 900 would take for the owner's."""
+    from afterglow import remotes
+    from afterglow.gui.device_wizard import TimingPage
+    fields = remotes.get("harmony-one").interface["timing"]
+    page = TimingPage({"power_delay": 2000, "hold_interkey": 80}, fields=fields)
+    values = page.values()
+    assert set(values) <= set(fields) | {"power_delay", "hold_interkey"}
+    assert values["hold_interkey"] == 80                  # what it had, kept
+    assert set(TimingPage({}, fields=None).values()) >= {"press_presilence", "hold_interkey"}

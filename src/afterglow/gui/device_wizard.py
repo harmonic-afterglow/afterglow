@@ -1524,6 +1524,10 @@ class TimingPage(QWizardPage):
     def __init__(self, existing, parent=None, fields=None):
         super().__init__(parent)
         self.setTitle("Timing")
+        # What is handed back: the fields this remote's builder uses, and whatever the
+        # device had already. A save used to add every field at its default, which a
+        # later move to another remote would take for the owner's own values.
+        self._kept = None if fields is None else set(fields) | set(existing)
         self.setSubTitle(
             "These come from the device database or your imported configuration and "
             "are right for most devices. Change one only when the device misses "
@@ -1601,7 +1605,7 @@ class TimingPage(QWizardPage):
 
     def values(self) -> dict:
         """The timing fields as a project device keeps them."""
-        return {
+        values = {
             "always_on": None if self._always_on_absent else self.always_on.isChecked(),
             "power_delay": self.pwr_delay.value(),
             "press_presilence": self.pre_sil.value(),
@@ -1612,6 +1616,9 @@ class TimingPage(QWizardPage):
             "app_power_delay": self.app_delay.value(),
             "inter_device_delay": self.inter_device.value(),
         }
+        if self._kept is None:
+            return values
+        return {key: value for key, value in values.items() if key in self._kept}
 
     def load_template(self, t):
         """A device that is always on, or needs a long warm-up, says so itself."""
