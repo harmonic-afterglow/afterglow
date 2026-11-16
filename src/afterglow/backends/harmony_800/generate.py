@@ -55,7 +55,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
              softkey_fonts: dict | None = None, options: dict | None = None,
              system: dict | None = None, words=None, activities: dict | None = None,
              project: dict | None = None,
-             light: int = idle_machine.OFF_DURATION, hours: int = 12) -> bytes:
+             light: int = idle_machine.OFF_DURATION, hours: int = 12,
+             skin: int | None = None) -> bytes:
     """Lay out a whole image from what a build has prepared, marked with ``project``, the
     project it was built from (mark.py) - an empty one when none is given.
 
@@ -144,7 +145,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         layout, devices=devices, fonts=fonts, pictures=pictures, system=system,
         carried=carried, variables=variables, engine=engine, activity_rows=activity_rows,
         global_keys=global_keys, startup=startup, tail=tail, first_platform=platform.first,
-        stamp=structures.stamp(*DEFAULT_STAMP) if stamp is None else stamp,
+        stamp=structures.stamp(*DEFAULT_STAMP) if stamp is None else stamp, skin=skin,
         project=project if project is not None else {})
 
 
@@ -440,6 +441,7 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     fonts = [font_from_scaffold(loaded["fonts"][role]) for role in order]
     image = skeleton(
         buttons=buttons, stamp=structures.stamp(*stamp_fields),
+        skin=(project.get("settings") or {}).get("skin"),
         tail=platform_tail(directory),
         fonts=fonts,
         label_font=order.index(button),

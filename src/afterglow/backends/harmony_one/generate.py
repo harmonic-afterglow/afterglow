@@ -50,7 +50,8 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
              devices=(), templates=None, label_font: int | None = None,
              softkey_fonts: dict | None = None, options: dict | None = None,
              system: dict | None = None, words=None, activities: dict | None = None,
-             light: int = idle_machine.OFF_DURATION, hours: int = 12) -> bytes:
+             light: int = idle_machine.OFF_DURATION, hours: int = 12,
+             skin: int | None = None) -> bytes:
     """Lay out a whole image from what a build has prepared.
 
     With nothing given it is the smallest configuration this backend can build: no
@@ -133,7 +134,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
         layout, devices=devices, fonts=fonts, pictures=pictures, system=system,
         carried=carried, variables=variables, engine=engine, activity_rows=activity_rows,
         global_keys=global_keys, startup=startup, tail=tail, first_platform=platform.first,
-        stamp=structures.stamp(*DEFAULT_STAMP) if stamp is None else stamp)
+        stamp=structures.stamp(*DEFAULT_STAMP) if stamp is None else stamp, skin=skin)
 
 
 def _worded(system, fonts, words, hours=12):
@@ -417,6 +418,7 @@ def _configuration(project, directory, manifest, loaded, stamp_fields, buttons, 
     fonts = [font_from_scaffold(loaded["fonts"][role]) for role in order]
     image = skeleton(
         buttons=buttons, stamp=structures.stamp(*stamp_fields),
+        skin=(project.get("settings") or {}).get("skin"),
         tail=platform_tail(directory),
         fonts=fonts,
         label_font=order.index(button),

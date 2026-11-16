@@ -302,7 +302,7 @@ def write_tables(layout, *, sections: dict, device_records, startup: int, groups
 
 
 def image(layout, *, devices, fonts, pictures, system, carried, variables, engine,
-          activity_rows, global_keys, startup, stamp, tail, first_platform) -> bytes:
+          activity_rows, global_keys, startup, stamp, tail, first_platform, skin=None) -> bytes:
     """Place everything ``layout`` numbered, write the tables, and seal the image."""
     objects = place_objects(layout)
     device_records = place_commands(layout, devices)
@@ -322,7 +322,7 @@ def image(layout, *, devices, fonts, pictures, system, carried, variables, engin
     write_tables(layout, device_records=device_records, startup=startup, groups=groups,
                  tail=tail, sections={
                      0: name_chain(names),
-                     1: scaffold.CONSTANT_SECTIONS[1],
+                     1: scaffold.section1(skin),
                      2: scaffold.CONSTANT_SECTIONS[2],
                      3: stamp,
                      4: structures.command_flat_index(device_records),

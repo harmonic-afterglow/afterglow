@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Harmony One and 800: Activities on the Activities menu with nothing running opens
   its first page**, as Logitech's configurations do; it did nothing. With an activity
   running it goes back to that activity, as before.
+- **Remotes sold in Europe are recognised.** The European Harmony 650 (skin 74), 700 (69),
+  900 (60), One (59) and 800 (87) report a model number of their own. Afterglow refused
+  them and their backups as unknown remotes. They now open as the remote they are, and a
+  build for one keeps its number.
 
 ## [0.3.0-beta.7.1] - 2026-11-16
 

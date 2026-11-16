@@ -53,6 +53,18 @@ CONSTANT_SECTIONS = {
     17: bytes.fromhex("00"),
     18: bytes.fromhex("0000"),
 }
+SECTION1_SKIN = 2                  # section 1's byte that is the remote's skin
+
+
+def section1(skin: int | None = None) -> bytes:
+    """Section 1, its skin byte the remote's: a build for the One sold in Europe
+    (skin 59) says 59, as the remote reports it."""
+    out = bytearray(CONSTANT_SECTIONS[1])
+    if skin is not None:
+        out[SECTION1_SKIN] = skin
+    return bytes(out)
+
+
 HEADER_SIZE = 0x68
 
 # The factory image counts 2 buttons where every household one counts 55.

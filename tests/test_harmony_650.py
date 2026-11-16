@@ -1178,7 +1178,7 @@ def test_the_665_is_the_650_under_another_skin(tmp_path):
 
     profile = remotes.get("harmony-650")
     assert "650" in profile.model and "665" in profile.model
-    assert profile.skins == (72, 75, 71, 73)
+    assert profile.skins == (72, 75, 71, 73, 74)
     for skin in (72, 75):
         header = (f"<INFORMATION><INTENDEDVERSION><PROTOCOL>14</PROTOCOL><SKIN>{skin}</SKIN>"
                   "<FLASH>0x15:0x1C</FLASH><BOARD>1.2.0</BOARD><SOFTWARETYPE>0</SOFTWARETYPE>"
