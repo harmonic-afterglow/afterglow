@@ -549,10 +549,11 @@ def _archive_timing(timing) -> dict:
     coincidence of name. The others stay on the catalogue device's ``control`` block for
     whoever needs them.
 
-    Deliberately *not* mapped: `pressMinRepeats`. It plausibly explains the native
-    minimum-repeat byte, agreeing with 13 of 16 measured donor devices, but three
-    disagree - and changing how many times every command transmits deserves better than
-    a correlation on decade-old configs.
+    `pressMinRepeats` is the fewest frames a press sends (`press_minimum`). Logitech's
+    own 900 configurations send Sony 20-bit three times, as their devices' 3 says,
+    though the protocol declares no minimum; a Sony receiver sent one frame - the
+    protocol's own press - ignored it (a tester's STR-K750P, 2026-11). It raises a press
+    that sends fewer, never lowers one.
     """
     if not isinstance(timing, dict):
         return {}
@@ -567,6 +568,9 @@ def _archive_timing(timing) -> dict:
         value = timing.get(source)
         if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
             out[target] = value
+    minimum = timing.get("pressMinRepeats")
+    if isinstance(minimum, int) and not isinstance(minimum, bool) and minimum > 1:
+        out["press_minimum"] = minimum
     return out
 
 

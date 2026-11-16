@@ -230,7 +230,8 @@ def to_project_device(spec: dict, device_id: str = "", *,
             out[key] = json.loads(json.dumps(spec[key]))
     for key, value in (spec.get("timing") or {}).items():
         if key in ("press_presilence", "press_interkey", "hold_presilence",
-                   "hold_interkey", "input_delay", "app_power_delay", "inter_device_delay"):
+                   "hold_interkey", "input_delay", "app_power_delay", "inter_device_delay",
+                   "press_minimum"):
             out[key] = value
     for command in spec["commands"]:
         address, value = command_fields(resolved[command["name"]])

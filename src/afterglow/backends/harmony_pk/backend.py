@@ -481,7 +481,10 @@ def _native_requirement(signal: dict, library, emissions: dict) -> tuple[
         if mapping and mapping.get("emitter"):
             portable = ir_protocol.protocol(signal["protocol"], library)
             lifecycle = signal.get("transmission") or portable.get("transmission") or {}
-            needs_generic_lifecycle = bool(lifecycle.get("release"))
+            # a command's own sequence - a press raised to its device's minimum - is
+            # not what the reviewed codec sends, which knows the protocol's alone
+            needs_generic_lifecycle = bool(lifecycle.get("release")) or bool(
+                signal.get("transmission"))
             if not needs_generic_lifecycle:
                 from . import ir_emit
                 definition = emissions.get(signal["protocol"])
@@ -577,6 +580,34 @@ def _recognise_recordings(devices: list[dict], library):
     return catalog
 
 
+def _expanded(occurrences: list[dict]) -> list[dict]:
+    return [{key: value for key, value in item.items() if key != "count"}
+            for item in occurrences for _ in range(item.get("count", 1))]
+
+
+def _press_minimum(devices: list[dict], library) -> None:
+    """A device's `press_minimum` - the fewest frames a press sends, as Logitech's
+    database says - made the press of each command whose press is its hold frame sent
+    fewer times: the hold frame that many times, which lowers to the Code's minimum
+    repeat count (builder.codes.transmission_plan), as Logitech's own 900s send Sony."""
+    for device in devices:
+        minimum = device.get("press_minimum")
+        if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 2:
+            continue
+        for signal in (device.get("signals") or {}).values():
+            if signal.get("kind") != "protocol" or signal["protocol"] not in library:
+                continue
+            sequence = signal.get("transmission") or library[signal["protocol"]].get(
+                "transmission") or {}
+            press, hold = _expanded(sequence.get("press") or []), _expanded(
+                sequence.get("hold") or [])
+            if (not hold or len(press) % len(hold)
+                    or press != hold * (len(press) // len(hold))
+                    or len(press) // len(hold) >= minimum):
+                continue
+            signal["transmission"] = {**sequence, "press": hold * minimum}
+
+
 def lower_devices(devices: list[dict], profile, *, library=None) -> list[dict]:
     """Portable project devices -> transient dictionaries consumed by arch-15 builder."""
     library = ir_protocol.LIBRARY if library is None else library
@@ -586,6 +617,7 @@ def lower_devices(devices: list[dict], profile, *, library=None) -> list[dict]:
     emissions = {}
     devices = deepcopy(devices)                   # recognition replaces signals in place
     library = _recognise_recordings(devices, library)
+    _press_minimum(devices, library)
     for source in devices:
         device = project_devices.clean(source)
         device.pop("schema", None)
