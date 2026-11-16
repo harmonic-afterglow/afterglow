@@ -828,7 +828,7 @@ def test_off_s_help_with_no_device_to_ask_about_says_there_is_nothing_to_do():
 
     screen = {"id": "s", "label": "Screen", "type": "Projector",
               "signals": {"Menu": _nec(6, 1)}}
-    def says_nothing_to_do(project):     # a glyph the reader cannot name reads as \ufffd
+    def says_nothing_to_do(project):     # a glyph the reader cannot name reads as ?
         return any("Nothing to do" in text for text in texts(project))
 
     assert says_nothing_to_do({"devices": [screen], "activities": [
@@ -895,8 +895,9 @@ def test_a_build_in_cyrillic_reads_back_in_cyrillic():
     drawn = {item["text"] for screen in image.screens for slot in screen["slots"]
              for item in image.page_text(slot["program_offset"])}
     # every letter reads (before this, 47 lines had Cyrillic letters it could not name);
-    # the reader still takes one stray character before a line, in every language
-    unread = sorted(line for line in drawn if "\ufffd" in line[1:])
+    # the reader still takes one stray character before a line, in every language, which
+    # reads as "?" and is all `unread` holds
+    unread = sorted(line for line in image.text.unread if "?" in line[1:])
     assert not unread, unread
     mixed = [word for line in drawn for word in re.findall(r"\w+", line)
              if re.search("[\u0400-\u04ff]", word) and re.search("[A-Za-z]", word)]
