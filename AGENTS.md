@@ -166,16 +166,18 @@ the root. The order below is also the order the tests will stop you in.
 2. Add `scaffolds/<model>/` - a sanitised real configuration from that remote. It cannot
    be synthesised, and one from a *different* model must never be substituted: it carries
    that remote's calibration and persisted settings.
-3. Start with `status: read-only`; promote it to `experimental` only for controlled
-   artifact builds. Normal writes remain blocked.
-4. Flash through the dedicated first-write process, boot it, and only then set
-   `verified`. **No exceptions** - there is no vendor
-   server to recover from.
+3. Start with `status: read-only`. `experimental` is NOT build-only: in a release, anyone
+   can write an experimental remote from the Flash tab, after a warning and a backup to
+   `Dumps/`. Set it on your own checkout to build and to run the first-write tool
+   (`docs/first-write.md`); commit it only once a build has been flashed that way and the
+   remote booted it.
+4. Set `verified` only after testers' remotes boot it and the changed controls work on
+   real equipment. **No exceptions** - there is no vendor server to recover from.
 
-The dedicated process is documented in `docs/first-write.md`; the Flash tab's Test Write
-is the same process, not a second one. Keep its preparation, apply and readback states
-separate: an interrupted write has an unknown outcome and must never become an automatic
-retry. Restoring the captured backup is the one write that may be repeated.
+The first-write tool is command-line only; the application has no second process. Keep
+its preparation, apply and readback states separate: an interrupted write has an unknown
+outcome and must never become an automatic retry. Restoring the captured backup is the
+one write that may be repeated.
 
 That is the whole job. No Python.
 

@@ -23,12 +23,16 @@ already-implemented architecture is adding a file, not editing code:
 ## `status` is a safety gate, not a label
 
     read-only    identity is known; importing and inspection only
-    experimental configs may be built for controlled first-write testing
+    experimental configs are built AND written: Flash to Remote warns that support is
+                 experimental and saves what is on the remote to Dumps/ first
     verified     configs have been built AND flashed to this remote successfully
 
-Only `verified` profiles are writable through the normal application flow. Getting a
-config wrong can strand hardware that cannot be re-flashed from a vendor server any
-more, so a new profile defaults to `read-only` and promotion is explicit.
+`experimental` is a promise to every user, not a developer switch: anyone can flash an
+experimental remote from the Flash tab. Getting a config wrong can strand hardware that
+cannot be re-flashed from a vendor server any more, so a new profile defaults to
+`read-only`, and is committed as `experimental` only once a build has been flashed with
+the first-write tool on a developer's checkout and the remote booted it
+(docs/first-write.md).
 
 The skin id identifies the model (`library/remotes/models.json`, indexed by skin,
 from Concordance's table). Identity is read straight out of a config's

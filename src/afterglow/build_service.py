@@ -44,10 +44,9 @@ class ConfigBuildService:
         """Build while retaining backend validation, change and provenance evidence."""
         from . import backends, remotes, themes
 
-        # Which remote is this for, and has its profile entered build testing? This is
-        # deliberately weaker than the write gate: experimental profiles can produce
-        # artifacts for controlled validation, but the normal flash path still refuses
-        # them until a real write and boot has been verified.
+        # Which remote is this for, and may it be built? The same gate as writing
+        # (Remote.require_writable): an experimental profile is built and written, the
+        # Flash tab warning first; a read-only one is neither.
         profile = remotes.for_project(project)
         profile.require_buildable()
         backend = backends.for_profile(profile)

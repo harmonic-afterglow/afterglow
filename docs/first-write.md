@@ -39,9 +39,8 @@ its payload hash with the candidate. Only an exact match changes the report to
 `readback-verified`.
 
 `restore` writes back only the recovery recorded in the report, after checking its digest and
-the attached remote's identity again, and requires its own phrase. The normal write path
-refuses an experimental profile, so without it a tester would hold a backup they could not
-put back. Unlike `apply`, an uncertain restore may be repeated: writing the remote's own
+the attached remote's identity again, and requires its own phrase. It is the way back
+when the remote does not boot what was written. Unlike `apply`, an uncertain restore may be repeated: writing the remote's own
 configuration again is the recovery itself.
 
 The report is evidence for review, not an automatic promotion. Set a profile to `verified` only
