@@ -60,16 +60,12 @@ class Flow:
         self.all_off = all_off or {"off": []}
         # Back to what is running: an activity's first page, or the Activities menu.
         layout = self.layout
-        self.current_group = self.resume_group = None
+        self.current_group = None
         if variables.state is not None:
             self.current_group = layout.group(
                 [(value, layout.block(_enter(item["home"])))
                  for value, item in enumerate(ordinals.activities)]
                 + [(len(acts), layout.block(_enter(ordinals.home)))])
-            # From the Activities menu, its key goes back to a running activity only.
-            self.resume_group = layout.group(
-                [(value, layout.block(_enter(item["home"])))
-                 for value, item in enumerate(ordinals.activities)]) if acts else None
         # Devices: the running activity's own device list, or the list with none running,
         # as Logitech's Devices record switches on the counter (Danny Bloe's
         # harmony-explorations, compiler.md, "the device lists").
@@ -146,9 +142,11 @@ class Flow:
                               prologue=prologue, attribute=screens.label,
                               label_room=self.frames.row_label_room)
             return screens.softkeys(built, ["options", "devices"])
-        # On the menu the Activities key goes back to what is running.
+        # On the menu the Activities key goes back to what is running, or with nothing
+        # running to the menu's first page, as Logitech's does (its switch on
+        # CurrentActivityState enters the menu for the idle value).
         menu_keys = [(keys.code(keys.ACTIVITIES),
-                      (self.resume_group << 8) | self.variables.state, 0x72)]
+                      (self.current_group << 8) | self.variables.state, 0x72)]
         screens.owned(rows, zones, program, "activities", screens.words("hub.activities-title"),
                       (page_index, total), keys=menu_keys)
 

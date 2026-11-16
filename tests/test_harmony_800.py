@@ -917,3 +917,30 @@ def test_a_look_alike_is_read_in_the_script_of_its_word():
     assert labels._in_script("o\u043e", "LATIN") == "o"
     assert labels._scripts(["\u0434", "o\u043e", " ", "o\u043e", "k"]) == [
         "CYRILLIC", "CYRILLIC", "", "LATIN", "LATIN"]
+
+
+def test_the_activities_key_on_the_menu_goes_to_its_first_page_when_nothing_runs():
+    """Logitech's Activities key on the menu switches on CurrentActivityState: a running
+    activity's screen, or with none the menu's first page. It used to switch only to a
+    running activity, so on the menu's second page with nothing running the key did
+    nothing (a tester's report on the One; the 800 had the same code). Under emulation:
+    page 2, Activities, page 1; Play Xbox running, its page again."""
+    from afterglow.backends.harmony_800 import importing
+
+    acts = [{**WATCHING["activities"][0], "id": str(1001 + n), "label": f"Play {n}"}
+            for n in range(4)]                          # four: the menu has two pages
+    built = importing.Image(generate.build({**WATCHING, "activities": acts})["image"])
+    image, screens = built.payload, _screens(built.payload)
+    menu = 40
+    # a hard key is answered in the screen's handler list, a touch in its key register
+    [(_tag, operand, opcode)] = [row for row in _rows(image, screens[menu]["list"])
+                                 if row[0] == 0xC017]
+    assert opcode == 0x72
+    targets = built.switch_targets(operand >> 8)
+    assert targets[len(acts)] == [menu]                  # nothing running: page one
+    assert all(targets[value] for value in range(len(acts)))
+    # the second page answers the key the same way
+    pages = [index for index, screen in enumerate(screens)
+             if any(row[0] == 0xC017 and row[1] == operand for row in
+                    _rows(image, screen["list"]))]
+    assert len(pages) >= 2 and menu in pages
