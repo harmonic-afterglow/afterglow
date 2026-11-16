@@ -9,6 +9,7 @@ sidecar files so `build()` can reproduce it byte for byte.
 
 This module name describes its storage adapter, not a Harmony architecture family.
 """
+import logging
 import hashlib
 import io
 import json
@@ -129,7 +130,9 @@ def rehash(work_dir):
         x = re.sub(r'(<Hash>)0x[0-9A-Fa-f]+(</Hash>)', r"\g<1>" + hs + r"\g<2>", x)
         with open(p, "w", encoding="utf-8") as handle:
             handle.write(x)
-    print(f"rehash: IrProto data {len(data)} B -> CRC32 {hs} (synced to UserConfiguration.xml + ActionLists.xml)")
+    logging.getLogger("afterglow").debug(
+        "rehash: IrProto data %d B -> CRC32 %s (synced to UserConfiguration.xml + "
+        "ActionLists.xml)", len(data), hs)
     return hs
 
 # The permissions the remote expects, as a function of where a file sits. These become

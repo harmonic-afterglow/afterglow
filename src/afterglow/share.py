@@ -10,8 +10,6 @@ labelled safe that still carries a name is worse than none.
 """
 from __future__ import annotations
 
-import contextlib
-import io
 import shutil
 import tempfile
 from pathlib import Path
@@ -37,11 +35,10 @@ def make_shareable(source, target) -> list[str]:
             "its owner, so it will not label a copy as safe to share.")
     work = Path(tempfile.mkdtemp(prefix="afterglow-share-"))
     try:
-        with contextlib.redirect_stdout(io.StringIO()):
-            ezhex.unpack(str(source), str(work / "tree"))
-            changes = anonymise(work / "tree")
-            ezhex.pack_standalone(str(work / "tree"), str(work / "copy.ezhex"),
-                                  do_rehash=False)
+        ezhex.unpack(str(source), str(work / "tree"), log=ezhex.quiet)
+        changes = anonymise(work / "tree")
+        ezhex.pack_standalone(str(work / "tree"), str(work / "copy.ezhex"),
+                              do_rehash=False, log=ezhex.quiet)
         shutil.copyfile(work / "copy.ezhex", target)
     finally:
         shutil.rmtree(work, ignore_errors=True)

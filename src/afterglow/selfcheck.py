@@ -92,8 +92,6 @@ def import_check(config: str) -> int:
     reach its shipped data, say - and the difference matters, because opening a file is
     the first thing anyone will do.
     """
-    import contextlib
-    import io
     import tempfile
 
     from . import ezhex, importer
@@ -101,8 +99,7 @@ def import_check(config: str) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         # `ezhex` is the container layer: it reads the header and hands the payload to
         # whichever module claims it, which is the same route the interface takes.
-        with contextlib.redirect_stdout(io.StringIO()):
-            ezhex.unpack(config, tmp)
+        ezhex.unpack(config, tmp, log=ezhex.quiet)
         # Then the dispatcher, which picks the backend from the configuration's own
         # header. Naming one backend here would tie a general check to one remote.
         project = importer.build_project(tmp)

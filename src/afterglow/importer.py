@@ -1,6 +1,4 @@
 """Dispatch an extracted configuration to its remote architecture backend."""
-import contextlib
-import io
 import shutil
 import tempfile
 from pathlib import Path
@@ -45,8 +43,7 @@ def import_file(path, name=None):
     name = name or Path(path).stem
     with tempfile.TemporaryDirectory(prefix="afterglow-import-") as work:
         tree = Path(work) / "tree"
-        with contextlib.redirect_stdout(io.StringIO()):
-            ezhex.unpack(str(path), str(tree))
+        ezhex.unpack(str(path), str(tree), log=ezhex.quiet)
         result = import_result(str(tree), name=name)
         kept = paths.logos_dir() / "Imported" / name
         for asset in result.project.get("assets") or []:

@@ -172,11 +172,17 @@ def _header_beside(path):
     return _read_bytes(path) if os.path.isfile(path) else b""
 
 
-def unpack(ezhex, out_dir):
+def quiet(*_args) -> None:
+    """A `log` for callers that want none."""
+
+
+def unpack(ezhex, out_dir, log=print):
+    """``log`` is told what was found; pass `quiet` - or any callable - rather than
+    redirecting stdout, which is process-wide and swallows other threads' output too."""
     raw = _read_bytes(ezhex)
     header, payload, cks, _outside = read(raw)
     calc = checksum(payload)
-    print(f"payload {len(payload)} bytes | declared checksum {cks} | computed {calc} | "
+    log(f"payload {len(payload)} bytes | declared checksum {cks} | computed {calc} | "
           + ("OK" if calc == cks else "MISMATCH"))
     count = backend_for(header, payload).unpack(payload, out_dir)
     # Keep the original header verbatim: it identifies the remote and carries fields we
@@ -184,7 +190,7 @@ def unpack(ezhex, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, ".ezhex_header"), "wb") as handle:
         handle.write(header)
-    print(f"extracted {count} entries -> {out_dir}")
+    log(f"extracted {count} entries -> {out_dir}")
 
 
 
@@ -320,7 +326,7 @@ def _header_for(src_dir, payload, profile=None):
                   ("<CHECKSUM>%d</CHECKSUM>" % checksum(payload)).encode(), header)
 
 
-def pack_standalone(src_dir, out_path, do_rehash=True, profile=None):
+def pack_standalone(src_dir, out_path, do_rehash=True, profile=None, log=print):
     """Pack a directory into an ezhex without needing a template."""
     header_path = os.path.join(src_dir, ".ezhex_header")
     header = _header_beside(header_path)
@@ -335,7 +341,7 @@ def pack_standalone(src_dir, out_path, do_rehash=True, profile=None):
     with open(out_path, "wb") as handle:
         handle.write(header)
         handle.write(payload)
-    print(f"wrote {out_path}: header {len(header)} + payload {len(payload)} bytes | "
+    log(f"wrote {out_path}: header {len(header)} + payload {len(payload)} bytes | "
           f"checksum {checksum(payload)}")
 
 
