@@ -832,6 +832,10 @@ def test_help_asks_about_each_device_and_input_of_the_running_activity():
     while ordinal != home:
         asked.append(text(ordinal))
         [again] = answer(ordinal, compose.ANSWER_NO)
+        # No sends the fix and asks again at once: no power-on delay waited, as Logitech's
+        [entry] = [entry for slot in reader.screens[ordinal]["slots"]
+                   for entry in slot["entries"] if entry["key_code"] == compose.ANSWER_NO]
+        assert not {importing.WAIT, importing.SWITCH} & {step[0] for step in reader.row(entry)}
         assert text(again) == "Now i" + asked[-1][1:]
         [ordinal] = answer(ordinal, compose.ANSWER_YES)
     assert asked == [f"Is the {labels['tv']} on?", f"Is the {labels['bd']} on?",

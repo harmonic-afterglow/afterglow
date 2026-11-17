@@ -257,6 +257,24 @@ def _by_neighbours(characters: str, text: str, following: str) -> str:
 LOOK_ALIKES = ({"I", "l"},)
 
 
+def _by_order(table: dict[int, str]) -> dict[int, str]:
+    """One font of this builder's, read: it numbers a font's characters in code point
+    order (assets.load), so a shape several characters share - O and 0 are drawn alike -
+    is the one that falls between the characters of the codes either side of it."""
+    read = {code: characters for code, characters in table.items() if len(characters) == 1}
+    known = sorted(read)
+    for code, characters in table.items():
+        if len(characters) == 1:
+            continue
+        below = [read[other] for other in known if other < code]
+        above = [read[other] for other in known if other > code]
+        fits = [character for character in characters
+                if (not below or character > below[-1]) and (not above or character < above[0])]
+        if len(fits) == 1:
+            read[code] = fits[0]
+    return read
+
+
 def _untangle(candidates: list[dict[int, str]]) -> list[dict[int, str]]:
     """Logitech numbers each character once across an image, so two codes read as one of
     a look-alike pair are the pair between them: each may be either, and its neighbours
@@ -285,8 +303,7 @@ def read_fonts(candidates: list[dict[int, str]], *, image_wide: bool = True
     codes are ``image_wide`` does one font's reading settle another's look-alikes; where
     each font numbers its own, a look-alike is left to its neighbours (``decode``)."""
     if not image_wide:
-        return [{code: characters for code, characters in table.items()
-                 if len(characters) == 1} for table in candidates], {}
+        return [_by_order(table) for table in candidates], {}
     candidates = _untangle(candidates)
     votes: dict[int, Counter] = defaultdict(Counter)
     for table in candidates:

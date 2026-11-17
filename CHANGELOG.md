@@ -43,6 +43,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   the running activity**, as Logitech's configurations do. It opened the menu's first page.
   The menu's rows and an activity picked again also write what Logitech's write, in the
   same order.
+- **Harmony 600, 650, 665 and 700: Help asks its next question at once.** Answering No to
+  "Is the TV on?" sent the power command, then waited the device's whole power-on delay
+  before asking anything else.
+- **Harmony 600, 650, 665 and 700: a command named "O" reads back as O, not 0.** Afterglow's
+  fonts draw the two alike.
 - **Remotes sold in Europe are recognised.** The European Harmony 650 (skin 74), 700 (69),
   900 (60), One (59) and 800 (87) report a model number of their own. Afterglow refused
   them and their backups as unknown remotes. They now open as the remote they are, and a
