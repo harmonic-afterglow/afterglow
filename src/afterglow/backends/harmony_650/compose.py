@@ -177,6 +177,12 @@ CORNER_TAIL = (0xFFFA, 0x07)
 CORNER_PROGRAMS = ("device", "activity", "idle")
 
 
+def help_screens(question: dict) -> int:
+    """How many screens a Help question takes: Is it..?, Now is it..? and Did that fix
+    it?, or one note for a device Help can only ask to be turned on by hand."""
+    return 1 if question.get("ensure") else 3
+
+
 def load_json(directory: Path, name: str) -> dict:
     return json.loads((directory / name).read_text("utf-8"))
 
@@ -908,8 +914,9 @@ class Image:
         self.starting_screens = [first + 2 * acts + index for index in range(acts)]
         self.off_screen = first + 3 * acts
         # then Help's: per activity and for Off, "Attempting to fix", "Did that fix the
-        # problem?", and three per question (Is it..?, Now is it..?, Did that fix it?);
-        # none for one with nothing to ask about
+        # problem?", and three per question (Is it..?, Now is it..?, Did that fix it?) - one,
+        # "Ensure the X is on.", for a device with no power command; none for one with
+        # nothing to ask about
         self.help_chains, at = [], self.off_screen + 1
         # a device kept on is asked about too, in every activity and Off, as Logitech's
         # Help asks after a Dutch 650's fan that no activity switches
@@ -929,7 +936,7 @@ class Image:
             self.help_chains.append({"home": home, "attempt": at, "check": at + 1, "on": on,
                                      "powered": powered, "inputs": inputs,
                                      "questions": questions})
-            at += 2 + 3 * len(questions)
+            at += 2 + sum(help_screens(question) for question in questions)
         # then Help held's: "Delay Fixing", "Select device", and five a device - its menu,
         # Change Delay, the two delay screens and "set to default"
         self.delay_warning = self.delay_select = None
@@ -1225,9 +1232,12 @@ class Image:
 
     def help_questions(self, powered, inputs, on: bool) -> list[dict]:
         """What Help asks about, in order: each device with a power command whether it is
-        on (off, for Off), then each input that can be set again whether it is set."""
-        questions = [{"device": index} for index in powered
-                     if self.devices[index].get("power")]
+        on (off, for Off), then each input that can be set again whether it is set. A
+        device an activity turns on with no power command is a note to turn it on by
+        hand, in its place, as Logitech's 650s and 700s have it."""
+        questions = [{"device": index} if self.devices[index].get("power")
+                     else {"device": index, "ensure": True}
+                     for index in powered if self.devices[index].get("power") or on]
         for index, value in inputs:
             choices = self.devices[index].get("inputs") or {}
             if "next" in choices or (choices.get("direct") or [None] * (value + 1))[value]:
@@ -1237,6 +1247,8 @@ class Image:
     def help_text(self, question: dict, on: bool, again: bool = False) -> str:
         """A Help question, or ``again`` the one it asks after fixing what it asked."""
         device = self.devices[question["device"]]
+        if question.get("ensure"):
+            return self.words("help.ensure-on", device=device["label"])
         now = "now-" if again else "is-"
         if "input" in question:
             name = device["inputs"]["values"][question["input"]]
@@ -1276,12 +1288,18 @@ class Image:
                                 + [check, self.write(0, self.sequence)])
         self.attempting_screen(f"help:{number}", entered)
         questions = chain["questions"]
-        firsts = [chain["check"] + 1 + 3 * at for at in range(len(questions))] + [home]
+        firsts = [chain["check"] + 1]
+        for question in questions:
+            firsts.append(firsts[-1] + help_screens(question))
+        firsts[-1] = home
         self.question_screen(f"help:{number}:check", self.words("help.fixed"), home,
                              self.help_answer([], firsts[0]), self.help_answer([], home))
         for at, question in enumerate(questions):
             again, fixed = firsts[at] + 1, firsts[at] + 2
             text = self.help_text(question, on)
+            if question.get("ensure"):
+                self.ensure_screen(f"help:{number}:{at}", text, home, firsts[at + 1])
+                continue
             self.question_screen(
                 f"help:{number}:{at}", text, home,
                 self.help_answer(self.help_atoms(question, on, True), again),
@@ -1339,6 +1357,24 @@ class Image:
         if len(lines) > QUESTION_LINES:
             lines[QUESTION_LINES - 1:] = [" ".join(lines[QUESTION_LINES - 1:])]
         return [self._fit(line, attribute, room) for line in lines]
+
+    def ensure_screen(self, name: str, text: str, home: int, after: int) -> None:
+        """Help's note for a device it cannot turn on: "Ensure the X is on." from the top
+        of the screen, "OK" over the bottom right key going on to ``after``, and "Exit
+        Help" (650-c screen 60, 700-c screen 70)."""
+        idle = ([{"opcode": "atom", "operand": self.corners["idle"],
+                  "category": DRAW_OVERLAY}] if "idle" in self.corners else [])
+        message = self.fonts.roles["message"]
+        self.blocks[name] = (
+            [{"opcode": "bitmap", "x": 0, "y": 0, "target": {"picture": "backdrop"}}]
+            + idle + self.lines_at(self.question_lines(text, message), message,
+                                   RESET_TEXT_Y, centred=True)
+            + self.answers("", self.words("answer.ok"), OK_Y)
+            + self.softkey_word(self.words("softkey.exit-help")) + [{"opcode": "end"}])
+        header = [(keys.code(keys.CENTRE), home, ENTER_MODE), (HELP_EXIT, home, ENTER_MODE)]
+        if "idle" in self.corners:
+            header.append((REDRAW, self.corners["idle"], DRAW_OVERLAY))
+        self.screen(header, [([(ANSWER_YES, after, ENTER_MODE)], name)])
 
     def question_screen(self, name: str, text: str, home: int, no, yes) -> None:
         """A Help question: the backdrop and the idle corner, the question centred so

@@ -418,10 +418,16 @@ the activity powers - "Is the TV on?", No sends its power (a toggle too) and ask
 the TV on?" until Yes, then "Did that fix the problem?" - then each input the same way
 ("Is the TV set to the HDMI 1 input?", No sends the input or one step of a cycle); every
 Yes to a fix goes back to the activity, and Yes to a device's question goes on to the next.
-An answer writes the variable it was about. Off is the same with "off" and the Activities
+An answer writes the variable it was about. A device the activity uses that has no power
+command takes its place as a note instead (650-c screen 60, 700-c screen 70, a Polish 600's
+screen 105): "Ensure the G96 TV Stick is on." centred from y 5, "OK" ending at 123, 90, and
+"Exit Help", the header as a question's, OK (`A2`) going on to the next question. No write
+says an activity uses such a device, so an import reads the note back as it, after the
+device the question before it asks about. Off is the same with "off" and the Activities
 menu (Logitech's Off binds `43` through a switch). A build leaves Help out where there is
 nothing to ask about, and lays the screens out after "Turning system off": per activity
-then Off, the attempting screen, the first question and three per device or input.
+then Off, the attempting screen, the first question and three per device or input (one
+per note).
 
 ### Help held
 

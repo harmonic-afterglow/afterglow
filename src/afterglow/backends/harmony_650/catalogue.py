@@ -133,6 +133,10 @@ def _messages() -> list[po.Message]:
                    "name: " + MESSAGE + "; four lines at most", brace_format=True),
         po.Message("help.now-on", "Now is the {device} on?",
                    "Help asks again after sending its power: " + MESSAGE, brace_format=True),
+        po.Message("help.ensure-on", "Ensure the {device} is on.",
+                   "Help, for a device an activity turns on that has no power command, above "
+                   "OK; {device} is its name: " + MESSAGE + "; four lines at most",
+                   brace_format=True),
         po.Message("help.is-off", "Is the {device} off?",
                    "All Off's Help asks about each device: " + MESSAGE, brace_format=True),
         po.Message("help.now-off", "Now is the {device} off?",

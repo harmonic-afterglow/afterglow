@@ -843,6 +843,50 @@ def test_help_asks_about_each_device_and_input_of_the_running_activity():
     assert text(off + 2) == f"Is the {labels['tv']} off?"
 
 
+def test_help_asks_for_a_device_with_no_power_command_to_be_turned_on(tmp_path):
+    """A device an activity uses that has no power command: Help cannot turn it on, so in
+    its place among the questions it says "Ensure the X is on." with only OK, as Logitech's
+    650s and 700s do (650-c screen 60, 700-c screen 70). The import reads the note back as
+    the activity using the device."""
+    from afterglow.backends.harmony_650 import compose
+    project = _household()
+    stick = json.loads(json.dumps(project["devices"][1]))
+    for key in ("power_cmd", "power_on_cmd", "power_off_cmd", "power_delay"):
+        stick.pop(key, None)
+    stick.update(id="stick", label="Media Stick")
+    project["devices"].append(stick)
+    project["activities"][1]["power_on_devices"] = ["tv", "stick", "bd"]
+    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    assert _references_out_of_range(image) == []
+    reader = importing.Image(image)
+
+    def text(ordinal):
+        return " ".join(item["text"] for slot in reader.screens[ordinal]["slots"]
+                        for item in reader.page_text(slot["program_offset"]))
+
+    def answer(ordinal, code):
+        return [step[1] for entry in reader.screens[ordinal]["slots"][0]["entries"]
+                if entry["key_code"] == code for step in reader.row(entry)
+                if step[0] == importing.MODE]
+    [note] = [ordinal for ordinal in range(len(reader.screens))
+              if reader.screens[ordinal]["slots"] and text(ordinal).startswith("Ensure")]
+    assert text(note).startswith("Ensure the Media Stick is on.")
+    assert {entry["key_code"] for entry in reader.screens[note]["slots"][0]["entries"]
+            if entry["category"]} == {compose.ANSWER_YES}
+    [after] = answer(note, compose.ANSWER_YES)
+    tv, bd = (device["label"] for device in project["devices"][:2])
+    assert text(after).startswith(f"Is the {bd} on?")
+    [before] = [ordinal for ordinal in range(len(reader.screens)) if reader.screens[ordinal][
+        "slots"] and answer(ordinal, compose.ANSWER_YES) == [note]]
+    assert text(before).startswith(f"Is the {tv} on?")
+
+    payloads.get("blob").unpack(image, str(tmp_path))
+    read = backend.import_project(str(tmp_path), remotes.get("harmony-650"), {}).project
+    labels = {device["id"]: device["label"] for device in read["devices"]}
+    movie = next(item for item in read["activities"] if item["label"] == "Watch a Movie")
+    assert [labels[device] for device in movie["power_on_devices"]] == [tv, "Media Stick", bd]
+
+
 def _run_object(reader, index: int, variables: dict, state: dict | None = None) -> dict:
     """Run object ``index`` as the 650 and 700 run Help's delay steps (gspm.md, "Help
     held"): `7A` loads the accumulator, `79` adds, `6E` takes the remainder, `1F EFvv`/`EDvv`

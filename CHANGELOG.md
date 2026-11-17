@@ -48,6 +48,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   before asking anything else.
 - **Harmony 600, 650, 665 and 700: a command named "O" reads back as O, not 0.** Afterglow's
   fonts draw the two alike.
+- **Harmony 600, 650, 665 and 700: Help asks for a device with no power command to be
+  turned on**, "Ensure the Apple TV is on.", in its place among the questions, as
+  Logitech's configurations do. Help skipped such a device, and reading a backup back
+  dropped it from the activities that use it.
 - **Remotes sold in Europe are recognised.** The European Harmony 650 (skin 74), 700 (69),
   900 (60), One (59) and 800 (87) report a model number of their own. Afterglow refused
   them and their backups as unknown remotes. They now open as the remote they are, and a
