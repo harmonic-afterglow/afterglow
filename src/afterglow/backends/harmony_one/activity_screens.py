@@ -239,6 +239,15 @@ class Flow:
                        {"yes": nav(home), "no": nav(first)}, icon=icon, home=home)
         for number, (asked, screens_) in enumerate(items):
             following = items[number + 1][1]["ask"] if number + 1 < len(items) else home
+            if asked[0].startswith("ensure"):
+                # nothing the remote can send: it asks for it to be seen to by hand
+                self._answered(title, lambda text=self._ensure(asked): self._paragraphs(
+                    text, HELP_QUESTION_Y), {"ok": nav(screens_["fixed"])},
+                    icon=icon, home=home)
+                self._answered(title, lambda: self._paragraphs(words("help.fixed"),
+                                                               HELP_QUESTION_Y),
+                               {"yes": nav(home), "no": nav(following)}, icon=icon, home=home)
+                continue
             ask, now, fix = self._question(asked)
 
             def fixing(ordinal, fix=fix):
@@ -257,6 +266,16 @@ class Flow:
                            icon=icon, home=home)
             self._answered(title, question(words("help.fixed")),
                            {"yes": nav(home), "no": nav(following)}, icon=icon, home=home)
+
+    def _ensure(self, asked) -> str:
+        """What Help says about a device it cannot switch on, or an input no command
+        selects: "Ensure the PS4 is on." as Logitech's configurations say it."""
+        words = self.screens.words
+        device = self.devices[asked[1]]
+        if asked[0] == "ensure-on":
+            return words("assistant.ensure-on", device=device["label"])
+        return words("assistant.ensure-input", device=device["label"],
+                     input=input_label(device["inputs"]["values"][asked[2]]))
 
     def _question(self, asked) -> tuple[str, str, list]:
         """What Help asks about one thing - the question, and again once fixed - and

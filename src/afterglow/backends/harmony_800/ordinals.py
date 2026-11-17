@@ -69,11 +69,15 @@ OFF_ASSISTANT = ("welcome", "first", "again", "hide", "how-to-hide")
 # Help's screens for each thing it asks about: the question, the question again after a
 # fix, the question asked once more, and whether that fixed it.
 QUESTION = ("ask", "now", "again", "fixed")
+# What Help has for a device it cannot switch, or an input no command selects: "Ensure
+# the PS4 is on." with OK, then whether that fixed it, as Logitech's configurations ask.
+ENSURE = ("ask", "fixed")
 
 
 def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, list],
             acts: list[dict], device_slots: list[dict], tutorial_pages: int,
-            off_devices: list[int] = (), keypads=(), key_test: bool = False) -> Ordinals:
+            off_devices: list[int] = (), devices: list[dict] = (), keypads=(),
+            key_test: bool = False) -> Ordinals:
     """Number every other owned screen, after the hub's. ``device_pages`` is each
     device's command pages, in menu order; ``device_slots`` which of power and input each
     device has a variable for; ``system`` whether the image has the firmware's screens;
@@ -109,7 +113,14 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
         return list(range(cursor - count, cursor))
 
     def questions(asked):
-        return [dict(zip(QUESTION, take(len(QUESTION)))) for _ in asked]
+        return [dict(zip(kind, take(len(kind))))
+                for kind in (ENSURE if item[0].startswith("ensure") else QUESTION
+                             for item in asked)]
+
+    def manual(index, value):
+        inputs = (devices[index].get("inputs") or {}) if index < len(devices) else {}
+        direct = inputs.get("direct")
+        return direct is not None and 0 <= value < len(direct) and direct[value] is None
 
     # Each activity: starting, its favourites' pages, its buttons' pages, Help, Help's
     # first question and then four screens per device and input it asks about, the
@@ -119,9 +130,12 @@ def screens(out: Ordinals, *, hub: bool, system: bool, device_pages: dict[int, l
         command_pages = -(-len(act["buttons"]) // len(BUTTON_POSITIONS))
         if not favourite_pages:
             command_pages = max(1, command_pages)
-        asked = ([("power", index) for index in act["on"] if "power" in device_slots[index]]
-                 + [("input", index, value) for index, value in act["inputs"]
-                    if "input" in device_slots[index]])
+        # a device it turns on with no power command to send, and an input no command
+        # selects, are asked to be seen to by hand
+        asked = ([("power", index) if "power" in device_slots[index] else ("ensure-on", index)
+                  for index in act["on"]]
+                 + [(("ensure-input" if manual(index, value) else "input"), index, value)
+                    for index, value in act["inputs"] if "input" in device_slots[index]])
         screens_ = {"start": take(1)[0], "favourites": take(favourite_pages),
                     "pages": take(command_pages), "help": take(1)[0],
                     "prompt": take(1)[0], "questions": questions(asked), "asked": asked,

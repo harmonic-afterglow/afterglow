@@ -8,6 +8,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony One and 800: Help no longer freezes after you answer No.** Answering No to
+  "Is the TV on?" sent the power and then waited the TV's whole power-on delay - up to 20
+  seconds on some - before the next question. It now goes straight on, as Logitech's does.
+- **Harmony One and 800: Help asks about devices and inputs you set by hand.** A device
+  with no power command, such as a game console, gets "Ensure the PS4 is on." with OK, and
+  an input no command selects gets "Ensure the PC is set to the Games input.", as
+  Logitech's do; Help skipped them. Reading a One's configuration back keeps such inputs,
+  which were lost, so its activities still choose them.
+- **Harmony One and 800: a command named O reads back as O**, not 0. The two letters are
+  drawn alike, and reading a configuration Afterglow built named O as the digit.
 - **A remote that only listens right after it is plugged in can be read and written.**
   Some remotes - a Monster-branded Harmony 880, the AV-100, so far - ignore every request
   that does not come the moment they appear on USB, where Afterglow used to fail after a

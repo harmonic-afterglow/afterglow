@@ -121,6 +121,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
     ordinals.screens(numbers, hub=hub, system=system is not None, device_pages=pages,
                      keypads=keypads,
                      acts=acts, device_slots=variables.slots, tutorial_pages=len(TUTORIAL),
+                     devices=devices,
                      off_devices=((activities or {}).get("all_off") or {}).get("off", []),
                      key_test=bool((activities or {}).get("key_test")))
 

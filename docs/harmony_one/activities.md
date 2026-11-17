@@ -129,6 +129,17 @@ these screens goes back to the activity. Off's Help is the same about each devic
 A build generates exactly that: Help's screen, the first question, and four screens per
 question (`ordinals.QUESTION`), the words Logitech's.
 
+No sends and moves on: Logitech's answer runs the power command and enters the next
+question, with no wait - the person answering is the wait. Ours waited the device's whole
+power-on delay there, up to 20 s with the screen frozen, until a page-by-page comparison
+with seven of Logitech's own (`one-tools/behave_one.py`) showed it. A device the remote
+cannot switch on - a PS4 with no power command - and an input no command selects - a
+Media Center PC's, set by hand - get one question each, "Ensure the PS4 is on." and
+"Ensure the Media Center PC is set to the ... input.", with OK, which asks "Did that fix
+the problem?" (`ordinals.ENSURE`). Logitech's configurations carry such an input as a
+variable whose every transition sends nothing; reading one back keeps it as inputs with no
+command.
+
 **The Remote Assistant.** Upstairs keeps one state for the whole remote (its variable 19,
 0-3, unnamed): 0 never shown, 1 welcomed, 2 shown before, 3 hidden. After an activity
 starts - or is picked again - a switch on it opens a note titled with the activity's name

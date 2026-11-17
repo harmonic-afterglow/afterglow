@@ -113,6 +113,7 @@ def skeleton(*, buttons: int = HOUSEHOLD_BUTTONS, stamp: bytes | None = None,
                                platform.navigate, roles, platform.first)
     ordinals.screens(numbers, hub=hub, system=system is not None, device_pages=pages,
                      acts=acts, device_slots=variables.slots, tutorial_pages=len(TUTORIAL),
+                     devices=devices,
                      off_devices=((activities or {}).get("all_off") or {}).get("off", []))
 
     owned = platform.owned

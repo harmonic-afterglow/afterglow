@@ -80,7 +80,9 @@ class Actions:
     def direct_power(self, indices, on: bool, toggles: bool = False) -> list[tuple[int, int]]:
         """Help's sends: each device's own power command, straight, for the devices
         that have one for each way - a toggle sent again would undo what it fixes. With
-        ``toggles``, a toggle too: the Remote Assistant has been told the device is off."""
+        ``toggles``, a toggle too: the Remote Assistant has been told the device is off.
+        That answer sends and moves on, as Logitech's does: the next question is the
+        wait, where waiting out the power-on delay froze the screen for up to 20 s."""
         out = []
         for index in indices:
             power = self.devices[index].get("power")
@@ -88,7 +90,7 @@ class Actions:
                 continue
             send = self.fixing if toggles else self.command
             out.append((send(index, power["on"] if on else power["off"]), OBJECT_ATOM))
-            if on:
+            if on and not toggles:
                 out += waits(index, power["delay_ms"])
         return out
 
