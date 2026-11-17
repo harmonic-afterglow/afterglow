@@ -830,8 +830,9 @@ class Image:
             self.screen(header, device_pages)
 
     def menu_marker(self) -> int | None:
-        """The platform's variable More Activities sets to 0 - which a device list row sets
-        to 1 - read off the wiring's More Activities row."""
+        """The platform's variable More Activities and an Activities menu row set to 0 -
+        which a device list row sets to 1 - read off the wiring's More Activities row.
+        Nothing in a configuration reads it (gspm.md, "The menu marker")."""
         for context in self.wiring["contexts"]:
             for row in context["rows"]:
                 if row["key"] != keys.code(keys.ACTIVITIES):
@@ -1073,7 +1074,14 @@ class Image:
                              + [(len(self.acts), [(self.device_list, ENTER_MODE)])])
         self.to_devices = self.n.object([(group << 8 | self.var(self.state), 0x72)])
         to_activities = self.n.object([(self.activity_menu, ENTER_MODE)])
-        self.screen([(centre, self.to_devices, OBJECT_ATOM)], self.menu_pages())
+        # More Activities on the menu goes back to the running activity's screen, and with
+        # nothing running to the menu's first page, as every one of Logitech's does
+        back = self.n.object([self.switch(
+            [(index, [(screen, ENTER_MODE)])
+             for index, screen in enumerate(self.activity_screens)]
+            + [(len(self.acts), [(self.activity_menu, ENTER_MODE)])], self.state)])
+        self.screen([(centre, self.to_devices, OBJECT_ATOM),
+                     (keys.code(keys.ACTIVITIES), back, OBJECT_ATOM)], self.menu_pages())
         self.screen([(centre, to_activities, OBJECT_ATOM)],
                     self.device_list_pages(self.words("softkey.activities"), "idle"))
         self.place_device_screens(self.to_devices)
@@ -1085,14 +1093,19 @@ class Image:
         attribute = self.fonts.roles["button"]
         sides = (("top-left", "top-right"), ("bottom-left", "bottom-right"))
         indices = list(range(len(self.acts)))
+        # starting an activity clears the mark a device list row sets, as More Activities
+        # does: Logitech's rows write it after the start (gspm.md, "The menu marker")
+        marker = self.menu_marker()
         groups = [indices[at:at + MENU_ROWS]
                   for at in range(0, len(indices), MENU_ROWS)] or [[]]
         pages = []
         for number, group in enumerate(groups):
             rows, drawn = [], []
             for row, index in enumerate(group):
-                start = SELECT_CONTEXT | self.activity_context(index)
-                rows += [(keys.code(keys.SCREEN_KEYS[corner]), start, 0x1F)
+                start = (SELECT_CONTEXT | self.activity_context(index), 0x1F)
+                if marker is not None:
+                    start = (self.n.object([start, (0, 0x80 | marker)]), OBJECT_ATOM)
+                rows += [(keys.code(keys.SCREEN_KEYS[corner]), *start)
                          for corner in sides[row]]
                 font, lines = self.label_lines(self.acts[index]["label"], attribute, MENU_ROOM)
                 drawn.append((row, font, lines))
@@ -1160,10 +1173,11 @@ class Image:
                     + [(self.n.object([DEFER, self.after_start(index, shown)]),
                         OBJECT_ATOM),
                        self.write(0, self.sequence)])),
-                # picked again while running: its inputs again, and back to its screen
+                # picked again while running: its inputs again and its screen, then the
+                # sequence ends, in the order Logitech's write them
                 (activity_index.REFRESH, self.n.object(
                     [self.write(1, self.sequence)] + actions.input_writes(act["inputs"])
-                    + [self.write(0, self.sequence), shown])),
+                    + [shown, self.write(0, self.sequence)])),
             ]
             if self.help_chains[index]:
                 rows.append((HELP, self.help_chains[index]["attempt"], ENTER_MODE))

@@ -169,6 +169,25 @@ an object that tests the variable against it and steps it to the next value, the
 them stepping back (`07 FFFC`). The 650 has the same, with its own number. A build carries
 both platform variables - this and the battery notice flag - and numbers them itself.
 
+## The menu marker
+
+A third platform variable, limit 3 (31 in 665-a's numbering), marks a device's page as
+opened from the Devices list. Each device list row enters the device's screen, then writes 1
+into it. More Activities writes 0, then switches on `CurrentLocation`. Each Activities menu
+row selects its activity's context, then writes 0. Nothing in a configuration reads it: no
+test, load, switch or drawing program in sixteen of Logitech's 650, 665 and 700
+configurations, nor in the wiring. The firmware may read it. A build writes it where
+Logitech's do (`compose.menu_marker`).
+
+Next to it, a flag of limit 1 that every activity's start and re-pick write 1 into, and the
+Off context 0, guards part of Off's way. It is most likely the note after All Off ("If
+any devices are still On"), which a build does not make. A build does not write the flag
+either: its Off test finds it 0.
+
+On the menu, More Activities is bound by the menu screen itself: a switch on
+`CurrentActivityState` to the running activity's screen, or with none running to the
+menu's first page.
+
 ## The wiring
 
 What connects the firmware's events to a configuration is the same in every arch-14 image

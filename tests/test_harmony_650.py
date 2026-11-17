@@ -750,6 +750,53 @@ def test_devices_returns_to_the_running_activity():
     assert centre_of(idle) == [("mode", menu)]
 
 
+def test_the_menu_keys_do_what_logitech_s_do():
+    """On the Activities menu, as in every one of Logitech's 650 and 700 configurations:
+    More Activities goes back to the running activity's screen, or with none running to the
+    menu's first page; an activity's row starts it and clears the mark a device list row
+    sets; and an activity picked again sends its inputs and shows its screen before the
+    sequence ends."""
+    from afterglow.backends.harmony_650 import compose
+    image = compose.build(_household(), stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    reader = importing.Image(image)
+    tables = importing.switch_tables(image)
+    menu = FIRMWARE
+    acts = importing.Activities(reader, [], {}, [])
+    starts = acts.starts()
+    labels = [activity["label"] for activity in _household()["activities"]]
+
+    def title(ordinal):
+        slot = reader.screens[ordinal]["slots"][0]
+        return [item["text"] for item in reader.page_text(slot["program_offset"])]
+
+    [(kind, operand)] = [reader.row(entry) for entry in reader.screens[menu]["header_entries"]
+                         if entry["key_code"] == keys.code(keys.ACTIVITIES)][0]
+    assert kind == "switch" and operand & 0xFF == acts.state
+    cases = dict(tables[operand >> 8]["cases"])
+    for index, context in enumerate(starts):
+        [opened] = [item["operand"] for item in ui_index.drawing_program(
+            image, cases[index])["instructions"] if item["opcode"] == "atom"]
+        assert labels[index] in title(opened)
+    [idle] = [item["operand"] for item in ui_index.drawing_program(
+        image, cases[len(starts)])["instructions"] if item["opcode"] == "atom"]
+    assert idle == menu
+
+    device_row = reader.row(reader.screens[menu + 1]["slots"][0]["entries"][0])
+    [(_write, marker, one)] = [step for step in device_row if step[0] == "write"]
+    assert one == 1
+    rows = [reader.row(entry) for slot in reader.screens[menu]["slots"]
+            for entry in slot["entries"]]
+    assert rows and all(row[0][0] == "context" and row[1:] == [("write", marker, 0)]
+                        for row in rows)
+
+    for context in starts:
+        [again] = [reader.row(entry) for entry in next(
+            c for c in reader.contexts if c["ordinal"] == context)["rows"]
+            if entry["key_code"] == 0x05]
+        assert [step[0] for step in again[-2:]] == ["mode", "write"]
+        assert again[0][0] == "write" and again[-1][1:] == (again[0][1], 0)
+
+
 def test_help_asks_about_each_device_and_input_of_the_running_activity():
     """Help in an activity, as Logitech's 650 and 700 run it: "Attempting to fix the
     problem..." sends the activity's commands again as it is entered, then "Did that fix the
