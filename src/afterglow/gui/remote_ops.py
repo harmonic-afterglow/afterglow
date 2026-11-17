@@ -271,8 +271,7 @@ class RemoteWorker(QThread):
             if remote.set_learning_mode(mode, timeout):
                 self.log.emit("Ready - press the key on the other remote.")
             else:
-                self.log.emit("This libconcord has no learning modes; using its "
-                              "default. Press the key on the other remote.")
+                self.log.emit("Ready - press the key on the other remote.")
             carrier, durations = remote.learn(self._on_progress)
         if not durations:
             self.done.emit(False, "Nothing was received. Try again, holding the other "

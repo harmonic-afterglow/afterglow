@@ -12,7 +12,7 @@
   "backend": "harmony-650",
   "status": "experimental",
   "capabilities": {
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
@@ -20,7 +20,7 @@
     "waveform": "carrier-period",
     "notes": "Every command is lowered to the press, hold and release waveform records the 700 shares with the Harmony One (ir_lowering.py)."
   },
-  "notes": "The Harmony 700: architecture 14, the 650's body with a rechargeable NiMH battery and its charging screens. Configurations are generated from the project alone (backends/harmony_650/compose.py) onto a scaffold drawn from Logitech's own: the Activities menu and Devices list, each device's and activity's pages, Starting and Turning off, the sending mark, Help and Help held's Delay Fixing, favourite channels. Testers' configurations import, rebuild and import the same. Not yet: favourites' logos. Learning is off: the 700 can learn, but Afterglow does not drive it yet.",
+  "notes": "The Harmony 700: architecture 14, the 650's body with a rechargeable NiMH battery and its charging screens. Configurations are generated from the project alone (backends/harmony_650/compose.py) onto a scaffold drawn from Logitech's own: the Activities menu and Devices list, each device's and activity's pages, Starting and Turning off, the sending mark, Help and Help held's Delay Fixing, favourite channels. Testers' configurations import, rebuild and import the same. Not yet: favourites' logos. It learns a key off the original remote over USB (libconcord's HID capture); not yet confirmed on a remote.",
   "schema": "afterglow-remote/1",
   "vocabulary": {
     "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; on the 700 a type names nothing it draws. The keys are the 700's command keys (backends/harmony_650/keys.py) - the activity keys, Off, Help and the keys around the screen belong to the remote's own flow.",

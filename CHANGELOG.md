@@ -46,6 +46,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **Learn from remote on the Harmony One, 600/650/665/700 and 800.** These remotes learn
+  a key by themselves. Afterglow first asked for a learning mode that only the 900, 1000
+  and 1100 have, and stopped at the "unknown error" the others answered, so learning was
+  hidden on them. It now skips that step. Each key is still taken twice and kept only
+  when the two presses agree.
 - **A One's, 650's or 700's commands go across to the Harmony 900 and 1100.** These
   remotes keep a command as a recording of its press and of what it repeats while held,
   which the 900 cannot store; each is now sent as the command it is, recognised by

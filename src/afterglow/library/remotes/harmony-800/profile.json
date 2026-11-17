@@ -12,7 +12,7 @@
   "status": "experimental",
   "capabilities": {
     "touchscreen": true,
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true,
     "keyboard": true
   },
@@ -21,7 +21,7 @@
     "waveform": "carrier-period",
     "notes": "Every command is lowered to the 800's waveform records, the Harmony One's format (ir_lowering.py)."
   },
-  "notes": "The Harmony 800 (USB 046d:c127, MH protocol): a touchscreen remote with a slide-out keyboard. Configurations are generated from the project with the Harmony One's generator on the 800's GSGD format (backends/harmony_800) and written as the zip Concordance sends to /cfg/usercfg; writing needs a libconcord that knows the 800 (concordance-fork, branch harmony-800). Afterglow reads back only configurations it built. The front panel's key codes and the seven LEDs were read off a tester's 800 with the key and light tests; Mouse is kept for the touchpad, and the keyboard is still to be bound. Learning is off.",
+  "notes": "The Harmony 800 (USB 046d:c127, MH protocol): a touchscreen remote with a slide-out keyboard. Configurations are generated from the project with the Harmony One's generator on the 800's GSGD format (backends/harmony_800) and written as the zip Concordance sends to /cfg/usercfg; writing needs a libconcord that knows the 800 (concordance-fork, branch harmony-800). Afterglow reads back only configurations it built. The front panel's key codes and the seven LEDs were read off a tester's 800 with the key and light tests; Mouse is kept for the touchpad, and the keyboard is still to be bound. It learns a key off the original remote over USB (libconcord's MH capture, the firmware's /ir/ir_cap); not yet confirmed on a remote.",
   "schema": "afterglow-remote/1",
   "vocabulary": {
     "_comment": "Device and activity types are Logitech's, as the 900 and 1100 have them; the scaffold carries an icon for each type. The keys are the 800's 30 command keys, as a tester's 800 named their codes (backends/harmony_800/keys.py): Activities, Off, Help, 123 and Mouse - kept for the touchpad - belong to the remote's own flow, and it has no number keys - 123 opens a keypad on the screen.",

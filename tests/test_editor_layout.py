@@ -44,14 +44,13 @@ def test_adding_a_device_is_finding_it_and_naming_it(qapp_or_skip):
     assert wizard.nextId() == -1           # done: the commands came with the model
 
 
-def test_the_one_offers_no_learning(qapp_or_skip):
+def test_the_one_offers_learning(qapp_or_skip):
+    # It was hidden while asking for a learning mode - the 900's alone - failed on the One
     from afterglow.gui.device_wizard import DeviceEditor, DeviceWizard
     editor = DeviceEditor([], existing=TV, project=ONE)
-    assert editor.page_cmds.learn_btn.isHidden()
+    assert not editor.page_cmds.learn_btn.isHidden()
     modes = DeviceWizard([], project=ONE).page_search.search_type
-    assert "learn" not in [modes.itemData(i) for i in range(modes.count())]
-    nine = DeviceEditor([], existing=TV, project={"settings": {"remote": "harmony-900"}})
-    assert not nine.page_cmds.learn_btn.isHidden()
+    assert "learn" in [modes.itemData(i) for i in range(modes.count())]
 
 
 def test_the_code_columns_wait_to_be_asked_for(qapp_or_skip):
