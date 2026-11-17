@@ -14,7 +14,7 @@ from .project import (drop_retired_fields)
 from .activity_buttons import FavouritesPage, ScreenButtonsPage
 from .ui_helpers import (FilterCombo)
 
-from .. import vocabulary
+from .. import project_devices, vocabulary
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
@@ -104,6 +104,10 @@ class ActivityWizard(StepWizard):
         main = getattr(page, "set_main_device", None)
         if main:
             main(self.roles.ctrl_combo.currentData())
+        if page is self.hard_buttons:
+            roles = self.roles
+            page.set_roles(roles.disp_combo.currentData(), roles.vol_combo.currentData(),
+                           roles.ctrl_combo.currentData())
 
     def _participating(self):
         roles = self.roles
@@ -524,6 +528,10 @@ class ActivityHardButtonsPage(QWizardPage):
         # activity's own action at all (GitHub #5). A key an imported activity already
         # binds is kept even if the profile does not name it, so editing cannot drop it.
         self.macros = existing.get("hard_macros", {})
+        # what a key left at Default sends, from the activity's devices (set_roles)
+        self.defaults = project_devices.default_keys(
+            devices, display=existing.get("display"), volume=existing.get("volume"),
+            control=existing.get("control"))
         self.slots = list(vocabulary.hard_keys(remote))
         self.slots += [key for key in self.macros if key not in self.slots]
         # As they sit on the remote, top to bottom, when it has been drawn.
@@ -534,8 +542,7 @@ class ActivityHardButtonsPage(QWizardPage):
             r = self.table.rowCount()
             self.table.insertRow(r)
             self.table.setItem(r, 0, self._key_item(slot))
-            macro = self.macros.get(slot, [])
-            self.table.setItem(r, 1, QTableWidgetItem(_does(macro, devices)))
+            self.table.setItem(r, 1, QTableWidgetItem(self._says(slot)))
             
         self.table.itemDoubleClicked.connect(self._edit_macro)
         
@@ -563,6 +570,29 @@ class ActivityHardButtonsPage(QWizardPage):
     def _slot(self, row):
         return self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
 
+    def _default(self, slot) -> str:
+        """What a key left at Default sends: the device and command the activity's
+        devices route it to, or plain Default when they route it nowhere."""
+        target = self.defaults.get(slot)
+        if not target:
+            return DEFAULT_KEY
+        names = {str(d["id"]): d.get("label", "?") for d in self.devices or []}
+        return f"{DEFAULT_KEY}: {names.get(target[0], target[0])} - {target[1]}"
+
+    def _says(self, slot) -> str:
+        macro = self.macros.get(slot)
+        return _does(macro, self.devices) if macro else self._default(slot)
+
+    def set_roles(self, display, volume, control):
+        """The activity's devices, as its Devices page has them now: what each key left
+        at Default sends follows them."""
+        self.defaults = project_devices.default_keys(
+            self.devices, display=display, volume=volume, control=control)
+        for row, slot in enumerate(self.slots):
+            self.table.setItem(row, 1, QTableWidgetItem(self._says(slot)))
+        if self.picture.isVisible():
+            self.refresh_picture()
+
     def _show_picture(self, picture):
         self.picture.setVisible(picture)
         self.table.setVisible(not picture)
@@ -574,9 +604,7 @@ class ActivityHardButtonsPage(QWizardPage):
         label = self.keys_view.label
         self.keys_view.set_states({
             key: ((CHANGED if self.macros.get(key) else FREE),
-                  f"{label(key)}: " + (_does(self.macros[key], self.devices)
-                                if self.macros.get(key)
-                                else "default - follows the activity's devices"))
+                  f"{label(key)}: " + self._says(key))
             for key in self.keys_view.keys()})
         self.changed_list.clear()
         for slot in self.slots:
@@ -619,7 +647,7 @@ class ActivityHardButtonsPage(QWizardPage):
             r = self.table.rowCount()
             self.table.insertRow(r)
             self.table.setItem(r, 0, self._key_item(slot))
-            self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
+            self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
         self.keys_view.select(slot)
         self._edit_macro(self.table.item(self._row_of(slot), 0))
 
@@ -629,7 +657,7 @@ class ActivityHardButtonsPage(QWizardPage):
             return
         slot = item.data(Qt.ItemDataRole.UserRole)
         self.macros.pop(slot, None)
-        self.table.setItem(self._row_of(slot), 1, QTableWidgetItem(DEFAULT_KEY))
+        self.table.setItem(self._row_of(slot), 1, QTableWidgetItem(self._default(slot)))
         self.refresh_picture()
 
     def _edit_btn_clicked(self):
@@ -643,7 +671,7 @@ class ActivityHardButtonsPage(QWizardPage):
             slot = self._slot(r)
             if slot in self.macros:
                 del self.macros[slot]
-            self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
+            self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
 
     def _edit_macro(self, item):
         r = item.row()
@@ -658,7 +686,7 @@ class ActivityHardButtonsPage(QWizardPage):
             else:
                 if slot in self.macros:
                     del self.macros[slot]
-                self.table.setItem(r, 1, QTableWidgetItem(DEFAULT_KEY))
+                self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
         self.refresh_picture()
 
     def get_hard_macros(self):
@@ -806,6 +834,8 @@ class ActivityEditor(SectionDialog):
         main = getattr(self.p3b, "set_main_device", None)
         if main:
             main(self.p1.ctrl_combo.currentData())
+        self.p4.set_roles(self.p1.disp_combo.currentData(), self.p1.vol_combo.currentData(),
+                          self.p1.ctrl_combo.currentData())
 
     def accept(self):
         self.result_spec = self._collect()

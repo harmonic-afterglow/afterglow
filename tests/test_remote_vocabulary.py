@@ -114,6 +114,40 @@ def test_an_activity_can_remap_every_key_its_remote_has(qapp_or_skip, tmp_path):
     assert ActivityHardButtonsPage([], {}, remote=small).slots == ["VolumeUp"]
 
 
+# A satellite receiver whose own Record key sends Red, as a tester's VU Duo2 did, and a
+# receiver that turns the volume.
+_SAT = {"id": "sat", "label": "VU Duo2", "commands": [
+    ["Rot", "Rot", "", "", ["Record"]], ["Record", "Record", "", "", None],
+    ["Guide", "", "", "", ["Guide"]], ["VolumeUp", "", "", "", ["VolumeUp"]]]}
+_AMP = {"id": "amp", "label": "AV Receiver", "commands": [
+    ["VolumeUp", "", "", "", ["VolumeUp"]], ["Power", "", "", "", None]]}
+
+
+def test_a_key_left_at_default_sends_the_control_device_s_own_command_on_it():
+    from afterglow import project_devices
+    found = project_devices.default_keys([_SAT, _AMP], display="sat", volume="amp",
+                                         control="sat")
+    assert found == {"Record": ("sat", "Rot"), "Guide": ("sat", "Guide"),
+                     "VolumeUp": ("amp", "VolumeUp")}
+
+
+def test_the_physical_buttons_page_says_what_a_default_key_sends(qapp_or_skip):
+    """A tester's activities' physical buttons all read Default, though their Record
+    sent Red - their receiver's own Record did, so the activity needs nothing of its
+    own, and the page did not say what Default meant."""
+    from afterglow.gui.activity_wizard import ActivityHardButtonsPage
+    page = ActivityHardButtonsPage([_SAT, _AMP], {"display": "sat", "volume": "amp",
+                                                  "control": "sat"},
+                                   remote=remotes.get("harmony-one"))
+    does = {page._slot(row): page.table.item(row, 1).text()
+            for row in range(page.table.rowCount())}
+    assert does["Record"] == "Default: VU Duo2 - Rot"
+    assert does["VolumeUp"] == "Default: AV Receiver - VolumeUp"
+    # a different control device on the Devices page changes what Default sends
+    page.set_roles("amp", "amp", "amp")
+    assert page.table.item(page.slots.index("Record"), 1).text() == "Default"
+
+
 def test_the_vocabulary_survives_a_round_trip_through_json():
     profile = remotes.get("harmony-900")
     again = remotes._from_json(profile.to_json())

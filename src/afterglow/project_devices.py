@@ -194,6 +194,32 @@ def free_key_assignments(bound: dict, available) -> dict:
     return out
 
 
+# The keys an activity's volume device takes; every other key goes to its control device.
+VOLUME_KEYS = ("VolumeUp", "VolumeDown", "VolumeMute")
+
+
+def default_keys(devices, *, display=None, volume=None, control=None) -> dict:
+    """{key: (device id, command)} for what an activity's keys do when it gives them
+    nothing of their own: volume and mute the volume device's (the display's when it
+    names none), every other key the control device's command on that key - each
+    device's own keys (a command's fifth field), as the builders route them (the 900's
+    `_default_hard_buttons`, the One's `_routed_keys`)."""
+    by_id = {str(device.get("id")): device for device in devices or []}
+
+    def slots(device_id):
+        out = {}
+        for command in (by_id.get(str(device_id)) or {}).get("commands") or []:
+            keys = command[4] if len(command) > 4 else None
+            for key in keys if isinstance(keys, (list, tuple)) else [keys] if keys else []:
+                out.setdefault(key, (str(device_id), command[0]))
+        return out
+    volume = volume or display
+    out = {key: value for key, value in slots(volume).items() if key in VOLUME_KEYS}
+    for key, value in slots(control).items():
+        out.setdefault(key, value)
+    return out
+
+
 def screen_buttons(device: dict) -> list:
     """The buttons on a device's own page of the remote's screen, in order: each
     ``[command, label]`` or ``[command, label, icon]``, or None for a gap.

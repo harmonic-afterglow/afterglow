@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **An activity's Physical buttons say what a key left at Default sends**, such as
+  "Default: VU Duo2 - Rot". A key that does something else because its device's own
+  key does (a receiver whose Record sends Red) read just "Default", as if what was
+  read from the remote had been lost.
+- **Harmony One and 800: Activities on the Activities menu with nothing running opens
+  its first page**, as Logitech's configurations do; it did nothing. With an activity
+  running it goes back to that activity, as before.
+
 ## [0.3.0-beta.7.1] - 2026-11-16
 
 ### Changed
