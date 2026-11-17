@@ -1166,6 +1166,18 @@ def test_a_600_is_built_in_its_own_grey_look_and_light_levels():
     assert bytes.fromhex("012c00040a00140008002000") in image
 
 
+@pytest.mark.parametrize("scaffold", ["harmony-650", "harmony-700"])
+def test_a_page_of_several_buttons_has_its_lines(scaffold):
+    """Logitech draws lines between a page's buttons - the Activities menu's rows too - and
+    none on a page of one. A scaffold that has a kind's picture for one has the other:
+    without `page/menu` a menu of several rows drew the plain backdrop, and lost its line."""
+    pictures = json.loads((paths.scaffolds(scaffold) / "assets.json").read_text())["pictures"]
+    for kind in ("device", "activity", "menu"):
+        if f"page/{kind}-one" in pictures:
+            assert f"page/{kind}" in pictures, kind
+    assert (paths.scaffolds(scaffold) / pictures["page/menu"]["file"]).is_file()
+
+
 def test_the_665_is_the_650_under_another_skin(tmp_path):
     """Logitech's own spec pages give the 650 and the 665 one model number, N-10003, and a
     665's configuration is a 650's but for its skin, 75 for 72 - in its header and in
