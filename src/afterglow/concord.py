@@ -49,6 +49,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 from concurrent.futures import Future
 from pathlib import Path
 
@@ -180,6 +181,10 @@ class RemoteError(RuntimeError):
     """The library refused an operation. Carries libconcord's own message."""
 
 
+class Cancelled(RemoteError):
+    """The person stopped the wait for a remote that had not answered yet."""
+
+
 class UnconfirmedRemote(RemoteError):
     """The file is for this model of remote, but this remote differs from every one of
     the model Afterglow knows in its board revision or flash chip - a Harmony 900 on
@@ -220,6 +225,26 @@ LC_FILE_TYPE_CONFIGURATION = 2
 # remote in that state is exactly the one that needs a configuration written.
 LC_ERROR_UNSUPP = 15
 LC_ERROR_INVALID_CONFIG = 16
+# lc_cancel() stopped get_identity while it waited for the remote (newer builds only).
+LC_ERROR_CANCELLED = 19
+# Some remotes - a Monster AV-100 (an 880, skin 37) so far - take requests only in the
+# moment after they are plugged in, and ignore everything after. Logitech's client never
+# sees that: it asks the moment Windows reports the remote. So when a remote does not
+# answer, the person is asked to plug it in again, and the remote asked the moment it is
+# back. (Resetting its USB connection from software was tried and did not wake it.)
+REPLUG_HINT_AFTER_S = 5
+REPLUG_WAIT_S = 180
+REPLUG_HINT = "The remote has not answered yet. Still trying..."
+REPLUG_ASK = ("The remote did not answer. Some remotes only listen for a moment after "
+              "they are plugged in: unplug it and plug it back in, and Afterglow will "
+              "connect as soon as it appears.")
+REPLUG_BACK = ("The remote was unplugged. Plug it back in, and Afterglow will connect as "
+               "soon as it appears.")
+# said again while Afterglow waits, with the time left
+REPLUG_REMIND_EVERY_S = 30
+REPLUG_REMIND_UNPLUG = "Still waiting: unplug the remote and plug it back in ({left} left)."
+REPLUG_REMIND_PLUG = "Still waiting: plug the remote back in ({left} left)."
+LC_ERROR_CONNECT = 11
 IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
 
 
@@ -563,11 +588,26 @@ class Remote:
             data = remote.read_config()
     """
 
+    # Set per instance in __init__; here so that an instance made without it has them.
+    _direct = None
+    cancelled = False
+    on_identified = None
+    on_wait = None
+
     def __init__(self):
         self.lib = _load()
         self._bind()
+        # lc_cancel is called straight on the library, from whichever thread asks: on
+        # the library's own thread it would wait behind the call it is meant to stop.
+        self._direct = self.lib
         self.lib = _LibraryThread(self.lib)
         self._open = False
+        self.cancelled = False
+        # Called once the remote has said who it is, when nothing is left to cancel.
+        self.on_identified = None
+        # Called with what to tell the person while waiting for the remote. Without it
+        # nothing waits for a remote to be plugged in again.
+        self.on_wait = None
         # Set by restart(): libconcord's message when the remote was not seen coming
         # back. Not an error - see restart() - but worth showing once.
         self.last_restart_error = None
@@ -617,6 +657,8 @@ class Remote:
             ("delete_ir_signal", None, [ctypes.POINTER(ctypes.c_uint32)]),
             ("lc_get_trace", ctypes.c_char_p, []),
             ("lc_clear_trace", None, []),
+            ("lc_cancel", None, [ctypes.c_int]),
+            ("lc_remote_present", ctypes.c_int, []),
         ):
             function = getattr(lib, name, None)
             if function is None:
@@ -629,6 +671,17 @@ class Remote:
             lib.set_learning_mode.restype = ctypes.c_int
             lib.set_learning_mode.argtypes = [ctypes.c_int, ctypes.c_uint32]
         self.can_learn = hasattr(lib, "learn_from_remote")
+
+    @property
+    def can_cancel(self) -> bool:
+        """Whether this libconcord can stop waiting for a remote (`lc_cancel`)."""
+        return hasattr(self._direct, "lc_cancel")
+
+    def cancel(self):
+        """Stop waiting for a remote that has not answered. Safe from any thread."""
+        self.cancelled = True
+        if self.can_cancel:
+            self._direct.lc_cancel(1)
 
     def _check(self, err, what):
         if err:
@@ -671,6 +724,10 @@ class Remote:
     def __enter__(self):
         # What is logged when the session ends is this session's, not the last one's.
         self._trace("lc_clear_trace")
+        if self.can_cancel:
+            self.lib.lc_cancel(0)
+            if self.cancelled:                # asked for before the session began
+                self._direct.lc_cancel(1)
         try:
             self._check(self.lib.init_concord(), "connecting to the remote")
         except RemoteError as exc:
@@ -695,6 +752,50 @@ class Remote:
             self._open = False
         self._log_trace("session failed" if kind else "session")
 
+    def _replug_pause(self, deadline, reminder):
+        if self.cancelled:
+            raise Cancelled("Cancelled.")
+        now = time.monotonic()
+        if now > deadline:
+            raise RemoteError(f"The remote was not plugged back in within "
+                              f"{REPLUG_WAIT_S // 60} minutes.")
+        if now >= self._next_reminder:
+            self._next_reminder = now + REPLUG_REMIND_EVERY_S
+            left = round(deadline - now)
+            self.on_wait(reminder.format(left=f"{left // 60}:{left % 60:02d}"))
+        time.sleep(0.2)
+
+    def _close(self):
+        if self._open:
+            self.lib.deinit_concord()
+            self._open = False
+
+    def _identify_now(self, callback) -> int:
+        """Connect and ask at once: the moment after a remote appears is when it listens."""
+        err = self.lib.init_concord()
+        if err:
+            return err
+        self._open = True
+        return self.lib.get_identity(callback, None)
+
+    def _identity_after_replug(self, callback, err) -> int:
+        """The remote did not answer: wait for the person to plug it in again and ask the
+        moment it is back. `err` is how the first attempt ended."""
+        unplugged = err == LC_ERROR_CONNECT   # pulled out while libconcord waited
+        self.on_wait(REPLUG_BACK if unplugged else REPLUG_ASK)
+        self._close()
+        deadline = time.monotonic() + REPLUG_WAIT_S
+        self._next_reminder = time.monotonic() + REPLUG_REMIND_EVERY_S
+        if not unplugged:
+            while self.lib.lc_remote_present():
+                self._replug_pause(deadline, REPLUG_REMIND_UNPLUG)
+        while not self.lib.lc_remote_present():
+            self._replug_pause(deadline, REPLUG_REMIND_PLUG)
+        err = self._identify_now(callback)
+        if err and not self._open:
+            self._check(err, "connecting to the remote")
+        return err
+
     # reading
     def identity(self, on_progress=None) -> dict:
         """Who is attached. Also the connectivity test - it talks to the remote.
@@ -702,9 +803,28 @@ class Remote:
         A remote whose configuration is damaged or missing is still identified, with
         ``config_valid`` False: it cannot be read or backed up, but it can and should be
         written (``concordance`` does the same, with a warning)."""
-        err = self.lib.get_identity(self._callback(on_progress), None)
+        callback = self._callback(on_progress)
+        # Only for a remote on HID: the USB network remotes (900, 1000, 1100) are slow to
+        # answer for reasons of their own, and lc_remote_present does not see them.
+        waiting = (self.on_wait is not None and hasattr(self._direct, "lc_remote_present")
+                   and bool(self.lib.lc_remote_present()))
+        hint = threading.Timer(REPLUG_HINT_AFTER_S, self.on_wait, (REPLUG_HINT,))
+        if waiting:
+            hint.daemon = True
+            hint.start()
+        try:
+            err = self.lib.get_identity(callback, None)
+        finally:
+            hint.cancel()
+        if err not in (0, LC_ERROR_INVALID_CONFIG, LC_ERROR_CANCELLED) and waiting \
+                and not self.cancelled:
+            err = self._identity_after_replug(callback, err)
+        if err == LC_ERROR_CANCELLED or (err and self.cancelled):
+            raise Cancelled("Cancelled.")
         if err != LC_ERROR_INVALID_CONFIG:
             self._check(err, "identifying the remote")
+        if self.on_identified is not None:
+            self.on_identified()
 
         def text(name):
             value = getattr(self.lib, name)()

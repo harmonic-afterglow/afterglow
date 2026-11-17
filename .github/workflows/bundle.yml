@@ -72,6 +72,10 @@ on:
       - ".gitignore"
       - "docs/**"
   workflow_dispatch:
+    inputs:
+      concordance_ref:
+        description: "Branch of the Concordance fork to build libconcord from"
+        default: usbnet-link
 
 # A tag and a branch build are different things and must not cancel each other, so the
 # group includes the ref. Superseded builds of the same ref are cancelled; a tag never
@@ -85,7 +89,7 @@ permissions:
 
 env:
   CONCORDANCE_REPO: https://github.com/harmonic-afterglow/concordance
-  CONCORDANCE_REF: usbnet-link
+  CONCORDANCE_REF: ${{ inputs.concordance_ref || 'usbnet-link' }}
 
 jobs:
   # What this build calls itself, and what its artifacts are named. A tag build is the

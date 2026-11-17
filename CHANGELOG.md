@@ -8,6 +8,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **A remote that only listens right after it is plugged in can be read and written.**
+  Some remotes - a Monster-branded Harmony 880, the AV-100, so far - ignore every request
+  that does not come the moment they appear on USB, where Afterglow used to fail after a
+  few seconds. Connecting now:
+  - waits for the remote the way Logitech's own software does, and says after 5 seconds
+    that it is still trying;
+  - when the remote does not answer, asks for it to be unplugged and plugged back in,
+    reminds you every 30 seconds with the time left, and connects the moment it is back
+    (for up to 3 minutes);
+  - can be stopped with **Cancel**, at the right of the Flash tab's buttons and in the
+    progress window, until the remote has answered - a read or a write that has started
+    runs to its end.
 - **An activity's Physical buttons say what a key left at Default sends**, such as
   "Default: VU Duo2 - Rot". A key that does something else because its device's own
   key does (a receiver whose Record sends Red) read just "Default", as if what was

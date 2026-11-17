@@ -53,11 +53,15 @@ class RemoteWorker(QThread):
     # differs, and which kind of question it is - "other" (concord.OtherRemote), "skin"
     # (concord.UnknownSkin) or "revision" (concord.UnconfirmedRemote)
     unconfirmed = pyqtSignal(list, str)
+    # the remote has said who it is: from here on there is nothing to cancel
+    identified = pyqtSignal()
 
     def __init__(self, operation: str, parent=None, **kwargs):
         super().__init__(parent)
         self.operation = operation
         self.kwargs = kwargs
+        self._session = None
+        self._cancel_asked = False
         # Everything an operation says, and how it ended, also goes to the log file.
         self.log.connect(lambda line: LOG.info("%s: %s", operation, line))
         self.done.connect(lambda ok, message: (LOG.info if ok else LOG.warning)(
@@ -73,7 +77,23 @@ class RemoteWorker(QThread):
         # libconcord waits for the next time: the first connection can take that long.
         self.log.emit("Connecting to the remote... (in Safe Mode this can take up to "
                       "half a minute)")
-        return concord.Remote()
+        remote = concord.Remote()
+        remote.on_identified = self.identified.emit
+        remote.on_wait = self.log.emit
+        self._session = remote
+        if self._cancel_asked:
+            remote.cancel()
+        return remote
+
+    def cancel(self):
+        """Stop waiting for a remote that has not answered yet. From any thread.
+
+        Only the wait is stopped: once the remote has said who it is (`identified`),
+        a read or a write runs to its end, since a write stopped halfway leaves the
+        remote without a configuration."""
+        self._cancel_asked = True
+        if self._session is not None:
+            self._session.cancel()
 
     def run(self):
         try:
@@ -83,6 +103,8 @@ class RemoteWorker(QThread):
                     "skin" if isinstance(exc, concord.UnknownSkin) else "revision")
             self.unconfirmed.emit(list(exc.cautions), kind)
             self.done.emit(False, f"{exc} Waiting for your answer.")
+        except concord.Cancelled:
+            self.done.emit(False, "Cancelled.")
         except concord.NotAvailable as exc:
             self.done.emit(False, str(exc))
         except (concord.RemoteError, hao.NotReachable) as exc:
@@ -289,11 +311,10 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
 
     from .usb_driver import offer_before_operation
     offer_before_operation(parent)
-    dialog = QProgressDialog(message, None, 0, 0, parent)
+    dialog = QProgressDialog(message, "Cancel", 0, 0, parent)
     dialog.setWindowTitle(title)
     dialog.setWindowModality(Qt.WindowModality.WindowModal)
     dialog.setMinimumDuration(0)
-    dialog.setCancelButton(None)
     dialog.setAutoClose(False)
     dialog.setAutoReset(False)
 
@@ -301,6 +322,10 @@ def run_with_progress(parent, operation: str, title: str, message: str, **kwargs
     outcome = {"ok": False, "message": "", "result": None}
 
     worker = RemoteWorker(operation, parent, **kwargs)
+    # Cancel stops the wait for the remote; once it has answered there is no stopping.
+    dialog.canceled.connect(worker.cancel)
+    dialog.canceled.connect(lambda: dialog.setLabelText(f"{message}\n\nCancelling..."))
+    worker.identified.connect(lambda: dialog.setCancelButton(None))
     worker.log.connect(lambda line: dialog.setLabelText(f"{message}\n\n{line}"))
 
     def progress(stage, current, total):
