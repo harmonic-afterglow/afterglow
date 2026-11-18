@@ -42,6 +42,9 @@ from afterglow import ezhex, imaging, paths, remotes  # noqa: E402
 activity_index = bitmap = command_index = drawing = font_index = gspm = scaffold = None
 ui_index = importing = labels = None
 REMOTE = None
+# How many screens the remote's firmware owns before a configuration's own (44 on the 650,
+# 49 on the 700): the length of its scaffold's model of them.
+SYSTEM_SCREENS = None
 
 
 def use(remote: str) -> None:
@@ -49,13 +52,15 @@ def use(remote: str) -> None:
     import importlib
 
     global activity_index, bitmap, command_index, drawing, font_index, gspm, scaffold
-    global ui_index, importing, labels, REMOTE
+    global ui_index, importing, labels, REMOTE, SYSTEM_SCREENS
     package = "afterglow.backends." + remotes.get(remote).backend.replace("-", "_")
     (activity_index, bitmap, command_index, drawing, font_index, gspm, scaffold, ui_index,
      importing, labels) = (importlib.import_module(f"{package}.{name}") for name in (
         "activity_index", "bitmap", "command_index", "drawing", "font_index", "gspm",
         "scaffold", "ui_index", "importing", "labels"))
     REMOTE = remote
+    SYSTEM_SCREENS = len(json.loads((paths.scaffolds(remote) / "platform" / "system-screens.json")
+                                    .read_text("utf-8"))["screens"])
 
 SCREEN = 128
 PICTURES = ("bitmap", "sized_bitmap")
@@ -111,7 +116,7 @@ def charging_picture_roles(image: Image) -> dict[str, int]:
     one whole-screen picture and nothing else. Nothing in the configuration chains them -
     their handlers start no timer - so the order is the screens' own."""
     roles = {}
-    for mode in range(scaffold.SYSTEM_SCREENS):
+    for mode in range(SYSTEM_SCREENS):
         drawn = image.drawn[mode]
         programs = [ui_index.drawing_program(image.p, slot["program_offset"])["instructions"]
                     for slot in image.screens[mode]["slots"]]
@@ -255,7 +260,7 @@ def picture_roles(image: Image) -> dict[str, int]:
             uses[target] += 1
             if item["opcode"] == "sized_bitmap":
                 sized[target] += 1
-            if mode < scaffold.SYSTEM_SCREENS:
+            if mode < SYSTEM_SCREENS:
                 platform.setdefault(target, (mode, count))
             else:
                 first_owned.setdefault(target, mode)
@@ -316,7 +321,7 @@ def platform_variables(image: Image) -> list[int]:
     (docs/harmony_650_700/gspm.md, "The battery notice flag"). A build gives them numbers
     of its own."""
     found = []
-    for mode in range(scaffold.SYSTEM_SCREENS):
+    for mode in range(SYSTEM_SCREENS):
         for key, operand, category in image.rows(mode):
             writes = []
             if category >= 0x80:
@@ -377,7 +382,7 @@ def system_screens(image: Image, roles: dict[str, int], platform: list[int]) -> 
     names - a block index, a picture role, an object index - rather than addresses."""
     payload = image.p
     role_of = {target: role for role, target in roles.items()}
-    screens = image.screens[:scaffold.SYSTEM_SCREENS]
+    screens = image.screens[:SYSTEM_SCREENS]
     roots = [slot["program_offset"] for screen in screens for slot in screen["slots"]]
     blocks = drawing.program_blocks(payload, roots)
     order, queue = {}, list(roots)
@@ -424,7 +429,7 @@ def system_screens(image: Image, roles: dict[str, int], platform: list[int]) -> 
         opcode = payload[at + 6]
         if opcode == 0x7F:
             action = [{"object": carry(operand)}, opcode]
-        elif opcode == MODE_SWITCH and operand >= scaffold.SYSTEM_SCREENS:
+        elif opcode == MODE_SWITCH and operand >= SYSTEM_SCREENS:
             raise SystemExit(f"platform timer {referenced} switches to the donor's mode {operand}")
         else:
             action = [literal(operand, opcode), opcode]
@@ -444,7 +449,7 @@ def system_screens(image: Image, roles: dict[str, int], platform: list[int]) -> 
             if category == 0x7F:
                 atoms.append([{"object": carry(value)}, category])
             else:
-                if category == MODE_SWITCH and value >= scaffold.SYSTEM_SCREENS:
+                if category == MODE_SWITCH and value >= SYSTEM_SCREENS:
                     raise SystemExit(f"platform object {referenced} switches to the "
                                      f"donor's own mode {value}")
                 atoms.append([literal(value, category), category])
@@ -528,7 +533,7 @@ def platform_constants(image: Image) -> dict:
         "tail": p[tail_at:end].hex(),
         "tail_offsets": offsets,
         "section17": p[ranges[17][0]:ranges[17][1]].hex(),
-        "screens": scaffold.SYSTEM_SCREENS,
+        "screens": SYSTEM_SCREENS,
     }
 
 
@@ -549,7 +554,7 @@ class Wiring:
 
     def __init__(self, image: Image, platform: list[int]):
         self.image, self.p, self.platform = image, image.p, platform
-        self.fw = scaffold.SYSTEM_SCREENS
+        self.fw = SYSTEM_SCREENS
         reader = importing.Image(image.p)
         self.names = reader.names
         acts = importing.Activities(reader, [], {}, [])
@@ -884,7 +889,7 @@ def font_roles(payload: bytes) -> dict[str, str]:
     pages = {ordinal for ordinals in importing.command_pages(image).values()
              for ordinal in ordinals}
     seen: dict[str, Counter] = defaultdict(Counter)
-    for screen in image.screens[scaffold.SYSTEM_SCREENS:]:
+    for screen in image.screens[SYSTEM_SCREENS:]:
         # a start-up screen - "Starting ...", "Turning system off" - binds every key to
         # nothing while its codes go out
         blocking = (len(screen["header_entries"]) >= 50

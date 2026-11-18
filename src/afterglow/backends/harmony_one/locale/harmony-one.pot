@@ -128,6 +128,18 @@ msgctxt "assistant.now-input"
 msgid "Now is the {device} set to the {input} input?"
 msgstr ""
 
+#. Help, for a device the remote has no power command for; OK goes on: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.ensure-on"
+msgid "Ensure the {device} is on."
+msgstr ""
+
+#. Help, for an input no command selects; OK goes on: a message centred on the screen; about 160 pixels a line
+#, python-brace-format
+msgctxt "assistant.ensure-input"
+msgid "Ensure the {device} is set to the {input} input."
+msgstr ""
+
 #. Off's Help asks about each device: a message centred on the screen; about 160 pixels a line
 #, python-brace-format
 msgctxt "assistant.is-off"

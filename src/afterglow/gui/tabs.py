@@ -759,12 +759,18 @@ class UpdateTab(QWidget):
         self.flash_btn = QPushButton("Flash to Remote")
         self.read_btn = QPushButton("Read from Remote")
         self.check_btn = QPushButton("Check Connection")
+        # Stops the wait for a remote that has not answered. Shown only while connecting:
+        # from the moment the remote has said who it is, a read or a write runs to its end.
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.setVisible(False)
+        self.cancel_btn.clicked.connect(self._cancel_remote)
         self.flash_btn.clicked.connect(self.flash)
         self.read_btn.clicked.connect(self.read_from_remote)
         self.check_btn.clicked.connect(self.check_connection)
         for button in (self.flash_btn, self.read_btn, self.check_btn):
             btn_row.addWidget(button)
         btn_row.addStretch()
+        btn_row.addWidget(self.cancel_btn)       # at the right edge, away from Flash
         layout.addLayout(btn_row)
 
         # Everything that touches the remote needs libconcord. Say so once, here,
@@ -889,6 +895,14 @@ class UpdateTab(QWidget):
         for button in (self.flash_btn, self.read_btn, self.check_btn):
             button.setEnabled(not busy)
         self.progress.setVisible(busy)
+        if not busy:
+            self.cancel_btn.setVisible(False)
+
+    def _cancel_remote(self):
+        worker = getattr(self, "_worker", None)
+        if worker is not None and worker.isRunning():
+            worker.cancel()
+            self.cancel_btn.setEnabled(False)
 
     def running_operation(self) -> str | None:
         """The remote operation under way - "write", "read", "identify"... - or None."""
@@ -902,10 +916,15 @@ class UpdateTab(QWidget):
         offer_before_operation(self)
         self._warn_if_the_link_is_down()
         self._busy(True)
+        # Connecting: the one stretch there is to cancel (not the build before a flash).
+        self.cancel_btn.setEnabled(True)
+        self.cancel_btn.setVisible(True)
         self._worker = RemoteWorker(operation, self, **kwargs)
         self._worker.log.connect(self.log_box.append)
         self._worker.progress.connect(self._on_remote_progress)
         self._worker.done.connect(self._on_remote_done)
+        # Once the remote has answered there is no stopping a read or a write.
+        self._worker.identified.connect(lambda: self.cancel_btn.setVisible(False))
         self._worker.unconfirmed.connect(
             lambda cautions, kind, kwargs=dict(kwargs), operation=operation:
             self._confirm_unconfirmed(operation, kwargs, cautions, kind))

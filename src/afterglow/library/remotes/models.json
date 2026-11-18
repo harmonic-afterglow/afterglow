@@ -248,6 +248,16 @@
       "model": "Harmony One",
       "manufacturer": "HAR"
     },
+    "59": {
+      "model": "Harmony One (EMEA)",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+    },
+    "60": {
+      "model": "Harmony 900 (EMEA)",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+    },
     "61": {
       "model": "Harmony 900",
       "manufacturer": "HAR"
@@ -317,6 +327,15 @@
       "model": "Harmony Link (EMEA)",
       "manufacturer": "HAR"
     },
+    "86": {
+      "model": "Harmony 800",
+      "manufacturer": "HAR"
+    },
+    "87": {
+      "model": "Harmony 800 (EMEA)",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+    },
     "97": {
       "model": "Harmony Ultimate Hub",
       "manufacturer": "HAR"
@@ -343,10 +362,6 @@
     },
     "112": {
       "model": "Harmony 950",
-      "manufacturer": "HAR"
-    },
-    "86": {
-      "model": "Harmony 800",
       "manufacturer": "HAR"
     }
   }

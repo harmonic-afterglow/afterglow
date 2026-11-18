@@ -4,6 +4,7 @@
   "identity": {
     "arch": 18,
     "skin": 86,
+    "other_skins": [87],
     "software_type": 0
   },
   "payload": "blob",

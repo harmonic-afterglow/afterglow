@@ -8,6 +8,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony One: a translation longer than the English is no longer cut short.** Help's
+  questions, the Remote Assistant's notes, the firmware's notices, Screen Sensitivity's
+  confirmation and the Tutorial's pictured question take more lines where the screen has
+  room, instead of ending in "..". Help's questions, the Remote Assistant's notes and
+  Screen Sensitivity's confirmation stay centred where the English is, growing evenly
+  up and down rather than only downwards.
+- **Harmony One, 800, 600, 650, 665 and 700: Help no longer freezes after you answer
+  No.** Answering No to "Is the TV on?" sent the power and then waited the TV's whole
+  power-on delay - up to 20 seconds on some - before the next question. It now goes straight on, as Logitech's does.
+- **Harmony One, 800, 600, 650, 665 and 700: Help asks about devices and inputs you set by
+  hand.** A device with no power command, such as a game console, gets "Ensure the PS4 is
+  on." with OK, and on the One and 800 an input no command selects gets "Ensure the PC is
+  set to the Games input.", as Logitech's do; Help skipped them. Reading a configuration
+  back keeps them, where they were lost, so its activities still use them.
+- **Harmony One, 800, 600, 650, 665 and 700: a command named O reads back as O**, not 0.
+  The two letters are drawn alike, and reading a configuration Afterglow built named O as
+  the digit.
+- **A remote that only listens right after it is plugged in can be read and written.**
+  Some remotes - a Monster-branded Harmony 880, the AV-100, so far - ignore every request
+  that does not come the moment they appear on USB, where Afterglow used to fail after a
+  few seconds. Connecting now:
+  - waits for the remote the way Logitech's own software does, and says after 5 seconds
+    that it is still trying;
+  - when the remote does not answer, asks for it to be unplugged and plugged back in,
+    reminds you every 30 seconds with the time left, and connects the moment it is back
+    (for up to 3 minutes);
+  - can be stopped with **Cancel**, at the right of the Flash tab's buttons and in the
+    progress window, until the remote has answered - a read or a write that has started
+    runs to its end.
 - **An activity's Physical buttons say what a key left at Default sends**, such as
   "Default: VU Duo2 - Rot". A key that does something else because its device's own
   key does (a receiver whose Record sends Red) read just "Default", as if what was
@@ -15,6 +44,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Harmony One and 800: Activities on the Activities menu with nothing running opens
   its first page**, as Logitech's configurations do; it did nothing. With an activity
   running it goes back to that activity, as before.
+- **Harmony 600, 650 and 665: the Activities menu has its line between rows again.** A
+  configuration made in Afterglow drew the menu without it.
+- **Harmony 600, 650, 665 and 700: More Activities on the Activities menu goes back to
+  the running activity**, as Logitech's configurations do. It opened the menu's first page.
+  The menu's rows and an activity picked again also write what Logitech's write, in the
+  same order.
+- **Remotes sold in Europe are recognised.** The European Harmony 650 (skin 74), 700 (69),
+  900 (60), One (59) and 800 (87) report a model number of their own. Afterglow refused
+  them and their backups as unknown remotes. They now open as the remote they are, and a
+  build for one keeps its number.
 
 ## [0.3.0-beta.7.1] - 2026-11-16
 

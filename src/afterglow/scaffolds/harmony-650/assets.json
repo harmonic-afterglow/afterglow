@@ -383,6 +383,14 @@
         128
       ]
     },
+    "page/menu": {
+      "file": "images/page/menu.png",
+      "mode": "raw",
+      "size": [
+        128,
+        128
+      ]
+    },
     "page/menu-one": {
       "file": "images/page/menu-one.png",
       "mode": "raw",

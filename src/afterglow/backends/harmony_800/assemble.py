@@ -300,7 +300,7 @@ def write_tables(layout, *, sections: dict, device_records, startup: int, groups
 
 
 def image(layout, *, devices, fonts, pictures, system, carried, variables, engine,
-          activity_rows, global_keys, startup, stamp, tail, first_platform,
+          activity_rows, global_keys, startup, stamp, tail, first_platform, skin=None,
           project: dict) -> bytes:
     """Place everything ``layout`` numbered, write the tables, mark the image with the
     ``project`` it was built from (mark.py), and seal it."""
@@ -322,7 +322,7 @@ def image(layout, *, devices, fonts, pictures, system, carried, variables, engin
     write_tables(layout, device_records=device_records, startup=startup, groups=groups,
                  tail=tail, sections={
                      0: name_chain(names),
-                     1: scaffold.CONSTANT_SECTIONS[1],
+                     1: scaffold.section1(skin),
                      2: scaffold.CONSTANT_SECTIONS[2],
                      3: stamp,
                      4: structures.command_flat_index(device_records),

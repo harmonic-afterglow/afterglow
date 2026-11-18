@@ -1549,6 +1549,52 @@ class Activities:
                 f"{what} ({count})" for what, count in sorted(self.left_out.items())))
         return activities, extra
 
+    def ensured(self, home: int, on: list[str]) -> list[str]:
+        """``on`` with the devices the activity's Help asks to be turned on by hand - a
+        device with no power command, which no write says the activity uses: Help's
+        note "Ensure the X is on.", with only OK, whose Exit goes to the activity's
+        screen ``home``. Each goes after the device the question before it asks about."""
+        screens = self.image.screens
+        on = list(on)
+
+        def bound(ordinal, where):
+            entries = (screens[ordinal]["slots"][0]["entries"] if where == "soft"
+                       else screens[ordinal]["header_entries"])
+            return {entry["key_code"]: self.image.row(entry) for entry in entries
+                    if entry["category"]}
+        for ordinal, screen in enumerate(screens):
+            if not screen["slots"]:
+                continue
+            soft = bound(ordinal, "soft")
+            if set(soft) != {0xA2} or bound(ordinal, "header").get(0x99) != [(MODE, home)]:
+                continue
+            text = " ".join(item["text"] for item in self.image.page_text(
+                screen["slots"][0]["program_offset"]))
+            named = [device for device in self.devices
+                     if device.get("label") and device["label"] in text
+                     and not device.get("power_on_cmd") and not device.get("power_cmd")]
+            if not named or len(soft[0xA2]) != 1 or soft[0xA2][0][0] != MODE:
+                continue
+            device = max(named, key=lambda item: len(item["label"]))["id"]
+            if device in on:
+                continue
+            # the question whose Yes comes here, and the device its No powers
+            before = None
+            for other, item in enumerate(screens):
+                answers = bound(other, "soft") if item["slots"] else {}
+                if (answers.get(0xA2) or [None])[-1] != (MODE, ordinal):
+                    continue
+                # the device its No sends to, or whose state its answers write
+                sent = [(self.naming.get(step[1]) or (None,))[0]
+                        for step in answers.get(0x89, []) if step[0] == SEND]
+                written = [self.ids[self.variables[step[1]][0]]
+                           for steps in answers.values() for step in steps
+                           if step[0] == WRITE and step[1] in self.variables]
+                before = next(iter(sent + written), None)
+                break
+            on.insert(on.index(before) + 1 if before in on else 0, device)
+        return on
+
     def activity(self, ordinal: int, label: str | None) -> dict:
         hooks = self.hooks(self.contexts[ordinal])
         enter = hooks.get(activity_index.ENTER, [])
@@ -1566,6 +1612,8 @@ class Activities:
             elif step[0] in (SEND, WAIT):
                 steps.append(step)
         label = label or f"Activity {ordinal}"
+        shown = [step[1] for step in enter if step[0] == MODE]
+        on = self.ensured(shown[-1], list(dict.fromkeys(on))) if shown else on
         out = {"id": str(ordinal), "label": label, "type": None,
                "power_on_devices": list(dict.fromkeys(on)),
                "enter": inputs + (self.macro(steps) or []),

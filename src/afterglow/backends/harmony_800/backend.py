@@ -63,16 +63,16 @@ def compare_payloads(recovery: bytes, candidate: bytes, _profile) -> dict:
     }
 
 
-def description(image: bytes) -> str:
+def description(image: bytes, skin: int = SKIN) -> str:
     low, high = gsgd.checksum(image, len(image) - 6)
     return DESCRIPTION.format(size=len(image), length=len(image) - 6,
-                              checksum=(high << 8) | low, skin=SKIN)
+                              checksum=(high << 8) | low, skin=skin)
 
 
-def configuration_file(image: bytes, path: Path) -> Path:
+def configuration_file(image: bytes, path: Path, skin: int = SKIN) -> Path:
     """Write ``image`` as the zip Concordance sends to the 800."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("Description.xml", description(image))
+        archive.writestr("Description.xml", description(image, skin))
         archive.writestr("Result.EzHex", image)
     return path
 
@@ -125,13 +125,17 @@ def build_project(project, profile, context) -> BuildResult:
     settings = project.get("settings") or {}
     directory = context.find_scaffold(profile.id, context.root)
     context.log(f"Building for {profile.model}")
+    # the 800 sold in Europe (skin 87) builds as one: its description and image say 87
+    skin = settings.get("skin")
+    if skin is not None and skin not in profile.skins:
+        raise ValueError(f"skin {skin} is not a {profile.model}'s")
     built = generate.build(project, directory=directory)
     payload = built["image"]
     validation = validate_payload(payload, profile)
     output = Path(settings.get("out_file") or "harmony800.EZHex")
     if not output.is_absolute():
         output = Path(context.root) / output
-    configuration_file(payload, output)
+    configuration_file(payload, output, profile.skin if skin is None else skin)
     for note in built["skipped"]:
         context.log(f"WARNING: {note}")
     context.log(f"Wrote {output} ({output.stat().st_size:,} bytes)")

@@ -106,6 +106,12 @@ msgctxt "help.now-on"
 msgid "Now is the {device} on?"
 msgstr "Now is the {device} on?"
 
+#. Help, for a device an activity turns on that has no power command, above OK; {device} is its name: a message centred on the screen; about 120 pixels a line; four lines at most
+#, python-brace-format
+msgctxt "help.ensure-on"
+msgid "Ensure the {device} is on."
+msgstr "Ensure the {device} is on."
+
 #. All Off's Help asks about each device: a message centred on the screen; about 120 pixels a line
 #, python-brace-format
 msgctxt "help.is-off"

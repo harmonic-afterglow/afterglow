@@ -133,6 +133,12 @@ def _messages() -> list[po.Message]:
                    + MESSAGE + "; three lines at most", brace_format=True),
         po.Message("assistant.now-input", "Now is the {device} set to the {input} input?",
                    "Help asks again after sending the input: " + MESSAGE, brace_format=True),
+        po.Message("assistant.ensure-on", "Ensure the {device} is on.",
+                   "Help, for a device the remote has no power command for; OK goes on: "
+                   + MESSAGE, brace_format=True),
+        po.Message("assistant.ensure-input", "Ensure the {device} is set to the {input} "
+                   "input.", "Help, for an input no command selects; OK goes on: "
+                   + MESSAGE, brace_format=True),
         po.Message("assistant.is-off", "Is the {device} off?",
                    "Off's Help asks about each device: " + MESSAGE, brace_format=True),
         po.Message("assistant.now-off", "Now is the {device} off?",

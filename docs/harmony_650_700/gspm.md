@@ -169,6 +169,25 @@ an object that tests the variable against it and steps it to the next value, the
 them stepping back (`07 FFFC`). The 650 has the same, with its own number. A build carries
 both platform variables - this and the battery notice flag - and numbers them itself.
 
+## The menu marker
+
+A third platform variable, limit 3 (31 in 665-a's numbering), marks a device's page as
+opened from the Devices list. Each device list row enters the device's screen, then writes 1
+into it. More Activities writes 0, then switches on `CurrentLocation`. Each Activities menu
+row selects its activity's context, then writes 0. Nothing in a configuration reads it: no
+test, load, switch or drawing program in sixteen of Logitech's 650, 665 and 700
+configurations, nor in the wiring. The firmware may read it. A build writes it where
+Logitech's do (`compose.menu_marker`).
+
+Next to it, a flag of limit 1 that every activity's start and re-pick write 1 into, and the
+Off context 0, guards part of Off's way. It is most likely the note after All Off ("If
+any devices are still On"), which a build does not make. A build does not write the flag
+either: its Off test finds it 0.
+
+On the menu, More Activities is bound by the menu screen itself: a switch on
+`CurrentActivityState` to the running activity's screen, or with none running to the
+menu's first page.
+
 ## The wiring
 
 What connects the firmware's events to a configuration is the same in every arch-14 image
@@ -399,10 +418,16 @@ the activity powers - "Is the TV on?", No sends its power (a toggle too) and ask
 the TV on?" until Yes, then "Did that fix the problem?" - then each input the same way
 ("Is the TV set to the HDMI 1 input?", No sends the input or one step of a cycle); every
 Yes to a fix goes back to the activity, and Yes to a device's question goes on to the next.
-An answer writes the variable it was about. Off is the same with "off" and the Activities
+An answer writes the variable it was about. A device the activity uses that has no power
+command takes its place as a note instead (650-c screen 60, 700-c screen 70, a Polish 600's
+screen 105): "Ensure the G96 TV Stick is on." centred from y 5, "OK" ending at 123, 90, and
+"Exit Help", the header as a question's, OK (`A2`) going on to the next question. No write
+says an activity uses such a device, so an import reads the note back as it, after the
+device the question before it asks about. Off is the same with "off" and the Activities
 menu (Logitech's Off binds `43` through a switch). A build leaves Help out where there is
 nothing to ask about, and lays the screens out after "Turning system off": per activity
-then Off, the attempting screen, the first question and three per device or input.
+then Off, the attempting screen, the first question and three per device or input (one
+per note).
 
 ### Help held
 

@@ -4,6 +4,7 @@
   "identity": {
     "arch": 12,
     "skin": 54,
+    "other_skins": [59],
     "flash": "0x1F:0xC8",
     "board": "0.5.0",
     "software_type": 0

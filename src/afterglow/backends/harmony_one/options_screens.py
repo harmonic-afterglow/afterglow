@@ -46,6 +46,8 @@ TUTORIAL = (
     {"picture": (68, 148), "top": 34, "keys": (), "touch": ()},
 )
 TUTORIAL_FONT, TUTORIAL_LEFT, TUTORIAL_LINE = 14, 10, 11
+# A pictured label's two lines, when a translation needs them, about where its one was.
+TUTORIAL_LABEL_OFFSETS = (-6, 5)
 # Where the page counter goes: top right, where no page draws anything.
 TUTORIAL_COUNTER_RIGHT, TUTORIAL_COUNTER_Y = 170, 2
 
@@ -199,12 +201,17 @@ class Options:
                         "target": picture(f"tutorial/{number + 1}")}]
                 for key, attribute, x, y, centred in page.get("labels", ()):
                     label_font = screens.fonts[attribute]
-                    [glyphs] = fit_label(screens.words(key), label_font, SCREEN_WIDTH - 12, 1)
                     widths, _codes = measure(label_font)
-                    width = sum(widths[code] for code in glyphs)
-                    out += [{"opcode": "attribute", "value": attribute},
-                            {"opcode": "inline_text", "x": max(0, x - width // 2) if centred
-                             else x, "y": y, "glyphs": glyphs.hex()}]
+                    out.append({"opcode": "attribute", "value": attribute})
+                    # a translation too long for one line takes two, centred where the
+                    # one was - clear of the picture above and the buttons below
+                    found = fit_label(screens.words(key), label_font, SCREEN_WIDTH - 12, 2)
+                    for glyphs, line_y in zip(found, line_ys(y, len(found),
+                                                             TUTORIAL_LABEL_OFFSETS)):
+                        width = sum(widths[code] for code in glyphs)
+                        out.append({"opcode": "inline_text",
+                                    "x": max(0, x - width // 2) if centred else x,
+                                    "y": line_y, "glyphs": glyphs.hex()})
                 out.append({"opcode": "attribute", "value": TUTORIAL_FONT})
                 y = page["top"]
                 widths, _codes = measure(font)

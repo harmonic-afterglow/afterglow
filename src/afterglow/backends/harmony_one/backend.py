@@ -10,6 +10,7 @@ Format reference: docs/harmony_one/README.md
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 from pathlib import Path
 import shutil
@@ -203,6 +204,10 @@ def build_project(project, profile, context) -> BuildResult:
                              "folder, and no scaffold folder of that name")
     context.log(f"Building for {profile.model}"
                 + (f" with the theme {theme!r}" if theme else ""))
+    # the One sold in Europe (skin 59) builds as one: its header and image say 59
+    skin = settings.get("skin")
+    if skin is not None and skin not in profile.skins:
+        raise ValueError(f"skin {skin} is not a {profile.model}'s")
     built = generate.build(project, directory=directory)
     payload = built["image"]
     validation = validate_payload(payload, profile)
@@ -216,7 +221,8 @@ def build_project(project, profile, context) -> BuildResult:
         output = output.with_suffix(".EZHex")
     try:
         carrier.unpack(payload, str(work))
-        ezhex.pack_standalone(str(work), str(output), profile=profile)
+        ezhex.pack_standalone(str(work), str(output), profile=(
+            dataclasses.replace(profile, skin=skin) if skin is not None else profile))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     for note in built["skipped"]:

@@ -57,3 +57,22 @@ def test_an_unreadable_letter_reads_as_a_question_mark_and_its_line_is_kept():
     line = text.decode(bytes([0x21, 0x22]), None)
     assert labels.UNKNOWN == "?" and set(line) == {"?"} and line
     assert text.unread == {line} and text.unknown == len(line)
+
+
+def test_a_build_of_ours_reads_back_o_as_o_though_its_font_draws_o_like_0(tmp_path):
+    """Our fonts draw O and 0 alike. The builder numbers each font's characters in code
+    point order, so a shared shape reads as the character between its neighbours'."""
+    import importlib
+
+    from afterglow import payloads, remotes
+    from afterglow.backends.harmony_650 import backend
+    module = importlib.import_module("test_harmony_650")
+    project = module._household()
+    tv = project["devices"][0]
+    for at, name in enumerate(("O", "0")):
+        tv["signals"][name] = module._nec(4, 60 + at)
+        tv["commands"].append([name, name, "", "", None])
+    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    payloads.get("blob").unpack(image, str(tmp_path))
+    read = backend.import_project(str(tmp_path), remotes.get("harmony-650"), {}).project
+    assert {"O", "0"} <= set(read["devices"][0]["signals"])

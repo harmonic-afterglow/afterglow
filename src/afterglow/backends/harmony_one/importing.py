@@ -728,6 +728,10 @@ def _state(states: dict, record: dict, power, image: Image, gates=None, others=N
     stepping = _stepping(transitions, image, count)
     if stepping:
         states["inputs"] = stepping
+    elif count > 1 and not any(item["category"] for item in record["transitions"]):
+        # inputs no command selects - a PC's, set by hand: activities still choose one,
+        # and Help asks for it to be set ("Ensure the Media Center PC is set to ...")
+        states["inputs"] = {"direct": [None] * count}
 
 
 def _stepping(transitions: dict, image: Image, count: int) -> dict | None:

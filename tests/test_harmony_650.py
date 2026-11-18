@@ -750,6 +750,53 @@ def test_devices_returns_to_the_running_activity():
     assert centre_of(idle) == [("mode", menu)]
 
 
+def test_the_menu_keys_do_what_logitech_s_do():
+    """On the Activities menu, as in every one of Logitech's 650 and 700 configurations:
+    More Activities goes back to the running activity's screen, or with none running to the
+    menu's first page; an activity's row starts it and clears the mark a device list row
+    sets; and an activity picked again sends its inputs and shows its screen before the
+    sequence ends."""
+    from afterglow.backends.harmony_650 import compose
+    image = compose.build(_household(), stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    reader = importing.Image(image)
+    tables = importing.switch_tables(image)
+    menu = FIRMWARE
+    acts = importing.Activities(reader, [], {}, [])
+    starts = acts.starts()
+    labels = [activity["label"] for activity in _household()["activities"]]
+
+    def title(ordinal):
+        slot = reader.screens[ordinal]["slots"][0]
+        return [item["text"] for item in reader.page_text(slot["program_offset"])]
+
+    [(kind, operand)] = [reader.row(entry) for entry in reader.screens[menu]["header_entries"]
+                         if entry["key_code"] == keys.code(keys.ACTIVITIES)][0]
+    assert kind == "switch" and operand & 0xFF == acts.state
+    cases = dict(tables[operand >> 8]["cases"])
+    for index, context in enumerate(starts):
+        [opened] = [item["operand"] for item in ui_index.drawing_program(
+            image, cases[index])["instructions"] if item["opcode"] == "atom"]
+        assert labels[index] in title(opened)
+    [idle] = [item["operand"] for item in ui_index.drawing_program(
+        image, cases[len(starts)])["instructions"] if item["opcode"] == "atom"]
+    assert idle == menu
+
+    device_row = reader.row(reader.screens[menu + 1]["slots"][0]["entries"][0])
+    [(_write, marker, one)] = [step for step in device_row if step[0] == "write"]
+    assert one == 1
+    rows = [reader.row(entry) for slot in reader.screens[menu]["slots"]
+            for entry in slot["entries"]]
+    assert rows and all(row[0][0] == "context" and row[1:] == [("write", marker, 0)]
+                        for row in rows)
+
+    for context in starts:
+        [again] = [reader.row(entry) for entry in next(
+            c for c in reader.contexts if c["ordinal"] == context)["rows"]
+            if entry["key_code"] == 0x05]
+        assert [step[0] for step in again[-2:]] == ["mode", "write"]
+        assert again[0][0] == "write" and again[-1][1:] == (again[0][1], 0)
+
+
 def test_help_asks_about_each_device_and_input_of_the_running_activity():
     """Help in an activity, as Logitech's 650 and 700 run it: "Attempting to fix the
     problem..." sends the activity's commands again as it is entered, then "Did that fix the
@@ -785,11 +832,59 @@ def test_help_asks_about_each_device_and_input_of_the_running_activity():
     while ordinal != home:
         asked.append(text(ordinal))
         [again] = answer(ordinal, compose.ANSWER_NO)
+        # No sends the fix and asks again at once: no power-on delay waited, as Logitech's
+        [entry] = [entry for slot in reader.screens[ordinal]["slots"]
+                   for entry in slot["entries"] if entry["key_code"] == compose.ANSWER_NO]
+        assert not {importing.WAIT, importing.SWITCH} & {step[0] for step in reader.row(entry)}
         assert text(again) == "Now i" + asked[-1][1:]
         [ordinal] = answer(ordinal, compose.ANSWER_YES)
     assert asked == [f"Is the {labels['tv']} on?", f"Is the {labels['bd']} on?",
                      f"Is the {labels['tv']} set to the InputHdmi2 input?"]
     assert text(off + 2) == f"Is the {labels['tv']} off?"
+
+
+def test_help_asks_for_a_device_with_no_power_command_to_be_turned_on(tmp_path):
+    """A device an activity uses that has no power command: Help cannot turn it on, so in
+    its place among the questions it says "Ensure the X is on." with only OK, as Logitech's
+    650s and 700s do (650-c screen 60, 700-c screen 70). The import reads the note back as
+    the activity using the device."""
+    from afterglow.backends.harmony_650 import compose
+    project = _household()
+    stick = json.loads(json.dumps(project["devices"][1]))
+    for key in ("power_cmd", "power_on_cmd", "power_off_cmd", "power_delay"):
+        stick.pop(key, None)
+    stick.update(id="stick", label="Media Stick")
+    project["devices"].append(stick)
+    project["activities"][1]["power_on_devices"] = ["tv", "stick", "bd"]
+    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    assert _references_out_of_range(image) == []
+    reader = importing.Image(image)
+
+    def text(ordinal):
+        return " ".join(item["text"] for slot in reader.screens[ordinal]["slots"]
+                        for item in reader.page_text(slot["program_offset"]))
+
+    def answer(ordinal, code):
+        return [step[1] for entry in reader.screens[ordinal]["slots"][0]["entries"]
+                if entry["key_code"] == code for step in reader.row(entry)
+                if step[0] == importing.MODE]
+    [note] = [ordinal for ordinal in range(len(reader.screens))
+              if reader.screens[ordinal]["slots"] and text(ordinal).startswith("Ensure")]
+    assert text(note).startswith("Ensure the Media Stick is on.")
+    assert {entry["key_code"] for entry in reader.screens[note]["slots"][0]["entries"]
+            if entry["category"]} == {compose.ANSWER_YES}
+    [after] = answer(note, compose.ANSWER_YES)
+    tv, bd = (device["label"] for device in project["devices"][:2])
+    assert text(after).startswith(f"Is the {bd} on?")
+    [before] = [ordinal for ordinal in range(len(reader.screens)) if reader.screens[ordinal][
+        "slots"] and answer(ordinal, compose.ANSWER_YES) == [note]]
+    assert text(before).startswith(f"Is the {tv} on?")
+
+    payloads.get("blob").unpack(image, str(tmp_path))
+    read = backend.import_project(str(tmp_path), remotes.get("harmony-650"), {}).project
+    labels = {device["id"]: device["label"] for device in read["devices"]}
+    movie = next(item for item in read["activities"] if item["label"] == "Watch a Movie")
+    assert [labels[device] for device in movie["power_on_devices"]] == [tv, "Media Stick", bd]
 
 
 def _run_object(reader, index: int, variables: dict, state: dict | None = None) -> dict:
@@ -1166,6 +1261,18 @@ def test_a_600_is_built_in_its_own_grey_look_and_light_levels():
     assert bytes.fromhex("012c00040a00140008002000") in image
 
 
+@pytest.mark.parametrize("scaffold", ["harmony-650", "harmony-700"])
+def test_a_page_of_several_buttons_has_its_lines(scaffold):
+    """Logitech draws lines between a page's buttons - the Activities menu's rows too - and
+    none on a page of one. A scaffold that has a kind's picture for one has the other:
+    without `page/menu` a menu of several rows drew the plain backdrop, and lost its line."""
+    pictures = json.loads((paths.scaffolds(scaffold) / "assets.json").read_text())["pictures"]
+    for kind in ("device", "activity", "menu"):
+        if f"page/{kind}-one" in pictures:
+            assert f"page/{kind}" in pictures, kind
+    assert (paths.scaffolds(scaffold) / pictures["page/menu"]["file"]).is_file()
+
+
 def test_the_665_is_the_650_under_another_skin(tmp_path):
     """Logitech's own spec pages give the 650 and the 665 one model number, N-10003, and a
     665's configuration is a 650's but for its skin, 75 for 72 - in its header and in
@@ -1178,7 +1285,7 @@ def test_the_665_is_the_650_under_another_skin(tmp_path):
 
     profile = remotes.get("harmony-650")
     assert "650" in profile.model and "665" in profile.model
-    assert profile.skins == (72, 75, 71, 73)
+    assert profile.skins == (72, 75, 71, 73, 74)
     for skin in (72, 75):
         header = (f"<INFORMATION><INTENDEDVERSION><PROTOCOL>14</PROTOCOL><SKIN>{skin}</SKIN>"
                   "<FLASH>0x15:0x1C</FLASH><BOARD>1.2.0</BOARD><SOFTWARETYPE>0</SOFTWARETYPE>"

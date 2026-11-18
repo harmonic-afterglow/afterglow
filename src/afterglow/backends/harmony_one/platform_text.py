@@ -14,6 +14,8 @@ from __future__ import annotations
 
 SCREEN_WIDTH = 176
 LINE_SPACING = 12                  # a notice's lines, where the original had only one
+# A notice's line as wide as this at most; a longer one wraps onto up to this many.
+NOTICE_ROOM, NOTICE_WRAP = 168, 3
 
 
 def text(item: dict, words, hours: int = 12) -> str:
@@ -81,10 +83,18 @@ def render(model: dict, label, words=None, hours: int = 12) -> dict:
                     continue
                 ys = notice_ys[item["key"]]
                 spacing = (max(ys) - min(ys)) // (len(ys) - 1) if len(ys) > 1 else LINE_SPACING
-                texts = lines(item, words)
-                top = (min(ys) + max(ys)) // 2 - spacing * (len(texts) - 1) // 2
-                for index, words_ in enumerate(texts):
-                    draw(words_, item, top + spacing * index)
+                # a line too wide for the screen - a translation's - wraps onto more
+                # rather than being cut, and the whole is centred as before
+                drawn = [found for words_ in lines(item, words)
+                         for found in label(words_, item["font"], NOTICE_ROOM,
+                                            lines=NOTICE_WRAP)]
+                top = (min(ys) + max(ys)) // 2 - spacing * (len(drawn) - 1) // 2
+                if font != item["font"]:
+                    out.append({"opcode": "attribute", "value": item["font"]})
+                    font = item["font"]
+                for index, (glyphs, width) in enumerate(drawn):
+                    out.append({"opcode": "inline_text", "x": max(0, (SCREEN_WIDTH - width) // 2),
+                                "y": top + spacing * index, "glyphs": glyphs})
                 continue
             draw(text(item, words, hours), item, item["y"])
         blocks.append(out)

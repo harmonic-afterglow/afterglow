@@ -4,6 +4,7 @@
   "identity": {
     "arch": 15,
     "skin": 61,
+    "other_skins": [60],
     "flash": "0x01:0x49",
     "board": "0.1.0",
     "other_boards": ["0.0.0"],
