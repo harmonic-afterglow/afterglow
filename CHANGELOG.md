@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony One: a translation longer than the English is no longer cut short.** Help's
+  questions, the Remote Assistant's notes, the firmware's notices, Screen Sensitivity's
+  confirmation and the Tutorial's pictured question take more lines where the screen has
+  room, instead of ending in "..".
 - **Harmony One, 800, 600, 650, 665 and 700: Help no longer freezes after you answer
   No.** Answering No to "Is the TV on?" sent the power and then waited the TV's whole
   power-on delay - up to 20 seconds on some - before the next question. It now goes straight on, as Logitech's does.

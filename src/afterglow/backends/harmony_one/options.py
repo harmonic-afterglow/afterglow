@@ -493,8 +493,16 @@ class _Screens:
             items = [{"opcode": "bitmap", "x": 0, "y": 0, "target": {"picture": "backdrop"}},
                      {"opcode": "atom", "operand": 2, "category": OVERLAY},
                      {"opcode": "atom", "operand": self.status[0], "category": OBJECT}]
-            items += m.text(words("options.sensitivity-set"), MESSAGE_FONT, 0, MESSAGE_Y[0],
-                            centre=(0, SCREEN_WIDTH))
+            # the sentence wraps upwards when a translation needs two lines, so the
+            # level still follows on the line below it
+            said = m.label(words("options.sensitivity-set"), MESSAGE_FONT, SCREEN_WIDTH - 8,
+                           lines=2)
+            items.append({"opcode": "attribute", "value": MESSAGE_FONT})
+            step = MESSAGE_Y[1] - MESSAGE_Y[0]
+            for number, (glyphs, width) in enumerate(said):
+                items.append({"opcode": "inline_text", "x": max(0, (SCREEN_WIDTH - width) // 2),
+                              "y": MESSAGE_Y[0] - step * (len(said) - 1 - number),
+                              "glyphs": glyphs})
             items += m.text(words(f"options.sensitivity.{name}"), MESSAGE_FONT, 0,
                             MESSAGE_Y[1], centre=(0, SCREEN_WIDTH))
             items += m.text(words("options.ok"), OK_FONT, 0, OK_XY[1],

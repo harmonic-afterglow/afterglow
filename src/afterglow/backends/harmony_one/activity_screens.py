@@ -36,6 +36,12 @@ def _enter(ordinal: int) -> list[dict]:
     return [{"opcode": "atom", "operand": ordinal, "category": ENTER_MODE}, {"opcode": "end"}]
 
 
+# How many lines a Help question and a Remote Assistant note may take: the English needs
+# three and four, a translation can need more, and the screen has room down to the
+# softkeys (y 202) - Help's question from y 137, the note's words from 111.
+HELP_LINES, ASSISTANT_LINES = 4, 7
+
+
 class Flow:
     """The activities' screens and contexts in ``screens``, at the ``ordinals`` planned
     for them. ``acts`` is the plan's activities, ``variables`` the build's own
@@ -184,7 +190,7 @@ class Flow:
             return out + [{"opcode": "end"}]
         screens.owned([], [], program, "help", title, keys=self._swallow(), on_enter=before)
 
-    def _paragraphs(self, text, top, lines=3) -> list[dict]:
+    def _paragraphs(self, text, top, lines=HELP_LINES) -> list[dict]:
         """``text`` centred, a paragraph per line break with a blank line between."""
         screens, out = self.screens, []
         for paragraph in text.split("\n"):
@@ -309,7 +315,8 @@ class Flow:
 
         def note(text):
             return lambda: (self._paragraphs(words("assistant.heading"), ASSISTANT_Y, 1)
-                            + self._paragraphs(text, ASSISTANT_Y + LINE_SPACING, 4))
+                            + self._paragraphs(text, ASSISTANT_Y + LINE_SPACING,
+                                               ASSISTANT_LINES))
 
         def setting(value, ordinal):
             return layout.atoms_object([(value, state), (ordinal, ENTER_MODE)])
