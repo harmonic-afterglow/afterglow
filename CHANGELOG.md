@@ -13,7 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   confirmation and the Tutorial's pictured question take more lines where the screen has
   room, instead of ending in "..". Help's questions, the Remote Assistant's notes and
   Screen Sensitivity's confirmation stay centred where the English is, growing evenly
-  up and down rather than only downwards.
+  up and down rather than only downwards. The Harmony 800's Help, notes and Screen
+  Sensitivity confirmation do the same.
 - **Harmony One, 800, 600, 650, 665 and 700: Help no longer freezes after you answer
   No.** Answering No to "Is the TV on?" sent the power and then waited the TV's whole
   power-on delay - up to 20 seconds on some - before the next question. It now goes straight on, as Logitech's does.
