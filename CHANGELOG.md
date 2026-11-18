@@ -13,7 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   confirmation and the Tutorial's pictured question take more lines where the screen has
   room, instead of ending in "..". Help's questions, the Remote Assistant's notes and
   Screen Sensitivity's confirmation stay centred where the English is, growing evenly
-  up and down rather than only downwards.
+  up and down rather than only downwards. The Harmony 800's Help, notes and Screen
+  Sensitivity confirmation do the same.
 - **Harmony One, 800, 600, 650, 665 and 700: Help no longer freezes after you answer
   No.** Answering No to "Is the TV on?" sent the power and then waited the TV's whole
   power-on delay - up to 20 seconds on some - before the next question. It now goes straight on, as Logitech's does.
@@ -67,6 +68,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **German on the Harmony One and 800**, translated by k3067e3: "Deutsch" in the
+  language list, and the remote's own screens, Help and the Tutorial in German.
 - **A One's, 650's or 700's commands go across to the Harmony 900 and 1100.** These
   remotes keep a command as a recording of its press and of what it repeats while held,
   which the 900 cannot store; each is now sent as the command it is, recognised by

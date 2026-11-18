@@ -510,10 +510,18 @@ class _Screens:
             items = [dict(item) for item in BACKDROP_ITEMS] + [
                      {"opcode": "atom", "operand": 2, "category": OVERLAY},
                      {"opcode": "atom", "operand": self.status[0], "category": OBJECT}]
-            items += m.text(words("options.sensitivity-set"), MESSAGE_FONT, 0, MESSAGE_Y[0],
-                            centre=(0, SCREEN_WIDTH))
+            # the sentence and the level below it stay centred where the English two lines
+            # are, however many lines a translation of the sentence takes
+            said = m.label(words("options.sensitivity-set"), MESSAGE_FONT, SCREEN_WIDTH - 8,
+                           lines=2)
+            step = MESSAGE_Y[1] - MESSAGE_Y[0]
+            top = MESSAGE_Y[0] - step * (len(said) - 1) // 2
+            items.append({"opcode": "attribute", "value": MESSAGE_FONT})
+            for number, (glyphs, width) in enumerate(said):
+                items.append({"opcode": "inline_text", "x": max(0, (SCREEN_WIDTH - width) // 2),
+                              "y": top + step * number, "glyphs": glyphs})
             items += m.text(words(f"options.sensitivity.{name}"), MESSAGE_FONT, 0,
-                            MESSAGE_Y[1], centre=(0, SCREEN_WIDTH))
+                            top + step * len(said), centre=(0, SCREEN_WIDTH))
             items += m.text(words("options.ok"), OK_FONT, 0, OK_XY[1],
                             centre=(SCREEN_WIDTH // 2, SCREEN_WIDTH // 2))
             program = m.block(items + [{"opcode": "end"}])
