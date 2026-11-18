@@ -68,6 +68,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **German on the Harmony One and 800**, translated by k3067e3: "Deutsch" in the
+  language list, and the remote's own screens, Help and the Tutorial in German.
 - **A One's, 650's or 700's commands go across to the Harmony 900 and 1100.** These
   remotes keep a command as a recording of its press and of what it repeats while held,
   which the 900 cannot store; each is now sent as the command it is, recognised by
