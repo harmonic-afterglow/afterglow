@@ -12,6 +12,7 @@ from __future__ import annotations
 from ...project_devices import input_label
 
 from . import activity_index, keys, structures
+from .catalogue import ENGLISH
 from .hub import page_zones, without_gaps
 from .idle import MODE_STACK
 from .pages import (
@@ -20,7 +21,8 @@ from .pages import (
     MENU_OPTIONS_KEY, MENU_ROW_KEYS, MENU_ROWS_PER_PAGE, PAGE_ACTIVITIES_KEY, PAGE_DEVICES_KEY,
     SCREEN_WIDTH, SIDE_NEXT_KEY, SIDE_PREV_KEY, SOFTKEY_LEFT_ZONE, SOFTKEY_RIGHT_ZONE,
     START_FONT, START_KEEP_TOP, START_TEXT_Y, button_page, menu_page)
-from .pictures import SENDING_XY, START_ICON_XY
+from .pages import EMPTY_MESSAGE_WIDTH, fit_label
+from .pictures import SENDING_XY, START_ICON_SIZE, START_ICON_XY
 from .scaffold import menu_template
 from .structures import ENTER_MODE, OBJECT_ATOM, object_body
 
@@ -40,6 +42,8 @@ def _enter(ordinal: int) -> list[dict]:
 # three and four, a translation can need more, and the screen has room down to the
 # softkeys (y 202) - Help's question from y 137, the note's words from 111.
 HELP_LINES, ASSISTANT_LINES = 4, 7
+# Help's words never start above this: the activity's icon ends at y 109.
+HELP_TEXT_FLOOR = START_ICON_XY[1] + START_ICON_SIZE[1] + 4
 
 
 class Flow:
@@ -190,9 +194,34 @@ class Flow:
             return out + [{"opcode": "end"}]
         screens.owned([], [], program, "help", title, keys=self._swallow(), on_enter=before)
 
-    def _paragraphs(self, text, top, lines=HELP_LINES) -> list[dict]:
-        """``text`` centred, a paragraph per line break with a blank line between."""
+    def _height(self, text, lines=HELP_LINES) -> int:
+        """How far the last line of ``text``, laid out as ``_paragraphs`` lays it out, is
+        below its first."""
+        font = self.screens.fonts[HELP_FONT]
+        counts = [len(fit_label(paragraph, font, EMPTY_MESSAGE_WIDTH, lines))
+                  for paragraph in text.split("\n")]
+        return LINE_SPACING * (sum(counts) - 1 + len(counts) - 1)
+
+    def _centred(self, text, english, top, lines=HELP_LINES, floor=None) -> int:
+        """Where ``text`` starts so that it is centred where ``english`` is when that
+        starts at ``top``: the English draws as Logitech's does, and a translation that
+        takes more lines or fewer grows or shrinks evenly about the same middle -
+        though never above ``floor`` (the activity's icon)."""
+        if english is None:
+            return top
+        moved = top + (self._height(english, lines) - self._height(text, lines)) // 2
+        return moved if floor is None else max(floor, moved)
+
+    def _words(self, key, **values) -> tuple[str, str]:
+        """A message in the build's language and in English."""
+        return self.screens.words(key, **values), ENGLISH(key, **values)
+
+    def _paragraphs(self, text, top, lines=HELP_LINES, english=None,
+                    floor=HELP_TEXT_FLOOR) -> list[dict]:
+        """``text`` centred, a paragraph per line break with a blank line between; with
+        ``english``, centred on where the English would be (``_centred``)."""
         screens, out = self.screens, []
+        top = self._centred(text, english, top, lines, floor)
         for paragraph in text.split("\n"):
             drawn = screens.lines(paragraph, HELP_FONT, top, lines=lines)
             out += drawn
@@ -235,23 +264,24 @@ class Flow:
         nav = layout.navigation
         items = list(zip(ordinals["asked"], ordinals["questions"]))
         if off and not items:
-            self._answered(title, lambda: self._paragraphs(words("help.nothing-to-do"),
-                                                           HELP_PROMPT_Y),
+            self._answered(title, lambda: self._paragraphs(
+                words("help.nothing-to-do"), HELP_PROMPT_Y,
+                english=ENGLISH("help.nothing-to-do")),
                            {"ok": nav(home)}, icon=icon, home=home)
             return
         first = items[0][1]["ask"] if items else home
-        self._answered(title, lambda: self._paragraphs(words("help.fixed-first"),
-                                                       HELP_PROMPT_Y),
+        self._answered(title, lambda: self._paragraphs(
+            words("help.fixed-first"), HELP_PROMPT_Y, english=ENGLISH("help.fixed-first")),
                        {"yes": nav(home), "no": nav(first)}, icon=icon, home=home)
         for number, (asked, screens_) in enumerate(items):
             following = items[number + 1][1]["ask"] if number + 1 < len(items) else home
             if asked[0].startswith("ensure"):
                 # nothing the remote can send: it asks for it to be seen to by hand
-                self._answered(title, lambda text=self._ensure(asked): self._paragraphs(
-                    text, HELP_QUESTION_Y), {"ok": nav(screens_["fixed"])},
+                self._answered(title, lambda said=self._ensure(asked): self._paragraphs(
+                    said[0], HELP_QUESTION_Y, english=said[1]), {"ok": nav(screens_["fixed"])},
                     icon=icon, home=home)
-                self._answered(title, lambda: self._paragraphs(words("help.fixed"),
-                                                               HELP_QUESTION_Y),
+                self._answered(title, lambda: self._paragraphs(
+                    words("help.fixed"), HELP_QUESTION_Y, english=ENGLISH("help.fixed")),
                                {"yes": nav(home), "no": nav(following)}, icon=icon, home=home)
                 continue
             ask, now, fix = self._question(asked)
@@ -259,8 +289,8 @@ class Flow:
             def fixing(ordinal, fix=fix):
                 return layout.atoms_object(fix + [(ordinal, ENTER_MODE)])
 
-            def question(text):
-                return lambda: self._paragraphs(text, HELP_QUESTION_Y)
+            def question(said):
+                return lambda: self._paragraphs(said[0], HELP_QUESTION_Y, english=said[1])
             self._answered(title, question(ask), {"yes": nav(following),
                                                   "no": fixing(screens_["now"])},
                            icon=icon, home=home)
@@ -270,23 +300,24 @@ class Flow:
             self._answered(title, question(ask), {"yes": nav(screens_["fixed"]),
                                                   "no": fixing(screens_["now"])},
                            icon=icon, home=home)
-            self._answered(title, question(words("help.fixed")),
+            self._answered(title, question(self._words("help.fixed")),
                            {"yes": nav(home), "no": nav(following)}, icon=icon, home=home)
 
-    def _ensure(self, asked) -> str:
+    def _ensure(self, asked) -> tuple[str, str]:
         """What Help says about a device it cannot switch on, or an input no command
-        selects: "Ensure the PS4 is on." as Logitech's configurations say it."""
-        words = self.screens.words
+        selects: "Ensure the PS4 is on." as Logitech's configurations say it - in the
+        build's language and in English."""
+        words = self._words
         device = self.devices[asked[1]]
         if asked[0] == "ensure-on":
             return words("assistant.ensure-on", device=device["label"])
         return words("assistant.ensure-input", device=device["label"],
                      input=input_label(device["inputs"]["values"][asked[2]]))
 
-    def _question(self, asked) -> tuple[str, str, list]:
-        """What Help asks about one thing - the question, and again once fixed - and
-        what answering No sends."""
-        words, actions = self.screens.words, self.actions
+    def _question(self, asked) -> tuple[tuple, tuple, list]:
+        """What Help asks about one thing - the question, and again once fixed, each in
+        the build's language and in English - and what answering No sends."""
+        words, actions = self._words, self.actions
         device = self.devices[asked[1]]
         if asked[0] == "power":
             return (words("assistant.is-on", device=device["label"]),
@@ -313,31 +344,38 @@ class Flow:
         title = words("assistant.title", name=name)
         nav = layout.navigation
 
-        def note(text):
-            return lambda: (self._paragraphs(words("assistant.heading"), ASSISTANT_Y, 1)
-                            + self._paragraphs(text, ASSISTANT_Y + LINE_SPACING,
-                                               ASSISTANT_LINES))
+        def note(said):
+            # the heading and its note move together, centred where the English are
+            def draw():
+                top = self._centred(said[0], said[1], ASSISTANT_Y + LINE_SPACING,
+                                    ASSISTANT_LINES, floor=None) - LINE_SPACING
+                return (self._paragraphs(words("assistant.heading"), top, 1, floor=None)
+                        + self._paragraphs(said[0], top + LINE_SPACING, ASSISTANT_LINES,
+                                           floor=None))
+            return draw
 
         def setting(value, ordinal):
             return layout.atoms_object([(value, state), (ordinal, ENTER_MODE)])
-        hide = (words("assistant.hide"), {"yes": setting(3, notes["how-to-hide"]),
+        hide = (self._words("assistant.hide"), {"yes": setting(3, notes["how-to-hide"]),
                                           "no": nav(home)})
         if off:
-            alert = words("assistant.all-off")
+            alert = self._words("assistant.all-off")
             sequence = [
-                ("welcome", words("assistant.welcome"), {"ok": setting(1, notes["first"])},
+                ("welcome", self._words("assistant.welcome"),
+                 {"ok": setting(1, notes["first"])},
                  None),
                 ("first", alert, {"ok": self.welcome(home)}, None),
                 ("again", alert, {"ok": nav(notes["hide"])}, None)]
         else:
-            alert = words("assistant.press-help")
+            alert = self._words("assistant.press-help")
             sequence = [
                 ("first", alert, {"ok": nav(home)}, ([(2, state)], [])),
-                ("set-up", words("assistant.set-up"), {"ok": nav(notes["first"])},
+                ("set-up", self._words("assistant.set-up"), {"ok": nav(notes["first"])},
                  ([(2, state)], [])),
                 ("again", alert, {"ok": nav(notes["hide"])}, None)]
         sequence += [("hide",) + hide + (None,),
-                     ("how-to-hide", words("assistant.how-to-hide"), {"ok": nav(home)}, None)]
+                     ("how-to-hide", self._words("assistant.how-to-hide"), {"ok": nav(home)},
+                      None)]
         for _key, text, answers, on_enter in sequence:
             self._answered(title, note(text), answers, on_enter=on_enter)
 

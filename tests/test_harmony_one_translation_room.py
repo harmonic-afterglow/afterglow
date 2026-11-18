@@ -45,7 +45,7 @@ def _drawn(built):
                         codes = bytes.fromhex(item["glyphs"])
                         width = sum(fonts[attribute]["glyphs"][code]["width"] for code in codes)
                         out.append(("".join(chars[attribute][code] for code in codes),
-                                    item["x"], width))
+                                    item["x"], width, item["y"]))
     return out
 
 
@@ -60,10 +60,21 @@ def test_a_long_translation_wraps_rather_than_being_cut(tmp_path, monkeypatch):
     (tmp_path / "de.po").write_text("\n".join(lines), "utf-8")
     monkeypatch.setattr(catalogue, "LOCALE_DIR", tmp_path)
     drawn = _drawn(generate.build(dict(PROJECT, settings={"locale": "deu"})))
-    words = " ".join(text for text, _x, _width in drawn)
+    words = " ".join(text for text, _x, _width, _y in drawn)
     for text in LONG.values():
         for word in text.replace("\n", " ").split():
             assert word in words, f"{word!r} of {text!r} is not drawn"
-    assert not [text for text, _x, _width in drawn if text.endswith("..")
+    assert not [text for text, _x, _width, _y in drawn if text.endswith("..")
                 and not text.endswith("...")]
-    assert all(x + width <= 176 for _text, x, width in drawn)
+    assert all(x + width <= 176 for _text, x, width, _y in drawn)
+
+    # and a note longer than the English is centred where the English is, not hung
+    # lower from the same top
+    def middle(lines, first, last):
+        """The middle of one note: its line starting ``first`` to the next ending ``last``."""
+        start = next(at for at, line in enumerate(lines) if line[0].startswith(first))
+        end = next(at for at in range(start, len(lines)) if lines[at][0].endswith(last))
+        return (lines[start][3] + lines[end][3]) / 2
+    english = _drawn(generate.build(PROJECT))
+    assert abs(middle(drawn, "Um den", "Fernbedienung.")
+               - middle(english, "To hide", "remote.")) <= 6
