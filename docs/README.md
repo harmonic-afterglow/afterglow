@@ -10,6 +10,7 @@ Reference documentation for supported remote architectures and configuration for
 | [harmony_one/](harmony_one/README.md) | Harmony One (`harmony-one`) | arch-12 `GSPM` indexed image and native integrity |
 | [harmony_650_700/](harmony_650_700/gspm.md) | Harmony 650 and 700 (`harmony-650`, `harmony-700`) | arch-14 `GSPM`: where it differs from the One's |
 | [harmony_800/](harmony_800/README.md) | Harmony 800 (`harmony-800`) | `GSGD` image read from the 800's firmware |
+| [harmony_5xx/](harmony_5xx/ahcm.md) | Harmony 510-555 and Xbox 360 (`harmony-555`) | arch-9 `AHCM`: where it differs from arch 14 |
 
 ### Harmony 900 (`harmony_pk`) Format Documents
 
@@ -39,6 +40,10 @@ Reference documentation for supported remote architectures and configuration for
 ### Harmony 650 and 700 (`harmony-650`, `harmony-700`) Format Documents
 
 - [gspm.md](harmony_650_700/gspm.md) — The arch-14 indexed image: section order, screen slots, command objects, drawing
+
+### Harmony 5xx (`harmony-555`) Format Documents
+
+- [ahcm.md](harmony_5xx/ahcm.md) — The arch-9 image: identity, outer structure, glyphs, class 5 infrared
 
 ### Harmony 800 (`harmony-800`) Format Documents
 

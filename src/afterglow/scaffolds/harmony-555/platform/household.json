@@ -1,0 +1,46 @@
+{
+ "schema": "afterglow-arch9-household/1",
+ "comment": "The parts of this platform a household changes, measured over the 555 households with tools/arch9_derive_platform.py --household: never taken from one when another model's platform is grafted.",
+ "places": [
+  [
+   "context",
+   4
+  ],
+  [
+   "object",
+   49
+  ],
+  [
+   "object",
+   92
+  ],
+  [
+   "object",
+   94
+  ],
+  [
+   "object",
+   96
+  ],
+  [
+   "object",
+   103
+  ],
+  [
+   "object",
+   111
+  ],
+  [
+   "object",
+   113
+  ],
+  [
+   "object",
+   128
+  ],
+  [
+   "object",
+   141
+  ]
+ ]
+}

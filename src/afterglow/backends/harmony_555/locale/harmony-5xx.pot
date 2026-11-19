@@ -1,0 +1,353 @@
+# Translations for harmony-5xx.
+msgid ""
+msgstr ""
+"Project-Id-Version: harmony-5xx\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.terminate-entry"
+msgid "Terminate Entry"
+msgstr ""
+
+#. While the remote is on USB: a firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.usb-connected"
+msgid "USB CONNECTED"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.upgrade-success"
+msgid "Upgrade Success"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.error-startup-u0"
+msgid "U0 : Error Startup\nEntry"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.error-startup-u2"
+msgid "U2 : Error Startup\nEntry"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.update-successful"
+msgid "Update Successful"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.update-in-progress"
+msgid "Update in progress"
+msgstr ""
+
+#. While the remote learns a command: a firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.learning"
+msgid "Learning..."
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.learning-complete"
+msgid "Learning complete"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.firmware-upgrade"
+msgid "Firmware upgrade\nin progress"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.go-to-website"
+msgid "Go to Website\nto update settings"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.usb-initialization"
+msgid "USB\nInitialization"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.bootloader-locked"
+msgid "Bootloader\nLocked"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.real-time-clock"
+msgid "Real Time Clock"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.ir-leds-and-photodiode"
+msgid "IR LEDs\nand\nPhotodiode"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.flash-memory-id"
+msgid "FLASH Memory\nID"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.flash-memory-erase"
+msgid "FLASH Memory\nErase"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.flash-memory-write"
+msgid "FLASH Memory\nWrite"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.flash-memory-clear"
+msgid "FLASH Memory\nClear"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.lcd-module-failed"
+msgid "LCD Module\nFailed"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.pll-failure"
+msgid "PLL Failure"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.bootram-truncated"
+msgid "BootRAM\nTruncated"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.safe-mode"
+msgid "Safe Mode"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.safe-mode-requested"
+msgid "Safe Mode\nRequested"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.battery-low"
+msgid "Battery Low"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.battery-fast-charge"
+msgid "Battery Fast\nCharge"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.battery-trickle-charge"
+msgid "Battery\nTrickle\\Charge"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.battery-charge-complete"
+msgid "Battery Charge\nComplete"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.ir-sending"
+msgid "IR Sending"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.invalid-configuration"
+msgid "Invalid\nConfiguration"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.bootloader-bad-image"
+msgid "Bootloader\nBad Image"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.bootloader-upgrade-failed"
+msgid "Bootloader\nUpgrade Failed"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.battery-adc"
+msgid "Battery ADC\nNot Calibrated"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.lightsense-adc"
+msgid "LightSense ADC\nNot Calibrated"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.revision-adc"
+msgid "Revision ADC\nNot Calibrated"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.application-terminated"
+msgid "Application\nTerminated"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.configuration-corrupted"
+msgid "Configuration\nCorrupted"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.missing-license"
+msgid "Missing\nLicense"
+msgstr ""
+
+#. A firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.needs-setup"
+msgid "Needs to be\nsetup.\nBattery\nCharging"
+msgstr ""
+
+#. Before an activity starts or All Off ends, when the batteries are low: a firmware notice, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.replace-batteries"
+msgid "Replace the\nbatteries"
+msgstr ""
+
+#. The first page of the note after 'Yes' to hiding the Remote Assistant: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "assistant.how-to-hide"
+msgid "Remote\nAssistant:\nTo permanently\nhide the Remote\nAssistant, use"
+msgstr ""
+
+#. The note's second page, from the left; about 90 pixels a line. Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "assistant.how-to-hide-2"
+msgid "the software to\nupdate your\npreferences."
+msgstr ""
+
+#. Above Yes and No: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "assistant.hide"
+msgid "Do you want to\nhide the Remote\nAssistant?"
+msgstr ""
+
+#. After All Off: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "assistant.off-check"
+msgid "All your devices\nshould be off.  If\nany devices are\nstill on, press\n\"Help\" now."
+msgstr ""
+
+#. The Remote Assistant's note: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "assistant.start-check"
+msgid "Ensure all your\ndevices are off. If\nany devices are\nstill on, press\n\"Help\" now."
+msgstr ""
+
+#. The Devices list: a screen's title, top left; about 90 pixels in the title font, cut with '..'
+msgctxt "devices.title"
+msgid "Devices"
+msgstr ""
+
+#. The Activities menu: a screen's title, top left; about 90 pixels in the title font, cut with '..'
+msgctxt "menu.title"
+msgid "Choose an activity"
+msgstr ""
+
+#. Help with nothing to fix, above OK: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide)
+msgctxt "notice.nothing-to-do"
+msgid "Nothing to do"
+msgstr ""
+
+#. While All Off turns everything off, above 'Please keep the remote pointed'; about 90 pixels
+msgctxt "off.stopping"
+msgid "Stopping Activity"
+msgstr ""
+
+#. Below 'Stopping Activity' and below 'Starting' and the activity's name: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "notice.keep-pointed"
+msgid "Please keep the\nremote pointed at\nyour system."
+msgstr ""
+
+#. The welcome after a write, at the top: a note of the Remote Assistant, centred, one line per line break; about 90 pixels a line (the screen is 96 pixels wide). Each line break is a line of the screen, as Logitech's remote breaks it; a line too wide is wrapped again between its words, and a text with more lines than the screen has room for is cut
+msgctxt "welcome"
+msgid "Welcome to your\nremote."
+msgstr ""
+
+#. An answer, bottom left: centred over its key at the bottom of the screen; about 30 pixels
+msgctxt "answer.yes"
+msgid "Yes"
+msgstr ""
+
+#. An answer, bottom right: centred over its key at the bottom of the screen; about 30 pixels
+msgctxt "answer.no"
+msgid "No"
+msgstr ""
+
+#. Closes a note, bottom left: centred over its key at the bottom of the screen; about 30 pixels
+msgctxt "answer.ok"
+msgid "OK"
+msgstr ""
+
+#. While an activity starts, on a line of its own above the activity's name; about 90 pixels
+msgctxt "activity.starting"
+msgid "Starting"
+msgstr ""
+
+#. Help, above Yes and No; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+msgctxt "help.fixed"
+msgid "Did that fix the problem?"
+msgstr ""
+
+#. Help asks about each device an activity turns on; {device} is its name; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.is-on"
+msgid "Is the {device} on?"
+msgstr ""
+
+#. Help asks again after sending its power; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.now-on"
+msgid "Now is the {device} on?"
+msgstr ""
+
+#. All Off's Help asks about each device; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.is-off"
+msgid "Is the {device} off?"
+msgstr ""
+
+#. All Off's Help asks again after turning it off; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.now-off"
+msgid "Now is the {device} off?"
+msgstr ""
+
+#. Help asks about each input; {device} and {input} are names; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut. An import reads the input's name back from it, so keep both fields
+#, python-brace-format
+msgctxt "help.is-set"
+msgid "Is the {device} set to the {input} input?"
+msgstr ""
+
+#. Help asks again after sending the input; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.now-set"
+msgid "Now is the {device} set to the {input} input?"
+msgstr ""
+
+#. Help asks about another of a device's states, such as its screen; {device}, {state} and {value} are names ("Is the TV Screen set to HDMI2?"); Help's question, centred; three lines of about 90 pixels, wrapped between words and cut. An import reads the value back from it, so keep the fields
+#, python-brace-format
+msgctxt "help.is-state"
+msgid "Is the {device} {state} set to {value}?"
+msgstr ""
+
+#. Help asks again after sending the state; Help's question, centred; three lines of about 90 pixels, wrapped between words and cut
+#, python-brace-format
+msgctxt "help.now-state"
+msgid "Now is the {device} {state} set to {value}?"
+msgstr ""
+
+#. The title of an activity's or a device's Sound page; {name} is its name: a screen's title, top left; about 90 pixels in the title font, cut with '..'
+#, python-brace-format
+msgctxt "layout.sound"
+msgid "{name} (Sound)"
+msgstr ""
+
+#. The title of an activity's or a device's Picture page; {name} is its name: a screen's title, top left; about 90 pixels in the title font, cut with '..'
+#, python-brace-format
+msgctxt "layout.picture"
+msgid "{name} (Picture)"
+msgstr ""
+
+#. Under a page of buttons when there is more than one, such as 1 OF 3; drawn 8 pixels high with no room above the capitals, so capitals and digits only, no accents; about 40 pixels
+#, python-brace-format
+msgctxt "page.counter"
+msgid "{number} OF {count}"
+msgstr ""

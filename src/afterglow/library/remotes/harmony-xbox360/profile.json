@@ -1,0 +1,160 @@
+{
+  "schema": "afterglow-remote/1",
+  "id": "harmony-xbox360",
+  "model": "Harmony for Xbox 360",
+  "identity": {
+    "arch": 9,
+    "skin": 36,
+    "flash": "0xFF:0x12",
+    "software_type": 0
+  },
+  "payload": "blob",
+  "backend": "harmony-555",
+  "status": "experimental",
+  "capabilities": {
+    "ir_learning": false,
+    "hard_keys": true
+  },
+  "infrared": {
+    "native_protocols": [],
+    "notes": "Every command is a class 5 record: a code spelled from a shared dictionary of pulse blocks."
+  },
+  "notes": "The Xbox 360's own Harmony: four round Y, X, A and B keys beyond the 525's fifty. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555) on the platform the 525's, 550's and 555's builds booted on, its skin and keys from the Xbox 360's own configuration; one - its key test - has been flashed and booted on an Xbox 360. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
+  "vocabulary": {
+    "_comment": "The command keys by scan code (backends/harmony_555/keys.py): the 525/555 key grid relabelled, each of the Xbox's keys on the scan of the key in its place on the 555 (photos, afterglow-research/harmony-555.md). Proven by its configuration: A on 60 and B on 20 (a DVD player whose codeset names its colour commands A to D has A and B there and C and D on its screen), Clear on 27, Display on 35. Placed by position and confirmed by a key test on a real Xbox 360: Y on 21 (the 555's Guide, and the Xbox prints Guide under Y), X on 59, Back 37 and Info 36 (the 555's Sound and Picture bar), title 34 and enter 33 (the bottom row, as the colour keys), Mute 61 and Prev 58 (the round keys), * 19 and # 25 (beside 0); its 42 is the Glow key, the firmware's own. The keys the firmware owns - Activities, Devices, Off, Help, the page keys and the four soft keys - are the backend's.",
+    "hard_keys": [
+      "Number3",
+      "Number2",
+      "Number4",
+      "Play",
+      "SkipBack",
+      "SkipForward",
+      "Stop",
+      "Number6",
+      "Number5",
+      "Number7",
+      "Pause",
+      "Rewind",
+      "FastForward",
+      "Record",
+      "Number9",
+      "Number8",
+      "Number0",
+      "Menu",
+      "Exit",
+      "ChannelDown",
+      "Number1",
+      "DirectionRight",
+      "DirectionUp",
+      "DirectionDown",
+      "VolumeDown",
+      "VolumeUp",
+      "Select",
+      "DirectionLeft",
+      "ChannelUp",
+      "A",
+      "B",
+      "Clear",
+      "Display",
+      "Y",
+      "X",
+      "Back",
+      "Info",
+      "VolumeMute",
+      "PrevChannel",
+      "NumberStar",
+      "NumberEnter",
+      "Title",
+      "Enter"
+    ],
+    "hard_key_scans": {
+      "Number3": 1,
+      "Number2": 2,
+      "Number4": 3,
+      "Play": 4,
+      "SkipBack": 5,
+      "SkipForward": 6,
+      "Stop": 7,
+      "Number6": 9,
+      "Number5": 10,
+      "Number7": 11,
+      "Pause": 12,
+      "Rewind": 13,
+      "FastForward": 14,
+      "Record": 15,
+      "Number9": 17,
+      "Number8": 18,
+      "Number0": 26,
+      "Menu": 28,
+      "Exit": 29,
+      "ChannelDown": 41,
+      "Number1": 43,
+      "DirectionRight": 44,
+      "DirectionUp": 45,
+      "DirectionDown": 49,
+      "VolumeDown": 50,
+      "VolumeUp": 51,
+      "Select": 52,
+      "DirectionLeft": 53,
+      "ChannelUp": 57,
+      "A": 60,
+      "B": 20,
+      "Clear": 27,
+      "Display": 35,
+      "Y": 21,
+      "X": 59,
+      "Back": 37,
+      "Info": 36,
+      "VolumeMute": 61,
+      "PrevChannel": 58,
+      "NumberStar": 19,
+      "NumberEnter": 25,
+      "Title": 34,
+      "Enter": 33
+    }
+  },
+  "properties": {},
+  "interface": {
+    "_comment": "The 650's pages, less what a 5xx has not: no favourites, no device screen page (a device's page is its labelled commands, in order), the timing its builder uses. The screen draws labels alone. Languages are English and the ones the Harmony 5xx backend has a catalogue for (backends/harmony_555/locale).",
+    "tabs": [
+      "devices",
+      "activities",
+      "flash"
+    ],
+    "device_pages": [
+      "search",
+      "identity",
+      "commands",
+      "inputs",
+      "timing"
+    ],
+    "activity_pages": [
+      "identity",
+      "roles",
+      "screen_buttons",
+      "hard_buttons",
+      "startup",
+      "power"
+    ],
+    "screen_icons": false,
+    "screen_grid": {"activity": [2, 2]},
+    "timing": [
+      "always_on",
+      "power_delay",
+      "press_interkey",
+      "input_delay",
+      "app_power_delay"
+    ],
+    "settings": [
+      "output_file",
+      "language"
+    ],
+    "languages": [
+      [
+        "English",
+        "enu"
+      ]
+    ]
+  },
+  "preferences": {}
+}

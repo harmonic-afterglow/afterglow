@@ -8,9 +8,9 @@ the remote's `art.json` are the page's points too.
 
 Everything about one remote's drawing lives in its folder (library/remotes/<id>/): the
 recipe in `art.json` under "source" - the guide, page and region, callout colours to
-leave out, parts of the page to erase, colours to repaint, a mock-up screen to empty, marks
-to print on the keys -
-and the result, `art.svg`, written beside it.
+leave out, parts of the page to erase or move, colours to repaint, a flat colour for a
+shaded case, a stretch for a guide that drew the remote squashed, a mock-up screen to
+empty, marks to print on the keys - and the result, `art.svg`, written beside it.
 
     python3 tools/remote_art.py ../afterglow-site/_sources/manuals \
         src/afterglow/library/remotes/harmony-one src/afterglow/library/remotes/harmony-900
@@ -208,12 +208,44 @@ def _erase(root, boxes) -> None:
     walk(root, (1, 0, 0, 1, 0, 0))
 
 
-def _mark(root, marks) -> None:
+def _move(root, moves) -> None:
+    """Move what lies wholly inside each move's "box" (x0, y0, x1, y1) "by" (dx, dy):
+    the 555's guide prints the 525's Menu and Guide, which the 555 has the other way
+    round. Everything to move is found first, so two words can swap places."""
+    found = []
+
+    def walk(parent, m, box, by):
+        for child in list(parent):
+            if child.tag == NS + "defs":
+                continue
+            matrix = _then(m, _matrix(child.get("transform")))
+            bounds = _bounds(child, matrix)
+            if bounds and (box[0] <= bounds[0] and bounds[2] <= box[2]
+                           and box[1] <= bounds[1] and bounds[3] <= box[3]):
+                found.append((child, m, by))
+            elif bounds:
+                walk(child, matrix, box, by)
+    for move in moves:
+        walk(root, (1, 0, 0, 1, 0, 0), move["box"], move["by"])
+    for child, m, by in found:
+        # the shift in the parent's own units, ahead of the child's transform
+        a, b, c, d = m[:4]
+        det = a * d - b * c
+        tx, ty = (d * by[0] - c * by[1]) / det, (a * by[1] - b * by[0]) / det
+        child.set("transform",
+                  f"translate({tx:.4f} {ty:.4f}) {child.get('transform') or ''}".strip())
+
+
+def _mark(root, marks, transform=None) -> None:
     """Print on the keys what the guide's drawing leaves off: the 1100's is drawn
     blank, and the 900's colour keys are drawn black. Each mark is a shape, {"d"} in the
     drawing's points, filled in black or its "fill" colour and outlined with "stroke" - a
     width; a label is its letters' outlines, named by "label"."""
-    layer = ET.SubElement(root, NS + "g", {"id": "afterglow-marks", "fill": INK})
+    # a stretched drawing's marks carry the stretch themselves, outside it: the keys
+    # view paints this layer again by its own bounds, which leave out a parent's
+    # transform
+    layer = ET.SubElement(root, NS + "g", {"id": "afterglow-marks", "fill": INK,
+                                           **({"transform": transform} if transform else {})})
     for mark in marks:
         if "text" in mark:
             # a label is its letters' outlines (a "d" mark), never text: a PC without the
@@ -221,31 +253,90 @@ def _mark(root, marks) -> None:
             raise SystemExit(f"mark {mark['text']!r} is text; give its outline as a d mark")
         outlined = mark.get("stroke")
         fill = mark.get("fill") or ("none" if outlined else INK)
+        # "colour" strokes an outline in a colour of its own: the Xbox 360's Y, X, A and
+        # B rings, open inside so a lit key's tint shows through the layer painted over it
         ET.SubElement(layer, NS + "path", {
             "d": mark["d"], "fill": fill,
-            **({"stroke": INK, "stroke-width": str(outlined),
+            **({"stroke": mark.get("colour", INK), "stroke-width": str(outlined),
                 "stroke-linecap": "round", "stroke-linejoin": "round"}
                if outlined else {})})
 
 
+def _flatten(root, colour) -> None:
+    """Paint what a gradient shades - the 5xx guides' case - in one ``colour``: the
+    editors tint keys over the drawing, and a shaded case reads as tinted. The guide
+    shades a rectangle clipped to the case, and the editors' renderer (Qt's) ignores
+    clipping, which left the rectangle's corners white past the case's rounded ends: the
+    shape takes its clip's own outline instead."""
+    clips = {node.get("id"): node for node in root.iter(NS + "clipPath")}
+
+    def outline_of(clip_ids):
+        for ident in clip_ids:                       # the innermost clip first
+            clip = clips.get(ident)
+            path = (next((c for c in clip if c.tag == NS + "path"), None)
+                    if clip is not None else None)
+            if path is not None and "C" in path.get("d", "") and not path.get("transform"):
+                return path.get("d")
+        return None
+
+    def walk(parent, clip_ids):
+        for child in parent:
+            if child.tag == NS + "defs":
+                continue
+            inner = clip_ids
+            match = re.fullmatch(r"url\(#([^)]+)\)", child.get("clip-path") or "")
+            if match:
+                inner = [match.group(1)] + clip_ids
+            for attribute in ("fill", "stroke"):
+                if (child.get(attribute) or "").startswith("url("):
+                    child.set(attribute, colour)
+                    shape = outline_of(inner) if attribute == "fill" else None
+                    if shape and child.tag == NS + "path" and not child.get("transform"):
+                        child.set("d", shape)
+            walk(child, inner)
+    walk(root, [])
+
+
+def _stretch(root, origin, factors) -> str:
+    """Scale everything drawn by ``factors`` (x, y) from ``origin``: the 5xx guides drew
+    their remote 10% narrower than it is, every round key an upright oval. Key places in
+    `art.json` are in the stretched drawing's points."""
+    (x, y), (sx, sy) = origin, factors
+    matrix = f"matrix({sx} 0 0 {sy} {x - x * sx:.4f} {y - y * sy:.4f})"
+    layer = ET.Element(NS + "g", {"transform": matrix})
+    for child in [c for c in root if c.tag != NS + "defs"]:
+        root.remove(child)
+        layer.append(child)
+    root.append(layer)
+    return matrix
+
+
 INK = "#231f20"                      # the guides' own black
 def cut(page_svg: Path, region, out: Path, drop=(), recolour=None, screen=None,
-        marks=(), erase=()) -> None:
+        marks=(), erase=(), flat=None, stretch=None, move=()) -> None:
     x, y, width, height = region
     tree = ET.parse(page_svg)
     root = tree.getroot()
     _keep_inside(root, (1, 0, 0, 1, 0, 0), (x, y, x + width, y + height))
     if erase:
         _erase(root, erase)
+    if move:
+        _move(root, move)
     _restyle(root, drop, recolour)
+    if flat:
+        _flatten(root, flat)
     if screen:
         _blank(root, screen)
-    if marks:
-        _mark(root, marks)
     _drop_unused(root)
-    root.set("viewBox", f"{x} {y} {width} {height}")
-    root.set("width", f"{width}pt")
-    root.set("height", f"{height}pt")
+    matrix = None
+    if stretch:
+        matrix = _stretch(root, (x, y), stretch)
+        width, height = width * stretch[0], height * stretch[1]
+    if marks:
+        _mark(root, marks, matrix)
+    root.set("viewBox", f"{x} {y} {width:g} {height:g}")
+    root.set("width", f"{width:g}pt")
+    root.set("height", f"{height:g}pt")
     out.parent.mkdir(parents=True, exist_ok=True)
     tree.write(out, encoding="utf-8", xml_declaration=True)
 
@@ -269,7 +360,8 @@ def main(argv=None):
             out = folder / "art.svg"
             cut(page, source["region"], out, source.get("drop", ()),
                 {k.lower(): v for k, v in (source.get("recolour") or {}).items()},
-                source.get("screen"), source.get("marks", ()), source.get("erase", ()))
+                source.get("screen"), source.get("marks", ()), source.get("erase", ()),
+                source.get("flat"), source.get("stretch"), source.get("move", ()))
         print(f"wrote {out}")
 
 

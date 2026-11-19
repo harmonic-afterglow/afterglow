@@ -1,0 +1,20 @@
+{
+ "schema": "afterglow-arch9-derived/1",
+ "from": "harmony-555",
+ "skin": 22,
+ "absent_scans": [
+  58,
+  61
+ ],
+ "added_scans": [],
+ "words": {
+  "Choose an activity": "Choose an Activity"
+ },
+ "evidence": {
+  "households": [
+   "44d902faf16561ac",
+   "bba8f7f0efd12684"
+  ],
+  "tool": "tools/arch9_derive_platform.py"
+ }
+}
