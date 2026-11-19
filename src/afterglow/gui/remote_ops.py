@@ -142,6 +142,22 @@ class RemoteWorker(QThread):
         target = Path(self.kwargs["path"])
         with self._remote() as remote:
             identity = remote.identity(self._on_progress)
+            # A unit that is not a remote (an RF Wireless Extender) has no
+            # configuration region to read: what it hands over is saved instead.
+            from .. import extender_dump
+            regions = extender_dump.regions_for(identity.get("skin"))
+            if regions:
+                listed = remote.listed_regions()
+                if listed:
+                    self.log.emit(f"The unit lists regions {listed}")
+                regions = extender_dump.order(listed, regions)
+                self.log.emit(f"Reading {identity['model']}...")
+                saved, size = extender_dump.save(remote, target, regions, identity,
+                                                 self._on_progress, self.log.emit)
+                self.log.emit(f"Saved {saved}")
+                self.result.emit(saved)
+                self.done.emit(True, f"Read {size:,} bytes into {saved.name}.")
+                return
             if identity.get("safe_mode"):
                 self.log.emit(SAFE_MODE_NOTE)
             if identity.get("config_valid") is False:

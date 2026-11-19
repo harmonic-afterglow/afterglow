@@ -647,6 +647,9 @@ class Remote:
              [ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)),
               ctypes.POINTER(ctypes.c_uint32), LC_CALLBACK, ctypes.c_void_p]),
             ("delete_blob", None, [ctypes.POINTER(ctypes.c_uint8)]),
+            ("read_region_from_remote", ctypes.c_int,
+             [ctypes.c_uint8, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)),
+              ctypes.POINTER(ctypes.c_uint32), LC_CALLBACK, ctypes.c_void_p]),
             ("write_config_to_file", ctypes.c_int,
              [ctypes.POINTER(ctypes.c_uint8), ctypes.c_uint32, ctypes.c_char_p,
               ctypes.c_int]),
@@ -659,6 +662,15 @@ class Remote:
             ("lc_clear_trace", None, []),
             ("lc_cancel", None, [ctypes.c_int]),
             ("lc_remote_present", ctypes.c_int, []),
+            ("get_region_count", ctypes.c_int, []),
+            ("get_region_id", ctypes.c_int, [ctypes.c_int]),
+            ("read_memory_from_remote", ctypes.c_int,
+             [ctypes.c_uint32, ctypes.c_uint32,
+              ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)),
+              ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_int)]),
+            ("read_legacy_config_region", ctypes.c_int,
+             [ctypes.c_uint8, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)),
+              ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_int)]),
         ):
             function = getattr(lib, name, None)
             if function is None:
@@ -907,6 +919,66 @@ class Remote:
         finally:
             self.lib.delete_blob(blob)
         return size.value
+
+    def listed_regions(self) -> list[int]:
+        """The regions the connected unit said it has when identified, or []
+        (a remote that was not asked, or a libconcord that cannot tell)."""
+        if not hasattr(self.lib, "get_region_count"):
+            return []
+        return [self.lib.get_region_id(index)
+                for index in range(self.lib.get_region_count())]
+
+    def _read_bytes(self, call, what, *args) -> tuple[bytes, int]:
+        blob = ctypes.POINTER(ctypes.c_uint8)()
+        got = ctypes.c_uint32()
+        status = ctypes.c_int()
+        err = call(*args, ctypes.byref(blob), ctypes.byref(got), ctypes.byref(status))
+        try:
+            data = ctypes.string_at(blob, got.value) if got.value else b""
+        finally:
+            if got.value:
+                self.lib.delete_blob(blob)
+        if err and not data and not status.value:
+            self._check(err, what)
+        return data, status.value
+
+    def read_memory(self, address: int, size: int) -> tuple[bytes, int]:
+        """Bytes of an 890-family unit's memory (the Diagnostic service's
+        READ_MEMORY, from Logitech's software): (what came, the unit's status
+        where it stopped, 0 if it did not). A refusal is (b"", its status);
+        RemoteError if the unit did not answer, NotAvailable if this libconcord
+        cannot do it."""
+        if not hasattr(self.lib, "read_memory_from_remote"):
+            raise NotAvailable("This build of libconcord cannot read memory.")
+        return self._read_bytes(self.lib.read_memory_from_remote,
+                               f"reading memory at {address:06X}", address, size)
+
+    def read_legacy_config(self, region: int = 0) -> tuple[bytes, int]:
+        """A configuration region in the older protocol Harmony Remote 6.0
+        used (READ_CONFIG_REGION; 6.0 wrote every configuration to region 0)."""
+        if not hasattr(self.lib, "read_legacy_config_region"):
+            raise NotAvailable("This build of libconcord cannot read that way.")
+        return self._read_bytes(self.lib.read_legacy_config_region,
+                               f"reading configuration region {region} (6.0 protocol)",
+                               region)
+
+    def read_region(self, region: int, on_progress=None) -> bytes:
+        """One memory region, as the remote hands it over: for a unit whose
+        configuration is not the user configuration region a remote has (an RF
+        Wireless Extender). Raises RemoteError if the unit refuses it, or
+        NotAvailable if this libconcord cannot read single regions."""
+        if not hasattr(self.lib, "read_region_from_remote"):
+            raise NotAvailable("This build of libconcord cannot read single regions.")
+        blob = ctypes.POINTER(ctypes.c_uint8)()
+        size = ctypes.c_uint32()
+        err = self.lib.read_region_from_remote(
+            region, ctypes.byref(blob), ctypes.byref(size), self._callback(on_progress),
+            None)
+        self._check(err, f"reading region {region}")
+        try:
+            return ctypes.string_at(blob, size.value)
+        finally:
+            self.lib.delete_blob(blob)
 
     def read_config(self, on_progress=None) -> bytes:
         """The raw configuration blob, with no envelope around it.

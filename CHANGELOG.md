@@ -6,8 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Reading a Harmony RF Wireless Extender.** Plugged in by USB, an extender (the
+  890's, 1000's and 1100's) is identified, and Read saves what it hands over to a
+  `.zip` - what supporting it starts from. It tries the three read-only ways in
+  Logitech's own software: the unit's memory, its configuration the way Harmony Remote
+  6.0 read it, and the regions it lists. Nothing is written to it.
+
 ### Fixed
 
+- **A Harmony 890 is waited for when you identify it**, as other remotes are: one asleep
+  failed at once with "Error while writing to the remote".
 - **Harmony One: a translation longer than the English is no longer cut short.** Help's
   questions, the Remote Assistant's notes, the firmware's notices, Screen Sensitivity's
   confirmation and the Tutorial's pictured question take more lines where the screen has

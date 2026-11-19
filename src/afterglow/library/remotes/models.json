@@ -89,7 +89,8 @@
     "20": {
       "model": "Harmony 891",
       "manufacturer": "HAR",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "read_regions": [8, 9, 7]
     },
     "21": {
       "model": "Harmony 892",
@@ -109,7 +110,8 @@
     "24": {
       "model": "Harmony 896",
       "manufacturer": "HAR",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "read_regions": [8, 9, 7]
     },
     "25": {
       "model": "Harmony 897",

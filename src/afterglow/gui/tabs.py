@@ -1054,6 +1054,12 @@ class UpdateTab(QWidget):
         add it, so that case asks for the file rather than only failing to recognise it.
         """
         from .. import ezhex, remotes
+        if Path(path).suffix == ".zip":            # an RF extender's memory and regions
+            self.log_box.append(
+                "\nAfterglow cannot use this unit's memory yet. The file you just saved is "
+                "what supporting it starts from - please share it with the project (GitHub "
+                "or Discord), with the log, if you are happy to.")
+            return
         try:
             header = ezhex.read(Path(path).read_bytes()).header
             profile = remotes.identify(header)
