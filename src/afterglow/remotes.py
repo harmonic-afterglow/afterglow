@@ -141,7 +141,7 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
     if not isinstance(interface.get("favourites_button", ""), str):
         raise ValueError(f"{profile_id}: interface.favourites_button is the label of the "
                          "button an activity's screen opens its favourites with")
-    for flag in ("favourite_logos", "screen_icons"):
+    for flag in ("favourite_logos", "screen_icons", "activity_layouts"):
         if not isinstance(interface.get(flag, True), bool):
             raise ValueError(f"{profile_id}: interface.{flag} is true or false")
     languages = interface.get("languages")
@@ -301,6 +301,13 @@ class RemoteProfile:
         """Whether a button on an activity's screen can carry one of the remote's icons;
         the 650's and 700's draw their labels alone."""
         return bool(self.interface.get("screen_icons", True))
+
+    @property
+    def activity_layouts(self) -> bool:
+        """Whether an activity here has Sound and Picture layouts - the 5xx's and the
+        688's Sound and Picture keys, which turn its keys and screen over to one device
+        for a while (activity_layouts) - so its editor offers them beside its own."""
+        return bool(self.interface.get("activity_layouts", False))
 
     @property
     def favourites_button(self) -> str | None:

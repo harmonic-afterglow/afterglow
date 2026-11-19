@@ -1,5 +1,5 @@
-"""The GSPM family's shared code: what the Harmony One, the 800 and the arch-14 remotes
-(600, 650, 665, 700) read and write alike.
+"""The GSPM family's shared code: what the Harmony One, the 800, the arch-14 remotes
+(600, 650, 665, 700) and arch 9, GSPM's parent (the 5xx), read and write alike.
 
 The three backends began as copies of the One's, and a dozen of their modules stayed the
 same. Each lives here once, in `shared/` - source, not a package: it is never imported on

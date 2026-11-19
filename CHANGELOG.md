@@ -23,6 +23,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     (Samsung's 36-bit, the Flirc), RC6 and Foxtel's - a Samsung BD-F6500, a Flirc and
     a Foxtel that matched nothing now find their model.
 
+- **New: the Harmony 510, 515, 520, 525, 550, 555 and Harmony for Xbox 360, experimental.**
+  Afterglow reads every 5xx configuration and builds and writes new ones from a project,
+  with what these remotes do:
+  - Logitech's own layout: the Activities menu, the Devices list, each device's commands
+    four to a page, Starting and Stopping Activity, the battery warning, and Help asking
+    about each device and input as Logitech's does. MyHarmony's backlight time is kept.
+  - Sound and Picture on the 550 and 555: each activity has its own Sound and Picture
+    layouts, and a device's own screen opens its own. They are read from a remote and
+    built as they were; the editor does not change them yet.
+  - Editor pages for devices and activities, with each model's keys drawn from
+    Logitech's user guides and photos of the remotes.
+  - The 552 and 522 are the 555 and 525 under their own model numbers, and the 510 is the
+    515's: a build for one keeps its number.
+  - A configuration read back builds again with the same devices, activities, keys and
+    Help.
+  - Every word they show comes from one translatable catalogue, English for now: a remote
+    set to another language shows its own menus in English after a write, while device
+    and activity names stay as they are.
+  - The 520 builds on the same ground as the 525, 550 and 555, whose builds have run on
+    the remotes, but no build has run on a 520 yet. On the Xbox 360 a key test has run,
+    and every key is where Afterglow puts it.
+  - A device's own Sound and Picture screens show its sound or picture settings, most
+    often none, as Logitech's do. Not done yet: a gap Logitech left on a device's page is
+    closed up.
 - **Every IR protocol IRDB and Flipper-IRDB use.** A command in a protocol Afterglow
   had no definition for was left out of the device, and IRDB's most common protocol,
   plain "NEC", was one of them: only half of IRDB's commands could be added. Afterglow
