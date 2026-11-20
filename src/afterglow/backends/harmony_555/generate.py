@@ -3,7 +3,8 @@
 The scaffold carries the platform as a model (tools/arch9_extract_platform.py): the
 firmware's own screens and the frame every household is built in (platform/screens.json),
 the wiring that connects the firmware's events to them (platform/wiring.json) and the
-pictures (images/). A build numbers the household's screens, objects, contexts and
+pictures (images/) - the pictures and typeface a theme's where a theme is given
+(artwork.py). A build numbers the household's screens, objects, contexts and
 variables after the platform's, draws every page in Logitech's band shape with the
 scaffold's typeface, and lays the whole out with link.Pieces, so every pointer is the
 build's own.
@@ -17,8 +18,8 @@ import re
 import struct
 from pathlib import Path
 
-from . import activities as activities_module, catalogue, devices as devices_module, \
-    drawing, gspm, infrared, keys, pixels, records, typeface
+from . import activities as activities_module, artwork, catalogue, \
+    devices as devices_module, drawing, gspm, infrared, keys, pixels, records, typeface
 from ... import activity_layouts
 from .link import Pieces
 from .structures import (
@@ -105,17 +106,6 @@ def load_json(directory: Path, name: str, schema: str) -> dict:
     return data
 
 
-def load_picture(path: Path) -> list[list[int]]:
-    from ... import imaging
-
-    image = imaging.decode(path.read_bytes())
-    rows = []
-    for row in image["rows"]:
-        rows.append([1 if (pixel[0] + pixel[1] + pixel[2]) < 384 and pixel[3] >= 128 else 0
-                     for pixel in row])
-    return rows
-
-
 def own_skin(project: dict, profile) -> int | None:
     """The skin a build writes when the remote is sold under another of its profile's
     numbers - the 510 a 515's - as its project says
@@ -157,7 +147,8 @@ BACKLIGHT_SECONDS = (2, 120)
 class Image:
     """One image being built."""
 
-    def __init__(self, project: dict, directory: Path, stamp_fields: tuple, words=None):
+    def __init__(self, project: dict, directory: Path, stamp_fields: tuple, words=None,
+                 theme=None):
         self.project, self.directory = project, Path(directory)
         self.derived = None
         if (self.directory / DERIVED_FILE).is_file():
@@ -169,9 +160,12 @@ class Image:
         self.english_words = dict((self.derived or {}).get("words") or {})
         self.wiring = load_json(self.directory, WIRING_FILE, WIRING_SCHEMA)
         model = load_json(self.directory, SCREENS_FILE, SCREENS_SCHEMA)
-        self.pictures = {role: pixels.encode_picture(load_picture(self.directory / item["file"]))
+        self.art = artwork.Art(self.directory, theme)
+        self.pictures = {role: pixels.encode_picture(self.art.picture(item["file"]))
                          for role, item in model["pictures"].items()}
-        self.face = typeface.load(str(self.directory))
+        self.face = typeface.load(str(self.art.face_directory()))
+        if self.art.face_directory() != self.directory:
+            self.face.marks = {}
         self.stamp_fields = stamp_fields
         wiring = self.wiring
         self.screens = [_screen(screen) for screen in model["screens"]]
@@ -194,7 +188,7 @@ class Image:
         self.lead = [tuple(atom) for atom in wiring["lead"]]
         self.names = [tuple(name) for name in wiring["names"]]
         for role, name in HOUSEHOLD_PICTURES.items():
-            self.pictures[role] = pixels.encode_picture(load_picture(self.directory / name))
+            self.pictures[role] = pixels.encode_picture(self.art.picture(name))
         if self.derived:
             self.derive(self.derived)
         from ... import remotes
@@ -1668,19 +1662,21 @@ def build_stamp(now=None) -> tuple:
     return (now.second, now.minute, now.hour, now.day - 1, now.month - 1, now.year)
 
 
-def build(project: dict, *, directory=None, stamp_fields=None, words=None) -> bytes:
+def build(project: dict, *, directory=None, stamp_fields=None, words=None,
+          theme=None) -> bytes:
     from ... import paths
 
     directory = Path(directory or paths.scaffolds("harmony-555"))
     stamp_fields = stamp_fields or (0, 0, 0, 0, 0, 2026)
-    return build_fitting(project, directory, stamp_fields, words)[1]
+    return build_fitting(project, directory, stamp_fields, words, theme)[1]
 
 
-def build_fitting(project: dict, directory, stamp_fields, words=None) -> tuple:
+def build_fitting(project: dict, directory, stamp_fields, words=None, theme=None) -> tuple:
     """The image, and its bytes, with as much as fits: built whole, then leaving out
-    Afterglow's extras in turn (LEAN) - each said in the image's ``skipped`` notes."""
+    Afterglow's extras in turn (LEAN) - each said in the image's ``skipped`` notes. The
+    pictures and typeface are `theme`'s (a folder) where it has them."""
     for left_out in LEAN:
-        image = Image(project, Path(directory), stamp_fields, words)
+        image = Image(project, Path(directory), stamp_fields, words, theme)
         image.left_out = set(left_out)
         try:
             payload = image.build()

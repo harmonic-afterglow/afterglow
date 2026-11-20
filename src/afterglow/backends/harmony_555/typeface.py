@@ -31,6 +31,8 @@ MARKS = {"0": ((5, 2), (4, 1))}
 class Typeface:
     def __init__(self, directory: Path):
         self.face = bdf.Bitmap.read(Path(directory) / FACE)
+        # Galmuri's slashed zero; a theme's typeface draws its letters as they are
+        self.marks = MARKS
 
     def has(self, character: str) -> bool:
         return self.face.glyph(character) is not None
@@ -51,7 +53,7 @@ class Typeface:
                 x = glyph["x"] + column
                 if pixel and 0 <= x < width:
                     out[y][x] = 1
-        for above, x in MARKS.get(character, ()):
+        for above, x in self.marks.get(character, ()):
             if 0 <= baseline - above < height:
                 out[baseline - above][x] = 1
         return out

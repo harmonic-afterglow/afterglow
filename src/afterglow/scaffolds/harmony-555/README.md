@@ -14,9 +14,15 @@ against.
   a household is built in: the Remote Assistant, Devices, "Nothing to do", "Stopping
   Activity", the Activities menu, the welcome and "all your devices should be off" screens,
   the battery warnings and the question that hides the Assistant.
-- `images/picture-*.png`: the pictures those pages draw, one bit a pixel (black is ink).
+- `images/*.png`: the pictures those pages draw, by what they are (`assets.json`, each
+  with the box it is drawn in), and `images/page.png`, a household page's backdrop.
 - `fonts/galmuri/GalmuriAfterglow7.bdf.gz`: the typeface every font slot is drawn in, on
   the remote's eleven-row grid (`backends/harmony_555/typeface.py`).
+
+The pictures and the typeface are what a theme can change (`THEME.md`; `assets.json`
+lists them, and the other 5xx scaffolds' point here). The extractor writes the pictures
+as `images/picture-<n>.png`, numbered as the configuration it reads holds them; they are
+renamed here by what they draw, and `platform/screens.json` names each file.
 
 The three platform files come from Logitech's empty 555 configuration - the one its
 software writes for a remote with no device or activity - read by:

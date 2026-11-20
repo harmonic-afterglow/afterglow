@@ -97,7 +97,7 @@
   },
   "properties": {},
   "interface": {
-    "_comment": "The 650's pages, less what a 5xx has not: no favourites, no device screen page (a device's page is its labelled commands, in order), the timing its builder uses. The screen draws labels alone. Languages are English and the ones the Harmony 5xx backend has a catalogue for (backends/harmony_555/locale).",
+    "_comment": "The 650's pages, less what a 5xx has not: no favourites, no device screen page (a device's page is its labelled commands, in order), the timing its builder uses. The screen draws labels alone, over pictures and in a typeface a theme can change (scaffolds/harmony-555/THEME.md). Languages are English and the ones the Harmony 5xx backend has a catalogue for (backends/harmony_555/locale).",
     "tabs": [
       "devices",
       "activities",
@@ -129,7 +129,8 @@
     ],
     "settings": [
       "output_file",
-      "language"
+      "language",
+      "theme"
     ],
     "languages": [
       [

@@ -35,6 +35,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - Editor pages for devices and activities, with each model's keys drawn from
     Logitech's user guides and photos of the remotes.
   - The 510 is the 515 under its own model number: a build for one keeps its number.
+  - Themes: a 5xx's backdrops, the line under its titles and its typeface can be
+    changed, as any PNG and a BDF font, in a theme picked under Remote Settings. The
+    screen has one colour, so a picture is drawn in black and white. A 5xx's
+    configuration holds no logo or other picture to change.
   - A configuration read back builds again with the same devices, activities, keys and
     Help.
   - Every word they show comes from one translatable catalogue, English for now: a remote
