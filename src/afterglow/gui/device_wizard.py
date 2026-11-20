@@ -903,6 +903,14 @@ def common_capture(first: dict, second: dict, *, share: float = 0.2,
     return dict(first, pulses_us=[pulse for frame in kept for pulse in frame])
 
 
+def learned_signal(capture: dict, library=None) -> dict:
+    """What a learned key is kept as: the protocol command when a protocol Afterglow
+    knows renders the capture back - a code then repeats while the key is held, as the
+    protocol does - and the recording itself when none does."""
+    from .. import ir_recognise
+    return ir_recognise.recognise(capture, library) or capture
+
+
 def same_capture(first: dict, second: dict, **tolerance) -> bool:
     """Whether two learned captures are the same code; see ``common_capture``."""
     return common_capture(first, second, **tolerance) is not None
@@ -1396,17 +1404,16 @@ class CommandsPage(QWizardPage):
             if again != QMessageBox.StandardButton.Retry:
                 return
 
+        signal = learned_signal(capture)
         self._learned = getattr(self, "_learned", {})
-        self._learned[name] = capture
+        self._learned[name] = signal
         self._add_row(name, name, "", "", None)
         self._refresh_pwr_combo()
         self.learned.emit()
-        pairs = len(capture["pulses_us"]) // 2
-        QMessageBox.information(
-            self, "Learned",
-            f"{name}: {pairs} mark/space pairs at {capture['carrier_hz']} Hz.\n\n"
-            "It is stored as a recorded waveform, so it will be written into the "
-            "remote's capture table rather than generated from a protocol.")
+        # One word on how it is kept; the pairs and the carrier are in the log.
+        kind = "protocol" if signal.get("kind") == "protocol" else "waveform"
+        QMessageBox.information(self, "Learned",
+                                f"Learning was successful. Saved as {kind}.")
 
     def learned_captures(self) -> dict:
         """Codes learned in this dialog, for the device spec."""

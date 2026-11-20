@@ -124,3 +124,37 @@ def test_two_presses_that_differ_are_not_kept(qapp_or_skip, monkeypatch):
     editor.page_cmds._learn_command()
     assert asked == ["The two presses differ"]
     assert "X" not in [row[0] for row in editor.page_cmds.get_commands()]
+
+
+def test_a_learned_key_a_known_protocol_renders_is_kept_as_that_protocol():
+    # A tester's key came in as three 34-pair frames: Samsung32, held a little.
+    from afterglow import ir_protocol, ir_signal
+    from afterglow.gui.device_wizard import learned_signal
+    sent = ir_signal.protocol_signal("samsung32", {"address": 7, "command": 2}, name="Up")
+    frame = ir_protocol.render(sent)["pulses_us"]
+    capture = concord.learned_capture(38145, [abs(p) for p in frame * 3], "Up")
+    kept = learned_signal(capture)
+    assert kept["kind"] == "protocol"
+    assert (kept["protocol"], kept["parameters"]) == ("samsung32", sent["parameters"])
+    noise = concord.learned_capture(38000, [900, 450, 300, 1200, 700, 20000], "X")
+    assert learned_signal(noise) == noise
+
+
+def test_the_learned_box_says_protocol_or_waveform(qapp_or_skip, monkeypatch):
+    from afterglow import ir_protocol, ir_signal
+    from afterglow.gui import device_wizard, remote_ops
+    from afterglow.qt.QtWidgets import QInputDialog, QMessageBox
+    sent = ir_signal.protocol_signal("samsung32", {"address": 7, "command": 2}, name="Up")
+    frame = ir_protocol.render(sent)["pulses_us"]
+    presses = iter([concord.learned_capture(38145, [abs(p) for p in frame * 3], "Up"),
+                    concord.learned_capture(38150, [abs(p) for p in frame * 2], "Up")])
+    told = []
+    monkeypatch.setattr(concord, "available", lambda: True)
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Up", True))
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: told.append(a[2]))
+    monkeypatch.setattr(remote_ops, "run_with_progress",
+                        lambda *a, **k: (True, "", next(presses)))
+    page = device_wizard.CommandsPage(_device())
+    page.learn_btn.click()
+    assert told == ["Learning was successful. Saved as protocol."]
+    assert page.learned_captures()["Up"]["protocol"] == "samsung32"
