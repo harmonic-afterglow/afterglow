@@ -18,7 +18,7 @@ import shutil
 import struct
 import tempfile
 
-from ... import activity_layouts, ezhex, payloads
+from ... import activity_layouts, ezhex, payloads, themes
 from ..contracts import BuildResult, ImportResult
 from . import command_index, font_index, gspm, importing, inventory, keys, labels
 from .generate import LAYOUTS
@@ -173,15 +173,8 @@ def build_project(project, profile, context) -> BuildResult:
         raise ValueError(f"Afterglow cannot build for the {profile.model} yet: its platform "
                          "has not been read from an empty configuration of its own")
     settings = dict(project.get("settings") or {}, remote=profile.id)
-    theme = settings.get("theme_folder")
-    folder = None
-    if theme:
-        folder = context.find_theme(profile.id, theme) or Path(theme)
-        if not folder.is_absolute():
-            folder = Path(context.root) / folder
-        if not (folder / "assets.json").is_file():
-            raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
-                             "folder, and no theme folder of that name")
+    folder = themes.build_folder(settings, profile.id, context)
+    theme = settings.get("theme_folder") if folder else None
     context.log(f"Building for {profile.model}"
                 + (f" with the theme {theme!r}" if theme else ""))
     image, payload = generate.build_fitting(dict(project, settings=settings), Path(directory),
