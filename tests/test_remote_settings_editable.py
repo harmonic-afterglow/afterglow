@@ -106,10 +106,12 @@ def test_the_timing_page_offers_what_the_remote_s_builder_uses(qapp_or_skip):
     from afterglow.gui.device_wizard import DeviceEditor
 
     one = {"settings": {"remote": "harmony-one"}, "devices": [], "activities": []}
-    page = DeviceEditor([], None, existing={}, project=one).page_timing
+    editor = DeviceEditor([], None, existing={}, project=one)
+    page = editor.page_timing
     form = page.layout()
     assert form.isRowVisible(page.pwr_delay) and form.isRowVisible(page.inter_key)
     assert not form.isRowVisible(page.pre_sil) and not form.isRowVisible(page.hold_key)
     nine = {"settings": {"remote": "harmony-900"}, "devices": [], "activities": []}
-    page = DeviceEditor([], None, existing={}, project=nine).page_timing
+    editor = DeviceEditor([], None, existing={}, project=nine)
+    page = editor.page_timing
     assert page.layout().isRowVisible(page.hold_key)
