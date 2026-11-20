@@ -118,7 +118,7 @@ def load_picture(path: Path) -> list[list[int]]:
 
 def own_skin(project: dict, profile) -> int | None:
     """The skin a build writes when the remote is sold under another of its profile's
-    numbers - the 552 a 555's, the 522 a 525's, the 510 a 515's - as its project says
+    numbers - the 510 a 515's - as its project says
     (``settings.skin``, which an import keeps); None for the profile's own. A skin the
     profile does not list is ignored: a project moved to another model keeps none."""
     skin = (project.get("settings") or {}).get("skin")

@@ -1,5 +1,5 @@
 {
-  "_comment": "The 525's (and 522's)'s face, which no guide draws: the 510's guide drawing (page 5, tools/remote_art.py; the 525's own, its guide being the same book) put right to the The 525's (and 522's) as photographed - Guide and Menu change places (`source.move`) and the keys over the d-pad print Mute and Prev, not icons (`source.erase`, their words as outlines in `source.marks`). Widened by 1.1 and its case painted white as the 510's (harmony-515); `keys` in the widened drawing's points. The colour keys are drawn blank; `source.marks` prints their colours.",
+  "_comment": "The 525's face, which no guide draws: the 510's guide drawing (page 5, tools/remote_art.py; the 525's own, its guide being the same book) put right to the 525 as photographed - Guide and Menu change places (`source.move`) and the keys over the d-pad print Mute and Prev, not icons (`source.erase`, their words as outlines in `source.marks`). Widened by 1.1 and its case painted white as the 510's (harmony-515); `keys` in the widened drawing's points. The colour keys are drawn blank; `source.marks` prints their colours.",
   "svg": "art.svg",
   "view": [
     89.0,

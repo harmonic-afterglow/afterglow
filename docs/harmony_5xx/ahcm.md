@@ -1,6 +1,6 @@
 # Harmony 5xx `AHCM` configuration (architecture 9)
 
-The Harmony 510, 515, 520, 522, 525, 550, 552, 555 and the Harmony for Xbox 360 are one
+The Harmony 510, 515, 520, 525, 550, 555 and the Harmony for Xbox 360 are one
 architecture, 9. This document says where its configuration image differs from the arch-14
 image the 650 and 700 use ([gspm.md](../harmony_650_700/gspm.md)), which is its descendant:
 everything not named here reads as it does there.
@@ -17,7 +17,7 @@ whose findings this document uses with attribution where it says so.
 |---|---|
 | architecture (`PROTOCOL`) | 9 |
 | flash | `0xFF:0x12`, a 512 KiB serial part |
-| skins | 18 (520), 22 (525), 36 (Xbox 360), 41 (550), 46 (522), 48 (555), 51 (552), 67 (515), 68 (510) |
+| skins | 18 (520), 22 (525), 36 (Xbox 360), 41 (550), 48 (555), 67 (515), 68 (510) |
 | section 1 | `09 09 <skin> 0d 00 00 00` |
 
 ## Outer structure

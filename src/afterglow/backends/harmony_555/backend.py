@@ -1,5 +1,5 @@
-"""The arch-9 backend (the Harmony 510, 515, 520, 522, 525, 550, 552, 555 and the Harmony
-for Xbox 360): read a configuration back as a project, and build one from a project.
+"""The arch-9 backend (the Harmony 510, 515, 520, 525, 550, 555 and the Harmony for
+Xbox 360): read a configuration back as a project, and build one from a project.
 
 Reading an image validates it and recovers what is proven of its devices and activities,
 keeping the native payload unchanged. A build generates every byte from the project and
@@ -128,7 +128,7 @@ def import_project(source, profile, context) -> ImportResult:
                      "learned")
     notes += [f"could not read the image's {item}" for item in image.unreadable]
     settings = {"remote": profile.id, **importing.remote_settings(image)}
-    # a remote sold under another of the profile's numbers keeps its own (a 552's 51)
+    # a remote sold under another of the profile's numbers keeps its own (a 510's 68)
     from .generate import SKIN_AT
     skin = payload[gspm.section_ranges(payload)[1][0] + SKIN_AT]
     if skin in profile.other_skins:
@@ -184,7 +184,7 @@ def build_project(project, profile, context) -> BuildResult:
         output = output.with_suffix(".EZHex")
     try:
         carrier.unpack(payload, str(work))
-        # the header names the remote as the configuration does: a 552 as a 552
+        # the header names the remote as the configuration does: a 510 as a 510
         skin = generate.own_skin(project, profile)
         ezhex.pack_standalone(str(work), str(output), profile=profile if skin is None
                               else dataclasses.replace(profile, skin=skin))

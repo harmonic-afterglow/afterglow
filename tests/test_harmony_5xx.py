@@ -987,19 +987,30 @@ def test_a_derived_model_builds_on_the_555s_platform_with_its_own_skin_and_keys(
 
 
 def test_a_remote_sold_under_another_skin_keeps_its_own_and_no_other(tmp_path):
+    from afterglow import paths, payloads
     from afterglow.backends.harmony_555 import generate, gspm
 
     def skin_of(payload):
         return payload[gspm.section_ranges(payload)[1][0] + generate.SKIN_AT]
-    # a 552 is a 555 under skin 51: its project says so, and its build writes it
-    project = dict(_household(), settings={"remote": "harmony-555", "skin": 51})
-    image = _built(project)
-    assert skin_of(image) == 51
-    assert _imported(image, tmp_path)["settings"]["skin"] == 51
+
+    def built(project):
+        return generate.build(project, directory=paths.scaffolds("harmony-515"),
+                              stamp_fields=(48, 27, 21, 27, 9, 2020))
+    # a 510 is a 515 under skin 68: its project says so, and its build writes it
+    project = dict(_household(), settings={"remote": "harmony-515", "skin": 68})
+    image = built(project)
+    assert skin_of(image) == 68
+    source = tmp_path / "built"
+    payloads.get("blob").unpack(image, str(source))
+    read = backend.import_project(str(source), remotes.get("harmony-515"), {}).project
+    assert read["settings"]["skin"] == 68
     # a skin the remote is not sold under is never written: a project moved elsewhere
-    assert skin_of(_built(dict(project, settings={"remote": "harmony-555",
-                                                  "skin": 22}))) == 48
-    assert skin_of(_built(_household())) == 48
+    assert skin_of(built(dict(project, settings={"remote": "harmony-515",
+                                                 "skin": 48}))) == 67
+    assert skin_of(built(dict(_household(), settings={"remote": "harmony-515"}))) == 67
+    # the 522 and the Telus remote (46, 51) are no profile's: no build writes them
+    assert {46, 51}.isdisjoint(skin for profile in remotes.load_all()
+                               for skin in profile.skins)
 
 
 def test_the_515s_platform_is_the_555s_with_its_own_key_handling_grafted():
