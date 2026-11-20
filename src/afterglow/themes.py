@@ -11,10 +11,16 @@ replaced when the scaffold has changed since, so a copy made from it has every p
 default draws. Changes made to `Example` itself are therefore not kept. A
 project names its theme by folder name, so a project moved to another computer finds the
 theme of that name there.
+
+A scaffold's manifest may narrow the example to the files a theme can change
+(`theme_files`, paths in the scaffold), where the rest of the scaffold is the platform a
+build takes from the scaffold whatever the theme; and a scaffold derived from another
+names the one its example comes from (`theme_from`, a scaffold beside it).
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 from pathlib import Path
 
@@ -57,14 +63,32 @@ def path(remote_id: str, name: str) -> Path | None:
     return candidate if (candidate / MANIFEST).is_file() else None
 
 
-def fingerprint(scaffold: Path) -> str:
-    """Every file of a scaffold, by path and contents."""
+def fingerprint(scaffold: Path, files=None) -> str:
+    """Every file of a scaffold - or those of `files` it has - by path and contents."""
     digest = hashlib.sha256()
-    for item in sorted(scaffold.rglob("*")):
+    items = (sorted(scaffold.rglob("*")) if files is None
+             else [scaffold / name for name in sorted(files)])
+    for item in items:
         if item.is_file() and "__pycache__" not in item.parts and item.name != STAMP:
             digest.update(item.relative_to(scaffold).as_posix().encode() + b"\0")
             digest.update(hashlib.sha256(item.read_bytes()).digest())
     return digest.hexdigest()
+
+
+def example_source(scaffold: Path) -> tuple[Path, list | None]:
+    """The folder a remote's example is copied from and the files copied (None: all of
+    it), as the scaffold's manifest says (`theme_from`, `theme_files`)."""
+    for _ in range(4):                       # a chain of derivations, never a loop
+        try:
+            manifest = json.loads((scaffold / MANIFEST).read_text("utf-8"))
+        except (OSError, ValueError):
+            return scaffold, None
+        source = manifest.get("theme_from")
+        if not source:
+            files = manifest.get("theme_files")
+            return scaffold, (None if files is None else sorted({MANIFEST, *files}))
+        scaffold = scaffold.parent / Path(source).name
+    return scaffold, None
 
 
 def seed_examples() -> list[str]:
@@ -81,7 +105,8 @@ def seed_examples() -> list[str]:
         if scaffold is None:
             continue
         target = folder(profile.id) / EXAMPLE
-        wanted = fingerprint(Path(scaffold))
+        source, files = example_source(Path(scaffold))
+        wanted = fingerprint(source, files)
         stamp = target / STAMP
         present = (target / MANIFEST).is_file()
         try:
@@ -90,7 +115,7 @@ def seed_examples() -> list[str]:
             kept = None
             if target.exists():
                 edited = not stamp.is_file() or \
-                    fingerprint(target) != stamp.read_text("utf-8").strip()
+                    fingerprint(target, files) != stamp.read_text("utf-8").strip()
                 if edited:
                     day = datetime.date.today().isoformat()
                     kept = target.with_name(f"{EXAMPLE} (yours, {day})")
@@ -100,7 +125,12 @@ def seed_examples() -> list[str]:
                     target.rename(kept)
                 else:
                     shutil.rmtree(target)
-            shutil.copytree(scaffold, target, ignore=shutil.ignore_patterns("__pycache__"))
+            if files is None:
+                shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__"))
+            else:
+                for name in files:
+                    (target / name).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source / name, target / name)
             stamp.write_text(wanted + "\n", "utf-8")
         except OSError as exc:
             notes.append(f"could not copy the example theme to {target}: {exc}")

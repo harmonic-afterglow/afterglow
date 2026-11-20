@@ -95,7 +95,7 @@ Importing takes your devices and activities and leaves the other remote's state 
   before writing an experimental remote
 - `Generated` - configurations Afterglow builds, which **Flash** writes
 - `Themes` - looks for the remotes whose screens can be restyled; each comes with an
-  `Example` and a `README.md` saying what to change
+  `Example` and a `README.md` saying what to change (`THEME.md` on a 5xx)
 - `Backups` - earlier versions of each project, kept every time it is saved (**File > Show
   Earlier Versions**)
 - `Library` - your own devices, and what you learn from the original remote

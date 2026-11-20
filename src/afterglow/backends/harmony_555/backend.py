@@ -160,7 +160,9 @@ def build_project(project, profile, context) -> BuildResult:
 
     The safety gate comes first: a read-only profile produces nothing. Then the model's
     scaffold: a model whose platform has not been read into one (platform/wiring.json)
-    is refused rather than given another model's.
+    is refused rather than given another model's. Its pictures and typeface are the
+    theme's the project's settings name (`theme_folder`: a theme's name in the owner's
+    Themes folder, themes.py, or a folder of its own), where the theme has them.
     """
     from . import generate
 
@@ -170,10 +172,20 @@ def build_project(project, profile, context) -> BuildResult:
                                     for name in (generate.WIRING_FILE, generate.DERIVED_FILE)):
         raise ValueError(f"Afterglow cannot build for the {profile.model} yet: its platform "
                          "has not been read from an empty configuration of its own")
-    context.log(f"Building for {profile.model}")
     settings = dict(project.get("settings") or {}, remote=profile.id)
+    theme = settings.get("theme_folder")
+    folder = None
+    if theme:
+        folder = context.find_theme(profile.id, theme) or Path(theme)
+        if not folder.is_absolute():
+            folder = Path(context.root) / folder
+        if not (folder / "assets.json").is_file():
+            raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
+                             "folder, and no theme folder of that name")
+    context.log(f"Building for {profile.model}"
+                + (f" with the theme {theme!r}" if theme else ""))
     image, payload = generate.build_fitting(dict(project, settings=settings), Path(directory),
-                                            generate.build_stamp(), None)
+                                            generate.build_stamp(), None, folder)
     validation = validate_payload(payload, profile)
     carrier = payloads.get(profile.payload)
     work = Path(tempfile.mkdtemp(prefix="arch9_build_"))

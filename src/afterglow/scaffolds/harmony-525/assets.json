@@ -1,0 +1,5 @@
+{
+  "schema": "afterglow-arch9-theme/1",
+  "_comment": "This remote draws the Harmony 555's pictures and typeface (platform/derived.json), so its themes start from the 555's (harmony-555/THEME.md).",
+  "theme_from": "harmony-555"
+}
