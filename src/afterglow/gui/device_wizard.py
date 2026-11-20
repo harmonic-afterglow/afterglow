@@ -851,19 +851,61 @@ class IdentityPage(QWizardPage):
         if t.get("model"): self.model_edit.setText(t["model"])
         self._existing = t
         self.proto_label.setText(self._protocol_text())
-def same_capture(first: dict, second: dict, *, share: float = 0.2,
-                 slack_us: int = 150) -> bool:
-    """Whether two learned captures are the same code: the same carrier within 5%, as
-    many marks and spaces, and each within ``share`` of the other or ``slack_us``. The
-    gap after the last frame is left out, since it is only how long the key was held."""
-    a, b = list(first.get("pulses_us") or []), list(second.get("pulses_us") or [])
-    if not a or len(a) != len(b):
-        return False
+# A space this long ends a frame; shorter ones are bits. ir_recognise splits at the same.
+FRAME_GAP_US = 10000
+
+
+def _capture_frames(pulses: list[int]) -> list[list[int]]:
+    """A capture's frames, each with the space that ends it."""
+    out, current = [], []
+    for pulse in pulses:
+        current.append(pulse)
+        if pulse < 0 and -pulse >= FRAME_GAP_US:
+            out.append(current)
+            current = []
+    if current:
+        out.append(current)
+    return out
+
+
+def common_capture(first: dict, second: dict, *, share: float = 0.2,
+                   slack_us: int = 150) -> dict | None:
+    """What two learned captures of one key agree on, or None when they are not the
+    same code. A key sends its frame again for as long as it is held, so two presses
+    carry a different number of frames - a tester's One learned one key as three frames,
+    then two. They agree when the carrier is within 5%, the first frames match - as
+    many marks and spaces, each within ``share`` of the other or ``slack_us`` - and so
+    do the later frames both have, up to the first that does not (a key let go mid
+    frame). The frames they agree on are kept, so a tap sends what a tap sent. The
+    space that ends a frame is left out: it is padding, or how long the key was held."""
     carriers = first.get("carrier_hz") or 0, second.get("carrier_hz") or 0
     if max(carriers) and abs(carriers[0] - carriers[1]) > 0.05 * max(carriers):
-        return False
-    return all(abs(abs(x) - abs(y)) <= max(slack_us, share * max(abs(x), abs(y)))
-               for x, y in zip(a[:-1], b[:-1]))
+        return None
+
+    def body(frame):
+        return frame[:-1] if frame and frame[-1] < 0 and -frame[-1] >= FRAME_GAP_US \
+            else frame
+
+    def same(x, y):
+        x, y = body(x), body(y)
+        return bool(x) and len(x) == len(y) and all(
+            abs(abs(p) - abs(q)) <= max(slack_us, share * max(abs(p), abs(q)))
+            for p, q in zip(x, y))
+    a = _capture_frames(list(first.get("pulses_us") or []))
+    b = _capture_frames(list(second.get("pulses_us") or []))
+    kept = []
+    for x, y in zip(a, b):
+        if not same(x, y):
+            break
+        kept.append(x)
+    if not kept:
+        return None
+    return dict(first, pulses_us=[pulse for frame in kept for pulse in frame])
+
+
+def same_capture(first: dict, second: dict, **tolerance) -> bool:
+    """Whether two learned captures are the same code; see ``common_capture``."""
+    return common_capture(first, second, **tolerance) is not None
 
 
 def _cannot_save(parent, problem) -> None:
@@ -1342,8 +1384,8 @@ class CommandsPage(QWizardPage):
                                         message or "Nothing was received.")
                     return
                 captures.append(capture)
-            if same_capture(*captures):
-                capture = captures[0]
+            capture = common_capture(*captures)
+            if capture is not None:
                 break
             again = QMessageBox.question(
                 self, "The two presses differ",

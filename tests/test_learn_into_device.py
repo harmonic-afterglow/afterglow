@@ -84,6 +84,28 @@ def test_a_key_is_learned_twice_and_the_two_compared():
     assert not same_capture(one, dict(one, pulses_us=one["pulses_us"][:4]))
 
 
+def test_a_key_held_for_longer_still_matches_and_keeps_the_frames_both_sent():
+    # A tester's One learned a key as three frames, then two: the key sends its frame
+    # again while it is held, so the presses differ only in how long it was held.
+    from afterglow.gui.device_wizard import common_capture, same_capture
+    frame = [9000, -4500] + [560, -560, 560, -1690] * 16 + [560, -40000]
+    three = {"carrier_hz": 38145, "pulses_us": frame * 3}
+    two = {"carrier_hz": 38150, "pulses_us": frame * 2}
+    assert same_capture(three, two)
+    assert common_capture(three, two)["pulses_us"] == frame * 2
+    assert common_capture(two, three)["pulses_us"] == frame * 2
+    # let go part-way through the third frame: the two whole ones are kept
+    assert common_capture(three, {"carrier_hz": 38000,
+                                  "pulses_us": frame * 2 + frame[:20]})["pulses_us"] \
+        == frame * 2
+    # a different first frame is still a different code
+    other = list(frame)
+    other[5] = -560
+    assert not same_capture(three, {"carrier_hz": 38145, "pulses_us": other * 3})
+    # a press that caught only part of a frame is not the code
+    assert not same_capture(three, {"carrier_hz": 38938, "pulses_us": frame[:40]})
+
+
 def test_two_presses_that_differ_are_not_kept(qapp_or_skip, monkeypatch):
     from afterglow.gui import device_wizard, remote_ops
     from afterglow.qt.QtWidgets import QInputDialog, QMessageBox
