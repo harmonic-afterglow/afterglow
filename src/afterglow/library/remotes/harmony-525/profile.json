@@ -12,14 +12,14 @@
   "backend": "harmony-555",
   "status": "experimental",
   "capabilities": {
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
     "native_protocols": [],
     "notes": "Every command is a class 5 record: a code spelled from a shared dictionary of pulse blocks."
   },
-  "notes": "The Harmony 525: 50 keys, four colour keys under the number pad. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555), and one has been flashed and booted on this model. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
+  "notes": "The Harmony 525: 50 keys, four colour keys under the number pad. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555), and one has been flashed and booted on this model. It learns a key off the original remote over USB (libconcord's HID capture, as Concordance drives the 5xx); not yet confirmed on a remote. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
   "vocabulary": {
     "_comment": "The command keys by scan code (backends/harmony_555/keys.py): the decompiler's presses on a real 525 (compose525.KEYS) and what the 525's configurations bind there, named by the IR archive. A key test on a real 525 confirmed every key here and added NumberStar, the * key left of 0 (scan 19, where the 555 has Clear); its 42 is the Glow key, the firmware's own. A key not listed stays unnamed on import. The keys the firmware owns - Activities, Devices, Off, Help, the page keys and the four soft keys - are the backend's.",
     "hard_keys": [

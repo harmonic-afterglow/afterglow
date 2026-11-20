@@ -12,14 +12,14 @@
   "backend": "harmony-555",
   "status": "experimental",
   "capabilities": {
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
     "native_protocols": [],
     "notes": "Every command is a class 5 record: a code spelled from a shared dictionary of pulse blocks."
   },
-  "notes": "The 555's key grid with other labels: page arrows above the d-pad, and Sound, Picture, A and B where the 555 has its colour keys. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555), and one has been flashed and booted on this model. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
+  "notes": "The 555's key grid with other labels: page arrows above the d-pad, and Sound, Picture, A and B where the 555 has its colour keys. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555), and one has been flashed and booted on this model. It learns a key off the original remote over USB (libconcord's HID capture, as Concordance drives the 5xx); not yet confirmed on a remote. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
   "vocabulary": {
     "_comment": "The command keys by scan code (backends/harmony_555/keys.py): the 555's grid under the 550's labels: Sound and Picture on 27 and 35 (the layout switches), A on 34 and B on 33, page up on 36 (PageUp, PresetNext, ChapterNext) and page down on 37 (PageDown, PresetPrev, ChapterPrev), Mute 61, Prev 58. A key not listed stays unnamed on import. The keys the firmware owns - Activities, Devices, Off, Help, the page keys and the four soft keys - are the backend's.",
     "hard_keys": [

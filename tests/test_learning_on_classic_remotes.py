@@ -1,7 +1,8 @@
-"""Learning on the remotes that are not on the USB network link: the One, 600/650/665/700
-and 800.
+"""Learning on the remotes that are not on the USB network link: the One, 600/650/665/700,
+800 and the 5xx.
 
-They learn a key through libconcord's own capture (HID on the One and the 650 family, MH
+They learn a key through libconcord's own capture (HID on the One, the 650 family and the
+5xx, MH
 on the 800). Only the network-link remotes have learning modes, and libconcord answers
 LC_ERROR when asked to set one on any other - which Afterglow took for a failure, so the
 One said "unknown error" and never listened. These check that the mode is skipped, that
@@ -43,7 +44,9 @@ def test_any_other_answer_is_still_an_error():
 
 
 @pytest.mark.parametrize("remote", ["harmony-one", "harmony-650", "harmony-700",
-                                    "harmony-800", "harmony-900", "harmony-1100"])
+                                    "harmony-800", "harmony-900", "harmony-1100",
+                                    "harmony-515", "harmony-520", "harmony-525",
+                                    "harmony-550", "harmony-555", "harmony-xbox360"])
 def test_the_remotes_offer_learning(remote):
     assert remotes.get(remote).can("ir_learning")
 
@@ -72,3 +75,25 @@ def test_a_learned_key_builds_into_the_image(backend):
         while not int.from_bytes(press[:2], "little") & 0x8000:
             press = press[2:]
     assert press in image
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("remote", ["harmony-555", "harmony-525"])
+def test_a_learned_key_builds_into_a_5xx_and_reads_back(remote, tmp_path):
+    from afterglow import payloads, paths
+    from afterglow.backends.harmony_555 import backend, generate, gspm, ir_lowering
+
+    capture = _learned()
+    project = {"devices": [{"label": "TV", "type": "Television",
+                            "signals": {"ServiceMenu": capture},
+                            "commands": [["ServiceMenu", "Service Menu", "", "", None]]}],
+               "activities": [], "settings": {"remote": remote}}
+    _image, payload = generate.build_fitting(project, paths.scaffolds(remote),
+                                             (0, 0, 12, 0, 0, 2026), None)
+    gspm.validate(payload)
+    payloads.get("blob").unpack(payload, str(tmp_path / "built"))
+    read = backend.import_project(str(tmp_path / "built"), remotes.get(remote), {}).project
+    [device] = read["devices"]
+    assert "ServiceMenu" in device["signals"]
+    assert ir_lowering.lower(device["signals"]["ServiceMenu"]).press_waveform == \
+        ir_lowering.lower(capture).press_waveform
