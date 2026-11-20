@@ -1,6 +1,6 @@
 {
   "schema": "afterglow-arch9-theme/1",
-  "_comment": "What a theme can change on a 5xx (THEME.md): its pictures and its typeface. The rest of the scaffold is the platform every build takes from here, whatever the theme. Each picture is drawn in a box of `width` x `height` at the top left of the picture the remote stores (`stored`, its size there).",
+  "_comment": "What a theme can change on a 5xx (THEME.md): its pictures and its typeface, laid out as the One's manifest is - each picture by role, its file and its box's `size`, drawn at the top left of the picture the remote stores (`stored`, when that is bigger). The rest of the scaffold is the platform every build takes from here, whatever the theme.",
   "theme_files": [
     "THEME.md",
     "images/backdrop.png",
@@ -13,12 +13,33 @@
     "fonts/galmuri/OFL.txt"
   ],
   "pictures": {
-    "images/backdrop.png": {"width": 96, "height": 64},
-    "images/backdrop-more.png": {"width": 96, "height": 64},
-    "images/backdrop-ok.png": {"width": 96, "height": 64},
-    "images/backdrop-yes-no.png": {"width": 96, "height": 64},
-    "images/page.png": {"width": 96, "height": 64},
-    "images/underline.png": {"width": 96, "height": 1, "stored": [96, 64]}
+    "backdrop": {
+      "file": "images/backdrop.png",
+      "size": [96, 64]
+    },
+    "backdrop-more": {
+      "file": "images/backdrop-more.png",
+      "size": [96, 64]
+    },
+    "backdrop-ok": {
+      "file": "images/backdrop-ok.png",
+      "size": [96, 64]
+    },
+    "backdrop-yes-no": {
+      "file": "images/backdrop-yes-no.png",
+      "size": [96, 64]
+    },
+    "page": {
+      "file": "images/page.png",
+      "size": [96, 64]
+    },
+    "underline": {
+      "file": "images/underline.png",
+      "size": [96, 1],
+      "stored": [96, 64]
+    }
   },
-  "face": "fonts/galmuri/GalmuriAfterglow7.bdf.gz"
+  "typeface": {
+    "regular": "fonts/galmuri/GalmuriAfterglow7.bdf.gz"
+  }
 }

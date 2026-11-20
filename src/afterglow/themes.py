@@ -138,3 +138,20 @@ def seed_examples() -> list[str]:
         notes.append(f"{'updated' if present else 'copied'} the example theme in {target}"
                      + (f"; your changes to it are kept in {kept}" if kept else ""))
     return notes
+
+
+def build_folder(settings: dict, remote_id: str, context) -> Path | None:
+    """The theme a project's settings name (`theme_folder`) for a build: a theme's name in
+    the owner's Themes folder, or a folder of its own, taken from the project's folder
+    when relative; None when the project names none, and the build draws the scaffold.
+    Not `theme`, which the Harmony 900 already uses for a preference of its own."""
+    theme = settings.get("theme_folder")
+    if not theme:
+        return None
+    directory = context.find_theme(remote_id, theme) or Path(theme)
+    if not directory.is_absolute():
+        directory = Path(context.root) / directory
+    if not (directory / MANIFEST).is_file():
+        raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
+                         "folder, and no scaffold folder of that name")
+    return directory
