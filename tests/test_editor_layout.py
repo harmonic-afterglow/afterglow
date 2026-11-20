@@ -55,7 +55,8 @@ def test_the_one_offers_learning(qapp_or_skip):
 
 def test_the_code_columns_wait_to_be_asked_for(qapp_or_skip):
     from afterglow.gui.device_wizard import DeviceEditor
-    commands = DeviceEditor([], existing=TV, project=ONE).page_cmds
+    editor = DeviceEditor([], existing=TV, project=ONE)
+    commands = editor.page_cmds        # kept: a collected editor deletes its pages
     assert commands.table.isColumnHidden(2) and commands.table.isColumnHidden(3)
     commands.show_codes.setChecked(True)
     assert not commands.table.isColumnHidden(2)
@@ -152,7 +153,8 @@ def test_every_key_is_on_the_drawing(model):
 def test_the_picture_shows_which_keys_send_and_which_commands_have_none(qapp_or_skip):
     from afterglow.gui.device_wizard import DeviceEditor
     from afterglow.gui.keys_view import ASSIGNED, FREE
-    commands = DeviceEditor([], existing=_with_commands(), project=ONE).page_cmds
+    editor = DeviceEditor([], existing=_with_commands(), project=ONE)
+    commands = editor.page_cmds        # kept: a collected editor deletes its pages
     commands.refresh_picture()
     states = commands.keys_view._states
     assert states["VolumeUp"] == (ASSIGNED, "Volume +: sends VolumeUp")
@@ -163,7 +165,8 @@ def test_the_picture_shows_which_keys_send_and_which_commands_have_none(qapp_or_
 
 def test_picking_a_command_and_clicking_a_key_puts_it_there(qapp_or_skip):
     from afterglow.gui.device_wizard import DeviceEditor
-    commands = DeviceEditor([], existing=_with_commands(), project=ONE).page_cmds
+    editor = DeviceEditor([], existing=_with_commands(), project=ONE)
+    commands = editor.page_cmds        # kept: a collected editor deletes its pages
     commands.refresh_picture()
     commands.unplaced.setCurrentRow(0)                   # Netflix
     commands._key_clicked("VolumeUp")                   # the key VolumeUp was on
