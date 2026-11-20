@@ -19,8 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     built as they were; the editor does not change them yet.
   - Editor pages for devices and activities, with each model's keys drawn from
     Logitech's user guides and photos of the remotes.
-  - The 552 and 522 are the 555 and 525 under their own model numbers, and the 510 is the
-    515's: a build for one keeps its number.
+  - The 510 is the 515 under its own model number: a build for one keeps its number.
   - A configuration read back builds again with the same devices, activities, keys and
     Help.
   - Every word they show comes from one translatable catalogue, English for now: a remote
