@@ -12,14 +12,14 @@
   "backend": "harmony-555",
   "status": "experimental",
   "capabilities": {
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
     "native_protocols": [],
     "notes": "Every command is a class 5 record: a code spelled from a shared dictionary of pulse blocks."
   },
-  "notes": "The Xbox 360's own Harmony: four round Y, X, A and B keys beyond the 525's fifty. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555) on the platform the 525's, 550's and 555's builds booted on, its skin and keys from the Xbox 360's own configuration; one - its key test - has been flashed and booted on an Xbox 360. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
+  "notes": "The Xbox 360's own Harmony: four round Y, X, A and B keys beyond the 525's fifty. Architecture 9, the Harmony 5xx family: a 96x64 monochrome screen with four keys beside it, configured over HID like the 650. Experimental: Afterglow builds its configurations (backends/harmony_555) on the platform the 525's, 550's and 555's builds booted on, its skin and keys from the Xbox 360's own configuration; one - its key test - has been flashed and booted on an Xbox 360. It learns a key off the original remote over USB (libconcord's HID capture, as Concordance drives the 5xx); not yet confirmed on a remote. Writing a 5xx carries two hazards the remote does not guard against - safe mode overwrites its firmware, and an erase outside 0x820000-0x870000 reaches the stored firmware (afterglow-research/harmony-555.md).",
   "vocabulary": {
     "_comment": "The command keys by scan code (backends/harmony_555/keys.py): the 525/555 key grid relabelled, each of the Xbox's keys on the scan of the key in its place on the 555 (photos, afterglow-research/harmony-555.md). Proven by its configuration: A on 60 and B on 20 (a DVD player whose codeset names its colour commands A to D has A and B there and C and D on its screen), Clear on 27, Display on 35. Placed by position and confirmed by a key test on a real Xbox 360: Y on 21 (the 555's Guide, and the Xbox prints Guide under Y), X on 59, Back 37 and Info 36 (the 555's Sound and Picture bar), title 34 and enter 33 (the bottom row, as the colour keys), Mute 61 and Prev 58 (the round keys), * 19 and # 25 (beside 0); its 42 is the Glow key, the firmware's own. The keys the firmware owns - Activities, Devices, Off, Help, the page keys and the four soft keys - are the backend's.",
     "hard_keys": [
