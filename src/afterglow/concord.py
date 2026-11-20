@@ -65,7 +65,8 @@ LIBRARY_NAMES = (
     "concord",
 )
 
-# Learning modes. Harmony 900 only - `set_learning_mode` is documented as such.
+# Learning modes. Only the remotes on the USB network link have them (900, 1000, 1100):
+# libconcord answers LC_ERROR for any other, which then learns one key its own way.
 LEARN_SINGLE = 0        # wait a fixed time, return one IR frame
 LEARN_STREAM = 1        # record for the whole timeout, silence included
 
@@ -223,6 +224,7 @@ LC_FILE_TYPE_CONFIGURATION = 2
 # said who it is, but its configuration area does not start with its model's cookie - an
 # interrupted or a bad write, or none yet. Concordance itself only warns about it, since a
 # remote in that state is exactly the one that needs a configuration written.
+LC_ERROR = 1
 LC_ERROR_UNSUPP = 15
 LC_ERROR_INVALID_CONFIG = 16
 # lc_cancel() stopped get_identity while it waited for the remote (newer builds only).
@@ -1145,11 +1147,16 @@ class Remote:
 
     # learning
     def set_learning_mode(self, mode: int, timeout_ms: int) -> bool:
-        """False when the installed libconcord predates learning modes."""
+        """False when there are no learning modes to set: the installed libconcord
+        predates them, or the remote is not on the USB network link. A Harmony One,
+        600/650/665/700 or 800 has none - libconcord answers LC_ERROR - and learns a
+        single key by itself, so that is not a failure."""
         if not self.has_learning_modes:
             return False
-        self._check(self.lib.set_learning_mode(mode, timeout_ms),
-                    "setting the learning mode")
+        err = self.lib.set_learning_mode(mode, timeout_ms)
+        if err == LC_ERROR:
+            return False
+        self._check(err, "setting the learning mode")
         return True
 
     def learn(self, on_progress=None) -> tuple[int, list[int]]:

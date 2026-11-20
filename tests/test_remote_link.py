@@ -370,7 +370,8 @@ def test_the_gui_learning_button_reaches_the_corrected_ssir_encoder(
     monkeypatch.setattr(concord, "available", lambda: True)
     monkeypatch.setattr(QInputDialog, "getText",
                         lambda *_args, **_kwargs: ("VolumeUp", True))
-    monkeypatch.setattr(QMessageBox, "information", lambda *_args, **_kwargs: None)
+    told = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *args, **_kwargs: told.append(args))
     monkeypatch.setattr(QMessageBox, "warning", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         remote_ops, "run_with_progress",
@@ -380,6 +381,7 @@ def test_the_gui_learning_button_reaches_the_corrected_ssir_encoder(
     page = CommandsPage({})
     page.learn_btn.click()
     assert page.learned_captures() == {"VolumeUp": capture}
+    assert [args[2] for args in told] == ["Learning was successful. Saved as waveform."]
     assert page.get_commands()[0][0] == "VolumeUp"
 
     spec = {

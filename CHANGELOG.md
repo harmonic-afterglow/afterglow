@@ -70,6 +70,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **German on the Harmony One and 800**, translated by k3067e3: "Deutsch" in the
   language list, and the remote's own screens, Help and the Tutorial in German.
+- **Learn from remote on the Harmony One, 600/650/665/700 and 800.** These remotes learn
+  a key by themselves. Afterglow first asked for a learning mode that only the 900, 1000
+  and 1100 have, and stopped at the "unknown error" the others answered, so learning was
+  hidden on them. It now skips that step. Each key is still taken twice and kept only
+  when the two presses agree, now also when one press was held longer. A learned key
+  that a protocol Afterglow knows sends is kept as that protocol, so it repeats while
+  held; the box after learning says whether it was saved as a protocol or a waveform.
 - **A One's, 650's or 700's commands go across to the Harmony 900 and 1100.** These
   remotes keep a command as a recording of its press and of what it repeats while held,
   which the 900 cannot store; each is now sent as the command it is, recognised by

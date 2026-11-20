@@ -559,7 +559,7 @@ def test_the_800_is_offered_for_building_with_its_picture():
     from afterglow import remotes
     profile = remotes.get("harmony-800")
     assert profile.buildable and not profile.verified
-    assert not profile.can("ir_learning")
+    assert profile.can("ir_learning")
     assert profile.hard_key_art["svg"].is_file()
     assert set(profile.hard_key_art["keys"]) == set(profile.hard_keys)
 
