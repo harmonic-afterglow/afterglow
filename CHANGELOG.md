@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **Device and activity rows have one button besides Edit.** Delete, and Find model
+  where a device has no model, are in the row's "..." menu, which a right-click on the
+  row also opens. On a remote that draws no device or activity icons (the 650, 700 and
+  the 5xx), the rows no longer leave an empty space where one would be.
+
 ### Fixed
 
 - **Harmony 900 and 1100: the first build of a new project no longer stops to ask for

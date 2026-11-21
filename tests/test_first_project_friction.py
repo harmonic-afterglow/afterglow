@@ -243,3 +243,32 @@ def test_an_activity_row_names_its_volume_device(qapp_or_skip):
     assert "Volume: Receiver" in text({"label": "Watch", "display": "tv", "volume": "amp",
                                        "control": "tv"})
     assert "Volume" not in text({"label": "Watch", "display": "tv", "volume": "tv"})
+
+
+def test_a_row_has_edit_and_a_menu_for_the_rest(qapp_or_skip):
+    """Edit, Delete and Find model side by side on every row were too many buttons:
+    Edit stays, the rest are in the row's menu - Delete too, when it is the only one."""
+    from afterglow.qt.QtWidgets import QPushButton
+    from afterglow.gui.tabs import ActivityCard, DeviceCard
+    deleted = []
+    card = ActivityCard({"label": "Watch"}, {}, lambda *_: None,
+                        lambda *_: deleted.append(1))
+    assert [b.text() for b in card.findChildren(QPushButton)] == ["Edit"]
+    assert [a.text() for a in card.menu.actions()] == ["Delete"]
+    card.menu.actions()[0].trigger()
+    assert deleted == [1]
+    project = _project("harmony-one")
+    device = DeviceCard(project["devices"][0], lambda *_: None, lambda *_: None,
+                        project=project, on_find=lambda *_: None)
+    assert [a.text() for a in device.menu.actions()] == ["Find model...", "Delete"]
+
+
+def test_a_row_with_no_icon_leaves_no_room_for_one(qapp_or_skip, monkeypatch):
+    from afterglow.qt.QtWidgets import QLabel
+    from afterglow.gui.tabs import DeviceCard
+    _typeless(monkeypatch)
+    project = _project("test-model")
+    card = DeviceCard(project["devices"][0], lambda *_: None, lambda *_: None,
+                      project=project)
+    assert not [label for label in card.findChildren(QLabel) if label.width() == 42
+                or label.minimumWidth() == 42]

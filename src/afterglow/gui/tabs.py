@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout, QLineEdit, QComboBox,
-    QSpinBox, QFileDialog, QMessageBox, QTextEdit, QListWidget,
+    QSpinBox, QFileDialog, QMessageBox, QTextEdit, QListWidget, QMenu, QToolButton,
     QListWidgetItem, QAbstractItemView, QCheckBox,
     QProgressBar
 )
@@ -44,11 +44,12 @@ class DeviceCard(QWidget):
         # A remote with no device types (a 5xx: its menus draw no icons) shows no type
         # and no icon - not the raw id a device brought from another remote, nor the
         # stand-in an import gave it.
-        glyph = QLabel()
+        # and leaves no empty column where an icon would be
         if labels:
+            glyph = QLabel()
             glyph.setPixmap(type_pixmap(spec.get("type", ""), 34, profile))
-        glyph.setFixedWidth(42)
-        layout.addWidget(glyph)
+            glyph.setFixedWidth(42)
+            layout.addWidget(glyph)
 
         info = QVBoxLayout()
         name_lbl = bold(spec.get("label","?"))
@@ -66,24 +67,45 @@ class DeviceCard(QWidget):
         info.addWidget(name_lbl)
         info.addWidget(sub_lbl)
 
-        edit_btn   = QPushButton("Edit")
-        delete_btn = QPushButton("Delete")
-        edit_btn.setFixedWidth(60)
-        delete_btn.setFixedWidth(60)
-        edit_btn.clicked.connect(on_edit)
-        delete_btn.clicked.connect(on_delete)
-
         layout.addLayout(info, stretch=1)
+        # Edit, and everything else in the row's menu
+        actions = []
         # a device read off a remote that keeps no make or model - a Harmony One's -
         # can be looked up by what it sends (device_match)
         if on_find is not None and not make:
-            find_btn = QPushButton("Find model")
-            find_btn.setToolTip("Look this device up in the Logitech database by the codes "
-                                "it sends and its name, and pick the model it is.")
-            find_btn.clicked.connect(on_find)
-            layout.addWidget(find_btn)
-        layout.addWidget(edit_btn)
-        layout.addWidget(delete_btn)
+            actions.append(("Find model...", on_find,
+                            "Look this device up in the Logitech database by the codes "
+                            "it sends and its name, and pick the model it is."))
+        actions.append(("Delete", on_delete, None))
+        self.menu = _row_buttons(self, layout, on_edit, actions)
+
+def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
+    """A row's Edit, and a menu of the rest - Delete and what else the row can do -
+    behind a button and on a right-click: one button a row, not four."""
+    edit = QPushButton("Edit")
+    edit.setFixedWidth(60)
+    edit.clicked.connect(on_edit)
+    menu = QMenu(card)
+    for text, call, tip in actions:
+        action = menu.addAction(text)
+        if tip:
+            action.setToolTip(tip)
+        action.triggered.connect(call)
+    menu.setToolTipsVisible(True)
+    more = QToolButton()
+    more.setText("...")
+    more.setToolTip("More: " + ", ".join(text.rstrip(".") for text, _c, _t in actions))
+    more.setMenu(menu)
+    more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+    more.setStyleSheet("QToolButton::menu-indicator { image: none; }")
+    more.setFixedHeight(edit.sizeHint().height())
+    card.more = more
+    layout.addWidget(edit)
+    layout.addWidget(more)
+    card.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+    card.customContextMenuRequested.connect(lambda pos: menu.exec(card.mapToGlobal(pos)))
+    return menu
+
 
 def _grip() -> QLabel:
     """Where a card is picked up to move it."""
@@ -289,11 +311,11 @@ class ActivityCard(QWidget):
 
         # no activity types on this remote (a 5xx): no type and no icon, as for devices
         typed = bool(type_names)
-        glyph = QLabel()
         if typed:
+            glyph = QLabel()
             glyph.setPixmap(type_pixmap(atype, 34, remote))
-        glyph.setFixedWidth(42)
-        layout.addWidget(glyph)
+            glyph.setFixedWidth(42)
+            layout.addWidget(glyph)
 
         info = QVBoxLayout()
         info.addWidget(bold(spec.get("label","?")))
@@ -306,15 +328,8 @@ class ActivityCard(QWidget):
         sub.setStyleSheet("color: gray;")
         info.addWidget(sub)
 
-        edit_btn   = QPushButton("Edit")
-        delete_btn = QPushButton("Delete")
-        edit_btn.setFixedWidth(60); delete_btn.setFixedWidth(60)
-        edit_btn.clicked.connect(on_edit)
-        delete_btn.clicked.connect(on_delete)
-
         layout.addLayout(info, stretch=1)
-        layout.addWidget(edit_btn)
-        layout.addWidget(delete_btn)
+        self.menu = _row_buttons(self, layout, on_edit, [("Delete", on_delete, None)])
 class ActivitiesTab(QWidget):
     changed = pyqtSignal()
 
