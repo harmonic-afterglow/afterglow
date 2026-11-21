@@ -11,9 +11,14 @@ from .drag_rows import RowDragger, move_table_row
 from .ui_helpers import FilterCombo, order_by_participation
 
 class CommandPicker(QDialog):
-    def __init__(self, devices, parent=None, participating=None):
+    """A device and one of its commands. Nothing is chosen for you: the device's first
+    command was, and a television's first is "-", the dash of a channel like 7-1, which
+    read as "no command" and was sent all the same. OK waits for a command. `preset`
+    (device, command, modifier) opens it on a step being changed."""
+
+    def __init__(self, devices, parent=None, participating=None, preset=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Command")
+        self.setWindowTitle("Add Command" if preset is None else "Change Command")
         self.devices = devices
         self.result_cmd = None
 
@@ -41,16 +46,31 @@ class CommandPicker(QDialog):
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addRow(btns)
-        
+        self.ok = btns.button(QDialogButtonBox.StandardButton.Ok)
+
         self.dev_combo.currentIndexChanged.connect(self._dev_changed)
+        self.cmd_combo.currentIndexChanged.connect(self._ready)
+        if preset is not None:
+            self.dev_combo.select_data(preset[0])
         if self.dev_combo.count() > 0:
             self._dev_changed()
-            
+        if preset is not None:
+            self.cmd_combo.select_data(preset[1])
+            index = self.mod_combo.findData(preset[2] if len(preset) > 2 else "Press")
+            self.mod_combo.setCurrentIndex(max(index, 0))
+        self._ready()
+
     def _dev_changed(self):
         device = next((d for d in self.devices
                        if d["id"] == self.dev_combo.currentData()), None)
         self.cmd_combo.set_items([(c[0], c[0]) for c in (device or {}).get("commands", [])])
-                
+        self.cmd_combo.setCurrentIndex(-1)
+        self.cmd_combo.lineEdit().setPlaceholderText("choose a command (type to filter)")
+        self._ready()
+
+    def _ready(self, *_):
+        self.ok.setEnabled(bool(self.cmd_combo.currentData()))
+
     def accept(self):
         if self.dev_combo.currentData() and self.cmd_combo.currentData():
             self.result_cmd = (self.dev_combo.currentData(), self.cmd_combo.currentData(),
@@ -268,7 +288,7 @@ class MacroEditorWidget(QWidget):
         for b in [self.add_btn, self.rem_btn]:
             btn_row.addWidget(b)
         btn_row.addStretch()
-        hint = QLabel("Drag a step by its grip to change the order.")
+        hint = QLabel("Double-click a step to change it; drag its grip to move it.")
         hint.setStyleSheet("color: gray;")
         btn_row.addWidget(hint)
         layout.addLayout(btn_row)
@@ -278,6 +298,9 @@ class MacroEditorWidget(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setToolTip("Double-click a step to change it.")
+        self._replacing = None
+        self.table.cellDoubleClicked.connect(self._edit)
         layout.addWidget(self.table)
         # In the order they run: dragged by the grip in the row header.
         self.dragger = RowDragger(self.table, self._moved)
@@ -317,7 +340,41 @@ class MacroEditorWidget(QWidget):
                 else (mtype, dev, val, extra) if duration is None
                 else (mtype, dev, val, extra, duration))
         self.table.item(r, 0).setData(Qt.ItemDataRole.UserRole, step)
+        if self._replacing is not None:           # a step changed: it takes the old one's place
+            move_table_row(self.table, r, self._replacing)
+            self.table.removeRow(self._replacing + 1)
+            self.table.selectRow(self._replacing)
         self.changed.emit()
+
+    def _edit(self, row, _column=0):
+        """Change a step: double-click opens the picker it was made with - filled in for a
+        command or a wait - and what is chosen takes its place. A step could only be
+        removed and added again, at the end of the list."""
+        cell = self.table.item(row, 0)
+        step = cell.data(Qt.ItemDataRole.UserRole) if cell is not None else None
+        if not step:
+            return
+        self._replacing = row
+        try:
+            if step[0] == "command":
+                dialog = CommandPicker(self.devices, self, self._participating,
+                                       preset=(step[1], step[2],
+                                               step[3] if len(step) > 3 else "Press"))
+                if dialog.exec() and dialog.result_cmd:
+                    device, command, modifier = dialog.result_cmd
+                    self._add_row("command", device, command, modifier,
+                                  step[4] if len(step) > 4 else None)
+            elif step[0] == "delay":
+                dialog = DelayPicker(self.devices, step[1], self, self._participating)
+                dialog.setWindowTitle("Change the delay")
+                dialog.ms.setValue(int(step[2]))
+                if dialog.exec() and dialog.result_delay:
+                    self._add_row("delay", *dialog.result_delay)
+            else:
+                {"input": self._add_input, "state": self._add_state,
+                 "number": self._add_channel}.get(step[0], lambda: None)()
+        finally:
+            self._replacing = None
         
     def load(self, steps):
         """Replace the steps shown - used when editing a button that already exists."""

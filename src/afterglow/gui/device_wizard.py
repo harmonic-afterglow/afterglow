@@ -726,7 +726,9 @@ class IdentityPage(QWizardPage):
         profile = remotes.for_project(project or {})
         self._types = profile.device_types
         self.setTitle("Device")
-        self.setSubTitle("The name the remote shows for this device, and its icon.")
+        # A remote with no device types (a 5xx) draws no icon and has no type to choose.
+        self.setSubTitle("The name the remote shows for this device"
+                         + (", and its icon." if self._types else "."))
         form = QFormLayout(self)
         self._form = form
 
@@ -748,6 +750,8 @@ class IdentityPage(QWizardPage):
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
         form.addRow("Type:", self.type_combo)
+        # kept, not shown: a device's own type stays in the combo and is saved as it was
+        form.setRowVisible(self.type_combo, bool(self._types))
 
         self.mfr_edit   = QLineEdit(existing.get("mfr", ""))
         self.model_edit = QLineEdit(existing.get("model", ""))
@@ -943,11 +947,17 @@ class CommandsPage(QWizardPage):
         # invited people to type values that could not possibly do anything.
         self._signals = dict((existing or {}).get("signals") or {})
         self.setTitle("Commands")
+        # Where the device's own page is arranged: its Screen page, or - on a remote
+        # with none (the 600, 650, 665 and 700) - this list, whose labels it shows in
+        # order. Both texts named a Screen page those remotes do not have.
+        self._screen_page = remote is None or "screen" in remote.device_pages
         self.setSubTitle(
             "What the device can be told to do. Put a command on one of the remote's "
-            "own keys in the picture, or in the Key column of the list. Which commands "
-            "get a button on the device's page of the screen, and in what order, is "
-            "on the Screen page.")
+            "own keys in the picture, or in the Key column of the list. "
+            + ("Which commands get a button on the device's page of the screen, and in "
+               "what order, is on the Screen page." if self._screen_page else
+               "The device's page of the screen shows the commands that have an "
+               "on-screen label, in the order of the list."))
         layout = QVBoxLayout(self)
 
         # - Power commands ----------------------------------------------
@@ -982,7 +992,7 @@ class CommandsPage(QWizardPage):
         self.learn_btn.setToolTip(
             "Point the original remote at the Harmony and press a key. Needs "
             "libconcord and a connected remote.")
-        self.copy_btn = QPushButton("Copy from another device…")
+        self.copy_btn = QPushButton("Copy from...")   # the long name pushed Picture/List off the page
         self.copy_btn.setToolTip("Bring in a command another device in this project has, "
                                  "with its code")
         self.copy_btn.setVisible(bool(self._others))
@@ -1030,9 +1040,13 @@ class CommandsPage(QWizardPage):
         self.table.setHorizontalHeaderLabels(
             ["Name", "On screen as", "Address (hex)", "Command (hex)", "Key"])
         self.table.horizontalHeaderItem(1).setToolTip(
-            "The text a button for the command shows on the remote's screen. Until the "
-            "device's page is arranged on the Screen page, a command left empty here "
-            "has no button; it still works on a key and in activities.")
+            ("The text a button for the command shows on the remote's screen. Until the "
+             "device's page is arranged on the Screen page, a command left empty here "
+             "has no button; it still works on a key and in activities.")
+            if self._screen_page else
+            ("The text a button for the command shows on the device's page of the "
+             "remote's screen, in the order of this list. A command left empty here has "
+             "no button; it still works on a key and in activities."))
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)

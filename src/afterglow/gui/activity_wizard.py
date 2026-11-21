@@ -218,7 +218,10 @@ class ActivityIdentityPage(QWizardPage):
         # {activity key: the label of the other activity it starts now}
         self.holders = dict(holders or {})
         self.setTitle("Activity")
-        self.setSubTitle("The name the remote shows for this activity, and its icon.")
+        typed = bool(list(vocabulary.activity_types(remote)))
+        # A remote with no activity types (a 5xx) draws no icon and has no type to choose.
+        self.setSubTitle("The name the remote shows for this activity"
+                         + (", and its icon." if typed else "."))
         layout = QFormLayout(self)
 
         self.label_edit = QLineEdit(existing.get("label",""))
@@ -241,6 +244,8 @@ class ActivityIdentityPage(QWizardPage):
             if self.type_combo.itemData(i) == wanted:
                 self.type_combo.setCurrentIndex(i); break
         layout.addRow("Type:", self.type_combo)
+        # kept, not shown: an activity's own type stays in the combo and is saved as it was
+        layout.setRowVisible(self.type_combo, typed)
 
         # The key that starts it, on a remote with Watch TV, Watch a Movie and Listen to
         # Music (the 650 and 700): as MyHarmony's "Customize Activity Buttons", one

@@ -8,6 +8,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Harmony 900 and 1100: the first build of a new project no longer stops to ask for
+  your first and last name.** They are optional; the configuration says "Harmony User"
+  when they are left empty, as it already did.
+- **A step's command is no longer chosen for you.** Adding a command to a key or a
+  sequence picked the device's first one - on a TV the "-" of a channel like 7-1 -
+  and OK accepted it. Now OK waits until you choose. A step can also be changed by
+  double-clicking it, in its place, rather than removed and added again at the end.
+- **A new project is saved under its remote's name**, such as "Harmony 650.json",
+  instead of "project.json", which the window showed as "Projects".
+- **After Save As, the window names the file it saved.** The title and the status bar
+  still said "Untitled" and "Not saved yet" until the next save.
+- **Harmony One, 600, 650, 665, 700 and 800: a project whose Off list still named a
+  deleted device builds.** It stopped with "Off names device ..., which the project does
+  not have"; the device is passed over, as the 900 already did, and moving a project to
+  another remote takes it out of Off and says so.
+- **Change remote is in the File menu**, not only behind the remote's name in the
+  status bar. It says which remote the project is for now, chooses no remote for you,
+  and keeps the model you pick (a 650, not "600 / 650 / 665") in the moved project, in
+  its review and in the Flash log's "Building for". The moved project is saved as
+  "Harmony 650.json", not the old name with each remote added to it.
+- **The review of a move names keys and settings as the remote shows them** - "Page
+  up" and "Clock", not "UpArrow" and "time_format" - and no longer reports the model
+  changing ("skin 22 is not a ...'s"), which is what moving means.
+- **The Flash log starts empty for another project.** After opening, importing or
+  moving one, it still showed the last project's build.
+- **The 600, 650, 665 and 700's Commands page says how the device's own page is
+  made:** from the commands with an on-screen label, in order. It sent you to a Screen
+  page these remotes do not have.
+- **The One's and 800's Screen page lists a device's commands by name**, to be found.
+- **Commands page: Picture and List are no longer cut off** at the right; "Copy from
+  another device" is "Copy from...".
 - **Harmony One: a translation longer than the English is no longer cut short.** Help's
   questions, the Remote Assistant's notes, the firmware's notices, Screen Sensitivity's
   confirmation and the Tutorial's pictured question take more lines where the screen has

@@ -199,7 +199,10 @@
       "Number7",
       "Menu"
     ],
-    "hard_key_aliases": {},
+    "hard_key_aliases": {
+      "Clear": "NumberPlus",
+      "NumberStar": "NumberPlus"
+    },
     "hard_key_layout": [],
     "hard_key_labels": {
       "UpArrow": "Page up",

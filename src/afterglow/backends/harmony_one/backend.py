@@ -202,7 +202,8 @@ def build_project(project, profile, context) -> BuildResult:
         if not (directory / "assets.json").is_file():
             raise ValueError(f"there is no theme {theme!r}: no such theme in the Themes "
                              "folder, and no scaffold folder of that name")
-    context.log(f"Building for {profile.model}"
+    from ... import remotes            # the model the project names: a 600, not "600 / 650 / 665"
+    context.log(f"Building for {remotes.model_name(profile, (project.get('settings') or {}).get('skin'))}"
                 + (f" with the theme {theme!r}" if theme else ""))
     # the One sold in Europe (skin 59) builds as one: its header and image say 59
     skin = settings.get("skin")

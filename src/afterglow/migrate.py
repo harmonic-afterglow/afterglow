@@ -27,11 +27,13 @@ def _row(report, subject, change, detail):
     report.append({"subject": subject, "change": change, "detail": detail})
 
 
-def migrate(project: dict, target) -> tuple[dict, list[dict]]:
-    """The project rebuilt for `target` (a profile or an id), and what changed.
+def migrate(project: dict, target, skin=None) -> tuple[dict, list[dict]]:
+    """The project rebuilt for `target` (a profile or an id), and what changed. `skin`
+    is the model of it the owner chose (a 600, 650 or 665), where it is sold as several.
 
     Each report row is ``{"subject", "change", "detail"}``; `change` is one of
-    ``renamed``, ``substituted`` or ``removed``.
+    ``renamed``, ``substituted`` or ``removed``; a row names keys and settings as the
+    remote prints and shows them, not as a configuration calls them.
     """
     target = target if isinstance(target, remotes.RemoteProfile) else remotes.get(target)
     if not target.buildable:
@@ -46,8 +48,9 @@ def migrate(project: dict, target) -> tuple[dict, list[dict]]:
     settings = out.setdefault("settings", {})
     settings["remote"] = target.id
 
-    _model(out, target, report)
-    _keys(out, target, report)
+    _model(out, target, report, skin)
+    _off_list(out, report)
+    _keys(out, target, report, source)
     _types(out, target, report)
     _screen(out, target, report)
     if not target.can("rf_blaster"):
@@ -59,7 +62,23 @@ def migrate(project: dict, target) -> tuple[dict, list[dict]]:
     return out, report
 
 
-def _keys(project, target, report):
+def _off_list(project, report):
+    """Off naming a device the project no longer has: left by a delete from before
+    deleting cleaned it. The 900 passed over it and every other remote refused to build."""
+    chosen = project.get("power_off_all")
+    if not chosen:
+        return
+    present = {str(device.get("id")) for device in project.get("devices") or []}
+    kept = [did for did in chosen if str(did) in present]
+    gone = len(chosen) - len(kept)
+    if gone:
+        project["power_off_all"] = kept
+        _row(report, "Off", "removed",
+             f"{gone} device(s) the project no longer has, which Off still listed")
+
+
+def _keys(project, target, report, source=None):
+    label = source.key_label if source is not None else (lambda key: key)
     renamed = project_devices.rename_hard_keys(project, target.hard_key_aliases)
     if renamed:
         _row(report, "Physical keys", "renamed",
@@ -84,7 +103,8 @@ def _keys(project, target, report):
             lost += missing
         if lost:
             _row(report, f"Device {device.get('label')!r}", "removed",
-                 f"keys {target.model} does not have: {', '.join(dict.fromkeys(lost))}")
+                 f"keys {target.model} does not have: "
+                 f"{', '.join(label(key) for key in dict.fromkeys(lost))}")
     for activity in project.get("activities") or []:
         macros = activity.get("hard_macros") or {}
         lost = [slot for slot in macros if slot not in keys]
@@ -93,7 +113,7 @@ def _keys(project, target, report):
         if lost:
             _row(report, f"Activity {activity.get('label')!r}", "removed",
                  f"what these keys did, which {target.model} does not have: "
-                 f"{', '.join(lost)}")
+                 f"{', '.join(label(key) for key in lost)}")
         if activity.get("bound_keys") is not None:
             activity["bound_keys"] = [key for key in activity["bound_keys"] if key in keys]
 
@@ -121,16 +141,17 @@ def _types(project, target, report):
                      f"type {kind} is not on {target.model}; it is now {new}")
 
 
-def _model(project, target, report):
+def _model(project, target, report, chosen=None):
     """Which of the target's models the project is for (its skin: a 600, 650 or 665):
-    kept when the target is sold under it, else the target's own; and a theme folder only
+    the one the owner chose, else the project's own when the target is sold under it,
+    else the target's own - which is what moving to it means, so it is not a row of the
+    report ("skin 22 is not a Harmony 600 / 650 / 665's" was); and a theme folder only
     where the target offers themes."""
     settings = project["settings"]
-    skin = settings.get("skin")
-    if skin is not None and skin not in target.skins:
+    if chosen is not None and chosen in target.skins:
+        settings["skin"] = chosen
+    elif settings.get("skin") is not None and settings["skin"] not in target.skins:
         settings.pop("skin")
-        _row(report, "Remote model", "substituted",
-             f"skin {skin} is not a {target.model}'s; the project is for its own")
     if settings.get("theme_folder") and "theme" not in target.settings_fields:
         _row(report, "Theme", "removed",
              f"{target.model} has no themes; {settings.pop('theme_folder')!r} is not used")
@@ -214,9 +235,13 @@ def _preferences(project, source, target, report):
             del settings[key]
             dropped.append(key)
     if dropped:
+        # as the Remote Settings tab names them - "Time format", not "time_format"
+        names = [(preferences.definitions(source).get(key) or {}).get("label")
+                 or key.replace("_", " ").capitalize() for key in dropped]
         _row(report, "Remote's own settings", "removed",
-             f"{', '.join(dropped)}: the target remote does not keep "
-             f"{'it' if len(dropped) == 1 else 'them'} this way")
+             f"{', '.join(names)}: {target.model} does not have "
+             f"{'this setting' if len(dropped) == 1 else 'these settings'}, or not with "
+             f"{'its' if len(dropped) == 1 else 'their'} value")
 
 
 def _properties(project, source, target, report):

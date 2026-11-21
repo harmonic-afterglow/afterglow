@@ -171,7 +171,10 @@ def test_the_screen_page_arranges_a_device_s_buttons(qapp_or_skip):
     assert "screen_buttons" not in spec
 
     page.table.selectRow(0)
-    page.commands.setCurrentRow(1)          # Guide, which has no label of its own
+    # Guide, which has no label of its own (the list is by name, to be found)
+    assert [page.commands.item(i).text() for i in range(page.commands.count())] == [
+        "Guide", "Menu", "PowerOn"]
+    page.commands.setCurrentRow(0)
     page._add()
     page._add_gap()
     page._moved(3, 0)                       # Menu to the front

@@ -35,7 +35,9 @@ def plan(project: dict, devices: list[dict]) -> dict:
     # Off turns off every device that has a power command, or the project's own list.
     chosen = project.get("power_off_all")
     if chosen is not None:
-        off = [_device(index_of, did, "Off") for did in chosen]
+        # A device the project no longer has is passed over, as the 900 does: a project
+        # whose Off list kept one a device delete left behind could not be built.
+        off = [index_of[did] for did in chosen if did in index_of]
     else:
         off = list(range(len(devices)))
     return {"activities": out,

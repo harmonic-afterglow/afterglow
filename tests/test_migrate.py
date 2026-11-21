@@ -214,9 +214,28 @@ def test_the_model_comes_along_only_where_the_target_has_it():
     build refuses; moved within its own remote it stays a 600."""
     to_700, report = migrate.migrate(_screen_project("harmony-650", skin=71), "harmony-700")
     assert "skin" not in to_700["settings"]
-    assert any(row["subject"] == "Remote model" for row in report)
+    # being the target's own is what moving to it means, not a change to report:
+    # "skin 71 is not a Harmony 700's" was a row
+    assert not any(row["subject"] == "Remote model" for row in report)
     same, _report = migrate.migrate(_screen_project("harmony-650", skin=71), "harmony-650")
     assert same["settings"]["skin"] == 71
+    chosen, _report = migrate.migrate(_screen_project("harmony-650", skin=71), "harmony-650",
+                                      skin=75)
+    assert chosen["settings"]["skin"] == 75
+
+
+def test_the_report_names_keys_and_settings_as_the_remote_prints_them():
+    """It said "UpArrow, DownArrow, NumberPlus" of the 900's Page up, Page down and Clear,
+    and "time_format" of its Clock setting."""
+    project = {"settings": {"remote": "harmony-900", "time_format": "nonsense"},
+               "devices": [{"id": "tv", "label": "TV", "commands": [
+                   ["PageUp", "PageUp", "", "", "UpArrow"],
+                   ["Clear", "Clear", "", "", "NumberPlus"]]}],
+               "activities": []}
+    _moved, report = migrate.migrate(project, "harmony-1100")
+    details = " ".join(row["detail"] for row in report)
+    assert "Clear (+)" in details and "NumberPlus" not in details
+    assert "Clock" in details and "time_format" not in details
 
 
 @pytest.mark.parametrize("remote", ["harmony-650", "harmony-700"])
@@ -231,3 +250,18 @@ def test_a_gap_between_screen_buttons_closes_up_in_a_650_or_700_build(remote):
     built = compose.build(household, directory=paths.scaffolds(remote),
                           stamp_fields=(0, 0, 12, 0, 0, 2026))
     assert built["image"] and built["skipped"] == []
+
+
+@pytest.mark.parametrize("target", ["harmony-one", "harmony-650", "harmony-700",
+                                    "harmony-900"])
+def test_the_5xx_clear_key_lands_on_the_clear_key(target):
+    """The 515, 525 and Xbox 360 call the key left of 0 NumberStar ("* clear") and the
+    555 Clear, these remotes NumberPlus ("Clear (+)"): a command on it was dropped, as a
+    key the target does not have."""
+    project = {"settings": {"remote": "harmony-900"}, "activities": [],
+               "devices": [{"id": "tv", "label": "TV", "commands": [
+                   ["Clear", "Clear", "", "", "NumberStar"],
+                   ["Back", "Back", "", "", "Clear"]]}]}
+    moved, report = migrate.migrate(project, target)
+    assert [row[4] for row in moved["devices"][0]["commands"]] == ["NumberPlus"] * 2
+    assert not [row for row in report if row["change"] == "removed"]

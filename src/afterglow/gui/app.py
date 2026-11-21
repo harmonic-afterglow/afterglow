@@ -4,6 +4,7 @@ import contextlib
 import logging
 import sys
 import json
+import re
 from pathlib import Path
 
 from ..qt.QtWidgets import (
@@ -137,6 +138,9 @@ class MainWindow(QMainWindow):
                                  "Ctrl+Shift+E"))
         file_menu.addAction(_act("Export .ezhex…", self.export_ezhex, "Ctrl+E"))
         file_menu.addAction(_act("Show Earlier Versions…", self.show_backups))
+        file_menu.addSeparator()
+        # It was reached only by clicking the remote's name in the status bar.
+        file_menu.addAction(_act("Change Remote...", lambda: self.change_remote()))
         file_menu.addSeparator()
         file_menu.addAction(_act("Exit", self.close, "Ctrl+Q"))
 
@@ -275,8 +279,11 @@ class MainWindow(QMainWindow):
         self.activities_tab.refresh()
         self.settings_tab.refresh()
         self.update_tab.refresh()
+        # another project, or this one for another remote: the last build's log was not
+        # this one's ("Building for Harmony 900" still showed after moving it to a 550)
+        self.update_tab.log_box.clear()
 
-    def _choose_remote(self, title, intro, exclude=None):
+    def _choose_remote(self, title, intro, exclude=None, preselect=True):
         """(remote id, skin) chosen, or None. ``exclude`` is a (remote id, skin) - the
         model the project is for - left out of the list; its other models are not."""
         from .default_remote import default_remote_id, default_remote_skin
@@ -291,7 +298,8 @@ class MainWindow(QMainWindow):
         dialog = ChooseRemoteDialog(choices, title, intro, self,
                                     selected=default_remote_id(),
                                     selected_skin=default_remote_skin(),
-                                    known=remote_profiles(), exclude=exclude)
+                                    known=remote_profiles(), exclude=exclude,
+                                    preselect=preselect)
         if not dialog.exec() or not dialog.chosen():
             return None
         return dialog.chosen(), dialog.chosen_skin()
@@ -304,30 +312,35 @@ class MainWindow(QMainWindow):
         source = self._profile()
         source_skin = (self.project.get("settings") or {}).get("skin")
         if not target_id:
+            # which remote it is for now, as the list leaves that one out; and nothing
+            # chosen for you - it highlighted the default remote
+            now = (f"This project is for the {remotes.model_name(source, source_skin)}. "
+                   if source else "")
             chosen = self._choose_remote(
                 "Change remote",
-                "Move this project to another remote. Devices, activities and settings "
+                now + "Move it to another remote. Devices, activities and settings "
                 "are checked against what that remote can do; you see every change "
                 "before anything is saved, and this project is left as it is.",
-                exclude=(source.id, source_skin) if source else None)
+                exclude=(source.id, source_skin) if source else None, preselect=False)
             if not chosen:
                 return
             target_id, target_skin = chosen
         self.settings_tab.save()
         target = remotes.get(target_id)
         try:
-            migrated, report = migrate.migrate(self.project, target)
+            migrated, report = migrate.migrate(self.project, target, target_skin)
         except Exception as exc:
             QMessageBox.critical(self, "Change remote", str(exc))
             return
         if target_skin in target.skins:
             migrated.setdefault("settings", {})["skin"] = target_skin
-        if not MigrationDialog(source, target, report, self).exec():
+        if not MigrationDialog(source, target, report, self, source_skin=source_skin,
+                               target_skin=target_skin).exec():
             return
-        stem = Path(self._project_path).stem if self._project_path else "project"
+        # named after the remote it is for now, as a new project is: the old name with
+        # each remote added grew to "ora-900-harmony-525-harmony-650.json"
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save the moved project",
-            str(user_folder("projects") / f"{stem}-{target.id}.json"),
+            self, "Save the moved project", str(self._suggested_project_path(migrated)),
             "JSON Project (*.json);;All (*)")
         if not path:
             return
@@ -627,9 +640,32 @@ class MainWindow(QMainWindow):
         else:
             self.save_project_as()
 
+    def _suggested_project_path(self, project=None) -> Path:
+        """Where Save As starts: the project's own file, else one named after its remote
+        that is not taken yet - "Harmony 550.json". It suggested "project.json", which the
+        window names after its folder, so every project saved that way was "Projects".
+        `project`: one not yet in the window (a moved copy), named after its remote."""
+        if project is None and self._project_path:
+            return Path(self._project_path)
+        from .. import remotes
+        project = self.project if project is None else project
+        try:
+            profile = remotes.for_project(project)
+        except LookupError:
+            profile = None
+        skin = (project.get("settings") or {}).get("skin")
+        name = remotes.model_name(profile, skin) if profile else "Project"
+        # "Harmony 600 / 650 / 665" when the project names no model: not folders
+        name = " ".join(re.sub(r'[\\/:*?"<>|]', "-", name).split())
+        folder = user_folder("projects")
+        path, number = folder / f"{name}.json", 2
+        while path.exists():
+            path, number = folder / f"{name} ({number}).json", number + 1
+        return path
+
     def save_project_as(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Project As", str(user_folder("projects") / "project.json"),
+            self, "Save Project As", str(self._suggested_project_path()),
             "JSON Project (*.json);;All (*)")
         if path:
             # a name typed without its extension is still a project the Open dialog lists
@@ -637,6 +673,9 @@ class MainWindow(QMainWindow):
                 path += ".json"
             if self._write_project(path):
                 self._project_path = path
+                # the title and status bar were drawn before the path was known, and
+                # still said "Untitled" and "Not saved yet" after the save
+                self._show_state()
 
     def _write_project(self, path) -> bool:
         """Save the project to ``path``, whole or not at all; False, said, if it failed.

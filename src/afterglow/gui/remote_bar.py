@@ -71,7 +71,7 @@ class ChooseRemoteDialog(QDialog):
 
     def __init__(self, profiles, title: str, intro: str, parent=None,
                  selected: str | None = None, selected_skin: int | None = None,
-                 known=None, exclude=None):
+                 known=None, exclude=None, preselect: bool = True):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(460, 480)
@@ -111,7 +111,8 @@ class ChooseRemoteDialog(QDialog):
                 item = QListWidgetItem(name)
                 item.setFlags(Qt.ItemFlag.NoItemFlags)       # shown, greyed, not chosen
                 self.list.addItem(item)
-        self._select(selected, selected_skin)
+        if preselect:
+            self._select(selected, selected_skin)
         self.list.itemDoubleClicked.connect(
             lambda item: self.accept() if item.data(256) else None)
         layout.addWidget(self.list, 1)
@@ -120,6 +121,12 @@ class ChooseRemoteDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        # nothing chosen yet (preselect off): OK waits for a choice
+        ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        ok.setEnabled(self.list.currentItem() is not None
+                      and bool(self.list.currentItem().data(256)))
+        self.list.currentItemChanged.connect(
+            lambda item, _old: ok.setEnabled(item is not None and bool(item.data(256))))
 
     def _choosable(self):
         return [self.list.item(i) for i in range(self.list.count())
@@ -199,15 +206,19 @@ class MigrationDialog(QDialog):
 
     WORDS = {"renamed": "Renamed", "substituted": "Changed", "removed": "Removed"}
 
-    def __init__(self, source, target, report, parent=None):
+    def __init__(self, source, target, report, parent=None, source_skin=None,
+                 target_skin=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Move to {target.model}")
+        from .. import remotes
+        # by the models chosen - "Harmony 650" - not the profile's "600 / 650 / 665"
+        to = remotes.model_name(target, target_skin)
+        self.setWindowTitle(f"Move to {to}")
         self.resize(640, 460)
         layout = QVBoxLayout(self)
         counts = {word: sum(row["change"] == key for row in report)
                   for key, word in self.WORDS.items()}
-        summary = (f"Moving this project from {source.model if source else 'its remote'} "
-                   f"to {target.model}. ")
+        start = remotes.model_name(source, source_skin) if source else "its remote"
+        summary = f"Moving this project from {start} to {to}. "
         summary += ("Everything carries over unchanged." if not report else
                     ", ".join(f"{n} {word.lower()}" for word, n in counts.items() if n)
                     + ". Review the list, then save the result as a new project; this "

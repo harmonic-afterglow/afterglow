@@ -40,15 +40,19 @@ class DeviceCard(QWidget):
         layout.addWidget(_grip())
 
         profile = project_remote(project)
+        labels = profile.device_types
+        # A remote with no device types (a 5xx: its menus draw no icons) shows no type
+        # and no icon - not the raw id a device brought from another remote, nor the
+        # stand-in an import gave it.
         glyph = QLabel()
-        glyph.setPixmap(type_pixmap(spec.get("type", ""), 34, profile))
+        if labels:
+            glyph.setPixmap(type_pixmap(spec.get("type", ""), 34, profile))
         glyph.setFixedWidth(42)
         layout.addWidget(glyph)
 
         info = QVBoxLayout()
         name_lbl = bold(spec.get("label","?"))
-        labels = profile.device_types
-        kind = labels.get(spec.get("type", ""), spec.get("type", ""))
+        kind = labels.get(spec.get("type", ""), spec.get("type", "")) if labels else ""
         # Where its codes go out, only where there is a choice: a remote without RF
         # blasters says "Remote (front IR)" of every device.
         route = rf_label(project or {}, spec.get("id")) if profile.can("rf_blaster") else ""
@@ -279,14 +283,17 @@ class ActivityCard(QWidget):
         ctrl_lbl = devices_by_id.get(spec.get("control",""), {}).get("label")
         atype    = spec.get("type","VirtualTelevisionN")
 
+        # no activity types on this remote (a 5xx): no type and no icon, as for devices
+        typed = bool(type_names)
         glyph = QLabel()
-        glyph.setPixmap(type_pixmap(atype, 34, remote))
+        if typed:
+            glyph.setPixmap(type_pixmap(atype, 34, remote))
         glyph.setFixedWidth(42)
         layout.addWidget(glyph)
 
         info = QVBoxLayout()
         info.addWidget(bold(spec.get("label","?")))
-        shown = (type_names or {}).get(atype, atype)
+        shown = type_names.get(atype, atype) if typed else ""
         # A role the activity does not fill is left out, not shown as "?".
         sub = QLabel("  ·  ".join(part for part in (
             shown, disp_lbl and f"Display: {disp_lbl}", ctrl_lbl and f"Control: {ctrl_lbl}")
@@ -457,8 +464,8 @@ class SettingsTab(QWidget):
         self.first_name = QLineEdit(s.get("first_name", ""))
         self.last_name  = QLineEdit(s.get("last_name", ""))
         for field, hint in ((self.out_file, "optional - named after the remote if empty"),
-                            (self.first_name, "your first name"),
-                            (self.last_name, "your last name")):
+                            (self.first_name, "optional - Harmony if empty"),
+                            (self.last_name, "optional - User if empty")):
             field.setPlaceholderText(hint)
         self.locale = QComboBox()
 
@@ -680,9 +687,11 @@ class SettingsTab(QWidget):
         settings.pop("work_dir", None)
 
     # The output file is not among them: Flash builds each time, to a file named after
-    # the remote unless one is given.
-    REQUIRED = (("first_name", "First name", "owner"),
-                ("last_name", "Last name", "owner"))
+    # the remote unless one is given. Nor is the owner's name any more: the 900's and
+    # 1100's configurations carry one, and their scaffold's "Harmony User" goes in when
+    # the project gives none - asking for it stopped the first build of every new 900 or
+    # 1100 project for a name the build already has.
+    REQUIRED = ()
 
     def missing(self):
         """Required settings the user has not filled in yet."""

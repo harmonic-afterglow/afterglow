@@ -147,7 +147,8 @@ class DeviceScreenPage(QWizardPage):
         device = self._device()
         self._fill(project_devices.screen_buttons(device))
         self.commands.clear()
-        for row in device["commands"]:
+        # by name, to be found: the device's own order is a catalogue's, or no order
+        for row in sorted(device["commands"], key=lambda row: str(row[0]).casefold()):
             item = QListWidgetItem(str(row[0]))
             item.setData(Qt.ItemDataRole.UserRole,
                          str(row[1]) if len(row) > 1 and row[1] else str(row[0]))

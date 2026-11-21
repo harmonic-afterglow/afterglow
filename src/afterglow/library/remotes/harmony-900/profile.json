@@ -236,6 +236,8 @@
       "Replay": "SkipBack",
       "Skip": "SkipForward",
       "InputAV": "NumberEnter",
+      "Clear": "NumberPlus",
+      "NumberStar": "NumberPlus",
       "Back": "NumberPlus",
       "PageUp": "UpArrow",
       "PageDown": "DownArrow"
