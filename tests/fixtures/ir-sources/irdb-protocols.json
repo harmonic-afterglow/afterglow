@@ -219,7 +219,7 @@
    "commands": 2159,
    "sent": 2159,
    "files": 53,
-   "handling": "irp:MCE"
+   "handling": "native"
   },
   "Mitsubishi": {
    "commands": 2341,

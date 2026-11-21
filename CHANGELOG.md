@@ -15,7 +15,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `src/afterglow/library/irp/NOTICE.md`), so 98.9% of IRDB's 114,154 commands come with
   their device, and Flipper-IRDB's Kaseikyo (Panasonic, Denon), RC6, NEC42, RCA and
   Pioneer codes too. The rest say why they cannot be sent: no protocol named, a value
-  missing, or no carrier. Every protocol name IRDB, Flipper-IRDB and Logitech's archive
+  missing, or no carrier. A code whose toggle changes with every press (RC6, RECS80,
+  the Xbox 360's MCE) or that sends a frame when the key is let go (Blaupunkt, Nokia)
+  keeps doing so on every remote: the Harmony 900 sends them as protocols, MCE with its
+  own RC6 element. On a 900, RC6 mode 0 and XMP are left out and say why: its protocol
+  element cannot play their shape, and a fixed recording would lose the toggle.
+  Every protocol name IRDB, Flipper-IRDB and Logitech's archive
   use is listed in the tests with how it is sent, so one a source starts using is
   caught when the lists are refreshed (`tools/ir_source_snapshot.py`).
 

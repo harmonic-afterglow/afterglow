@@ -734,8 +734,11 @@ def waveform_signal(entry: dict, values: dict, *, provenance: dict | None = None
     toggles = [name for name in protocol.persistent if name not in values]
     alternate = None
     if toggles:
-        second = render(protocol, {**values, **{name: first.state[name]
-                                                  for name in toggles}})
+        # the next press: what the stream turned it to, or the other value where the
+        # stream leaves it to the sender (RECS80's T@ with no T=1-T)
+        turned = {name: first.state[name] if first.state[name] != _start(protocol, name)
+                  else 1 - first.state[name] for name in toggles}
+        second = render(protocol, {**values, **turned})
         if (second.intro, second.repeat) != (first.intro, first.repeat):
             alternate = _recording(second)
     if first.carrier_hz <= 0:
@@ -748,6 +751,11 @@ def waveform_signal(entry: dict, values: dict, *, provenance: dict | None = None
         recording["pulses_us"], carrier_hz=first.carrier_hz,
         sections=recording["sections"], alternate=alternate, name=entry["name"],
         provenance={**(provenance or {}), "irp": entry["name"], "parameters": values})
+
+
+def _start(protocol: Protocol, name: str) -> int:
+    default = protocol.parameters[name][2]
+    return int(_Env(protocol, {}).eval(default)) if default is not None else 0
 
 
 def _recording(rendered: Rendered) -> dict:

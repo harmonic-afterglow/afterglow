@@ -106,13 +106,27 @@ def test_jvc_from_irdb_and_flipper_is_sent_lowest_bit_first():
     assert irdb["parameters"] == flipper["parameters"] == {"code": 0b11000000_11101000}
 
 
+def _library(*signals):
+    from afterglow import irp_portable
+    return {**ir_protocol.catalog(), **irp_portable.definitions_for(signals)}
+
+
+def _press(signal, state=None):
+    """What one press sends, and the sender's state after it."""
+    if signal["kind"] == "waveform":
+        return signal["pulses_us"], None
+    waveform, state = ir_protocol.render_transmission(
+        signal, phase="press", state=state, library=_library(signal))
+    return waveform["pulses_us"], state
+
+
 def test_kaseikyo_from_flipper_matches_irdb_panasonic():
     """A Panasonic TV's Power: IRDB 'Panasonic' 128,0,61 and Flipper's Kaseikyo."""
     irdb, _why = _irdb_signal({"protocol": "Panasonic", "device": "128", "subdevice": "0",
                                "function": "61"})
     flipper, _why = _flipper_signal({"type": "parsed", "protocol": "Kaseikyo",
                                      "address": "80 02 20 00", "command": "D0 03 00 00"})
-    assert irdb["pulses_us"] == flipper["pulses_us"]
+    assert _press(irdb)[0] == _press(flipper)[0]
 
 
 def test_kaseikyo_from_flipper_ends_with_the_xor_of_the_bytes_before_it():
@@ -120,7 +134,7 @@ def test_kaseikyo_from_flipper_ends_with_the_xor_of_the_bytes_before_it():
     checksum and Flipper's differ."""
     signal, _why = _flipper_signal({"type": "parsed", "protocol": "Kaseikyo",
                                     "address": "A0 03 01 01", "command": "5B 02 00 00"})
-    pulses = signal["pulses_us"][2:2 + 96]
+    pulses = _press(signal)[0][2:2 + 96]
     bits = [1 if -gap > 900 else 0 for gap in pulses[1::2]]
     data = [sum(bit << i for i, bit in enumerate(bits[at:at + 8])) for at in range(0, 48, 8)]
     assert data[:2] == [0x03, 0x01]
@@ -143,27 +157,134 @@ def test_a_refused_name_says_why():
     assert signal is None and "Barco" in why and "carrier" in why
 
 
-def test_every_remote_takes_what_irp_renders():
-    """A rendered command is a recording with an intro, a repeat and, for a toggle, the
-    other press: every remote has to accept it, the 1100 included, which looked every
-    recording up as a protocol and refused it."""
+@pytest.mark.parametrize("device, subdevice, function", [
+    (116, 15, 12), (4, 15, 255), (127, 0, 0)])
+def test_mce_from_irdb_is_the_shipped_rc6_mce_and_sends_what_mce_does(
+        device, subdevice, function):
+    """IRDB's MCE (the Xbox 360's, Windows Media Center's) is read into the shipped,
+    hardware-checked rc6-mce, which the 900 sends with its own RC6 element: a press and
+    the next are MCE with T=0 and T=1. rc6-mce writes each bit the other way up."""
+    signal, _why = _irdb_signal({"protocol": "MCE", "device": str(device),
+                                 "subdevice": str(subdevice), "function": str(function)})
+    assert signal["protocol"] == "rc6-mce"
+    entry, values = irp.resolve("irdb", "MCE", {"D": device, "S": subdevice,
+                                                "F": function})
+    protocol = irp.parse(entry["irp"])
+    first, state = _press(signal)
+    second, _state = _press(signal, state)
+    _close(first, irp.render(protocol, {**values, "T": 0}).repeat)
+    _close(second, irp.render(protocol, {**values, "T": 1}).repeat)
+
+
+@pytest.mark.parametrize("source, name, given, toggles, release", [
+    ("irdb", "RECS80", {"D": 3, "F": 20}, True, False),
+    ("irdb", "RC6", {"D": 0, "F": 12}, True, False),
+    ("irdb", "Blaupunkt", {"D": 1, "F": 5}, False, True),
+    ("irdb", "NRC17", {"D": 3, "F": 9}, False, True),
+    ("irdb", "Denon", {"D": 2, "F": 9}, False, False),
+    ("irdb", "XMP-1", {"D": 3, "S": 4, "F": 9}, False, False),
+    ("flipper", "Kaseikyo", {"A": 0x200280, "C": 0x3D0}, False, False),
+])
+def test_an_irp_command_compiles_to_a_protocol_that_sends_the_same(
+        source, name, given, toggles, release):
+    """irp_portable accepts a definition only when it renders the IRP back; this says
+    the protocols IRDB uses most are among them, toggle and release included."""
+    from afterglow import irp_portable
+    entry, values = irp.resolve(source, name, given)
+    definition, _parameters = irp_portable.compile_command(entry, values)
+    assert bool(definition.get("state")) == toggles
+    assert bool(definition["transmission"]["release"]) == release
+
+
+def test_what_no_definition_can_hold_stays_a_recording():
+    """Zenith's field widths are the command's own: it is sent as rendered."""
+    signal, _why = _irdb_signal({"protocol": "Zenith", "device": "6", "subdevice": "0",
+                                 "function": "9"})
+    assert signal["kind"] == "waveform"
+
+
+def test_every_remote_plays_a_recording():
+    """The 1100 looked every recording up as a protocol and refused it."""
+    from afterglow import backends, remotes
+    signal, _why = _irdb_signal({"protocol": "Zenith", "device": "6", "subdevice": "0",
+                                 "function": "9"})
+    refused = {profile.id: answer.get("reason") for profile in remotes.load_all()
+               if not (answer := backends.for_profile(profile).capability(
+                   signal, profile)).get("supported")}
+    assert not refused
+
+
+# what the 900's generic protocol element cannot play: RC6 mode 0's toggle is its
+# double-width trailer bit, a second alphabet in one run of symbols; XMP is two halves
+# with a gap between them. Neither may be frozen into one recording, which would lose
+# the toggle (RC6) or the repeat (XMP).
+NOT_ON_THE_900 = {"RC6", "XMP-1"}
+
+
+def test_every_remote_takes_what_irp_compiles():
     from afterglow import backends, remotes
     signals = {
-        "RC6": _flipper_signal({"type": "parsed", "protocol": "RC6",
-                                "address": "00 00 00 00", "command": "0C 00 00 00"})[0],
+        "MCE": _irdb_signal({"protocol": "MCE", "device": "116", "subdevice": "15",
+                             "function": "12"})[0],
+        "RECS80": _irdb_signal({"protocol": "RECS80", "device": "3", "subdevice": "-1",
+                                "function": "20"})[0],
+        "Blaupunkt": _irdb_signal({"protocol": "Blaupunkt", "device": "1",
+                                   "subdevice": "-1", "function": "5"})[0],
+        "Denon": _irdb_signal({"protocol": "Denon", "device": "2", "subdevice": "-1",
+                               "function": "9"})[0],
         "Kaseikyo": _flipper_signal({"type": "parsed", "protocol": "Kaseikyo",
                                      "address": "80 02 20 00",
                                      "command": "D0 03 00 00"})[0],
-        "MCE": _irdb_signal({"protocol": "MCE", "device": "116", "subdevice": "15",
-                             "function": "12"})[0],
-        "Tivo": _irdb_signal({"protocol": "Tivo unit=3", "device": "133",
-                              "subdevice": "48", "function": "16"})[0],
+        "RC6": _flipper_signal({"type": "parsed", "protocol": "RC6",
+                                "address": "00 00 00 00", "command": "0C 00 00 00"})[0],
+        "XMP-1": _irdb_signal({"protocol": "XMP-1", "device": "3", "subdevice": "4",
+                               "function": "9"})[0],
     }
+    library = _library(*signals.values())
     refused = {}
     for profile in remotes.load_all():
         backend = backends.for_profile(profile)
         for name, signal in signals.items():
-            answer = backend.capability(signal, profile)
-            if not answer.get("supported"):
+            answer = backend.capability(signal, profile, library=library)
+            expected = not (profile.id == "harmony-900" and name in NOT_ON_THE_900)
+            if bool(answer.get("supported")) != expected:
                 refused[(profile.id, name)] = answer.get("reason")
     assert not refused
+
+
+def test_the_900_keeps_a_toggle_and_a_release_through_a_build(tmp_path):
+    """Built for a 900 and read back: RECS80's toggle, Blaupunkt's release frame and
+    MCE's rc6-mce are still there - as a recording, the toggle never changed and the
+    release could not be sent at all."""
+    import contextlib
+    import io
+    from afterglow import device_json, importer
+    from afterglow.build_service import ConfigBuildService
+    from afterglow.public_ir_sources import IRDB_INDEX_URL, IRDB_RAW_URL, IrdbCatalog
+    codes = ("functionname,protocol,device,subdevice,function\n"
+             "POWER,RECS80,3,-1,20\nVOL+,Blaupunkt,1,-1,5\nPLAY,MCE,116,15,12\n")
+
+    def fetch(url):
+        if url == IRDB_INDEX_URL:
+            return "Test/TV/1,-1.csv\n"
+        assert url.startswith(IRDB_RAW_URL)
+        return codes
+
+    catalog = IrdbCatalog(fetch=fetch, remote_id="harmony-900")
+    result = catalog.materialize(catalog.models("Test", "TV")[0])
+    assert result["counts"]["excluded"] == 0
+    spec = device_json.to_project_device(result["template"], device_id="40009001")
+    spec["label"] = "Test TV"
+    out = tmp_path / "irp.ezhex"
+    project = {"devices": [spec], "activities": [], "settings": {
+        "out_file": str(out), "remote": "harmony-900", "first_name": "T",
+        "last_name": "U"}}
+    with contextlib.redirect_stdout(io.StringIO()):
+        ConfigBuildService(tmp_path, lambda _m: None).build(project)
+        device = importer.import_file(str(out)).project["devices"][0]
+    signals = device["signals"]
+    carried = device.get("portable_protocol_definitions") or {}
+    assert all(signal["kind"] == "protocol" for signal in signals.values())
+    assert carried[signals["POWER"]["protocol"]].get("state")
+    assert carried[signals["VOL+"]["protocol"]]["transmission"]["release"]
+    assert signals["PLAY"]["protocol"] == "rc6-mce"

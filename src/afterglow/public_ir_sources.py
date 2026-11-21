@@ -17,7 +17,8 @@ import re
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from . import backends, device_json, ir_signal, irp, project_devices, remotes
+from . import backends, device_json, ir_protocol, ir_signal, irp, irp_portable, \
+    project_devices, remotes
 from .corpus_provider import Manufacturer, _hard_key, _inputs, _power
 from .flipper import parse_ir_text
 
@@ -181,6 +182,17 @@ def _by_irp(source: str, name: str, given: dict, provenance: dict) -> tuple[dict
     it cannot be sent in irp/source-names.json."""
     try:
         entry, values = irp.resolve(source, name, given)
+    except irp.IrpError as exc:
+        return None, f"{name!r} cannot be sent: {exc}"
+    # As a protocol where its definition compiles (irp_portable), so a remote that sends
+    # protocols - the 900 - keeps its toggle and what it sends on release; else as the
+    # recording of it every remote can play.
+    try:
+        return irp_portable.protocol_signal(entry, values, provenance=provenance), \
+            f"from its IRP ({entry['name']})"
+    except ValueError:
+        pass
+    try:
         return irp.waveform_signal(entry, values, provenance=provenance), \
             f"rendered from its IRP ({entry['name']})"
     except irp.IrpError as exc:
@@ -197,6 +209,19 @@ def _jvc(address: int, command: int, provenance: dict) -> dict:
     return ir_signal.protocol_signal(
         "jvc16", {"code": (reverse(address) << 8) | reverse(command)},
         provenance=provenance)
+
+
+def _mce(device: int, subdevice: int, function: int, provenance: dict) -> dict:
+    """Microsoft's RC6 mode 6A (MCE, the Xbox 360's) as the shipped definition takes it:
+    after the leader, which carries the OEM byte's first two bits (128: "10"), the rest
+    of it (0) and the subdevice, the toggle, then the device's 7 bits and the function -
+    each bit the other way up, as Logitech's Microsoft 30 Bit codes write them (its "0"
+    is the biphase symbol IRP's MCE calls 1). The 900 sends that definition with its own
+    RC6 element, toggle and all."""
+    high = ~((0 << 8) | subdevice) & 0x3FFF          # the OEM byte's last 6 bits, S
+    low = ~((device << 8) | function) & 0x7FFF
+    return ir_signal.protocol_signal(
+        "rc6-mce", {"code": (high << 16) | low}, provenance=provenance)
 
 
 # Sony SIRC as Flipper and IRDB name it, and the width of each part: a 7-bit command,
@@ -231,7 +256,7 @@ def _rc5(address: int, command: int, provenance: dict) -> dict:
 
 # IRDB's protocols the shipped definitions take, by their name without punctuation.
 NATIVE_IRDB = {"nec1", "nec2", "necx2", "samsung32", "jvc", "jvc16", "sony12", "sony15",
-               "sony20", "rc5"}
+               "sony20", "rc5", "mce", "rc66632"}
 
 
 def _irdb_signal(row: dict) -> tuple[dict | None, str]:
@@ -292,6 +317,8 @@ def _irdb_signal(row: dict) -> tuple[dict | None, str]:
                          provenance), "protocol tuple"
         if protocol == "rc5" and subdevice < 0:
             return _rc5(device, function, provenance), "protocol tuple"
+        if protocol in {"mce", "rc66632"} and 0 <= device < 0x80 and 0 <= subdevice <= 0xFF:
+            return _mce(device, subdevice, function, provenance), "protocol tuple"
         return _by_irp("irdb", row["protocol"], {
             "D": device, "S": subdevice if subdevice >= 0 else None, "F": function},
             provenance)
@@ -382,9 +409,10 @@ class _PublicCatalog:
                 suffix += 1
             used.add(name)
             signal = source_command.get("signal")
+            carried = irp_portable.definitions_for([signal])
             verdict = self._capability(
                 name, signal, source_command.get("classification", "source"),
-                source_command.get("reason", "no portable signal"))
+                source_command.get("reason", "no portable signal"), carried)
             report.append(verdict)
             if not verdict["supported"]:
                 continue
@@ -427,6 +455,9 @@ class _PublicCatalog:
             template["inputs"] = inputs
         if all(str(number) in names for number in range(10)):
             template["numeric"] = True
+        carried = irp_portable.definitions_for(entry["signal"] for entry in commands)
+        if carried:
+            template["portable_protocol_definitions"] = carried
         supported = sum(entry["supported"] for entry in report)
         return {
             "template": template,
@@ -440,7 +471,7 @@ class _PublicCatalog:
         }
 
     def _capability(self, name: str, signal: dict | None,
-                    classification: str, reason: str) -> dict:
+                    classification: str, reason: str, carried: dict | None = None) -> dict:
         base = {
             "name": name,
             "classification": classification,
@@ -450,7 +481,14 @@ class _PublicCatalog:
         }
         if not isinstance(signal, dict):
             return base
-        base.update(backends.for_profile(self.profile).capability(signal, self.profile))
+        library = None
+        if carried:
+            library = {**ir_protocol.catalog(), **carried}
+        try:
+            base.update(backends.for_profile(self.profile).capability(
+                signal, self.profile, **({"library": library} if library else {})))
+        except (KeyError, LookupError, ValueError) as exc:
+            base["reason"] = str(exc)
         return base
 
 
