@@ -30,6 +30,7 @@ from pathlib import Path
 
 from . import activities, activity_index, catalogue, drawing, keys, platform_text, scaffold, \
     structures
+from ... import project_devices
 from .actions import Actions
 from .devices import device_state_records, waits
 from .link import Pieces
@@ -805,22 +806,16 @@ class Image:
         title_room = 100
         specs = self.project.get("devices") or []
         for device in self.devices:
-            # in the order the project lists them, as the pages it was read from showed them
-            listed = [entry[0] for entry in specs[device["index"]].get("commands") or []]
-            rank = {name: at for at, name in enumerate(listed)}
-            shown = sorted((command for command in device["commands"]
-                            if not command.get("hidden")),
-                           key=lambda command: rank.get(command["name"], len(rank)))
+            names = {command["name"] for command in device["commands"]}
+            shown = _shown(specs[device["index"]], device["commands"], names)
             chunks = [shown[at:at + CORNERS] for at in range(0, len(shown), CORNERS)] or [[]]
             title = self._fit(device["label"], self.fonts.roles["title"], title_room)
-            names = {command["name"] for command in device["commands"]}
             device_pages = []
             for number, chunk in enumerate(chunks):
                 rows = [(corner_keys[corner], command["object"], OBJECT_ATOM)
-                        for corner, command in enumerate(chunk)]
-                corners = [(corner, *self.label_lines(_drawn_name(command["name"], names),
-                                                      attribute))
-                           for corner, command in enumerate(chunk)]
+                        for corner, (_text, command) in enumerate(chunk)]
+                corners = [(corner, *self.label_lines(text, attribute))
+                           for corner, (text, _command) in enumerate(chunk)]
                 name = f"device:{device['index']}:{number}"
                 self.blocks[name] = self.page(
                     backdrop=self.backdrop("device", len(chunk)), title=title,
@@ -2095,6 +2090,24 @@ def _words(name: str) -> str:
             out += " "
         out += char
     return out
+
+
+def _shown(spec: dict, commands: list[dict], names: set[str]) -> list[tuple[str, dict]]:
+    """A device's own page, as ``(text, command)`` a corner: the page arranged on its
+    Screen page (`screen_buttons`) - in its order, under its texts, a command twice where
+    it is there twice, a gap closed up, as the 650's pages fill their corners in turn -
+    else, as it was always built, every command with a label in the order the project
+    lists them, which is the order the pages it was read from showed them."""
+    by_name = {command["name"]: command for command in commands}
+    if spec.get("screen_buttons") is not None:
+        return [(entry[1] or entry[0], by_name[entry[0]])
+                for entry in project_devices.screen_buttons(spec)
+                if entry is not None and entry[0] in by_name]
+    listed = [entry[0] for entry in spec.get("commands") or []]
+    rank = {name: at for at, name in enumerate(listed)}
+    return [(_drawn_name(command["name"], names), command) for command in sorted(
+        (command for command in commands if not command.get("hidden")),
+        key=lambda command: rank.get(command["name"], len(rank)))]
 
 
 def _drawn_name(name: str, names: set[str]) -> str:

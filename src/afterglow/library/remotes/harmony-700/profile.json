@@ -263,6 +263,7 @@
       "search",
       "identity",
       "commands",
+      "screen",
       "inputs",
       "timing"
     ],
@@ -270,7 +271,7 @@
     "favourite_logos": false,
     "favourites_button": "Favorite Channels",
     "screen_icons": false,
-    "screen_grid": {"activity": [2, 2]},
+    "screen_grid": {"device": [2, 2], "activity": [2, 2]},
     "activity_buttons": [
       ["Watch TV", "TV"],
       ["Watch a Movie", "Movie"],

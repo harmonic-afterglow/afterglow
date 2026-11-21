@@ -283,11 +283,46 @@ def test_a_one_activity_s_gaps_read_back(tmp_path):
         [name, tv, name] for name in FILLERS] + [None, ["Last", tv, "InputHdmi2"]]
 
 
+# Harmony 600 / 650 / 665 / 700
+def test_the_650_draws_a_device_s_page_as_arranged(tmp_path):
+    from afterglow import payloads, remotes
+    from afterglow.backends.harmony_650 import backend, compose
+    from test_harmony_650 import DEVICES, KEYED, TV
+    project = copy.deepcopy(DEVICES)
+    tv = project["devices"][0]
+    tv["commands"] = [[name, name, "", "", name if name in KEYED else None] for name in TV]
+    # a gap closed up, as the 650's corners fill in turn; a key's own command shown
+    tv["screen_buttons"] = [["Netflix", "Apps"], None, ["Menu", "Menu"],
+                            ["InputHdmi1", "HDMI 1"], ["PowerToggle", "Power"]]
+    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    payloads.get("blob").unpack(image, str(tmp_path))
+    read = backend.import_project(str(tmp_path), remotes.get("harmony-650"), {"name": "t"})
+    tv_read, player = read.project["devices"]
+    # the 650 keeps only what a button draws, so its command comes back by that name
+    assert [entry[1] for entry in tv_read["commands"] if entry[1]] == [
+        "Apps", "Menu", "HDMI 1", "Power"]
+    # a device never arranged keeps the page its labels make, as before
+    assert [entry[1] for entry in player["commands"] if entry[1]] == ["Eject", "PowerToggle"]
+
+
+def test_a_device_page_moved_to_the_650_loses_its_gaps_and_icons():
+    from afterglow import migrate
+    project = {"devices": [{"label": "TV", "commands": [["Menu", "Menu"], ["Guide", "Guide"]],
+                            "screen_buttons": [["Menu", "Menu", "menu.png"], None,
+                                               ["Guide", "Guide"]]}]}
+    moved, report = migrate.migrate(copy.deepcopy(project), "harmony-650")
+    assert moved["devices"][0]["screen_buttons"] == [["Menu", "Menu"], ["Guide", "Guide"]]
+    assert {(row["subject"], row["change"]) for row in report} >= {
+        ("Device 'TV'", "removed"), ("Device 'TV'", "substituted")}
+
+
 # the remote's grid
 @pytest.mark.parametrize("remote, device, activity, gaps", [
     ("harmony-900", (2, 3), (2, 3), True),       # ButtonImporter.as, LayoutManager.as
     ("harmony-1100", (3, 3), (3, 2), True),      # devices-group / pushlist-group swf
     ("harmony-one", (2, 3), (2, 3), True),       # pages.BUTTON_POSITIONS
+    ("harmony-650", (2, 2), (2, 2), False),      # four corners, filled in turn
+    ("harmony-700", (2, 2), (2, 2), False),
 ])
 def test_each_remote_says_how_its_pages_are_laid_out(remote, device, activity, gaps):
     from afterglow import backends, remotes

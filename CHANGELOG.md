@@ -24,6 +24,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   use is listed in the tests with how it is sent, so one a source starts using is
   caught when the lists are refreshed (`tools/ir_source_snapshot.py`).
 
+- **Arrange a device's own page on the Harmony 600, 650, 665 and 700.** Edit Device
+  has the Screen page the 900 and One have: which commands get a button on the device's
+  page, in what order, under what text, with a drawing of the remote's four corners. A
+  device left as it is keeps the page it had - its labelled commands in order. A device
+  page moved from a remote with gaps or icons comes over without them, and the review
+  of the move says so.
+
 ### Changed
 
 - **Device and activity rows have one button besides Edit.** Delete, and Find model
@@ -96,9 +103,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   activity turns up read as lost after a move: it was there, but nowhere on the row.
 - **The Flash log starts empty for another project.** After opening, importing or
   moving one, it still showed the last project's build.
-- **The 600, 650, 665 and 700's Commands page says how the device's own page is
-  made:** from the commands with an on-screen label, in order. It sent you to a Screen
-  page these remotes do not have.
 - **The One's and 800's Screen page lists a device's commands by name**, to be found.
 - **Commands page: Picture and List are no longer cut off** at the right; "Copy from
   another device" is "Copy from...".

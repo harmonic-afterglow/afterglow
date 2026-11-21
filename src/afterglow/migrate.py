@@ -158,12 +158,30 @@ def _model(project, target, report, chosen=None):
 
 
 def _screen(project, target, report):
-    """What an activity shows on the screen, as far as the target shows it: its buttons
-    where it has an activity page of them, without icons where it draws none and without
-    gaps where its pages fill their places in turn; its favourites where it has them,
-    without logos where it draws none (the 650's and 700's are names alone)."""
+    """What a device's own page and an activity show on the screen, as far as the target
+    shows it. A device's page without icons where the target draws none and without
+    gaps where its pages fill their places in turn. An activity's buttons where it has
+    an activity page of them, the same way; its favourites where it has them, without
+    logos where it draws none (the 650's and 700's are names alone)."""
     from . import backends
 
+    for device in project.get("devices") or []:
+        page = device.get("screen_buttons")
+        if not page or "screen" not in target.device_pages:
+            continue
+        where = f"Device {device.get('label')!r}"
+        if not target.screen_icons:
+            icons = sum(1 for entry in page if entry and len(entry) > 2 and entry[2])
+            device["screen_buttons"] = page = [entry[:2] if entry else None
+                                               for entry in page]
+            if icons:
+                _row(report, where, "removed",
+                     f"{icons} screen button icons: {target.model} draws labels alone")
+        if None in page and not backends.screen_gaps(target):
+            device["screen_buttons"] = [entry for entry in page if entry is not None]
+            _row(report, where, "substituted",
+                 f"gaps between screen buttons closed up: {target.model} leaves "
+                 "no place on its screen empty")
     pages = set(target.activity_pages)
     for activity in project.get("activities") or []:
         where = f"Activity {activity.get('label')!r}"

@@ -220,13 +220,22 @@ def test_change_remote_says_which_remote_and_chooses_none(qapp_or_skip, monkeypa
         win.close()
 
 
-@pytest.mark.parametrize("remote, screen_page", [("harmony-650", False),
-                                                 ("harmony-one", True)])
+@pytest.mark.parametrize("remote, screen_page", [("harmony-650", True),
+                                                 ("harmony-one", True),
+                                                 ("no screen page", False)])
 def test_the_commands_page_says_where_the_device_page_is_arranged(qapp_or_skip, remote,
                                                                   screen_page):
-    """It sent a 650's owner to a Screen page the 650 does not have."""
+    """It sent a 650's owner to a Screen page the 650 did not have then; a remote with
+    none is told its page is the labelled commands in order."""
+    import json
     from afterglow.gui.device_wizard import CommandsPage
-    page = CommandsPage({"id": "1", "commands": []}, remote=remotes.get(remote))
+    if remote == "no screen page":
+        data = json.loads(remotes.profile_path("harmony-650").read_text())
+        data["interface"]["device_pages"].remove("screen")
+        profile = remotes._from_json(data)
+    else:
+        profile = remotes.get(remote)
+    page = CommandsPage({"id": "1", "commands": []}, remote=profile)
     assert ("Screen page" in page.subTitle()) is screen_page
 
 
