@@ -78,6 +78,16 @@ def _next_free_id(existing, prefix: str, start: int) -> str:
 def _new_id(existing=None):
     """A device id that is free in this project."""
     return _next_free_id(existing, "4000", 9001)
+def suggestion_order(choices, typed):
+    """The choices containing `typed`, the one that is exactly it first, then the ones
+    starting with it, then the rest, each A to Z whatever their case: "Sony" above
+    "SONY STAR", which a case-sensitive sort put first, to be picked for it unseen."""
+    q = typed.strip().casefold()
+    found = [c for c in choices if q in c.casefold()]
+    return sorted(found, key=lambda c: (c.casefold() != q, not c.casefold().startswith(q),
+                                        c.casefold(), c))
+
+
 class _SuggestBox(QWidget):
     """A QLineEdit with an inline filtered list, opened by typing or by clicking.
 
@@ -133,7 +143,7 @@ class _SuggestBox(QWidget):
         if not q:
             self.list.setVisible(False)
             return
-        matches = [c for c in choices if q in c.lower()]
+        matches = suggestion_order(choices, q)
         for m in matches:
             self.list.addItem(m)
         self.list.setVisible(open_it and bool(matches))

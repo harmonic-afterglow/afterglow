@@ -579,3 +579,13 @@ def _promote_native_signals(devices: list[dict]) -> None:
         if promote is not None:
             for device in devices:
                 promote(device)
+
+
+def make_and_model(maker, model) -> str:
+    """"Samsung UN55TU7000": a device's maker and model as one line, the maker once where
+    the model's name already starts with it ("Apple TV (4K)" by Apple, not "Apple Apple
+    TV (4K)"). Either may be missing."""
+    maker, model = (maker or "").strip(), (model or "").strip()
+    if maker and re.match(re.escape(maker) + r"(\W|$)", model, re.IGNORECASE):
+        return model
+    return " ".join(part for part in (maker, model) if part)

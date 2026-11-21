@@ -231,7 +231,7 @@ class ActivityIdentityPage(QWizardPage):
 
         self.type_combo = QComboBox()
         self.type_combo.setIconSize(QSize(20, 20))
-        types = list(vocabulary.activity_types(remote))
+        types = vocabulary.activity_type_choices(remote)
         current = (existing.get("type") or "").strip()
         if current and current not in {t for _l, t in types}:
             types.insert(0, (f"{current} (from the imported config)", current))
@@ -245,6 +245,12 @@ class ActivityIdentityPage(QWizardPage):
             if self.type_combo.itemData(i) == wanted:
                 self.type_combo.setCurrentIndex(i); break
         layout.addRow("Type:", self.type_combo)
+        # A new activity takes the type its name says ("Watch TV", "Movie night") until
+        # the type is chosen by hand.
+        self._type_chosen = bool(existing.get("type"))
+        self._remote = remote
+        self.type_combo.activated.connect(self._type_picked)
+        self.label_edit.textEdited.connect(self._type_from_name)
         # kept, not shown: an activity's own type stays in the combo and is saved as it was
         layout.setRowVisible(self.type_combo, typed)
 
@@ -288,6 +294,17 @@ class ActivityIdentityPage(QWizardPage):
         # editing one silently breaks every reference to it. Shown, never editable.
         layout.addRow("Activity ID:", self.id_edit)
         layout.setRowVisible(self.id_edit, False)    # nobody needs to see it
+
+    def _type_picked(self, *_args):
+        self._type_chosen = True
+
+    def _type_from_name(self, text):
+        if self._type_chosen:
+            return
+        wanted = vocabulary.activity_type_for_name(text, self._remote) or GENERIC_TYPE
+        at = self.type_combo.findData(wanted)
+        if at >= 0:
+            self.type_combo.setCurrentIndex(at)
 
     def _warn_button(self, *_args):
         """Say so when the chosen key starts another activity now."""

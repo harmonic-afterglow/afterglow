@@ -18,6 +18,7 @@ for one model for the life of the process, whichever remote the project was for.
 from __future__ import annotations
 
 from functools import lru_cache
+import re
 
 from . import remotes
 
@@ -53,3 +54,59 @@ def hard_keys(remote=None) -> list:
 def hard_key_layout(remote=None) -> list[dict]:
     """Where the physical buttons sit on the case, for drawing a picture of it."""
     return for_remote(remote).hard_key_layout
+
+
+# The activity type an activity without one has: "Custom / Other".
+GENERIC_ACTIVITY = "VirtualGeneric"
+
+
+def device_type_choices(remote=None) -> list[str]:
+    """The device types as a list offers them: by their readable label, A to Z, as the
+    identifiers' order put "A/V switch" among the As by "AudioVideoSwitch" and a set-top
+    box forty rows down."""
+    labels = device_types(remote)
+    return sorted(labels, key=lambda name: labels[name].casefold())
+
+
+def activity_type_choices(remote=None) -> list:
+    """[(label, identifier)] as a list offers them: "Custom / Other" first, the rest by
+    label, A to Z."""
+    return sorted(activity_types(remote),
+                  key=lambda pair: (pair[1] != GENERIC_ACTIVITY, pair[0].casefold()))
+
+
+# Words in an activity's name that say its type, checked in this order: "Watch a movie on
+# TV" is a movie. Each type is used only where the remote has it.
+_NAMED = (
+    (("movie", "film", "dvd", "blu-ray", "bluray", "blu ray", "cinema"), "VirtualDvd"),
+    (("game", "xbox", "playstation", "nintendo", "switch"), "VirtualGameConsole"),
+    (("radio",), "VirtualRadioSimple"),
+    (("cd",), "VirtualCdMulti"),
+    (("tivo",), "VirtualTiVo"),
+    (("pvr", "recording", "recordings", "dvr"), "VirtualPvr"),
+    (("teletext",), "VirtualTeletext"),
+    (("presentation",), "VirtualPresentation"),
+    (("picture", "pictures", "photo", "photos"), "VirtualMediaCenterPictures"),
+    (("tv", "television"), "VirtualTelevisionN"),
+    (("music", "listen"), "VirtualMusicServer"),
+)
+
+
+def activity_type_for_name(name: str, remote=None) -> str | None:
+    """The type an activity's name says, for a new activity whose type nobody chose:
+    "Watch TV" is Watch TV, "Movie night" Watch a DVD. None where the name says none the
+    remote has."""
+    pairs = activity_types(remote)
+    have = {identifier for _label, identifier in pairs}
+    wanted = " ".join(name.casefold().split())
+    if not wanted:
+        return None
+    for label, identifier in pairs:
+        if label.casefold() == wanted:
+            return identifier
+    words = set(re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)?", wanted))
+    for keys, identifier in _NAMED:
+        if identifier in have and any(
+                (key in words) if " " not in key else (key in wanted) for key in keys):
+            return identifier
+    return None

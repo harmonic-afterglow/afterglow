@@ -45,9 +45,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   remote picker, device rows and the device sources ("IRDB - Online").
 - **An activity's row names its devices as its Devices page asks for them:** "Watch on",
   "Volume" and "Play and menus", not "Display" and "Control".
+- **Choosing a type, a maker and a remote is plainer.** Device and activity types are
+  listed A to Z by name ("Custom / Other" first), not in the order of Logitech's
+  identifiers, which put "Set-top box" forty rows down. A new activity takes the type its
+  name says - "Watch TV", "Movie night" is Watch a DVD - until one is picked. Typing a
+  maker lists the one that is exactly it first, so "Sony" no longer has "SONY STAR" above
+  it. "Verified" and "experimental" after a remote's name are explained where remotes are
+  chosen and on hover. Device rows name the maker once ("Apple TV (4K)", not "Apple
+  Apple TV (4K)"), and the Device page names a protocol from Logitech's database as
+  Logitech did ("Sharp 48 Bit 2"), not by its identifier. After a project is moved, the
+  question about the default remote says it is about the remote just moved to.
 
 ### Fixed
 
+- **Devices from IRDB and Flipper-IRDB get their type.** A set-top box, cable box or
+  satellite receiver came in as a recorder (PVR) and an air conditioner as a home
+  appliance; they are a set-top box, cable box, satellite receiver and climate control,
+  as Logitech's database has them.
+- **Harmony 1100: a device's Screen page fits the editor.** The drawing of its page, three
+  buttons across, ran off the right edge; a label too long for its button is cut with
+  "..", as the remote cuts it.
 - **A device from IRDB is named by its model.** It was named after IRDB's file - "Unknown
   Xbox360 · 116,15" - and that went on the remote's screen. It is now "Xbox360"; the
   list of models adds the code set ("Game Console - code set 116,15") only where a

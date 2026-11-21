@@ -8,6 +8,7 @@ whose report is shown before anything is written.
 from __future__ import annotations
 
 import re
+import textwrap
 from collections import OrderedDict
 
 from ..qt.QtCore import Qt, pyqtSignal
@@ -17,6 +18,20 @@ from ..qt.QtWidgets import (
 )
 
 STATUS_COLOURS = {"verified": "#2e7d32", "experimental": "#b26a00"}
+
+# What "verified" and "experimental" after a remote's name mean, wherever it is shown:
+# the words alone said nothing to somebody choosing their remote.
+STATUS_MEANING = {
+    "verified": "Verified: configurations built for it have been written to real remotes "
+                "of this model and worked.",
+    "experimental": "Experimental: Afterglow builds for it, but it has been tried on few "
+                    "remotes so far. Writing saves what is on the remote first, so it can "
+                    "be put back.",
+}
+
+
+def status_meaning(profile) -> str:
+    return STATUS_MEANING.get(profile.status, "")
 
 
 def status_text(profile) -> str:
@@ -57,6 +72,7 @@ class RemoteBar(QFrame):
         self.name.setText(f"<b>{profile.model}</b>")
         colour = STATUS_COLOURS.get(profile.status, "gray")
         self.status.setText(f"<span style='color:{colour}'>- {profile.status}</span>")
+        self.status.setToolTip(status_meaning(profile))
         self.note.setText(
             "" if profile.verified else
             "Experimental: writing saves what is on the remote first, so it can be put "
@@ -97,7 +113,8 @@ class ChooseRemoteDialog(QDialog):
             item = QListWidgetItem(f"{name} - {profile.status}")
             item.setData(256, profile.id)
             item.setData(257, skin)
-            item.setToolTip(profile.notes or "")
+            item.setToolTip("\n\n".join(part for part in (
+                profile.notes, status_meaning(profile)) if part))
             self.list.addItem(item)
         self._header = None
         if others:
@@ -116,6 +133,13 @@ class ChooseRemoteDialog(QDialog):
         self.list.itemDoubleClicked.connect(
             lambda item: self.accept() if item.data(256) else None)
         layout.addWidget(self.list, 1)
+        statuses = [STATUS_MEANING[status] for status in ("verified", "experimental")
+                    if any(profile.status == status for _n, profile, _s in supported)]
+        if statuses:
+            meaning = QLabel("\n".join(statuses))
+            meaning.setWordWrap(True)
+            meaning.setStyleSheet("color: gray;")
+            layout.addWidget(meaning)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                    | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
@@ -215,7 +239,7 @@ class MigrationDialog(QDialog):
         # by the models chosen - "Harmony 650" - not the profile's "600 / 650 / 665"
         to = remotes.model_name(target, target_skin)
         self.setWindowTitle(f"Move to {to}")
-        self.resize(640, 460)
+        self.resize(760, 460)
         layout = QVBoxLayout(self)
         counts = {word: sum(row["change"] == key for row in report)
                   for key, word in self.WORDS.items()}
@@ -241,8 +265,10 @@ class MigrationDialog(QDialog):
         for subject, rows in groups.items():
             parent_item = QTreeWidgetItem([subject, f"{len(rows)} change(s)"])
             for row in rows:
+                # broken into lines here: a tree's own word wrap left a long list of
+                # settings cut off at the edge, to be read only in a tooltip
                 child = QTreeWidgetItem([self.WORDS.get(row["change"], row["change"]),
-                                         row["detail"]])
+                                         textwrap.fill(row["detail"], 70)])
                 child.setToolTip(1, row["detail"])     # long lists of keys run off the edge
                 parent_item.addChild(child)
             self.tree.addTopLevelItem(parent_item)

@@ -15,7 +15,7 @@ from ..qt.QtGui import QCursor
 from . import background
 from .ui_helpers import FilterCombo
 
-from .. import remotes
+from .. import project_devices, remotes, vocabulary
 from .rf_routing import rf_get, rf_options, rf_receivers
 from .icons import populate as populate_types
 from .device_inputs import DeviceInputsPage
@@ -683,7 +683,7 @@ class SearchPage(QWizardPage):
         self._show_capabilities(result)
         counts = result["counts"]
         self._status_lbl.setText(
-            f"SUCCESS: {model.manufacturer} {model.name}: {counts['supported']} of "
+            f"SUCCESS: {project_devices.make_and_model(model.manufacturer, model.name)}: {counts['supported']} of "
             f"{counts['source']} commands are faithful on {self._profile.model} - click Next")
         self._status_lbl.setStyleSheet("color: green;")
         self._status_lbl.setVisible(True)
@@ -717,6 +717,18 @@ class SearchPage(QWizardPage):
         self._capabilities.setVisible(False)
         self._set_chosen(True)
         self.template_selected.emit(t)
+def _protocol_name(protocol, device) -> str:
+    """A protocol as a person reads it: a protocol carried from Logitech's database by
+    the name Logitech gave it ("NEC1 (Logitech database)"), not its identifier
+    "logitech-476-379492f53de8", which said nothing on the Device page."""
+    protocol = protocol or ""
+    definition = ((device or {}).get("portable_protocol_definitions") or {}).get(protocol)
+    if not protocol.startswith("logitech-"):
+        return protocol
+    name = ((definition or {}).get("provenance") or {}).get("source_name")
+    return f"{name} (Logitech database)" if name else "Logitech database"
+
+
 class IdentityPage(QWizardPage):
     """Step 2 - label, device type, manufacturer, model, codec and power command.
     Pre-filled by SearchPage when a template is selected; all fields stay editable.
@@ -742,7 +754,7 @@ class IdentityPage(QWizardPage):
         # seen must survive being edited rather than being replaced by the first entry.
         self.type_combo.setEditable(True)
         existing_type = (existing.get("type") or "").strip()
-        types = list(self._types)
+        types = vocabulary.device_type_choices(profile)
         if existing_type and existing_type not in types:
             types.insert(0, existing_type)
         self._type_index = {name: i for i, name in enumerate(types)}
@@ -801,7 +813,8 @@ class IdentityPage(QWizardPage):
     def _protocol_text(self):
         """Summarise the portable signals without exposing a backend's encoding."""
         signals = (self._existing or {}).get("signals") or {}
-        protocols = sorted({signal.get("protocol") for signal in signals.values()
+        protocols = sorted({_protocol_name(signal.get("protocol"), self._existing)
+                            for signal in signals.values()
                             if signal.get("kind") == "protocol"})
         waveforms = sum(signal.get("kind") == "waveform" for signal in signals.values())
         opaque = sum(signal.get("kind") == "backend-opaque" for signal in signals.values())

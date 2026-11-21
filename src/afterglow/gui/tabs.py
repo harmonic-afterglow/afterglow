@@ -22,6 +22,7 @@ from .rf_routing import rf_label, rf_set
 from .drag_rows import RowDragger, grip_pixmap, moved_list
 from .widgets import bold, sep
 from .symbols import icon as symbol
+from .. import project_devices
 from ..project_devices import ROLE_NAMES
 
 
@@ -61,7 +62,7 @@ class DeviceCard(QWidget):
         route = rf_label(project or {}, spec.get("id")) if profile.can("rf_blaster") else ""
         # Only what is known: a device imported from a configuration has no make or
         # model, and the line started with a lone dot.
-        make = " ".join(part for part in (spec.get("mfr"), spec.get("model")) if part)
+        make = project_devices.make_and_model(spec.get("mfr"), spec.get("model"))
         sub = "  -  ".join(part for part in (
             make, kind, f"{len(spec.get('commands', []))} commands", route) if part)
         sub_lbl  = QLabel(sub)

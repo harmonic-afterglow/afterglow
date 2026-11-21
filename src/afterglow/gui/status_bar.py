@@ -12,7 +12,7 @@ from pathlib import Path
 from ..qt.QtCore import pyqtSignal
 from ..qt.QtWidgets import QStatusBar, QToolButton
 
-from .remote_bar import STATUS_COLOURS
+from .remote_bar import STATUS_COLOURS, status_meaning
 
 UNSAVED_COLOUR = "#b26a00"
 
@@ -36,8 +36,9 @@ class ProjectStatusBar(QStatusBar):
         super().__init__(parent)
         self.contents = _field("Devices and activities in this project")
         self.file = _field("Open the folder this project is saved in")
-        self.remote = _field("The remote this project is for. Click to move the "
-                             "project to another remote - you see every change first.")
+        self._remote_tip = ("The remote this project is for. Click to move the "
+                            "project to another remote - you see every change first.")
+        self.remote = _field(self._remote_tip)
         self.saved = _field("Click to save")
         for button, signal in ((self.contents, self.contents_clicked),
                                (self.file, self.file_clicked),
@@ -72,6 +73,7 @@ class ProjectStatusBar(QStatusBar):
             colour = STATUS_COLOURS.get(profile.status)
             self.remote.setStyleSheet(f"color: {colour};" if colour and
                                       not profile.verified else "")
+            self.remote.setToolTip(f"{status_meaning(profile)}\n{self._remote_tip}".strip())
 
         if dirty:
             self.saved.setText("Unsaved changes")

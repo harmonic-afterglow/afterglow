@@ -16,6 +16,17 @@ from .icons import pixmap as glyph_pixmap
 from .symbols import icon as symbol
 
 ICON = 32
+CELL_WIDTH = 96
+
+
+def _fit(cell, text: str) -> str:
+    """`text`, cut with ".." where it is wider than `cell` leaves room for."""
+    metrics, room = cell.fontMetrics(), max(cell.width() - 12, 8)
+    if metrics.horizontalAdvance(text) <= room:
+        return text
+    while text and metrics.horizontalAdvance(text + "..") > room:
+        text = text[:-1]
+    return text + ".."
 
 
 class ScreenPreview(QGroupBox):
@@ -39,10 +50,13 @@ class ScreenPreview(QGroupBox):
         layout = QVBoxLayout(self)
         grid = QGridLayout()
         self._cells = []
+        # as wide in all as two columns are: the 1100's three ran off the edge of the
+        # device editor
+        width = max(64, 2 * CELL_WIDTH // columns)
         for slot in range(columns * rows):
             cell = QPushButton()
             cell.setCheckable(True)
-            cell.setFixedSize(QSize(96, 64))
+            cell.setFixedSize(QSize(width, 64))
             cell.setIconSize(QSize(ICON, ICON))
             cell.clicked.connect(lambda _checked, slot=slot: self._clicked(slot))
             grid.addWidget(cell, slot // columns, slot % columns)
@@ -126,7 +140,9 @@ class ScreenPreview(QGroupBox):
                 else:
                     cell.setIcon(QIcon())
                     cell.setIconSize(QSize(ICON, ICON))
-                    cell.setText(text or "")
+                    # a label too long for its button is cut with "..", as the remotes
+                    # cut one, rather than losing both ends ("irectionDow")
+                    cell.setText(_fit(cell, text or ""))
             cell.setToolTip("An empty place" if button is None else (text or icon or ""))
         self.count.setText(f"{self.page + 1}/{self.pages()}")
         self.back.setEnabled(self.pages() > 1)

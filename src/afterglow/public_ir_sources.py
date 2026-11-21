@@ -70,6 +70,8 @@ def _pretty(value: str) -> str:
 
 
 def _device_type(value: str) -> str:
+    """A source's category as a 900/1100 type, by the same reading as Logitech's own
+    (corpus_provider.DEVICE_TYPES): a set-top box is a set-top box, not a recorder."""
     normalized = re.sub(r"[^a-z0-9]", "", value.casefold())
     types = {
         "tv": "Television",
@@ -85,13 +87,18 @@ def _device_type(value: str) -> str:
         "blurayplayer": "DvdCd",
         "projector": "Projector",
         "projectors": "Projector",
-        "settopbox": "Pvr",
-        "cablebox": "Pvr",
-        "satellite": "Pvr",
-        "mediaplayer": "MediaCenterPC",
+        "settopbox": "SetTopBox",
+        "settopboxes": "SetTopBox",
+        "cablebox": "CableBox",
+        "cableboxes": "CableBox",
+        "satellite": "Satellite",
+        "mediaplayer": "DvdCd",             # as Logitech wrote a Roku (corpus_provider)
+        "mediaplayers": "DvdCd",
         "gameconsole": "GameConsole",
-        "airconditioner": "HomeAppliance",
-        "acs": "HomeAppliance",
+        "gameconsoles": "GameConsole",
+        "airconditioner": "ClimateControl",
+        "airconditioners": "ClimateControl",
+        "acs": "ClimateControl",
         "fan": "HomeAppliance",
         "fans": "HomeAppliance",
     }

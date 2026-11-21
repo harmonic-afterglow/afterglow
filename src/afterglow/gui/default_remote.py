@@ -54,9 +54,8 @@ def choose_default_remote(parent, settings=None) -> str | None:
     store = _settings(settings)
     dialog = ChooseRemoteDialog(
         remote_profiles(), "Your remote",
-        "Which Harmony do you have? Afterglow starts with a project for it, and new "
-        "projects are for it unless you choose otherwise. Settings > Default Remote "
-        "changes it later.", parent, selected=default_remote_id(store),
+        "Which Harmony do you have? Each new project is made for this remote, unless "
+        "you choose another. Settings > Default Remote changes it later.", parent, selected=default_remote_id(store),
         selected_skin=default_remote_skin(store))
     chosen = dialog.chosen() if dialog.exec() else None
     if chosen:
@@ -86,9 +85,13 @@ def offer_after_change(parent, profile, settings=None, skin=None) -> bool:
     box = QMessageBox(parent)
     box.setIcon(QMessageBox.Icon.Question)
     box.setWindowTitle("Default remote")
-    box.setText(f"Make the {remotes.model_name(profile, skin)} your default remote?")
-    box.setInformativeText("Afterglow then starts with a project for it, and new "
-                           "projects are for it.")
+    name = remotes.model_name(profile, skin)
+    # said as part of the move just saved: asked on its own, after a save, it read as a
+    # question from nowhere
+    box.setText(f"The project is saved for the {name}. Make the {name} your default "
+                "remote as well?")
+    box.setInformativeText("New projects are then made for it. Settings > Default Remote "
+                           "changes it later.")
     box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
     never = QCheckBox("Don't ask again")
     box.setCheckBox(never)
