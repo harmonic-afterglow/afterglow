@@ -482,23 +482,41 @@ class Image:
         """A label cut with ".." to fit its corner, and two that come out the same, are
         said in the build's warnings: "InputComponent1" and "InputComponent2" were both
         drawn "InputComponen.." with nothing said, two buttons no one could tell apart.
-        Each page once - a page is built again while a build is fitted to the remote."""
+        A label is said once, however many screens draw it - a receiver's Sound page is
+        every activity's too - and a page built again while a build is fitted to the
+        remote adds nothing. A name Logitech had already cut ("Recordi.. List") is not
+        cut by us."""
         said = getattr(self, "_cut_said", None)
         if said is None:
-            said = self._cut_said = set()
+            said = self._cut_said = {}
         for shown, names in drawn_as.items():
-            cut = [name for name in names if any(line.endswith(ELLIPSIS) for line in shown)
-                   and not name.rstrip().endswith(ELLIPSIS)]
-            for name in cut:
-                if (title, name) not in said:
-                    said.add((title, name))
-                    self.skipped.append(f"{title!r}: {name!r} is cut short to fit the "
-                                        f"screen, as {' '.join(shown)!r}")
-            if len(names) > 1 and (title, shown) not in said:
-                said.add((title, shown))
-                self.skipped.append(
-                    f"{title!r}: {', '.join(repr(n) for n in names)} look the same on the "
-                    f"screen ({' '.join(shown)!r}); give one a shorter on-screen label")
+            drawn = " ".join(shown)
+            if any(line.endswith(ELLIPSIS) for line in shown):
+                for name in names:
+                    if ELLIPSIS not in name:
+                        self._say_once(said, ("cut", name, shown), title, lambda where: (
+                            f"{name!r} is drawn as {drawn!r} on {where}, as it is too long "
+                            "for the screen. The button still works; a shorter \"On screen "
+                            "as\" label on the device's Commands page reads better"))
+            if len(names) > 1:
+                listed = ", ".join(repr(n) for n in names)
+                self._say_once(said, ("alike", shown), title, lambda where: (
+                    f"{listed} look the same on the screen ({drawn!r}) on {where}; give one "
+                    "a shorter on-screen label"))
+
+    def _say_once(self, said: dict, key, title: str, words) -> None:
+        """One warning for `key`, naming every screen it is on: added the first time,
+        rewritten in place when another screen has it too."""
+        if key not in said:
+            said[key] = (len(self.skipped), [title])
+            self.skipped.append("")
+        at, titles = said[key]
+        if title not in titles:
+            titles.append(title)
+        where = repr(titles[0]) if len(titles) == 1 else (
+            f"{titles[0]!r} and {len(titles) - 1} other screen"
+            + ("s" if len(titles) > 2 else ""))
+        self.skipped[at] = words(where)
 
     def corner_keys(self) -> list[int]:
         return [keys.code(keys.SCREEN_KEYS[corner]) for corner in (

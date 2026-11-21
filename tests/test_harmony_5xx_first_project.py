@@ -84,5 +84,20 @@ def test_a_label_cut_to_fit_and_two_alike_are_said(tmp_path):
     with contextlib.redirect_stdout(io.StringIO()):
         ConfigBuildService(ROOT, logs.append).build(project)
     said = "\n".join(logs)
-    assert "'InputComponentHdmi1' is cut short" in said
+    assert "'InputComponentHdmi1' is drawn as" in said
     assert "look the same on the screen" in said
+
+
+def test_a_cut_label_is_said_once_for_every_screen_it_is_on():
+    from afterglow.backends.harmony_555 import generate
+    image = generate.Image.__new__(generate.Image)
+    image.skipped = []
+    shown = ("Mode Direct/Ste..",)
+    for title in ("AVR 2310", "AVR 2310 (Sound)", "Watch TV (Sound)", "AVR 2310"):
+        image._say_what_was_cut(title, {shown: ["ModeDirect/Stereo"]})
+    # Logitech's own cut name, read back from one of its configurations, is not ours
+    image._say_what_was_cut("PVR", {("Recordi.. List",): ["Recordi.. List"]})
+    assert image.skipped == [
+        "'ModeDirect/Stereo' is drawn as 'Mode Direct/Ste..' on 'AVR 2310' and 2 other "
+        "screens, as it is too long for the screen. The button still works; a shorter "
+        "\"On screen as\" label on the device's Commands page reads better"]
