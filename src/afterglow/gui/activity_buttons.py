@@ -27,7 +27,7 @@ from ..qt.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
                              QStackedWidget, QTableWidget, QTableWidgetItem,
                              QVBoxLayout, QWidget, QWizardPage)
 
-from .. import backends, paths
+from .. import activity_layouts, backends, paths
 from .drag_rows import RowDragger, moved_list
 from .icon_picker import choose as choose_icon
 from .icons import pixmap as glyph_pixmap
@@ -539,14 +539,22 @@ class ScreenButtonsPage(QWizardPage):
     """The labelled buttons the activity puts on the touchscreen, in order - a gap is a
     place the remote leaves empty - with the page drawn as the remote shows it."""
 
-    def __init__(self, devices, existing, parent=None, remote=None):
+    def __init__(self, devices, existing, parent=None, remote=None, layout=None):
         super().__init__(parent)
         self.devices = devices
-        self._title = (existing or {}).get("label") or ""
-        self.setTitle("Screen buttons")
+        # (Layouts, "sound" or "picture"): the page that layout of the activity shows,
+        # in its own window (activity_layouts_dialog), not the activity's own
+        self.layouts, self.kind = layout if layout else (None, None)
+        kind = activity_layouts.TITLES.get(self.kind)
+        label = (existing or {}).get("label") or ""
+        self._title = (f"{label} ({kind})" if label else kind) if kind else label
+        self.setTitle(f"{kind} screen buttons" if kind else "Screen buttons")
         # the remote's own icons, where its screen draws them beside a label
         self.icons = remote is None or remote.screen_icons
         self.setSubTitle(
+            f"The buttons on the screen while {kind} is pressed in this activity. "
+            f"Logitech's left them empty, or put the {kind} device's own "
+            f"{kind.lower()} settings there." if kind else
             "The buttons on this activity's page of the remote's screen. Each sends "
             "one command or runs a macro"
             + (", and can carry one of the remote's own icons." if self.icons else "."))
@@ -589,9 +597,29 @@ class ScreenButtonsPage(QWizardPage):
         layout.addLayout(row)
         self.table.itemDoubleClicked.connect(lambda *_: self._edit())
 
-        for entry in existing.get("soft_buttons", []):
-            self._add_row(entry)
+        self._storing = False
+        if self.layouts is not None:
+            self._take_layout()
+            self.layouts.changed.connect(self._layout_changed)
+        else:
+            for entry in existing.get("soft_buttons", []):
+                self._add_row(entry)
         self._show()
+
+    # - A Sound or Picture layout's buttons --------------------------------------------
+    def _take_layout(self):
+        layout = self.layouts.layout(self.kind)
+        self.table.setRowCount(0)
+        for entry in (layout["soft_buttons"] if layout else []):
+            self._add_row(entry)
+        # a layout no device has: nothing to change until one is chosen
+        self.setEnabled(layout is not None)
+
+    def _layout_changed(self):
+        """Another device, or Default: that device's buttons."""
+        if not self._storing:
+            self._take_layout()
+            self._show()
 
     def _shows(self) -> tuple:
         return ("label", "icon") if self.icons else ("label",)
@@ -619,10 +647,17 @@ class ScreenButtonsPage(QWizardPage):
         self._show()
 
     def _show(self):
-        """Draw the page as the list has it now."""
+        """Draw the page as the list has it now. A layout's goes to the shared Layouts."""
         self.preview.set_buttons(([(self._lead, None)] if self._lead else []) + [
             None if entry is None else (entry.get("label") or "", entry.get("icon"))
             for entry in self._entries()])
+        if self.layouts is not None and not self._storing \
+                and self.layouts.layout(self.kind) is not None:
+            self._storing = True
+            try:
+                self.layouts.set_part(self.kind, "soft_buttons", self.get_buttons())
+            finally:
+                self._storing = False
 
     def _add_gap(self):
         row = self.table.currentRow()

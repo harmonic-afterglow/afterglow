@@ -54,6 +54,8 @@ scaffold whose `look.json` gives it its own pictures and light levels:
 | `favourite_logos` | bool | whether a favourite can have a logo. The 650 and 700 have none. |
 | `favourites_button` | string | the label of the button an activity's screen opens its favourites with |
 | `screen_icons` | bool | whether a screen button can have an icon. Only the 900 and 1100 draw them. |
+| `activity_layouts` | bool | whether an activity has Sound and Picture layouts (the 550, 555 and 688). The Activities tab lists them under each activity, each edited in its own window. |
+| `skins_without_layouts` | list | skin numbers of this profile whose remote has no Sound and Picture keys, so no layouts (the 688 profile's 675) |
 | `screen_grid` | object | `{"device": [columns, rows], "activity": [...]}`: the screen's grid of buttons, so the editor previews pages as the remote lays them out |
 | `activity_buttons` | list | `[label, value]` for each key that starts an activity (Watch TV, Watch a Movie, Listen to Music). An activity stores the value in `activity_button`. |
 | `activity_screens` | object | the 1100's touchscreen tabs: each `{group, flag}` |

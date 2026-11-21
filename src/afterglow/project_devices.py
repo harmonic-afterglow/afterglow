@@ -519,6 +519,14 @@ def remove_device(project: dict, device_id) -> list[str]:
             activity["image_buttons"] = favourites
         if lost:
             what.append(f"{lost} favourite(s)")
+        # a Sound or Picture layout given to it goes back to the activity's default
+        layouts = activity.get("layouts") or {}
+        for kind in [k for k, layout in layouts.items()
+                     if str((layout or {}).get("device")) == ours]:
+            del layouts[kind]
+            what.append(f"its {kind.capitalize()} layout (back to the default)")
+        if "layouts" in activity and not layouts:
+            del activity["layouts"]
         confirm = activity.get("channel_confirm")
         if isinstance(confirm, (list, tuple)) and confirm and str(confirm[0]) == ours:
             del activity["channel_confirm"]

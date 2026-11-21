@@ -298,13 +298,37 @@ class DevicesTab(QWidget):
                 project_devices.remove_device(self.project, device.get("id"))
             self.refresh()
             self.changed.emit()
+class _Branch(QWidget):
+    """The line from an activity down to one of its layouts, as a tree draws it: the
+    layout is part of the activity, not one beside it."""
+
+    STEM = 6                        # where its line comes down, from its left edge
+
+    def __init__(self, last: bool, parent=None):
+        super().__init__(parent)
+        self.last = last
+        self.setFixedWidth(self.STEM + 12)
+
+    def paintEvent(self, _event):
+        from ..qt.QtGui import QPainter, QPalette
+        painter = QPainter(self)
+        painter.setPen(self.palette().color(QPalette.ColorRole.Mid))
+        x, middle = self.STEM, self.height() // 2
+        painter.drawLine(x, 0, x, self.height() if not self.last else middle)
+        painter.drawLine(x, middle, self.width(), middle)
+        painter.end()
+
+
 class ActivityCard(QWidget):
     def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None, type_names=None,
-                 remote=None, on_duplicate=None):
+                 remote=None, layouts=(), on_layout=None, on_duplicate=None):
         super().__init__(parent)
         self.spec = spec
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 12, 8, 12)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 12, 8, 12 if not layouts else 6)
+        outer.setSpacing(0)
+        layout = QHBoxLayout()
+        outer.addLayout(layout)
 
         layout.addWidget(_grip())
         disp_lbl = devices_by_id.get(spec.get("display",""), {}).get("label")
@@ -344,6 +368,45 @@ class ActivityCard(QWidget):
                             "screens - to change what differs, such as one input."))
         actions.append(("Delete", on_delete, None))
         self.menu = _row_buttons(self, layout, on_edit, actions)
+
+        # Its Sound and Picture layouts, on a remote with those keys: each edited in a
+        # window of its own, hung under the activity they belong to
+        from .activity_layouts_dialog import summary
+        devices = list(devices_by_id.values())
+        self.layout_buttons = {}
+        # under the activity's name, where its text starts: past the grip, and the icon
+        # where the remote draws one
+        indent = 20 + layout.spacing() + ((42 + layout.spacing()) if typed else 0)
+        for n, kind in enumerate(layouts):
+            from .. import activity_layouts
+            text, has = summary(spec, devices, kind)
+            row = QHBoxLayout()
+            row.setContentsMargins(indent - _Branch.STEM, 2 if n == 0 else 0, 0, 0)
+            row.addWidget(_Branch(n == len(layouts) - 1))
+            name = QLabel(activity_layouts.TITLES[kind])
+            name.setFixedWidth(64)
+            what = QLabel(text)
+            what.setStyleSheet("color: gray;")
+            if not has:
+                name.setStyleSheet("color: gray;")
+            button = QPushButton("Edit" if has else "Add")
+            # smaller than the activity's own buttons: a part of it, not one beside it
+            button.setFixedSize(60, max(20, button.fontMetrics().height() + 6))
+            button.setStyleSheet("padding: 0px;")
+            button.setToolTip(
+                f"What {activity_layouts.TITLES[kind]} does in this activity: the device, "
+                f"the keys it takes over and its screen buttons")
+            if on_layout is not None:
+                button.clicked.connect(lambda _=False, k=kind: on_layout(k))
+            self.layout_buttons[kind] = button
+            row.addWidget(name)
+            row.addWidget(what, 1)
+            row.addWidget(button)
+            # under Edit, with the menu's width left empty: a layout cannot be deleted
+            row.addSpacing(self.more.sizeHint().width() + layout.spacing())
+            outer.addLayout(row)
+
+
 class ActivitiesTab(QWidget):
     changed = pyqtSignal()
 
@@ -391,11 +454,14 @@ class ActivitiesTab(QWidget):
                      in vocabulary.activity_types(remote)}
         except LookupError:
             remote, names = None, {}
+        skin = (self.project.get("settings") or {}).get("skin")
+        kinds = remote.layout_kinds(skin) if remote is not None else ()
         self.cards.fill([
             ActivityCard(spec, by_id,
                          on_edit   = lambda _, idx=i: self.edit_activity(idx),
                          on_delete = lambda _, idx=i: self.delete_activity(idx),
-                         type_names=names, remote=remote,
+                         type_names=names, remote=remote, layouts=kinds,
+                         on_layout = lambda kind, idx=i: self.edit_layout(idx, kind),
                          on_duplicate = lambda _, idx=i: self.duplicate_activity(idx))
             for i, spec in enumerate(self.project["activities"])],
             "No activities yet. Click Add Activity to create one.")
@@ -466,6 +532,20 @@ class ActivitiesTab(QWidget):
             self.refresh()
             self.changed.emit()
         editor.deleteLater()
+
+    def edit_layout(self, idx, kind):
+        """An activity's Sound or Picture layout, in its own window."""
+        from .activity_layouts_dialog import LayoutDialog
+        activity = self.project["activities"][idx]
+        dialog = LayoutDialog(activity, self.project["devices"], kind,
+                              remote=project_remote(self.project), parent=self)
+        if dialog.exec():
+            before = activity.get("layouts")
+            dialog.apply(activity)
+            if activity.get("layouts") != before:
+                self.refresh()
+                self.changed.emit()
+        dialog.deleteLater()
 
     def delete_activity(self, idx):
         lbl = self.project["activities"][idx].get("label","activity")

@@ -30,8 +30,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     four to a page, Starting and Stopping Activity, the battery warning, and Help asking
     about each device and input as Logitech's does. MyHarmony's backlight time is kept.
   - Sound and Picture on the 550 and 555: each activity has its own Sound and Picture
-    layouts, and a device's own screen opens its own. They are read from a remote and
-    built as they were; the editor does not change them yet.
+    layouts, and a device's own screen opens its own. The Activities tab lists an
+    activity's two under it; each opens in a window of its own, with the device it is
+    for (any device of the project, or none), the keys it takes over and its screen
+    buttons. Left alone, they are what Logitech's software made.
   - Editor pages for devices and activities, with each model's keys drawn from
     Logitech's user guides and photos of the remotes.
   - The 510 is the 515 under its own model number: a build for one keeps its number.

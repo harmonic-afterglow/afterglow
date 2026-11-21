@@ -144,6 +144,10 @@ def _check_interface(profile_id: str, interface, preferences) -> None:
     for flag in ("favourite_logos", "screen_icons", "activity_layouts"):
         if not isinstance(interface.get(flag, True), bool):
             raise ValueError(f"{profile_id}: interface.{flag} is true or false")
+    without = interface.get("skins_without_layouts", [])
+    if not isinstance(without, list) or not all(isinstance(s, int) for s in without):
+        raise ValueError(f"{profile_id}: interface.skins_without_layouts lists the skins "
+                         "that have no Sound and Picture keys")
     languages = interface.get("languages")
     if not isinstance(languages, list) or not languages or not all(
             isinstance(pair, list) and len(pair) == 2 for pair in languages):
@@ -308,6 +312,17 @@ class RemoteProfile:
         688's Sound and Picture keys, which turn its keys and screen over to one device
         for a while (activity_layouts) - so its editor offers them beside its own."""
         return bool(self.interface.get("activity_layouts", False))
+
+    def layout_kinds(self, skin=None) -> tuple[str, ...]:
+        """The layouts an activity has on this remote - ("sound", "picture"), or none:
+        a profile can have the layouts and one of its skins not the keys for them (the
+        688's 675), listed in ``interface.skins_without_layouts``."""
+        if not self.activity_layouts:
+            return ()
+        if skin is not None and int(skin) in {
+                int(s) for s in self.interface.get("skins_without_layouts") or ()}:
+            return ()
+        return ("sound", "picture")
 
     @property
     def favourites_button(self) -> str | None:
