@@ -141,6 +141,30 @@ def test_a_favourite_channel_comes_back_dialled_and_confirmed(tmp_path):
     assert imported["devices"][0]["press_interkey"] == 300
 
 
+def test_a_favourite_that_dials_with_a_separator_stays_a_favourite(tmp_path):
+    """A favourite that dials "8", a separator, "3" is a macro, not a channel: it was read
+    as one of the activity's own buttons, so a One with 23 favourites came back with 16
+    and 7 extra buttons. Favourites have a screen of their own; all on it are favourites."""
+    from test_harmony_one_activities import AMP, FAVOURITES, TV
+
+    dial = [["command", "tv", "1"], ["command", "tv", "Menu"], ["command", "tv", "2"],
+            ["command", "tv", "Select"]]
+    activity = dict(FAVOURITES["activities"][0], image_buttons=[
+        ["BBC One", "channel", "12", None], ["Sub", "macro", dial, None],
+        ["News", "channel", "2", None]])
+    project = {**FAVOURITES, "devices": [TV, AMP],
+               "activities": [activity] + FAVOURITES["activities"][1:]}
+    imported = _imported(generate.build(project)["image"], tmp_path)
+    watch = imported["activities"][0]
+    tv = imported["devices"][0]["id"]
+    assert [entry[:2] for entry in watch["image_buttons"]] == [
+        ["BBC One", "channel"], ["Sub", "macro"], ["News", "channel"]]
+    assert [step[2] for step in watch["image_buttons"][1][2]] == [
+        "Number1", "Menu", "Number2", "Select"]
+    assert all(step[1] == tv for step in watch["image_buttons"][1][2])
+    assert "Sub" not in str(watch["soft_buttons"])
+
+
 def test_a_smart_tv_comes_back_with_its_input_delay_and_its_apps(tmp_path):
     from test_harmony_one_activities import STREAMING
     imported = _imported(generate.build(STREAMING)["image"], tmp_path)

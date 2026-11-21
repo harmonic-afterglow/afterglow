@@ -1351,6 +1351,8 @@ class Activities:
                     _same_title(label, device) or _same_title(device, label)
                     for device in self.device_labels if device):
                 continue
+            # the screen's pages, each its buttons as (place, label, macro)
+            pages_here = []
             for slot in screen["slots"]:
                 items = self.image.page_text(slot["program_offset"])
                 if not any((item["x"], item["y"]) == TITLE_XY and item["text"] == label
@@ -1369,16 +1371,25 @@ class Activities:
                         found = None
                         break
                     found.append((position, steps))
-                on_page = False
+                page = []
                 for position, steps in sorted(found or ()):
                     lines = _button_label(items, position)
                     macro = self.macro(steps)
-                    if not macro:
-                        continue
-                    text = " ".join(item["text"] for item in lines) if lines else None
-                    # a button that dials a channel is a favourite, named or with a logo;
-                    # one with a logo and no name is too
-                    if self._channel(macro) or text is None:
+                    if macro:
+                        page.append((position, " ".join(item["text"] for item in lines)
+                                     if lines else None, macro))
+                pages_here.append((slot, page))
+            # Favourites have a screen of their own: where one button on it dials a
+            # channel or is a logo with no name, all of them are favourites. Asked of each
+            # button alone, a favourite that dials "8", "Space", "3" (a channel with a
+            # separator) or runs a macro was taken for one of the activity's buttons.
+            favourite_screen = any(self._channel(macro) or text is None
+                                   for _slot, page in pages_here
+                                   for _position, text, macro in page)
+            for slot, page in pages_here:
+                on_page = False
+                for position, text, macro in page:
+                    if favourite_screen:
                         logo = None if text else self._logo(slot, position)
                         favourites.append((text, macro, logo))
                     else:
