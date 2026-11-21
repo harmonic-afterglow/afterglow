@@ -37,7 +37,7 @@ def _does(macro, devices) -> str:
     if len(macro) == 1 and macro[0][0] == "command" and len(macro[0]) >= 3:
         step = macro[0]
         held = f"  (held {step[4]} ms)" if len(step) > 4 and step[4] else ""
-        return f"{names.get(str(step[1]), step[1])} · {step[2]}{held}"
+        return f"{names.get(str(step[1]), step[1])} - {step[2]}{held}"
     return f"{len(macro)} steps"
 
 

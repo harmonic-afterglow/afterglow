@@ -231,18 +231,18 @@ class SearchPage(QWizardPage):
         # for narrowing a search that returns too much.
         self.search_type.addItem("All sources", "all")
         if self._sources.local_devices:
-            self.search_type.addItem("Local devices · Device Model", "device")
+            self.search_type.addItem("Local devices - Device Model", "device")
         if self._sources.logitech_online:
             self.search_type.addItem(
-                "Logitech Harmony database · Online", "logitech_online")
+                "Logitech Harmony database - Online", "logitech_online")
         if self._sources.flipper_irdb_online:
-            self.search_type.addItem("Flipper-IRDB · Online", "flipper_irdb_online")
+            self.search_type.addItem("Flipper-IRDB - Online", "flipper_irdb_online")
         if self._sources.irdb_online:
-            self.search_type.addItem("IRDB · Online", "irdb_online")
+            self.search_type.addItem("IRDB - Online", "irdb_online")
         for number, repository in enumerate(self._sources.external_repositories):
             if repository.enabled:
                 self.search_type.addItem(
-                    f"Afterglow database · {repository.name}",
+                    f"Afterglow database - {repository.name}",
                     f"afterglow_external:{number}")
         # The third answer to "how do I find this device?" is that you cannot - it is
         # not in the library. Learning belongs here, next to the other two ways of
@@ -487,11 +487,12 @@ class SearchPage(QWizardPage):
                 unique_models = [m for m in models if m.name.casefold() not in seen_models]
                 repeated = Counter(m.name for m in unique_models)
                 for model in unique_models:
-                    display = model.name
+                    display = base = model.name
                     if repeated[model.name] > 1:
-                        display = f"{model.name}  · catalogue {model.global_device_id}"
+                        display = base = f"{model.name} - catalogue {model.global_device_id}"
+                    number = 2
                     while display in names or display in all_choices:
-                        display = f"{display} ·"
+                        display, number = f"{base} ({number})", number + 1
                     names[display] = (model, cat)
                     all_choices.append(display)
                     seen_models.add(model.name.casefold())
@@ -516,11 +517,12 @@ class SearchPage(QWizardPage):
         repeated = Counter(model.name for model in models)
         names = {}
         for model in models:
-            display = model.name
+            display = base = model.name
             if repeated[model.name] > 1:
-                display = f"{model.name}  · catalogue {model.global_device_id}"
+                display = base = f"{model.name} - catalogue {model.global_device_id}"
+            number = 2
             while display in names:
-                display = f"{display} ·"
+                display, number = f"{base} ({number})", number + 1
             names[display] = model
         self._archive_models = names
         self._model_box.set_choices(list(names))

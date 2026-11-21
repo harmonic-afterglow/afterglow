@@ -74,8 +74,8 @@ def test_a_new_project_asks_before_throwing_unsaved_work_away(window, monkeypatc
 def test_the_status_bar_shows_the_remote_and_what_is_in_the_project(window):
     window.project["devices"].append({"id": "1", "label": "TV"})
     window._mark_dirty()
-    assert window.status.remote.text() == "Harmony 900 · verified"
-    assert window.status.contents.text() == "1 device · 0 activities"
+    assert window.status.remote.text() == "Harmony 900 - verified"
+    assert window.status.contents.text() == "1 device - 0 activities"
 
 
 def test_clicking_the_remote_offers_to_change_it(window, monkeypatch):

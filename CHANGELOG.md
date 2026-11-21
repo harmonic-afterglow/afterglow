@@ -34,11 +34,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Find model, the screen preview's page arrows and the drag handles draw Google's
   Material Symbols (Apache 2.0, see `src/afterglow/symbols/NOTICE.md`) in the window's
   text colour. Menu paths in messages read "Settings > Remote connection".
+- **Hyphens instead of centre dots** between the parts of a line: the status bar, the
+  remote picker, device rows and the device sources ("IRDB - Online").
 - **An activity's row names its devices as its Devices page asks for them:** "Watch on",
   "Volume" and "Play and menus", not "Display" and "Control".
 
 ### Fixed
 
+- **A device from IRDB is named by its model.** It was named after IRDB's file - "Unknown
+  Xbox360 · 116,15" - and that went on the remote's screen. It is now "Xbox360"; the
+  list of models adds the code set ("Game Console - code set 116,15") only where a
+  model has more than one.
 - **JVC devices from IRDB and Flipper-IRDB send the right codes.** Each byte went out
   with its bits the wrong way round, so no JVC command from either worked.
 - **Harmony 1100: recorded commands are no longer left out when a device is added.**

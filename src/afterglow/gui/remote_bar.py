@@ -20,7 +20,7 @@ STATUS_COLOURS = {"verified": "#2e7d32", "experimental": "#b26a00"}
 
 
 def status_text(profile) -> str:
-    return f"{profile.model} · {profile.status}"
+    return f"{profile.model} - {profile.status}"
 
 
 class RemoteBar(QFrame):
@@ -56,7 +56,7 @@ class RemoteBar(QFrame):
             return
         self.name.setText(f"<b>{profile.model}</b>")
         colour = STATUS_COLOURS.get(profile.status, "gray")
-        self.status.setText(f"<span style='color:{colour}'>· {profile.status}</span>")
+        self.status.setText(f"<span style='color:{colour}'>- {profile.status}</span>")
         self.note.setText(
             "" if profile.verified else
             "Experimental: writing saves what is on the remote first, so it can be put "
@@ -94,7 +94,7 @@ class ChooseRemoteDialog(QDialog):
             supported = [entry for entry in supported
                          if not (entry[1].id == exclude[0] and entry[0] == mine)]
         for name, profile, skin in supported:
-            item = QListWidgetItem(f"{name} · {profile.status}")
+            item = QListWidgetItem(f"{name} - {profile.status}")
             item.setData(256, profile.id)
             item.setData(257, skin)
             item.setToolTip(profile.notes or "")

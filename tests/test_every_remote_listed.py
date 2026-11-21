@@ -71,9 +71,9 @@ def test_every_remote_is_in_the_picker_once_by_its_own_name(qapp_or_skip):
     names = _names()
     for item in rows:
         if item.data(256):
-            assert item.text().startswith(names[item.data(257)] + " ·"), item.text()
+            assert item.text().startswith(names[item.data(257)] + " - "), item.text()
     # and every other remote Logitech lists, greyed
-    shown = {item.text().split(" ·")[0] for item in rows}
+    shown = {item.text().rsplit(" - ", 1)[0] for item in rows}
     for skin in _catalogue():
         assert names[skin] in shown, names[skin]
 

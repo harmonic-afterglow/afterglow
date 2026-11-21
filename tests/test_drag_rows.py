@@ -147,7 +147,7 @@ def test_a_card_says_only_what_is_known(qapp_or_skip):
     device = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
                         lambda *_: None, lambda *_: None, project=ONE)
     line = device.findChildren(QLabel)[-1].text()
-    assert not line.lstrip().startswith("·") and line.startswith("Television")
+    assert not line.lstrip().startswith("-") and line.startswith("Television")
     assert "IR" not in line                     # the One has no blaster to choose
     nine = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
                       lambda *_: None, lambda *_: None,

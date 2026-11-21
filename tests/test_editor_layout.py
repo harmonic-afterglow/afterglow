@@ -82,9 +82,9 @@ def test_a_key_says_what_it_sends():
     from afterglow.gui.activity_wizard import _does
     devices = [TV]
     assert _does([], devices) == "Default"
-    assert _does([["command", "1", "SmartHub"]], devices) == "TV · SmartHub"
+    assert _does([["command", "1", "SmartHub"]], devices) == "TV - SmartHub"
     assert _does([["command", "1", "Exit", None, 3000]], devices) == \
-        "TV · Exit  (held 3000 ms)"
+        "TV - Exit  (held 3000 ms)"
     assert _does([["command", "1", "A"], ["delay", None, 500]], devices) == "2 steps"
 
 
@@ -181,7 +181,7 @@ def test_the_activity_picture_lists_the_keys_it_changes(qapp_or_skip):
         "Menu": [["command", "1", "SmartHub"]]}}, remote=remotes.get("harmony-one"))
     keys = editor.p4
     keys.refresh_picture()
-    assert keys.keys_view._states["Menu"] == (CHANGED, "Menu: TV · SmartHub")
+    assert keys.keys_view._states["Menu"] == (CHANGED, "Menu: TV - SmartHub")
     assert keys.keys_view._states["Exit"][0] == FREE
     keys.changed_list.setCurrentRow(0)
     keys._reset_listed()

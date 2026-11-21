@@ -62,7 +62,7 @@ class DeviceCard(QWidget):
         # Only what is known: a device imported from a configuration has no make or
         # model, and the line started with a lone dot.
         make = " ".join(part for part in (spec.get("mfr"), spec.get("model")) if part)
-        sub = "  ·  ".join(part for part in (
+        sub = "  -  ".join(part for part in (
             make, kind, f"{len(spec.get('commands', []))} commands", route) if part)
         sub_lbl  = QLabel(sub)
         sub_lbl.setStyleSheet("color: gray;")
@@ -328,7 +328,7 @@ class ActivityCard(QWidget):
         info.addWidget(bold(spec.get("label","?")))
         shown = type_names.get(atype, atype) if typed else ""
         # A role the activity does not fill is left out, not shown as "?".
-        sub = QLabel("  ·  ".join(part for part in (
+        sub = QLabel("  -  ".join(part for part in (
             # named as the activity's Devices page asks for them
             shown, disp_lbl and f"{ROLE_NAMES['display']}: {disp_lbl}",
             vol_lbl and f"{ROLE_NAMES['volume']}: {vol_lbl}",

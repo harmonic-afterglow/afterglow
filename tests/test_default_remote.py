@@ -153,7 +153,7 @@ def test_the_chooser_lists_every_model_and_searches_them(qapp_or_skip):
     dialog.search.setText("665")
     shown = [dialog.list.item(i).text() for i in range(dialog.list.count())
              if not dialog.list.item(i).isHidden()]
-    assert shown == ["Harmony 665 · experimental"]
+    assert shown == ["Harmony 665 - experimental"]
     assert (dialog.chosen(), dialog.chosen_skin()) == ("harmony-650", 75)
     dialog.search.setText("touch")
     assert dialog.chosen() is None                          # only a greyed one matches

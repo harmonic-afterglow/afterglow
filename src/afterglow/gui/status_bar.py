@@ -49,7 +49,7 @@ class ProjectStatusBar(QStatusBar):
     def show_project(self, project: dict, path, profile, dirty: bool) -> None:
         devices = len(project.get("devices") or [])
         activities = len(project.get("activities") or [])
-        self.contents.setText(f"{devices} device{'s' * (devices != 1)} · "
+        self.contents.setText(f"{devices} device{'s' * (devices != 1)} - "
                               f"{activities} activit{'ies' if activities != 1 else 'y'}")
 
         if path:
@@ -68,7 +68,7 @@ class ProjectStatusBar(QStatusBar):
         else:
             from .. import remotes
             name = remotes.model_name(profile, (project.get("settings") or {}).get("skin"))
-            self.remote.setText(f"{name} · {profile.status}")
+            self.remote.setText(f"{name} - {profile.status}")
             colour = STATUS_COLOURS.get(profile.status)
             self.remote.setStyleSheet(f"color: {colour};" if colour and
                                       not profile.verified else "")

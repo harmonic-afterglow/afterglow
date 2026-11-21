@@ -88,7 +88,7 @@ def test_the_chooser_lists_each_model_and_searches_them(qapp_or_skip):
     dialog = ChooseRemoteDialog(profiles, "New project", "", known=profiles)
 
     def shown():
-        return [dialog.list.item(i).text().split(" · ")[0] for i in range(dialog.list.count())
+        return [dialog.list.item(i).text().rsplit(" - ", 1)[0] for i in range(dialog.list.count())
                 if not dialog.list.item(i).isHidden() and dialog.list.item(i).data(256)]
     assert {"Harmony 600", "Harmony 650", "Harmony 665", "Harmony 700"} <= set(shown())
     dialog.search.setText("harmony 6")

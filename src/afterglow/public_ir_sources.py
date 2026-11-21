@@ -14,6 +14,7 @@ import io
 import json
 from pathlib import PurePosixPath
 import re
+from collections import Counter
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -33,10 +34,15 @@ IRDB_RAW_URL = "https://cdn.jsdelivr.net/gh/probonopd/irdb@master/codes"
 @dataclass(frozen=True)
 class PublicModel:
     manufacturer: str
-    name: str
+    name: str                     # as the model list shows it
     relative_path: str
     device_type: str
     source_id: str
+    model: str = ""               # the device's own model name, when the list adds to it
+
+    @property
+    def model_name(self) -> str:
+        return self.model or self.name
 
     @property
     def global_device_id(self) -> str:
@@ -50,6 +56,13 @@ def _fetch_text(url: str) -> str:
             return response.read().decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         raise ValueError(f"could not read online IR source: {exc}") from exc
+
+
+def _code_set(stem: str) -> str:
+    """IRDB's file name, "116,15" or "7,-1", as a code set: its device number, and its
+    subdevice where it has one (-1 is none)."""
+    device, _comma, subdevice = stem.partition(",")
+    return device if subdevice.strip() in ("", "-1") else f"{device},{subdevice}"
 
 
 def _pretty(value: str) -> str:
@@ -437,8 +450,8 @@ class _PublicCatalog:
         template = {
             "schema": device_json.PORTABLE_SCHEMA,
             "manufacturer": model.manufacturer,
-            "model": model.name,
-            "names": [model.name],
+            "model": model.model_name,
+            "names": [model.model_name],
             "type": model.device_type,
             "source": {
                 "kind": self.source_kind,
@@ -535,19 +548,26 @@ class IrdbCatalog(_PublicCatalog):
     source_kind = "irdb"
 
     def _load_models(self) -> list[PublicModel]:
-        models = []
+        found = []
         for line in self.fetch(IRDB_INDEX_URL).splitlines():
             path = line.strip()
             parts = PurePosixPath(path).parts
             if not path.endswith(".csv") or len(parts) < 3:
                 continue
             manufacturer = _pretty(parts[0])
-            kind = " / ".join(_pretty(part) for part in parts[1:-1])
-            tuple_name = PurePosixPath(parts[-1]).stem
-            models.append(PublicModel(
-                manufacturer, f"{kind} · {tuple_name}", path,
-                _device_type(parts[1]), path))
-        return models
+            # IRDB names a model it has no number for "Unknown_<what it is>"
+            model = " / ".join(re.sub(r"^Unknown ", "", _pretty(part)) or _pretty(part)
+                               for part in parts[1:-1])
+            found.append((manufacturer, model, path, _device_type(parts[1]),
+                          _code_set(PurePosixPath(parts[-1]).stem)))
+        # A model is listed by its name; one with more than one code set - a file per
+        # device and subdevice number, "116,15.csv" - by its name and which set it is.
+        sets = Counter((manufacturer, model) for manufacturer, model, *_rest in found)
+        return [PublicModel(manufacturer,
+                            f"{model} - code set {code_set}"
+                            if sets[(manufacturer, model)] > 1 else model,
+                            path, device_type, path, model)
+                for manufacturer, model, path, device_type, code_set in found]
 
     def _commands(self, model: PublicModel) -> list[dict]:
         encoded = "/".join(quote(part, safe="")

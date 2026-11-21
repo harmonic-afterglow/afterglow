@@ -654,12 +654,12 @@ class ScreenButtonsPage(QWizardPage):
         macro = entry.get("macro")
         if macro and len(macro) == 1 and macro[0][0] == "command" and len(macro[0]) >= 3:
             held = macro[0][4] if len(macro[0]) > 4 else None
-            does = (f"{self._device_name(macro[0][1])} · {macro[0][2]}"
+            does = (f"{self._device_name(macro[0][1])} - {macro[0][2]}"
                     + (f"  (held {held} ms)" if held else ""))
         elif macro:
             does = f"{len(macro)} steps"
         else:
-            does = f"{self._device_name(entry.get('device'))} · {entry.get('command')}"
+            does = f"{self._device_name(entry.get('device'))} - {entry.get('command')}"
         self.table.setItem(row, 2, QTableWidgetItem(does))
         self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole, entry)
 

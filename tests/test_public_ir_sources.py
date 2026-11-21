@@ -304,3 +304,31 @@ def test_a_flipper_capture_without_its_closing_gap_is_given_one():
     whole, _why = _flipper_signal({"type": "raw", "frequency": "38000",
                                    "data": "9000 4500 560 30000"})
     assert whole["pulses_us"][-1] == -30000              # one it has is kept
+
+
+def test_an_irdb_model_is_named_by_its_model_and_its_code_set_only_when_it_has_two():
+    """IRDB's files are "<maker>/<model>/<device>,<subdevice>.csv", and a model it has no
+    number for is "Unknown_<what it is>". The device is named by its model - not
+    "Unknown Xbox360 · 116,15", which went on the remote's screen - and the list adds
+    which code set only where a model has more than one."""
+    index = ("Microsoft/Unknown_Xbox360/116,15.csv\n"
+             "Microsoft/Game_Console/116,15.csv\n"
+             "Microsoft/Game_Console/5,-1.csv\n"
+             "TELEFUNKEN/TV_1127/7,-1.csv\n")
+    codes = "functionname,protocol,device,subdevice,function\nPOWER,NEC,1,-1,2\n"
+
+    def fetch(url):
+        if url == IRDB_INDEX_URL:
+            return index
+        assert url.startswith(IRDB_RAW_URL)
+        return codes
+
+    catalog = IrdbCatalog(fetch=fetch)
+    listed = sorted(model.name for model in catalog.models("Microsoft"))
+    assert listed == ["Game Console - code set 116,15", "Game Console - code set 5",
+                      "Xbox360"]
+    xbox = catalog.models("Microsoft", "Xbox")[0]
+    assert catalog.materialize(xbox)["template"]["model"] == "Xbox360"
+    console = catalog.models("Microsoft", "code set 5")[0]
+    assert catalog.materialize(console)["template"]["model"] == "Game Console"
+    assert [model.name for model in catalog.models("TELEFUNKEN")] == ["TV 1127"]
