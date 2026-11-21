@@ -14,7 +14,7 @@ from .project import (drop_retired_fields)
 from .activity_buttons import FavouritesPage, ScreenButtonsPage
 from .ui_helpers import (FilterCombo)
 
-from .. import project_devices, vocabulary
+from .. import activity_layouts, project_devices, vocabulary
 from .symbols import icon as symbol
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
@@ -473,10 +473,19 @@ class ActivityHardButtonsPage(QWizardPage):
     # when the one it had is clicked again; the identity page's Button follows it
     activity_key_chosen = pyqtSignal(object)
 
-    def __init__(self, devices, existing, parent=None, remote=None):
+    LAYOUT_SUBTITLE = ("What the keys do after {title} is pressed in this activity, "
+                       "until it is pressed again. {title} takes over the keys listed; "
+                       "every other key does what it does in the activity.")
+
+    def __init__(self, devices, existing, parent=None, remote=None, layout=None):
         super().__init__(parent)
-        self.setTitle("Physical buttons")
-        self.setSubTitle("A key left at Default does what the activity's devices "
+        # (Layouts, "sound" or "picture"): the keys of that layout of the activity, in
+        # its own window (activity_layouts_dialog), not the activity's own
+        self.layouts, self.kind = layout if layout else (None, None)
+        title = activity_layouts.TITLES.get(self.kind)
+        self.setTitle(f"{title} keys" if title else "Physical buttons")
+        self.setSubTitle(self.LAYOUT_SUBTITLE.format(title=title) if title else
+                         "A key left at Default does what the activity's devices "
                          "suggest: volume and mute go to the volume device, the rest "
                          "to the one that plays and changes channels. Give a key "
                          "something else to do only when that is wrong.")
@@ -497,17 +506,19 @@ class ActivityHardButtonsPage(QWizardPage):
         self.keys_view = RemoteKeys(remote)
         self.keys_view.key_clicked.connect(self._edit_slot)
         # the keys that start an activity, by the label the picture knows them by
-        self._activity_keys = dict(vocabulary.for_remote(remote).activity_buttons)
+        self._activity_keys = ({} if title else
+                               dict(vocabulary.for_remote(remote).activity_buttons))
         self._activity_key = None
         self.keys_view.fixed_clicked.connect(self._activity_key_clicked)
         picture.addWidget(self.keys_view, 3)
         side = QVBoxLayout()
-        side.addWidget(QLabel("<b>Changed in this activity</b>"))
+        side.addWidget(QLabel(f"<b>Taken over by {title}</b>" if title
+                              else "<b>Changed in this activity</b>"))
         self.changed_list = QListWidget()
         self.changed_list.itemDoubleClicked.connect(
             lambda item: self._edit_slot(item.data(Qt.ItemDataRole.UserRole)))
         side.addWidget(self.changed_list, 1)
-        back = QPushButton("Back to default")
+        back = QPushButton("Leave to the activity" if title else "Back to default")
         back.clicked.connect(self._reset_listed)
         side.addWidget(back)
         hint = QLabel("Click a key to change what it does. Hover over a key to see "
@@ -517,7 +528,8 @@ class ActivityHardButtonsPage(QWizardPage):
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray;")
         side.addWidget(hint)
-        side.addWidget(legend([(CHANGED, "Its own action"), (FREE, "Default")]
+        side.addWidget(legend([(CHANGED, f"{title}'s" if title else "Its own action"),
+                               (FREE, "The activity's" if title else "Default")]
                               + ([(ASSIGNED, "Starts this activity")]
                                  if self._activity_keys else [])))
         picture.addLayout(side, 2)
@@ -534,7 +546,7 @@ class ActivityHardButtonsPage(QWizardPage):
         # nineteen, so Guide, Info, the transport keys and the rest could not be given an
         # activity's own action at all (GitHub #5). A key an imported activity already
         # binds is kept even if the profile does not name it, so editing cannot drop it.
-        self.macros = existing.get("hard_macros", {})
+        self.macros = self._own = existing.get("hard_macros", {})
         # what a key left at Default sends, from the activity's devices (set_roles)
         self.defaults = project_devices.default_keys(
             devices, display=existing.get("display"), volume=existing.get("volume"),
@@ -544,6 +556,9 @@ class ActivityHardButtonsPage(QWizardPage):
         # As they sit on the remote, top to bottom, when it has been drawn.
         drawn = self.keys_view.keys()
         self.slots.sort(key=lambda k: drawn.index(k) if k in drawn else len(drawn))
+        self._order = list(self.slots)
+        if self.layouts is not None:
+            self._take_layout()
         
         for slot in self.slots:
             r = self.table.rowCount()
@@ -555,7 +570,7 @@ class ActivityHardButtonsPage(QWizardPage):
         
         edit_btn = QPushButton("Change…")
         edit_btn.clicked.connect(self._edit_btn_clicked)
-        clear_btn = QPushButton("Back to default")
+        clear_btn = QPushButton("Leave to the activity" if title else "Back to default")
         clear_btn.clicked.connect(self._clear_btn_clicked)
         
         self.table_buttons = QWidget()
@@ -567,6 +582,45 @@ class ActivityHardButtonsPage(QWizardPage):
         layout.addWidget(self.table_buttons)
         self.view_choice.changed.connect(self._show_picture)
         self._show_picture(self.view_choice.is_picture())
+        if self.layouts is not None:
+            self.layouts.changed.connect(self._layout_changed)
+            self._enable()
+
+    # - A Sound or Picture layout's keys -----------------------------------------------
+    def _take_layout(self):
+        """The layout's keys, as the shared Layouts has them now; its own first."""
+        layout = self.layouts.layout(self.kind)
+        self.macros = dict(layout["hard_macros"]) if layout else {}
+        self.slots = sorted(self._order, key=lambda k: not self.macros.get(k))
+
+    def _enable(self):
+        """A layout no device has: nothing to change until one is chosen."""
+        on = self.layouts.layout(self.kind) is not None
+        for widget in (self.picture, self.table, self.table_buttons):
+            widget.setEnabled(on)
+
+    def _layout_changed(self):
+        """Another device, or Default: that device's keys."""
+        if self._storing:
+            return
+        self._take_layout()
+        for r, slot in enumerate(self.slots):
+            self.table.setItem(r, 0, self._key_item(slot))
+            self.table.setItem(r, 1, QTableWidgetItem(self._says(slot)))
+        self._enable()
+        self.refresh_picture()
+
+    _storing = False
+
+    def _changed(self):
+        """A key changed: a layout's goes to the shared Layouts."""
+        if self.layouts is None:
+            return
+        self._storing = True
+        try:
+            self.layouts.set_part(self.kind, "hard_macros", self.macros)
+        finally:
+            self._storing = False
 
     def _key_item(self, slot):
         """A key's row: its name as people say it, its configuration name behind."""
@@ -588,7 +642,14 @@ class ActivityHardButtonsPage(QWizardPage):
 
     def _says(self, slot) -> str:
         macro = self.macros.get(slot)
-        return _does(macro, self.devices) if macro else self._default(slot)
+        if macro:
+            return _does(macro, self.devices)
+        if self.layouts is None:
+            return self._default(slot)
+        # a key the layout leaves alone does what it does in the activity
+        own = self._own.get(slot)
+        return "The activity's: " + (_does(own, self.devices) if own
+                                     else self._default(slot))
 
     def set_roles(self, display, volume, control):
         """The activity's devices, as its Devices page has them now: what each key left
@@ -654,7 +715,7 @@ class ActivityHardButtonsPage(QWizardPage):
             r = self.table.rowCount()
             self.table.insertRow(r)
             self.table.setItem(r, 0, self._key_item(slot))
-            self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
+            self.table.setItem(r, 1, QTableWidgetItem(self._says(slot)))
         self.keys_view.select(slot)
         self._edit_macro(self.table.item(self._row_of(slot), 0))
 
@@ -664,8 +725,9 @@ class ActivityHardButtonsPage(QWizardPage):
             return
         slot = item.data(Qt.ItemDataRole.UserRole)
         self.macros.pop(slot, None)
-        self.table.setItem(self._row_of(slot), 1, QTableWidgetItem(self._default(slot)))
+        self.table.setItem(self._row_of(slot), 1, QTableWidgetItem(self._says(slot)))
         self.refresh_picture()
+        self._changed()
 
     def _edit_btn_clicked(self):
         r = self.table.currentRow()
@@ -678,7 +740,9 @@ class ActivityHardButtonsPage(QWizardPage):
             slot = self._slot(r)
             if slot in self.macros:
                 del self.macros[slot]
-            self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
+            self.table.setItem(r, 1, QTableWidgetItem(self._says(slot)))
+            self.refresh_picture()
+            self._changed()
 
     def _edit_macro(self, item):
         r = item.row()
@@ -689,11 +753,10 @@ class ActivityHardButtonsPage(QWizardPage):
             macro = dlg.macro_edit.get_macro()
             if macro:
                 self.macros[slot] = macro
-                self.table.setItem(r, 1, QTableWidgetItem(_does(macro, self.devices)))
             else:
-                if slot in self.macros:
-                    del self.macros[slot]
-                self.table.setItem(r, 1, QTableWidgetItem(self._default(slot)))
+                self.macros.pop(slot, None)
+            self.table.setItem(r, 1, QTableWidgetItem(self._says(slot)))
+            self._changed()
         self.refresh_picture()
 
     def get_hard_macros(self):
