@@ -110,6 +110,7 @@
     "tabs": [
       "devices",
       "activities",
+      "settings",
       "flash"
     ],
     "device_pages": [
@@ -134,8 +135,7 @@
       "always_on",
       "power_delay",
       "press_interkey",
-      "input_delay",
-      "app_power_delay"
+      "input_delay"
     ],
     "settings": [
       "output_file",

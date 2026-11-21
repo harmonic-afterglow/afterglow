@@ -458,14 +458,18 @@ class Image:
         Logitech's pages do: one with two or fewer has the plain backdrop."""
         lines = [{"attribute": TITLE, "x": 0, "y": 0, "align": title_align,
                   "text": self.fit(title, WIDTH)}]
+        drawn_as: dict[tuple, list[str]] = {}
         for corner, label in enumerate(labels):
             if label is None:          # a place left empty
                 continue
             row = "top" if corner < 2 else "bottom"
             align = "left" if corner % 2 == 0 else "right"
-            for y, text in zip(CORNER_Y[row], self.corner_lines(label, words)):
+            shown = self.corner_lines(label, words)
+            drawn_as.setdefault(tuple(shown), []).append(label)
+            for y, text in zip(CORNER_Y[row], shown):
                 lines.append({"attribute": LABEL, "x": 0, "y": y, "align": align,
                               "text": text})
+        self._say_what_was_cut(title, drawn_as)
         if count > 1:
             lines.append({"attribute": COUNTER, "x": 0, "y": COUNTER_Y, "align": "centre",
                           "text": self.words("page.counter", number=number + 1,
@@ -473,6 +477,28 @@ class Image:
         bottom = any(label is not None for label in labels[2:CORNERS])
         return {"backdrop": "page" if bottom else PLAIN, "overlays": [dict(self.underline)],
                 "lines": lines, "keys": []}
+
+    def _say_what_was_cut(self, title: str, drawn_as: dict) -> None:
+        """A label cut with ".." to fit its corner, and two that come out the same, are
+        said in the build's warnings: "InputComponent1" and "InputComponent2" were both
+        drawn "InputComponen.." with nothing said, two buttons no one could tell apart.
+        Each page once - a page is built again while a build is fitted to the remote."""
+        said = getattr(self, "_cut_said", None)
+        if said is None:
+            said = self._cut_said = set()
+        for shown, names in drawn_as.items():
+            cut = [name for name in names if any(line.endswith(ELLIPSIS) for line in shown)
+                   and not name.rstrip().endswith(ELLIPSIS)]
+            for name in cut:
+                if (title, name) not in said:
+                    said.add((title, name))
+                    self.skipped.append(f"{title!r}: {name!r} is cut short to fit the "
+                                        f"screen, as {' '.join(shown)!r}")
+            if len(names) > 1 and (title, shown) not in said:
+                said.add((title, shown))
+                self.skipped.append(
+                    f"{title!r}: {', '.join(repr(n) for n in names)} look the same on the "
+                    f"screen ({' '.join(shown)!r}); give one a shorter on-screen label")
 
     def corner_keys(self) -> list[int]:
         return [keys.code(keys.SCREEN_KEYS[corner]) for corner in (
@@ -703,8 +729,12 @@ class Image:
             if "input" in reserved:
                 self.input_var[index] = reserved["input"]
             if device.get("online"):
-                self.skipped.append(f"{device['label']!r}: the wait for its apps after it "
-                                    "switches on is not built for this remote")
+                # said with what it means and what to do: "is not built for this remote"
+                # left a tester with neither
+                self.skipped.append(f"{device['label']!r}: this remote cannot wait for the "
+                                    "TV's apps after switching it on; if an app input is "
+                                    "not ready when an activity starts, raise the TV's "
+                                    "\"Ready after switching on\" on its Timing page")
             del label
 
     def command_object(self, device: int, command_id: int) -> int:
