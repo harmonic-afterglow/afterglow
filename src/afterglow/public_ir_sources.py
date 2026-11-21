@@ -17,7 +17,7 @@ import re
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from . import backends, device_json, ir_signal, project_devices, remotes
+from . import backends, device_json, ir_signal, irp, project_devices, remotes
 from .corpus_provider import Manufacturer, _hard_key, _inputs, _power
 from .flipper import parse_ir_text
 
@@ -94,6 +94,12 @@ def _byte(text: str, index: int = 0) -> int:
 RAW_GAP_US = 40_000
 
 
+# Flipper's protocols the shipped definitions take, by their name without punctuation;
+# every other one is rendered from its IRP definition (irp/source-names.json).
+FLIPPER_NATIVE = {"nec", "nec1", "necext", "necextended", "samsung32", "jvc", "jvc16",
+                  "sirc", "sony12", "sirc15", "sony15", "sirc20", "sony20", "rc5", "rc5x"}
+
+
 def _flipper_signal(record: dict) -> tuple[dict | None, str]:
     kind = str(record.get("type", "")).casefold()
     if kind == "raw":
@@ -150,18 +156,47 @@ def _flipper_signal(record: dict) -> tuple[dict | None, str]:
                 "samsung32", {"address": address_low, "command": command},
                 provenance=provenance), "parsed protocol"
         if protocol in {"jvc", "jvc16"}:
-            return ir_signal.protocol_signal(
-                "jvc16", {"code": (address_low << 8) | command},
-                provenance=provenance), "parsed protocol"
+            return _jvc(address_low, command, provenance), "parsed protocol"
         if protocol in SONY:
             command = _byte(record.get("command_bytes", record.get("command", "")), 0)
             address = address_low | (address_high << 8)
             return _sony(protocol, address, command, provenance), "parsed protocol"
         if protocol in {"rc5", "rc5x"}:
             return _rc5(address_low, command, provenance), "parsed protocol"
-        return None, f"Flipper parsed protocol {record['protocol']!r} is not mapped yet"
+        return _by_irp("flipper", record["protocol"], {
+            "A": int.from_bytes(_bytes(record.get("address", "")), "little"),
+            "C": int.from_bytes(_bytes(record.get("command", "")), "little")}, provenance)
     except (KeyError, TypeError, ValueError) as exc:
         return None, f"invalid Flipper parsed signal: {exc}"
+
+
+def _bytes(text: str) -> bytes:
+    """Flipper's "AF 00 00 00", as bytes."""
+    return bytes(int(part, 16) for part in str(text).split())
+
+
+def _by_irp(source: str, name: str, given: dict, provenance: dict) -> tuple[dict | None, str]:
+    """A command in a protocol the shipped definitions do not cover, rendered from its
+    IRP definition (irp.py) - every protocol IRDB and Flipper name has one, or a reason
+    it cannot be sent in irp/source-names.json."""
+    try:
+        entry, values = irp.resolve(source, name, given)
+        return irp.waveform_signal(entry, values, provenance=provenance), \
+            f"rendered from its IRP ({entry['name']})"
+    except irp.IrpError as exc:
+        return None, f"{name!r} cannot be sent: {exc}"
+
+
+def _jvc(address: int, command: int, provenance: dict) -> dict:
+    """JVC as the shipped definition takes it: one 16-bit code sent highest bit first,
+    where the remote sends the address and then the command each lowest bit first - the
+    order IRDB's and Flipper's numbers are in (IRP: D:8,F:8, lsb). Passed through as
+    they were, every JVC device from either was sent with its bits reversed."""
+    def reverse(byte: int) -> int:
+        return int(f"{byte & 0xFF:08b}"[::-1], 2)
+    return ir_signal.protocol_signal(
+        "jvc16", {"code": (reverse(address) << 8) | reverse(command)},
+        provenance=provenance)
 
 
 # Sony SIRC as Flipper and IRDB name it, and the width of each part: a 7-bit command,
@@ -194,15 +229,31 @@ def _rc5(address: int, command: int, provenance: dict) -> dict:
     return ir_signal.protocol_signal("rc5-13", {"code": code}, provenance=provenance)
 
 
+# IRDB's protocols the shipped definitions take, by their name without punctuation.
+NATIVE_IRDB = {"nec1", "nec2", "necx2", "samsung32", "jvc", "jvc16", "sony12", "sony15",
+               "sony20", "rc5"}
+
+
 def _irdb_signal(row: dict) -> tuple[dict | None, str]:
+    if not (row.get("protocol") or "").strip():
+        return None, "the row names no protocol"
     try:
-        protocol = re.sub(r"[^a-z0-9]", "", row["protocol"].casefold())
+        # IRDB's own spelling of a protocol these definitions name otherwise: its most
+        # common, plain "NEC", is NEC1 (irp/source-names.json)
+        alias = irp.source_names()["irdb"].get(row["protocol"].strip().casefold()) or {}
+        named = alias["protocol"] if alias.get("protocol") and not alias.get("set") \
+            else row["protocol"]
+        protocol = re.sub(r"[^a-z0-9]", "", named.casefold())
         device = int(row["device"])
         subdevice = int(row["subdevice"])
         function = int(row["function"])
         provenance = {"kind": "irdb", "protocol": row["protocol"]}
-        if not 0 <= function <= 0xFF:
-            return None, "IRDB function does not fit the supported command byte"
+        # the shipped definitions take a one-byte command; the IRP ones say their own range
+        native = protocol in NATIVE_IRDB and 0 <= function <= 0xFF
+        if not native:
+            return _by_irp("irdb", row["protocol"], {
+                "D": device, "S": subdevice if subdevice >= 0 else None, "F": function},
+                provenance)
         if protocol == "nec1":
             if subdevice < 0:
                 return ir_signal.protocol_signal(
@@ -233,9 +284,7 @@ def _irdb_signal(row: dict) -> tuple[dict | None, str]:
                 "samsung32", {"address": device, "command": function},
                 provenance=provenance), "protocol tuple"
         if protocol in {"jvc", "jvc16"} and subdevice < 0:
-            return ir_signal.protocol_signal(
-                "jvc16", {"code": (device << 8) | function},
-                provenance=provenance), "protocol tuple"
+            return _jvc(device, function, provenance), "protocol tuple"
         if protocol in {"sony12", "sony15"} and subdevice < 0:
             return _sony(protocol, device, function, provenance), "protocol tuple"
         if protocol == "sony20" and subdevice >= 0:
@@ -243,9 +292,37 @@ def _irdb_signal(row: dict) -> tuple[dict | None, str]:
                          provenance), "protocol tuple"
         if protocol == "rc5" and subdevice < 0:
             return _rc5(device, function, provenance), "protocol tuple"
-        return None, f"IRDB protocol {row['protocol']!r} is not mapped yet"
+        return _by_irp("irdb", row["protocol"], {
+            "D": device, "S": subdevice if subdevice >= 0 else None, "F": function},
+            provenance)
     except (KeyError, TypeError, ValueError) as exc:
         return None, f"invalid IRDB row: {exc}"
+
+
+def protocol_handling(source: str, name: str) -> str | None:
+    """How a protocol a source names reaches the remote: "native" (read into a shipped
+    definition), "irp:<definition>" (rendered from its IRP), "refused:<why>", or None
+    when nothing handles it - which tests/test_ir_source_coverage.py does not allow for
+    any name IRDB, Flipper or the Logitech archive use."""
+    spelled = name.strip()
+    alias = irp.source_names().get(source, {}).get(spelled.casefold())
+    if alias and alias.get("refused"):
+        return f"refused:{alias['refused']}"
+    if source == "irdb":
+        named = alias["protocol"] if alias and alias.get("protocol") and not alias.get("set") \
+            else spelled
+        if re.sub(r"[^a-z0-9]", "", named.casefold()) in NATIVE_IRDB:
+            return "native"
+    elif source == "flipper":
+        if re.sub(r"[^a-z0-9]", "", spelled.casefold()) in FLIPPER_NATIVE:
+            return "native"
+    else:
+        raise ValueError(f"unknown source {source!r}")
+    if alias and alias.get("irp"):
+        return f"irp:{alias.get('name') or spelled}"
+    target = alias.get("protocol") if alias else spelled
+    entry = irp.definitions().get((target or "").casefold())
+    return f"irp:{entry['name']}" if entry else None
 
 
 class _PublicCatalog:

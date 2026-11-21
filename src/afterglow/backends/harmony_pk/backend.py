@@ -685,6 +685,13 @@ def capability(signal: dict, profile, *, library=None) -> dict:
     }
     try:
         lowered = lower_devices([probe], profile, library=library)[0]
+        if "_sequences" in lowered:
+            # A playback remote (the 1100) stores what each command sends, so whatever
+            # rendered plays - a recording as much as a protocol command, which this
+            # used to look up as a protocol and refuse.
+            if signal["kind"] == "waveform":
+                return {"supported": True, "strategy": "waveform",
+                        "reason": "recorded waveform"}
         # a recording lowering recognised is the protocol command it was found to be
         signal = (lowered.get("signals") or {}).get("Probe", signal)
         code = (lowered.get("raw_codes") or {}).get("Probe")

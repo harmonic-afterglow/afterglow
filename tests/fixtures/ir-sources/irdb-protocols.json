@@ -1,0 +1,627 @@
+{
+ "schema": "afterglow-ir-source-snapshot/1",
+ "source": {
+  "kind": "irdb",
+  "revision": "a3e34000f952795aa86a7a26fac7d463cc0eeccd"
+ },
+ "protocols": {
+  "": {
+   "commands": 131,
+   "sent": 0,
+   "files": 4,
+   "handling": "refused:the row names no protocol"
+  },
+  "48-NEC1": {
+   "commands": 54,
+   "sent": 0,
+   "files": 1,
+   "handling": "refused:IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+  },
+  "48-NEC2": {
+   "commands": 58,
+   "sent": 0,
+   "files": 1,
+   "handling": "refused:IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+  },
+  "Aiwa": {
+   "commands": 2336,
+   "sent": 2336,
+   "files": 80,
+   "handling": "irp:Aiwa"
+  },
+  "Akai": {
+   "commands": 338,
+   "sent": 338,
+   "files": 15,
+   "handling": "irp:Akai"
+  },
+  "Apple": {
+   "commands": 89,
+   "sent": 0,
+   "files": 6,
+   "handling": "refused:IRDB does not record PairID, which this protocol sends; a guess would send a wrong code"
+  },
+  "Barco": {
+   "commands": 143,
+   "sent": 0,
+   "files": 9,
+   "handling": "refused:sent without a carrier (0 kHz), which Afterglow's commands cannot hold"
+  },
+  "Blaupunkt": {
+   "commands": 185,
+   "sent": 185,
+   "files": 5,
+   "handling": "irp:Blaupunkt"
+  },
+  "Bose": {
+   "commands": 26,
+   "sent": 26,
+   "files": 1,
+   "handling": "irp:Bose"
+  },
+  "CanalSat": {
+   "commands": 75,
+   "sent": 75,
+   "files": 2,
+   "handling": "irp:CanalSat"
+  },
+  "denon": {
+   "commands": 44,
+   "sent": 44,
+   "files": 2,
+   "handling": "irp:Denon"
+  },
+  "Denon": {
+   "commands": 1743,
+   "sent": 1743,
+   "files": 45,
+   "handling": "irp:Denon"
+  },
+  "Denon-K": {
+   "commands": 823,
+   "sent": 819,
+   "files": 16,
+   "handling": "irp:Denon-K"
+  },
+  "Denon{1}": {
+   "commands": 190,
+   "sent": 190,
+   "files": 9,
+   "handling": "irp:Denon{1}"
+  },
+  "Denon{2}": {
+   "commands": 7,
+   "sent": 7,
+   "files": 3,
+   "handling": "irp:Denon{2}"
+  },
+  "Dgtec": {
+   "commands": 263,
+   "sent": 263,
+   "files": 2,
+   "handling": "irp:Dgtec"
+  },
+  "DirecTV": {
+   "commands": 1044,
+   "sent": 1044,
+   "files": 31,
+   "handling": "irp:DirecTV_P3"
+  },
+  "Dish_Network": {
+   "commands": 1298,
+   "sent": 1298,
+   "files": 63,
+   "handling": "irp:Dish_Network"
+  },
+  "Dishplayer": {
+   "commands": 39,
+   "sent": 39,
+   "files": 1,
+   "handling": "irp:Dishplayer"
+  },
+  "Emerson": {
+   "commands": 186,
+   "sent": 186,
+   "files": 8,
+   "handling": "irp:Emerson"
+  },
+  "F12": {
+   "commands": 34,
+   "sent": 34,
+   "files": 6,
+   "handling": "irp:F12"
+  },
+  "Fujitsu": {
+   "commands": 410,
+   "sent": 410,
+   "files": 19,
+   "handling": "irp:Fujitsu"
+  },
+  "G.I.4DTV": {
+   "commands": 30,
+   "sent": 30,
+   "files": 1,
+   "handling": "irp:G.I.4DTV"
+  },
+  "G.I.Cable": {
+   "commands": 1416,
+   "sent": 1416,
+   "files": 29,
+   "handling": "irp:G.I.Cable"
+  },
+  "Grundig16": {
+   "commands": 2,
+   "sent": 2,
+   "files": 1,
+   "handling": "irp:Grundig16"
+  },
+  "Grundig16-30": {
+   "commands": 23,
+   "sent": 23,
+   "files": 1,
+   "handling": "irp:Grundig16-30"
+  },
+  "GXB": {
+   "commands": 27,
+   "sent": 27,
+   "files": 1,
+   "handling": "irp:GXB"
+  },
+  "Jerrold": {
+   "commands": 54,
+   "sent": 0,
+   "files": 2,
+   "handling": "refused:sent without a carrier (0 kHz), which Afterglow's commands cannot hold"
+  },
+  "JVC": {
+   "commands": 3906,
+   "sent": 3906,
+   "files": 111,
+   "handling": "native"
+  },
+  "JVC-48": {
+   "commands": 99,
+   "sent": 99,
+   "files": 5,
+   "handling": "irp:JVC-48"
+  },
+  "JVC{2}": {
+   "commands": 426,
+   "sent": 426,
+   "files": 12,
+   "handling": "irp:JVC{2}"
+  },
+  "Kathrein": {
+   "commands": 146,
+   "sent": 146,
+   "files": 3,
+   "handling": "irp:Kathrein"
+  },
+  "Konka": {
+   "commands": 67,
+   "sent": 67,
+   "files": 3,
+   "handling": "irp:Konka"
+  },
+  "Logitech": {
+   "commands": 51,
+   "sent": 51,
+   "files": 1,
+   "handling": "irp:Logitech"
+  },
+  "Lumagen": {
+   "commands": 26,
+   "sent": 26,
+   "files": 2,
+   "handling": "irp:Lumagen"
+  },
+  "MCE": {
+   "commands": 2159,
+   "sent": 2159,
+   "files": 53,
+   "handling": "irp:MCE"
+  },
+  "Mitsubishi": {
+   "commands": 2341,
+   "sent": 2341,
+   "files": 46,
+   "handling": "irp:Mitsubishi"
+  },
+  "NEC": {
+   "commands": 22358,
+   "sent": 22358,
+   "files": 740,
+   "handling": "native"
+  },
+  "nec": {
+   "commands": 35,
+   "sent": 35,
+   "files": 1,
+   "handling": "native"
+  },
+  "NEC1": {
+   "commands": 22326,
+   "sent": 22326,
+   "files": 523,
+   "handling": "native"
+  },
+  "nec1": {
+   "commands": 314,
+   "sent": 314,
+   "files": 13,
+   "handling": "native"
+  },
+  "NEC1-f16": {
+   "commands": 480,
+   "sent": 480,
+   "files": 30,
+   "handling": "irp:NEC1-f16"
+  },
+  "NEC1-rnc": {
+   "commands": 3,
+   "sent": 3,
+   "files": 1,
+   "handling": "irp:NEC1-rnc"
+  },
+  "NEC1-y1": {
+   "commands": 577,
+   "sent": 577,
+   "files": 3,
+   "handling": "irp:NEC1-f16"
+  },
+  "NEC1-y2": {
+   "commands": 627,
+   "sent": 627,
+   "files": 3,
+   "handling": "irp:NEC1-f16"
+  },
+  "NEC1-y3": {
+   "commands": 207,
+   "sent": 207,
+   "files": 3,
+   "handling": "irp:NEC1-f16"
+  },
+  "NEC2": {
+   "commands": 10120,
+   "sent": 10120,
+   "files": 277,
+   "handling": "native"
+  },
+  "NEC2-f16": {
+   "commands": 180,
+   "sent": 180,
+   "files": 4,
+   "handling": "irp:NEC2-f16"
+  },
+  "NECx1": {
+   "commands": 1279,
+   "sent": 1279,
+   "files": 48,
+   "handling": "irp:NECx1"
+  },
+  "NECx2": {
+   "commands": 1788,
+   "sent": 1788,
+   "files": 48,
+   "handling": "native"
+  },
+  "Nokia": {
+   "commands": 138,
+   "sent": 138,
+   "files": 3,
+   "handling": "irp:Nokia"
+  },
+  "Nokia12": {
+   "commands": 70,
+   "sent": 70,
+   "files": 2,
+   "handling": "irp:Nokia12"
+  },
+  "Nokia32": {
+   "commands": 548,
+   "sent": 0,
+   "files": 14,
+   "handling": "refused:IRDB does not record X, which this protocol sends; a guess would send a wrong code"
+  },
+  "NRC16": {
+   "commands": 29,
+   "sent": 29,
+   "files": 1,
+   "handling": "irp:NRC16"
+  },
+  "NRC17": {
+   "commands": 60,
+   "sent": 60,
+   "files": 2,
+   "handling": "irp:NRC17"
+  },
+  "PaceMSS": {
+   "commands": 58,
+   "sent": 58,
+   "files": 1,
+   "handling": "irp:PaceMSS"
+  },
+  "Panasonic": {
+   "commands": 1850,
+   "sent": 1850,
+   "files": 67,
+   "handling": "irp:Panasonic"
+  },
+  "Panasonic2": {
+   "commands": 54,
+   "sent": 0,
+   "files": 3,
+   "handling": "refused:IRDB does not record X, which this protocol sends; a guess would send a wrong code"
+  },
+  "Panasonic_Old": {
+   "commands": 565,
+   "sent": 565,
+   "files": 27,
+   "handling": "irp:Panasonic_Old"
+  },
+  "Pioneer": {
+   "commands": 1539,
+   "sent": 1539,
+   "files": 50,
+   "handling": "irp:Pioneer"
+  },
+  "Proton": {
+   "commands": 1151,
+   "sent": 1151,
+   "files": 39,
+   "handling": "irp:Proton"
+  },
+  "RC5": {
+   "commands": 12483,
+   "sent": 12483,
+   "files": 426,
+   "handling": "native"
+  },
+  "RC5-7F": {
+   "commands": 139,
+   "sent": 139,
+   "files": 4,
+   "handling": "irp:RC5-7F"
+  },
+  "RC6": {
+   "commands": 2088,
+   "sent": 2088,
+   "files": 47,
+   "handling": "irp:RC6"
+  },
+  "RC6-6-20": {
+   "commands": 112,
+   "sent": 112,
+   "files": 4,
+   "handling": "irp:RC6-6-20"
+  },
+  "RCA": {
+   "commands": 573,
+   "sent": 573,
+   "files": 24,
+   "handling": "irp:RCA"
+  },
+  "RCA(Old)": {
+   "commands": 164,
+   "sent": 164,
+   "files": 7,
+   "handling": "irp:RCA(Old)"
+  },
+  "RCA-38": {
+   "commands": 387,
+   "sent": 387,
+   "files": 23,
+   "handling": "irp:RCA-38"
+  },
+  "RCA-38(Old)": {
+   "commands": 57,
+   "sent": 57,
+   "files": 5,
+   "handling": "irp:RCA-38(Old)"
+  },
+  "RECS80": {
+   "commands": 1465,
+   "sent": 1465,
+   "files": 62,
+   "handling": "irp:RECS80"
+  },
+  "Replay": {
+   "commands": 131,
+   "sent": 131,
+   "files": 3,
+   "handling": "irp:Replay"
+  },
+  "Samsung20": {
+   "commands": 22,
+   "sent": 22,
+   "files": 2,
+   "handling": "irp:Samsung20"
+  },
+  "Samsung36": {
+   "commands": 39,
+   "sent": 0,
+   "files": 1,
+   "handling": "refused:IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+  },
+  "ScAtl-6": {
+   "commands": 64,
+   "sent": 64,
+   "files": 3,
+   "handling": "irp:ScAtl-6"
+  },
+  "Sejin-1-38": {
+   "commands": 10,
+   "sent": 10,
+   "files": 2,
+   "handling": "irp:Sejin-1-38"
+  },
+  "Sejin-1-56": {
+   "commands": 80,
+   "sent": 80,
+   "files": 2,
+   "handling": "irp:Sejin-1-56"
+  },
+  "Sharp": {
+   "commands": 358,
+   "sent": 358,
+   "files": 19,
+   "handling": "irp:Sharp"
+  },
+  "SharpDVD": {
+   "commands": 42,
+   "sent": 42,
+   "files": 1,
+   "handling": "irp:SharpDVD"
+  },
+  "Sharp{1}": {
+   "commands": 323,
+   "sent": 323,
+   "files": 12,
+   "handling": "irp:Sharp{1}"
+  },
+  "Sharp{2}": {
+   "commands": 2,
+   "sent": 2,
+   "files": 1,
+   "handling": "irp:Sharp{2}"
+  },
+  "Sony12": {
+   "commands": 3555,
+   "sent": 3555,
+   "files": 134,
+   "handling": "native"
+  },
+  "Sony15": {
+   "commands": 1574,
+   "sent": 1574,
+   "files": 61,
+   "handling": "native"
+  },
+  "Sony20": {
+   "commands": 1604,
+   "sent": 1604,
+   "files": 56,
+   "handling": "native"
+  },
+  "StreamZap": {
+   "commands": 101,
+   "sent": 101,
+   "files": 2,
+   "handling": "irp:StreamZap"
+  },
+  "Teac-K": {
+   "commands": 37,
+   "sent": 37,
+   "files": 2,
+   "handling": "irp:Teac-K"
+  },
+  "Thomson": {
+   "commands": 156,
+   "sent": 156,
+   "files": 5,
+   "handling": "irp:Thomson"
+  },
+  "Thomson7": {
+   "commands": 1,
+   "sent": 1,
+   "files": 1,
+   "handling": "irp:Thomson7"
+  },
+  "Tivo unit=0": {
+   "commands": 612,
+   "sent": 612,
+   "files": 17,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=1": {
+   "commands": 67,
+   "sent": 67,
+   "files": 2,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=2": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=3": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=4": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=5": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=6": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=7": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=8": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Tivo unit=9": {
+   "commands": 31,
+   "sent": 31,
+   "files": 1,
+   "handling": "irp:Tivo"
+  },
+  "Velleman": {
+   "commands": 202,
+   "sent": 202,
+   "files": 9,
+   "handling": "irp:Velleman"
+  },
+  "XMP": {
+   "commands": 8,
+   "sent": 8,
+   "files": 3,
+   "handling": "irp:XMP"
+  },
+  "XMP-1": {
+   "commands": 299,
+   "sent": 299,
+   "files": 8,
+   "handling": "irp:XMP-1"
+  },
+  "XMP-2": {
+   "commands": 289,
+   "sent": 289,
+   "files": 6,
+   "handling": "irp:XMP-2"
+  },
+  "Zaptor-56": {
+   "commands": 40,
+   "sent": 0,
+   "files": 1,
+   "handling": "refused:IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+  },
+  "Zenith": {
+   "commands": 177,
+   "sent": 177,
+   "files": 17,
+   "handling": "irp:Zenith"
+  }
+ }
+}

@@ -109,6 +109,27 @@ PRONTO_RE = re.compile(
     r"[0-9A-Fa-f]{4}(?: [0-9A-Fa-f]{4}){3}(?: [0-9A-Fa-f]+)+")
 
 
+def protocol_handling(protocol_id: int | None, name: str | None, *, commands: int,
+                      with_pronto: int) -> str | None:
+    """How the archive's commands in one protocol reach a remote, by protocol: "reviewed:
+    <definition>" (read into a shipped definition, checked against the Pronto),
+    "pronto" (sent as the waveform Logitech derived), "non-ir", "433mhz", "learned", or
+    "unused". None when none of its commands can be sent at all - which
+    tests/test_ir_source_coverage.py does not allow for any protocol the archive uses."""
+    if protocol_id is None:
+        return "learned"
+    if not commands:
+        return "unused"
+    mapping = PORTABLE_PROTOCOLS.get(name)
+    if mapping and mapping[0] == protocol_id:
+        return f"reviewed:{mapping[1]}"
+    if name in NON_IR_PROTOCOLS:
+        return "non-ir"
+    if name in OUT_OF_IR_RANGE_PROTOCOLS:
+        return "433mhz"
+    return "pronto" if with_pronto else None
+
+
 class ArchiveError(ValueError):
     """The selected source is not the archive schema this adapter understands."""
 

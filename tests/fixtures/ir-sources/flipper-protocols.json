@@ -1,0 +1,94 @@
+{
+ "schema": "afterglow-ir-source-snapshot/1",
+ "source": {
+  "kind": "flipper-irdb",
+  "revision": "d126fb1b6f1e114c52b4a8c19839ea65e3a9c24d",
+  "note": "parsed signals only; raw captures are sent as they were recorded"
+ },
+ "protocols": {
+  "": {
+   "commands": 2,
+   "sent": 0,
+   "files": 1,
+   "handling": "refused:the signal names no protocol"
+  },
+  "Kaseikyo": {
+   "commands": 1639,
+   "sent": 1639,
+   "files": 66,
+   "handling": "irp:Kaseikyo (Flipper)"
+  },
+  "NEC": {
+   "commands": 9598,
+   "sent": 9587,
+   "files": 549,
+   "handling": "native"
+  },
+  "NEC42": {
+   "commands": 124,
+   "sent": 124,
+   "files": 5,
+   "handling": "irp:Aiwa"
+  },
+  "NECext": {
+   "commands": 144288,
+   "sent": 144288,
+   "files": 4230,
+   "handling": "native"
+  },
+  "Pioneer": {
+   "commands": 180,
+   "sent": 180,
+   "files": 10,
+   "handling": "irp:Pioneer"
+  },
+  "RC5": {
+   "commands": 7860,
+   "sent": 6077,
+   "files": 201,
+   "handling": "native"
+  },
+  "RC5X": {
+   "commands": 212,
+   "sent": 212,
+   "files": 27,
+   "handling": "native"
+  },
+  "RC6": {
+   "commands": 908,
+   "sent": 908,
+   "files": 42,
+   "handling": "irp:RC6"
+  },
+  "RCA": {
+   "commands": 279,
+   "sent": 279,
+   "files": 12,
+   "handling": "irp:RCA"
+  },
+  "Samsung32": {
+   "commands": 2451,
+   "sent": 2451,
+   "files": 103,
+   "handling": "native"
+  },
+  "SIRC": {
+   "commands": 1068,
+   "sent": 1068,
+   "files": 70,
+   "handling": "native"
+  },
+  "SIRC15": {
+   "commands": 815,
+   "sent": 771,
+   "files": 59,
+   "handling": "native"
+  },
+  "SIRC20": {
+   "commands": 1048,
+   "sent": 1048,
+   "files": 62,
+   "handling": "native"
+  }
+ }
+}

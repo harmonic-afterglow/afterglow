@@ -1,0 +1,222 @@
+{
+ "schema": "afterglow-irp-source-names/1",
+ "notes": "How each source's protocol names reach a definition. A name not listed here is looked up among the IRP definitions (protocols.json) by its own name. 'native' names are read into the shipped protocol definitions (library/protocols) by public_ir_sources.py; 'irp' defines a source's own variant in place (with its 'name'); 'set' gives parameter values as IRP expressions - over D, S and F for IRDB, over A (the address) and C (the command) as little-endian numbers for Flipper; 'refused' says why a name cannot be used. tests/test_ir_source_coverage.py checks every name the sources use is here or defined.",
+ "sources": {
+  "irdb": {
+   "nec": {
+    "protocol": "NEC1",
+    "why": "DecodeIR's name for an NEC1 frame it saw without its repeat; the devices expect NEC1's ditto while a key is held"
+   },
+   "nec1-y1": {
+    "protocol": "NEC1-f16",
+    "set": {
+     "E": "F^127"
+    },
+    "why": "Yamaha's NEC1: only bits 0-6 of the command are complemented"
+   },
+   "nec1-y2": {
+    "protocol": "NEC1-f16",
+    "set": {
+     "E": "F^254"
+    },
+    "why": "Yamaha's NEC1: only bits 1-7 of the command are complemented"
+   },
+   "nec1-y3": {
+    "protocol": "NEC1-f16",
+    "set": {
+     "E": "F^126"
+    },
+    "why": "Yamaha's NEC1: only bits 1-6 of the command are complemented"
+   },
+   "": {
+    "refused": "the row names no protocol"
+   },
+   "tivo unit=0": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "0"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=1": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "1"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=2": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "2"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=3": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "3"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=4": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "4"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=5": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "5"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=6": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "6"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=7": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "7"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=8": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "8"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "tivo unit=9": {
+    "protocol": "Tivo",
+    "set": {
+     "U": "9"
+    },
+    "why": "TiVo, with the unit number a TiVo remote is set to"
+   },
+   "pacemss": {
+    "protocol": "PaceMSS",
+    "set": {
+     "T": "0"
+    },
+    "why": "IRDB records no toggle; a first press sends 0"
+   },
+   "grundig16-30": {
+    "protocol": "Grundig16-30",
+    "set": {
+     "T": "0"
+    },
+    "why": "IRDB records no toggle; a first press sends 0"
+   },
+   "nokia32": {
+    "refused": "IRDB does not record X, which this protocol sends; a guess would send a wrong code"
+   },
+   "apple": {
+    "refused": "IRDB does not record PairID, which this protocol sends; a guess would send a wrong code"
+   },
+   "48-nec1": {
+    "refused": "IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+   },
+   "48-nec2": {
+    "refused": "IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+   },
+   "panasonic2": {
+    "refused": "IRDB does not record X, which this protocol sends; a guess would send a wrong code"
+   },
+   "zaptor-56": {
+    "refused": "IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+   },
+   "samsung36": {
+    "refused": "IRDB does not record E, which this protocol sends; a guess would send a wrong code"
+   },
+   "barco": {
+    "refused": "sent without a carrier (0 kHz), which Afterglow's commands cannot hold"
+   },
+   "jerrold": {
+    "refused": "sent without a carrier (0 kHz), which Afterglow's commands cannot hold"
+   }
+  },
+  "flipper": {
+   "nec": {
+    "native": "nec1 or nec-ext"
+   },
+   "necext": {
+    "native": "nec-ext"
+   },
+   "samsung32": {
+    "native": "samsung32 (Samsung's repeated address, not IrpTransmogrifier's Samsung32)"
+   },
+   "sirc": {
+    "native": "sony12"
+   },
+   "sirc15": {
+    "native": "sony15"
+   },
+   "sirc20": {
+    "native": "sony20"
+   },
+   "rc5": {
+    "native": "rc5-13"
+   },
+   "rc5x": {
+    "native": "rc5-13"
+   },
+   "jvc": {
+    "native": "jvc16"
+   },
+   "nec42": {
+    "protocol": "Aiwa",
+    "set": {
+     "D": "A&255",
+     "S": "(A>>8)&31",
+     "F": "C&255"
+    },
+    "why": "a 13-bit address and its complement, then the command and its complement: IRP's Aiwa"
+   },
+   "rc6": {
+    "protocol": "RC6",
+    "set": {
+     "D": "A&255",
+     "F": "C&255"
+    }
+   },
+   "rca": {
+    "protocol": "RCA",
+    "set": {
+     "D": "A&15",
+     "F": "C&255"
+    }
+   },
+   "pioneer": {
+    "protocol": "Pioneer",
+    "set": {
+     "D": "A&255",
+     "S": "((A>>8)&255) ? ((A>>8)&255) : 255-(A&255)",
+     "F": "C&255"
+    }
+   },
+   "kaseikyo": {
+    "name": "Kaseikyo (Flipper)",
+    "irp": "{37k,432}<1,-1|1,-3>(8,-4,M:8,N:8,X:4,D:4,S:8,F:8,P:8,1,-173)* {X=(((M^N)::4)^(M^N))&15, P=(X+16*D)^S^F}[M:0..255,N:0..255,D:0..15,S:0..255,F:0..255]",
+    "set": {
+     "M": "(A>>8)&255",
+     "N": "(A>>16)&255",
+     "D": "(A>>4)&15",
+     "S": "(A&15)|((C&15)<<4)",
+     "F": "((C>>4)&63)|(((A>>24)&3)<<6)"
+    },
+    "why": "Flipper's address is the vendor (M, N) in its middle bytes, genre 1 (D) and genre 2 in its low byte and a 2-bit id on top; its command is 10 bits, the low nibble beside genre 2 and the rest under the id. Defined here rather than as IrpTransmogrifier's Kaseikyo: the last byte is the XOR of the three before it, as Flipper sends it, which that definition's checksum matches only when the vendor's parity nibble is 0 (checked against IRDB's Panasonic 128,0: Power 61)"
+   },
+   "": {
+    "refused": "the signal names no protocol"
+   }
+  }
+ }
+}

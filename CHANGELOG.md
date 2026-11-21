@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Every IR protocol IRDB and Flipper-IRDB use.** A command in a protocol Afterglow
+  had no definition for was left out of the device, and IRDB's most common protocol,
+  plain "NEC", was one of them: only half of IRDB's commands could be added. Afterglow
+  now sends any protocol from its IRP definition (IrpTransmogrifier's, see
+  `src/afterglow/library/irp/NOTICE.md`), so 98.9% of IRDB's 114,154 commands come with
+  their device, and Flipper-IRDB's Kaseikyo (Panasonic, Denon), RC6, NEC42, RCA and
+  Pioneer codes too. The rest say why they cannot be sent: no protocol named, a value
+  missing, or no carrier. Every protocol name IRDB, Flipper-IRDB and Logitech's archive
+  use is listed in the tests with how it is sent, so one a source starts using is
+  caught when the lists are refreshed (`tools/ir_source_snapshot.py`).
+
 ### Changed
 
 - **Device and activity rows have one button besides Edit.** Delete, and Find model
@@ -21,6 +34,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **JVC devices from IRDB and Flipper-IRDB send the right codes.** Each byte went out
+  with its bits the wrong way round, so no JVC command from either worked.
+- **Harmony 1100: recorded commands are no longer left out when a device is added.**
+  Add Device looked each one up as a protocol and listed learned codes, Flipper
+  captures and the archive's recordings as unsupported, though the 1100 plays them.
 - **Harmony One: every favourite comes back when a configuration is read.** A favourite
   that dials with a separator ("8", Space, "3") or runs a macro was taken for one of the
   activity's own screen buttons, so a One with 23 favourites came back with 16, on three

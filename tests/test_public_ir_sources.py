@@ -75,7 +75,7 @@ def test_irdb_materializes_mapped_rows_and_reports_unmapped_protocols():
     codes = """\
 functionname,protocol,device,subdevice,function
 POWER,NECx2,7,7,2
-ODD,Sony20,1,-1,4
+ODD,Barco,1,-1,4
 """
 
     def fetch(url):
@@ -97,7 +97,7 @@ ODD,Sony20,1,-1,4
         "parameters": {"address": 7, "command": 2},
         "provenance": {"kind": "irdb", "protocol": "NECx2"},
     }
-    assert "not mapped yet" in result["commands"][1]["reason"]
+    assert "without a carrier" in result["commands"][1]["reason"]
 
 
 def test_external_afterglow_database_carries_its_portable_protocol_into_a_build(

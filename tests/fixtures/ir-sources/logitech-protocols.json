@@ -1,0 +1,5489 @@
+{
+ "schema": "afterglow-ir-source-snapshot/1",
+ "source": {
+  "kind": "logitech-harmony-ir-archive",
+  "revision": "97ca52a075fd8b2fbc60d00b8999e158d6d11ae7"
+ },
+ "protocols": {
+  "0001 Sony 12 Bit": {
+   "id": 1,
+   "name": "Sony 12 Bit",
+   "commands": 50864,
+   "with_pronto": 50864,
+   "codesets": 1565,
+   "handling": "reviewed:sony12"
+  },
+  "0002 Toshiba 32 Bit": {
+   "id": 2,
+   "name": "Toshiba 32 Bit",
+   "commands": 1068800,
+   "with_pronto": 1068797,
+   "codesets": 29455,
+   "handling": "reviewed:nec1-toshiba"
+  },
+  "0003 Panasonic 48 Bit": {
+   "id": 3,
+   "name": "Panasonic 48 Bit",
+   "commands": 18288,
+   "with_pronto": 18288,
+   "codesets": 454,
+   "handling": "pronto"
+  },
+  "0004 Samsung 42 Bit": {
+   "id": 4,
+   "name": "Samsung 42 Bit",
+   "commands": 5791,
+   "with_pronto": 5791,
+   "codesets": 215,
+   "handling": "pronto"
+  },
+  "0005 RCA 24 Bit": {
+   "id": 5,
+   "name": "RCA 24 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0006 Sharp 15 Bit": {
+   "id": 6,
+   "name": "Sharp 15 Bit",
+   "commands": 7183,
+   "with_pronto": 7183,
+   "codesets": 210,
+   "handling": "pronto"
+  },
+  "0007 RCA 9 Bit": {
+   "id": 7,
+   "name": "RCA 9 Bit",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0008 Magnavox 13 Bit": {
+   "id": 8,
+   "name": "Magnavox 13 Bit",
+   "commands": 51979,
+   "with_pronto": 51979,
+   "codesets": 1666,
+   "handling": "pronto"
+  },
+  "0009 JVC 16 Bit": {
+   "id": 9,
+   "name": "JVC 16 Bit",
+   "commands": 18642,
+   "with_pronto": 18642,
+   "codesets": 438,
+   "handling": "reviewed:jvc16"
+  },
+  "0010 Memorex 32 Bit": {
+   "id": 10,
+   "name": "Memorex 32 Bit",
+   "commands": 7697,
+   "with_pronto": 7697,
+   "codesets": 389,
+   "handling": "pronto"
+  },
+  "0011 Jerrold 16 Bit": {
+   "id": 11,
+   "name": "Jerrold 16 Bit",
+   "commands": 167,
+   "with_pronto": 167,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0012 SA 22 Bit": {
+   "id": 12,
+   "name": "SA 22 Bit",
+   "commands": 1227,
+   "with_pronto": 1227,
+   "codesets": 44,
+   "handling": "pronto"
+  },
+  "0013 JVC 9 Bit": {
+   "id": 13,
+   "name": "JVC 9 Bit",
+   "commands": 61,
+   "with_pronto": 61,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0014 Samsung 32 Bit": {
+   "id": 14,
+   "name": "Samsung 32 Bit",
+   "commands": 763,
+   "with_pronto": 763,
+   "codesets": 31,
+   "handling": "pronto"
+  },
+  "0015 Panasonic 10 Bit": {
+   "id": 15,
+   "name": "Panasonic 10 Bit",
+   "commands": 36,
+   "with_pronto": 36,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0016 Pioneer 32 Bit": {
+   "id": 16,
+   "name": "Pioneer 32 Bit",
+   "commands": 17979,
+   "with_pronto": 17978,
+   "codesets": 751,
+   "handling": "pronto"
+  },
+  "0017 Sony 15 Bit": {
+   "id": 17,
+   "name": "Sony 15 Bit",
+   "commands": 29529,
+   "with_pronto": 29529,
+   "codesets": 1597,
+   "handling": "reviewed:sony15"
+  },
+  "0018 Sony 20 Bit": {
+   "id": 18,
+   "name": "Sony 20 Bit",
+   "commands": 30095,
+   "with_pronto": 30095,
+   "codesets": 1034,
+   "handling": "reviewed:sony20"
+  },
+  "0020 Mitsubishi 16 Bit": {
+   "id": 20,
+   "name": "Mitsubishi 16 Bit",
+   "commands": 322,
+   "with_pronto": 322,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0021 Bell 16 Bit": {
+   "id": 21,
+   "name": "Bell 16 Bit",
+   "commands": 815,
+   "with_pronto": 815,
+   "codesets": 24,
+   "handling": "pronto"
+  },
+  "0022 RCA 10 Bit": {
+   "id": 22,
+   "name": "RCA 10 Bit",
+   "commands": 19,
+   "with_pronto": 19,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0023 RCA 24 Bit 2": {
+   "id": 23,
+   "name": "RCA 24 Bit 2",
+   "commands": 155,
+   "with_pronto": 155,
+   "codesets": 16,
+   "handling": "pronto"
+  },
+  "0024 Epson 24 Quad": {
+   "id": 24,
+   "name": "Epson 24 Quad",
+   "commands": 323,
+   "with_pronto": 323,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0025 Hitachi 24 Bit": {
+   "id": 25,
+   "name": "Hitachi 24 Bit",
+   "commands": 2554,
+   "with_pronto": 2554,
+   "codesets": 98,
+   "handling": "pronto"
+  },
+  "0026 Philips RC6": {
+   "id": 26,
+   "name": "Philips RC6",
+   "commands": 480,
+   "with_pronto": 480,
+   "codesets": 29,
+   "handling": "pronto"
+  },
+  "0027 Sony 9 Bit": {
+   "id": 27,
+   "name": "Sony 9 Bit",
+   "commands": 47,
+   "with_pronto": 47,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0028 Sony 6 Bit": {
+   "id": 28,
+   "name": "Sony 6 Bit",
+   "commands": 43,
+   "with_pronto": 43,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0029 Short 11 Bit": {
+   "id": 29,
+   "name": "Short 11 Bit",
+   "commands": 207,
+   "with_pronto": 207,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0030 Dual 8 16 Bit": {
+   "id": 30,
+   "name": "Dual 8 16 Bit",
+   "commands": 13,
+   "with_pronto": 13,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0031 Memorex 32 Bit Dual": {
+   "id": 31,
+   "name": "Memorex 32 Bit Dual",
+   "commands": 59,
+   "with_pronto": 59,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0032 Philips 16 Bit LongToggle": {
+   "id": 32,
+   "name": "Philips 16 Bit LongToggle",
+   "commands": 2668,
+   "with_pronto": 2668,
+   "codesets": 140,
+   "handling": "pronto"
+  },
+  "0033 Bell 16 Bit 2": {
+   "id": 33,
+   "name": "Bell 16 Bit 2",
+   "commands": 13,
+   "with_pronto": 13,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0034 Bell 10 Bit": {
+   "id": 34,
+   "name": "Bell 10 Bit",
+   "commands": 191,
+   "with_pronto": 191,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0035 TiVo Enter 44 Bit": {
+   "id": 35,
+   "name": "TiVo Enter 44 Bit",
+   "commands": 44,
+   "with_pronto": 44,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0036 Toshiba 32 Bit 2": {
+   "id": 36,
+   "name": "Toshiba 32 Bit 2",
+   "commands": 2722,
+   "with_pronto": 2722,
+   "codesets": 103,
+   "handling": "pronto"
+  },
+  "0037 Toshiba 32 Bit 3": {
+   "id": 37,
+   "name": "Toshiba 32 Bit 3",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0039 General Instruments 12 Bit": {
+   "id": 39,
+   "name": "General Instruments 12 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0040 Technics 22 Bit": {
+   "id": 40,
+   "name": "Technics 22 Bit",
+   "commands": 385,
+   "with_pronto": 385,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0041 Escient 18 Bit": {
+   "id": 41,
+   "name": "Escient 18 Bit",
+   "commands": 24,
+   "with_pronto": 24,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0043 Fujitsu 48 Bit": {
+   "id": 43,
+   "name": "Fujitsu 48 Bit",
+   "commands": 378,
+   "with_pronto": 378,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0044 Pioneer 32 Bit Dual": {
+   "id": 44,
+   "name": "Pioneer 32 Bit Dual",
+   "commands": 28456,
+   "with_pronto": 28456,
+   "codesets": 872,
+   "handling": "pronto"
+  },
+  "0045 Sony 16 Bit": {
+   "id": 45,
+   "name": "Sony 16 Bit",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0046 Sony 24 Bit": {
+   "id": 46,
+   "name": "Sony 24 Bit",
+   "commands": 98,
+   "with_pronto": 98,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0047 Sony 40 Bit": {
+   "id": 47,
+   "name": "Sony 40 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0048 RCA 24 Bit 3": {
+   "id": 48,
+   "name": "RCA 24 Bit 3",
+   "commands": 8398,
+   "with_pronto": 8398,
+   "codesets": 228,
+   "handling": "pronto"
+  },
+  "0050 Thomson 10 Bit": {
+   "id": 50,
+   "name": "Thomson 10 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0051 Thomson 12 Bit Toggle": {
+   "id": 51,
+   "name": "Thomson 12 Bit Toggle",
+   "commands": 5324,
+   "with_pronto": 5324,
+   "codesets": 152,
+   "handling": "pronto"
+  },
+  "0052 Thomson 12 Bit": {
+   "id": 52,
+   "name": "Thomson 12 Bit",
+   "commands": 186,
+   "with_pronto": 186,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0053 Nokia 16 Bit": {
+   "id": 53,
+   "name": "Nokia 16 Bit",
+   "commands": 32,
+   "with_pronto": 32,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0055 Cambridge 32 Bit Dual": {
+   "id": 55,
+   "name": "Cambridge 32 Bit Dual",
+   "commands": 956,
+   "with_pronto": 956,
+   "codesets": 57,
+   "handling": "pronto"
+  },
+  "0056 Nokia 13 Bit Quad": {
+   "id": 56,
+   "name": "Nokia 13 Bit Quad",
+   "commands": 257,
+   "with_pronto": 257,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0057 Panasonic 16 Bit": {
+   "id": 57,
+   "name": "Panasonic 16 Bit",
+   "commands": 1184,
+   "with_pronto": 1184,
+   "codesets": 45,
+   "handling": "pronto"
+  },
+  "0059 X10 Open 10 Bit": {
+   "id": 59,
+   "name": "X10 Open 10 Bit",
+   "commands": 77,
+   "with_pronto": 77,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0060 X10 OnOff 10 Bit": {
+   "id": 60,
+   "name": "X10 OnOff 10 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0061 X10 Dim 10 Bit": {
+   "id": 61,
+   "name": "X10 Dim 10 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0062 X10 Number 10 Bit": {
+   "id": 62,
+   "name": "X10 Number 10 Bit",
+   "commands": 66,
+   "with_pronto": 66,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0063 X10 Rapid 10 Bit": {
+   "id": 63,
+   "name": "X10 Rapid 10 Bit",
+   "commands": 84,
+   "with_pronto": 84,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0064 Zenith 11 Bit": {
+   "id": 64,
+   "name": "Zenith 11 Bit",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0065 Mitsubishi 16 Bit 2": {
+   "id": 65,
+   "name": "Mitsubishi 16 Bit 2",
+   "commands": 6093,
+   "with_pronto": 6093,
+   "codesets": 168,
+   "handling": "pronto"
+  },
+  "0070 Bose 32 Bit": {
+   "id": 70,
+   "name": "Bose 32 Bit",
+   "commands": 2815,
+   "with_pronto": 2815,
+   "codesets": 64,
+   "handling": "pronto"
+  },
+  "0071 Test 8 Bit Toggle": {
+   "id": 71,
+   "name": "Test 8 Bit Toggle",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0072 GoVideo 32 Bit": {
+   "id": 72,
+   "name": "GoVideo 32 Bit",
+   "commands": 51411,
+   "with_pronto": 51411,
+   "codesets": 939,
+   "handling": "pronto"
+  },
+  "0074 Sunfire 23 Bit": {
+   "id": 74,
+   "name": "Sunfire 23 Bit",
+   "commands": 317,
+   "with_pronto": 317,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0076 Vantage 8 Bit": {
+   "id": 76,
+   "name": "Vantage 8 Bit",
+   "commands": 693,
+   "with_pronto": 693,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0078 Proceed 14 Bit": {
+   "id": 78,
+   "name": "Proceed 14 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0079 Pioneer 32 Bit 2": {
+   "id": 79,
+   "name": "Pioneer 32 Bit 2",
+   "commands": 211,
+   "with_pronto": 211,
+   "codesets": 51,
+   "handling": "pronto"
+  },
+  "0080 Magnavox 8 Bit Quad": {
+   "id": 80,
+   "name": "Magnavox 8 Bit Quad",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0082 Electrohome 7 Bit": {
+   "id": 82,
+   "name": "Electrohome 7 Bit",
+   "commands": 47,
+   "with_pronto": 47,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0084 Davis 18 Bit": {
+   "id": 84,
+   "name": "Davis 18 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0085 Microsoft 30 Bit": {
+   "id": 85,
+   "name": "Microsoft 30 Bit",
+   "commands": 34137,
+   "with_pronto": 34137,
+   "codesets": 836,
+   "handling": "reviewed:rc6-mce"
+  },
+  "0086 X10 AllOnOff 11 Bit Dual": {
+   "id": 86,
+   "name": "X10 AllOnOff 11 Bit Dual",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0087 Pace 4 and 20 Bit": {
+   "id": 87,
+   "name": "Pace 4 and 20 Bit",
+   "commands": 5594,
+   "with_pronto": 5594,
+   "codesets": 162,
+   "handling": "pronto"
+  },
+  "0088 Sharp 48 Bit": {
+   "id": 88,
+   "name": "Sharp 48 Bit",
+   "commands": 2036,
+   "with_pronto": 2036,
+   "codesets": 69,
+   "handling": "pronto"
+  },
+  "0089 Panasonic 57 Bit Quad": {
+   "id": 89,
+   "name": "Panasonic 57 Bit Quad",
+   "commands": 98,
+   "with_pronto": 98,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0090 Sumo 12 Bit": {
+   "id": 90,
+   "name": "Sumo 12 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0091 Bose 16 Bit": {
+   "id": 91,
+   "name": "Bose 16 Bit",
+   "commands": 566,
+   "with_pronto": 566,
+   "codesets": 38,
+   "handling": "pronto"
+  },
+  "0092 Magnavox 14 Bit Quad": {
+   "id": 92,
+   "name": "Magnavox 14 Bit Quad",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0094 Samsung 49 Bit": {
+   "id": 94,
+   "name": "Samsung 49 Bit",
+   "commands": 687,
+   "with_pronto": 687,
+   "codesets": 27,
+   "handling": "pronto"
+  },
+  "0096 Daewoo 32 Bit": {
+   "id": 96,
+   "name": "Daewoo 32 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0098 Samsung 21 Bit": {
+   "id": 98,
+   "name": "Samsung 21 Bit",
+   "commands": 302,
+   "with_pronto": 302,
+   "codesets": 23,
+   "handling": "pronto"
+  },
+  "0099 Jerrold 5 Bit": {
+   "id": 99,
+   "name": "Jerrold 5 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0101 B and O 17 Bit Dual": {
+   "id": 101,
+   "name": "B and O 17 Bit Dual",
+   "commands": 185,
+   "with_pronto": 185,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0102 Zenith 11 Bit Quad": {
+   "id": 102,
+   "name": "Zenith 11 Bit Quad",
+   "commands": 276,
+   "with_pronto": 276,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0103 JVC 32 Bit": {
+   "id": 103,
+   "name": "JVC 32 Bit",
+   "commands": 41,
+   "with_pronto": 41,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0105 Hitachi 7 Bit": {
+   "id": 105,
+   "name": "Hitachi 7 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0107 ADA 25 Bit Quad": {
+   "id": 107,
+   "name": "ADA 25 Bit Quad",
+   "commands": 163,
+   "with_pronto": 163,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0108 Comfort 112 Bit Quad": {
+   "id": 108,
+   "name": "Comfort 112 Bit Quad",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0109 Sim2 17 Bit": {
+   "id": 109,
+   "name": "Sim2 17 Bit",
+   "commands": 326,
+   "with_pronto": 326,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0111 ATI 21 Bit": {
+   "id": 111,
+   "name": "ATI 21 Bit",
+   "commands": 53,
+   "with_pronto": 0,
+   "codesets": 1,
+   "handling": "433mhz"
+  },
+  "0112 Streamzap 14 Bit": {
+   "id": 112,
+   "name": "Streamzap 14 Bit",
+   "commands": 384,
+   "with_pronto": 384,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0113 Russound 7 Bit": {
+   "id": 113,
+   "name": "Russound 7 Bit",
+   "commands": 110,
+   "with_pronto": 110,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0114 Escient 70 Bit Dual": {
+   "id": 114,
+   "name": "Escient 70 Bit Dual",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0116 Metz 20 Bit Quad": {
+   "id": 116,
+   "name": "Metz 20 Bit Quad",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0117 Philips Hurd 16 Bit LongToggle": {
+   "id": 117,
+   "name": "Philips Hurd 16 Bit LongToggle",
+   "commands": 63779,
+   "with_pronto": 63779,
+   "codesets": 1710,
+   "handling": "pronto"
+  },
+  "0118 AMC 17 Bit Quad": {
+   "id": 118,
+   "name": "AMC 17 Bit Quad",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0119 Christie 7 Bit": {
+   "id": 119,
+   "name": "Christie 7 Bit",
+   "commands": 39,
+   "with_pronto": 39,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0120 Apple 15 Bit": {
+   "id": 120,
+   "name": "Apple 15 Bit",
+   "commands": 68,
+   "with_pronto": 68,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0121 Bryston 16 Bit Quad": {
+   "id": 121,
+   "name": "Bryston 16 Bit Quad",
+   "commands": 366,
+   "with_pronto": 366,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0122 Casero 12 Bit Quad Dual": {
+   "id": 122,
+   "name": "Casero 12 Bit Quad Dual",
+   "commands": 33,
+   "with_pronto": 33,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0124 Short 11 Bit 2": {
+   "id": 124,
+   "name": "Short 11 Bit 2",
+   "commands": 452,
+   "with_pronto": 452,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0125 Symphonic 40 Bit": {
+   "id": 125,
+   "name": "Symphonic 40 Bit",
+   "commands": 49,
+   "with_pronto": 49,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0126 Elan 12 Bit Toggle": {
+   "id": 126,
+   "name": "Elan 12 Bit Toggle",
+   "commands": 61,
+   "with_pronto": 61,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0127 Whirlpool 32 Bit": {
+   "id": 127,
+   "name": "Whirlpool 32 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0128 Makita 10 Bit": {
+   "id": 128,
+   "name": "Makita 10 Bit",
+   "commands": 115,
+   "with_pronto": 115,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0129 DGTEC 25 Bit": {
+   "id": 129,
+   "name": "DGTEC 25 Bit",
+   "commands": 159,
+   "with_pronto": 159,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0130 EAD 8 Bit": {
+   "id": 130,
+   "name": "EAD 8 Bit",
+   "commands": 103,
+   "with_pronto": 103,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0131 VOS 17 Bit Quad": {
+   "id": 131,
+   "name": "VOS 17 Bit Quad",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0132 Ultraflex 12 Bit": {
+   "id": 132,
+   "name": "Ultraflex 12 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0133 Boston 11 Bit": {
+   "id": 133,
+   "name": "Boston 11 Bit",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0134 Creative Control 10 Bit": {
+   "id": 134,
+   "name": "Creative Control 10 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0135 Foxtel 10 Bit": {
+   "id": 135,
+   "name": "Foxtel 10 Bit",
+   "commands": 58,
+   "with_pronto": 58,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0136 NetTV 24 Bit": {
+   "id": 136,
+   "name": "NetTV 24 Bit",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0138 Hunter Douglas 3 Bit": {
+   "id": 138,
+   "name": "Hunter Douglas 3 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0139 Mapletree 11 Bit Quad": {
+   "id": 139,
+   "name": "Mapletree 11 Bit Quad",
+   "commands": 2304,
+   "with_pronto": 2304,
+   "codesets": 442,
+   "handling": "pronto"
+  },
+  "0140 Hampton Bay 20 Bit Quad": {
+   "id": 140,
+   "name": "Hampton Bay 20 Bit Quad",
+   "commands": 144,
+   "with_pronto": 144,
+   "codesets": 30,
+   "handling": "pronto"
+  },
+  "0141 Proceed 17 Bit": {
+   "id": 141,
+   "name": "Proceed 17 Bit",
+   "commands": 35,
+   "with_pronto": 35,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0142 Lumagen 9 Bit": {
+   "id": 142,
+   "name": "Lumagen 9 Bit",
+   "commands": 229,
+   "with_pronto": 229,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0144 Emerson 5 Bit": {
+   "id": 144,
+   "name": "Emerson 5 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0145 Velux 24 Bit": {
+   "id": 145,
+   "name": "Velux 24 Bit",
+   "commands": 62,
+   "with_pronto": 62,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0146 Matsui 10 Bit": {
+   "id": 146,
+   "name": "Matsui 10 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0147 Videocrypt 11 Bit": {
+   "id": 147,
+   "name": "Videocrypt 11 Bit",
+   "commands": 161,
+   "with_pronto": 161,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0148 Quad 10 Bit": {
+   "id": 148,
+   "name": "Quad 10 Bit",
+   "commands": 56,
+   "with_pronto": 56,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0149 Futronix 9 Bit Quad": {
+   "id": 149,
+   "name": "Futronix 9 Bit Quad",
+   "commands": 81,
+   "with_pronto": 81,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0150 AMX 24 Bit": {
+   "id": 150,
+   "name": "AMX 24 Bit",
+   "commands": 177,
+   "with_pronto": 177,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0152 General Instruments 5 Bit": {
+   "id": 152,
+   "name": "General Instruments 5 Bit",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0153 Prismiq 19 Bit Dual": {
+   "id": 153,
+   "name": "Prismiq 19 Bit Dual",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0154 Prismiq 20 Bit": {
+   "id": 154,
+   "name": "Prismiq 20 Bit",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0155 SnapStream 10 Bit": {
+   "id": 155,
+   "name": "SnapStream 10 Bit",
+   "commands": 34,
+   "with_pronto": 34,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0156 Gemini 5 Bit": {
+   "id": 156,
+   "name": "Gemini 5 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0157 Grundig 7 Bit Quad": {
+   "id": 157,
+   "name": "Grundig 7 Bit Quad",
+   "commands": 393,
+   "with_pronto": 393,
+   "codesets": 16,
+   "handling": "pronto"
+  },
+  "0159 Revox 11 Bit": {
+   "id": 159,
+   "name": "Revox 11 Bit",
+   "commands": 126,
+   "with_pronto": 126,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0160 Daikin 63 Bit": {
+   "id": 160,
+   "name": "Daikin 63 Bit",
+   "commands": 90,
+   "with_pronto": 90,
+   "codesets": 31,
+   "handling": "pronto"
+  },
+  "0161 Pinnacle 20 Bit Dual": {
+   "id": 161,
+   "name": "Pinnacle 20 Bit Dual",
+   "commands": 118,
+   "with_pronto": 118,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0162 Aiwa 42 Bit": {
+   "id": 162,
+   "name": "Aiwa 42 Bit",
+   "commands": 3104,
+   "with_pronto": 3104,
+   "codesets": 92,
+   "handling": "pronto"
+  },
+  "0163 ADA 40 Bit": {
+   "id": 163,
+   "name": "ADA 40 Bit",
+   "commands": 82,
+   "with_pronto": 82,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0164 Motorola 9 Bit Quad": {
+   "id": 164,
+   "name": "Motorola 9 Bit Quad",
+   "commands": 56,
+   "with_pronto": 56,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0165 Zenith 15 Bit": {
+   "id": 165,
+   "name": "Zenith 15 Bit",
+   "commands": 190,
+   "with_pronto": 190,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0166 iRobot 6 Bit Quad": {
+   "id": 166,
+   "name": "iRobot 6 Bit Quad",
+   "commands": 156,
+   "with_pronto": 156,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0167 ADA 79 Bit": {
+   "id": 167,
+   "name": "ADA 79 Bit",
+   "commands": 119,
+   "with_pronto": 119,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0168 AVS 24 Bit Quad": {
+   "id": 168,
+   "name": "AVS 24 Bit Quad",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0169 Russound 9 Bit Quad": {
+   "id": 169,
+   "name": "Russound 9 Bit Quad",
+   "commands": 9441,
+   "with_pronto": 9441,
+   "codesets": 252,
+   "handling": "pronto"
+  },
+  "0170 ADS 15 Bit": {
+   "id": 170,
+   "name": "ADS 15 Bit",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0171 Proceed 11 Bit": {
+   "id": 171,
+   "name": "Proceed 11 Bit",
+   "commands": 45,
+   "with_pronto": 45,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0172 Zenega 14 Bit": {
+   "id": 172,
+   "name": "Zenega 14 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0173 Kathrein 24 Bit": {
+   "id": 173,
+   "name": "Kathrein 24 Bit",
+   "commands": 93,
+   "with_pronto": 93,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0174 Play 25 Bit": {
+   "id": 174,
+   "name": "Play 25 Bit",
+   "commands": 42,
+   "with_pronto": 42,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0175 Loewe 48 Bit": {
+   "id": 175,
+   "name": "Loewe 48 Bit",
+   "commands": 29,
+   "with_pronto": 29,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0176 Mark Levinson 18 Bit": {
+   "id": 176,
+   "name": "Mark Levinson 18 Bit",
+   "commands": 77,
+   "with_pronto": 77,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0177 GoVideo 32 Bit 2": {
+   "id": 177,
+   "name": "GoVideo 32 Bit 2",
+   "commands": 408,
+   "with_pronto": 408,
+   "codesets": 15,
+   "handling": "pronto"
+  },
+  "0180 Anthem 32 Bit": {
+   "id": 180,
+   "name": "Anthem 32 Bit",
+   "commands": 685,
+   "with_pronto": 685,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0182 NEC 32 Bit": {
+   "id": 182,
+   "name": "NEC 32 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0183 MB Quart 16 Bit Dual": {
+   "id": 183,
+   "name": "MB Quart 16 Bit Dual",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0184 Sharp 15 Bit Quad": {
+   "id": 184,
+   "name": "Sharp 15 Bit Quad",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0185 Black and Decker 14 Bit": {
+   "id": 185,
+   "name": "Black and Decker 14 Bit",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0187 Sanyo 10 Bit": {
+   "id": 187,
+   "name": "Sanyo 10 Bit",
+   "commands": 19,
+   "with_pronto": 19,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0188 DVI Link 5 Bit Quad": {
+   "id": 188,
+   "name": "DVI Link 5 Bit Quad",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0189 Apple 17 Bit": {
+   "id": 189,
+   "name": "Apple 17 Bit",
+   "commands": 76,
+   "with_pronto": 76,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0190 DTronics 23 Bit": {
+   "id": 190,
+   "name": "DTronics 23 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0191 Motorola 31 Bit": {
+   "id": 191,
+   "name": "Motorola 31 Bit",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0193 Atoll 6 Bit": {
+   "id": 193,
+   "name": "Atoll 6 Bit",
+   "commands": 19,
+   "with_pronto": 19,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0195 Sharp 15 Bit 2": {
+   "id": 195,
+   "name": "Sharp 15 Bit 2",
+   "commands": 36440,
+   "with_pronto": 36440,
+   "codesets": 889,
+   "handling": "pronto"
+  },
+  "0197 Denon 12 Bit": {
+   "id": 197,
+   "name": "Denon 12 Bit",
+   "commands": 59,
+   "with_pronto": 59,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0198 Panasonic 31 Bit": {
+   "id": 198,
+   "name": "Panasonic 31 Bit",
+   "commands": 90,
+   "with_pronto": 90,
+   "codesets": 20,
+   "handling": "pronto"
+  },
+  "0199 Thule 13 Bit Toggle": {
+   "id": 199,
+   "name": "Thule 13 Bit Toggle",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0200 Quixun 16 Bit": {
+   "id": 200,
+   "name": "Quixun 16 Bit",
+   "commands": 39,
+   "with_pronto": 39,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0201 Windchaser 89 Bit": {
+   "id": 201,
+   "name": "Windchaser 89 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0202 Saitek 11 Bit": {
+   "id": 202,
+   "name": "Saitek 11 Bit",
+   "commands": 206,
+   "with_pronto": 206,
+   "codesets": 59,
+   "handling": "pronto"
+  },
+  "0203 LG 28 Bit": {
+   "id": 203,
+   "name": "LG 28 Bit",
+   "commands": 233,
+   "with_pronto": 233,
+   "codesets": 20,
+   "handling": "pronto"
+  },
+  "0204 Jerrold 16 Bit 3": {
+   "id": 204,
+   "name": "Jerrold 16 Bit 3",
+   "commands": 597,
+   "with_pronto": 597,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0205 ReplayTV 55 Bit Quad": {
+   "id": 205,
+   "name": "ReplayTV 55 Bit Quad",
+   "commands": 485,
+   "with_pronto": 485,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0207 Seville 40 Bit": {
+   "id": 207,
+   "name": "Seville 40 Bit",
+   "commands": 62,
+   "with_pronto": 62,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0208 JVC 13 Bit 2": {
+   "id": 208,
+   "name": "JVC 13 Bit 2",
+   "commands": 87,
+   "with_pronto": 87,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0209 Sharp 14 Bit Dual": {
+   "id": 209,
+   "name": "Sharp 14 Bit Dual",
+   "commands": 352,
+   "with_pronto": 352,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0210 QED 10 Bit": {
+   "id": 210,
+   "name": "QED 10 Bit",
+   "commands": 24,
+   "with_pronto": 24,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0212 Hunter Douglas 7 Bit": {
+   "id": 212,
+   "name": "Hunter Douglas 7 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0213 Motorola 16 Bit": {
+   "id": 213,
+   "name": "Motorola 16 Bit",
+   "commands": 515,
+   "with_pronto": 515,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0214 Antique 12 Bit": {
+   "id": 214,
+   "name": "Antique 12 Bit",
+   "commands": 93,
+   "with_pronto": 93,
+   "codesets": 27,
+   "handling": "pronto"
+  },
+  "0215 Artemide 14 Bit Quad": {
+   "id": 215,
+   "name": "Artemide 14 Bit Quad",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0216 Auton 18 Bit": {
+   "id": 216,
+   "name": "Auton 18 Bit",
+   "commands": 135,
+   "with_pronto": 135,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0217 Mitsubishi 112 Bit": {
+   "id": 217,
+   "name": "Mitsubishi 112 Bit",
+   "commands": 160,
+   "with_pronto": 160,
+   "codesets": 28,
+   "handling": "pronto"
+  },
+  "0218 Polycom 16 Bit Toggle": {
+   "id": 218,
+   "name": "Polycom 16 Bit Toggle",
+   "commands": 266,
+   "with_pronto": 266,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0219 Dream Vision 20 Bit Dual": {
+   "id": 219,
+   "name": "Dream Vision 20 Bit Dual",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0220 HTPC 9 Bit": {
+   "id": 220,
+   "name": "HTPC 9 Bit",
+   "commands": 42,
+   "with_pronto": 42,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0221 Escient 30 Bit": {
+   "id": 221,
+   "name": "Escient 30 Bit",
+   "commands": 294,
+   "with_pronto": 294,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0222 Videocrypt 11 Bit Toggle": {
+   "id": 222,
+   "name": "Videocrypt 11 Bit Toggle",
+   "commands": 122,
+   "with_pronto": 122,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0224 Speakercraft 15 Bit": {
+   "id": 224,
+   "name": "Speakercraft 15 Bit",
+   "commands": 36,
+   "with_pronto": 36,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0226 Johnson 34 Bit": {
+   "id": 226,
+   "name": "Johnson 34 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0227 Purifier 25 Bit": {
+   "id": 227,
+   "name": "Purifier 25 Bit",
+   "commands": 462,
+   "with_pronto": 462,
+   "codesets": 33,
+   "handling": "pronto"
+  },
+  "0228 Baycrest 6 Bit": {
+   "id": 228,
+   "name": "Baycrest 6 Bit",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0229 NEC 48 Bit": {
+   "id": 229,
+   "name": "NEC 48 Bit",
+   "commands": 754,
+   "with_pronto": 754,
+   "codesets": 33,
+   "handling": "pronto"
+  },
+  "0230 Short 11 Bit 3": {
+   "id": 230,
+   "name": "Short 11 Bit 3",
+   "commands": 218,
+   "with_pronto": 218,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0231 Brillian 16 Bit": {
+   "id": 231,
+   "name": "Brillian 16 Bit",
+   "commands": 53,
+   "with_pronto": 53,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0232 BellV2 16 Bit": {
+   "id": 232,
+   "name": "BellV2 16 Bit",
+   "commands": 6170,
+   "with_pronto": 6170,
+   "codesets": 159,
+   "handling": "pronto"
+  },
+  "0233 MemorexV2 32 Bit": {
+   "id": 233,
+   "name": "MemorexV2 32 Bit",
+   "commands": 13998,
+   "with_pronto": 13998,
+   "codesets": 627,
+   "handling": "pronto"
+  },
+  "0234 PanasonicV2 48 Bit": {
+   "id": 234,
+   "name": "PanasonicV2 48 Bit",
+   "commands": 65878,
+   "with_pronto": 65878,
+   "codesets": 1415,
+   "handling": "pronto"
+  },
+  "0235 Thomson 22 Bit Dual": {
+   "id": 235,
+   "name": "Thomson 22 Bit Dual",
+   "commands": 44,
+   "with_pronto": 44,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0236 Wilfan 15 Bit": {
+   "id": 236,
+   "name": "Wilfan 15 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0237 Philips 17 Bit": {
+   "id": 237,
+   "name": "Philips 17 Bit",
+   "commands": 49,
+   "with_pronto": 49,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0239 Danby 48 Bit": {
+   "id": 239,
+   "name": "Danby 48 Bit",
+   "commands": 165,
+   "with_pronto": 165,
+   "codesets": 29,
+   "handling": "pronto"
+  },
+  "0240 White Westinghouse 32 Bit": {
+   "id": 240,
+   "name": "White Westinghouse 32 Bit",
+   "commands": 31,
+   "with_pronto": 31,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0241 LiftTech 16 Bit": {
+   "id": 241,
+   "name": "LiftTech 16 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0242 BTicino 15 Bit": {
+   "id": 242,
+   "name": "BTicino 15 Bit",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0243 GlobalFires 6 Bit": {
+   "id": 243,
+   "name": "GlobalFires 6 Bit",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0248 Grundig 10 Bit": {
+   "id": 248,
+   "name": "Grundig 10 Bit",
+   "commands": 719,
+   "with_pronto": 719,
+   "codesets": 24,
+   "handling": "pronto"
+  },
+  "0249 ByDsign 16 Bit": {
+   "id": 249,
+   "name": "ByDsign 16 Bit",
+   "commands": 669,
+   "with_pronto": 669,
+   "codesets": 23,
+   "handling": "pronto"
+  },
+  "0250 Samsung 56 Bit": {
+   "id": 250,
+   "name": "Samsung 56 Bit",
+   "commands": 13,
+   "with_pronto": 13,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0251 Fujitsu 120 Bit": {
+   "id": 251,
+   "name": "Fujitsu 120 Bit",
+   "commands": 39,
+   "with_pronto": 39,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0252 Lutron 20 Bit": {
+   "id": 252,
+   "name": "Lutron 20 Bit",
+   "commands": 235,
+   "with_pronto": 235,
+   "codesets": 30,
+   "handling": "pronto"
+  },
+  "0253 Hitachi 104 Bit": {
+   "id": 253,
+   "name": "Hitachi 104 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0254 Poloron 60 Bit Dual": {
+   "id": 254,
+   "name": "Poloron 60 Bit Dual",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0255 Konka 16 Bit": {
+   "id": 255,
+   "name": "Konka 16 Bit",
+   "commands": 4636,
+   "with_pronto": 4636,
+   "codesets": 100,
+   "handling": "pronto"
+  },
+  "0256 Proceed 4 and 10 Bit Dual": {
+   "id": 256,
+   "name": "Proceed 4 and 10 Bit Dual",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0257 Pace 16 Bit Quad": {
+   "id": 257,
+   "name": "Pace 16 Bit Quad",
+   "commands": 2842,
+   "with_pronto": 2842,
+   "codesets": 81,
+   "handling": "pronto"
+  },
+  "0258 Motorola 16 Bit Hex": {
+   "id": 258,
+   "name": "Motorola 16 Bit Hex",
+   "commands": 3369,
+   "with_pronto": 3369,
+   "codesets": 103,
+   "handling": "pronto"
+  },
+  "0259 Galaxis 16 Bit Quad": {
+   "id": 259,
+   "name": "Galaxis 16 Bit Quad",
+   "commands": 849,
+   "with_pronto": 849,
+   "codesets": 25,
+   "handling": "pronto"
+  },
+  "0260 Magnavox 40 Bit": {
+   "id": 260,
+   "name": "Magnavox 40 Bit",
+   "commands": 55,
+   "with_pronto": 55,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0261 X10 8 Bit": {
+   "id": 261,
+   "name": "X10 8 Bit",
+   "commands": 98,
+   "with_pronto": 98,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0262 Commercial Electric 7 Bit": {
+   "id": 262,
+   "name": "Commercial Electric 7 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0263 Dalite 8 Bit": {
+   "id": 263,
+   "name": "Dalite 8 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0265 Vaux 33 Bit": {
+   "id": 265,
+   "name": "Vaux 33 Bit",
+   "commands": 514,
+   "with_pronto": 514,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0266 B and O 6 Bit": {
+   "id": 266,
+   "name": "B and O 6 Bit",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0267 Airboard 9 Bit": {
+   "id": 267,
+   "name": "Airboard 9 Bit",
+   "commands": 151,
+   "with_pronto": 151,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0268 Parasound 23 Bit": {
+   "id": 268,
+   "name": "Parasound 23 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0269 Antex 23 Bit": {
+   "id": 269,
+   "name": "Antex 23 Bit",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0270 Apex 32 Bit": {
+   "id": 270,
+   "name": "Apex 32 Bit",
+   "commands": 30,
+   "with_pronto": 30,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0271 Silitek 19 Bit": {
+   "id": 271,
+   "name": "Silitek 19 Bit",
+   "commands": 89,
+   "with_pronto": 89,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0272 Siemens 22 Bit Dual": {
+   "id": 272,
+   "name": "Siemens 22 Bit Dual",
+   "commands": 144,
+   "with_pronto": 144,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0279 Pace 4 and 20 Bit Full": {
+   "id": 279,
+   "name": "Pace 4 and 20 Bit Full",
+   "commands": 438,
+   "with_pronto": 438,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0281 Daewoo 16 Bit": {
+   "id": 281,
+   "name": "Daewoo 16 Bit",
+   "commands": 9711,
+   "with_pronto": 9711,
+   "codesets": 300,
+   "handling": "pronto"
+  },
+  "0282 Galaxis 16 Bit Quad Toggle": {
+   "id": 282,
+   "name": "Galaxis 16 Bit Quad Toggle",
+   "commands": 22798,
+   "with_pronto": 22771,
+   "codesets": 575,
+   "handling": "pronto"
+  },
+  "0285 Casio 40 Bit": {
+   "id": 285,
+   "name": "Casio 40 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0286 Echostar 5 Bit": {
+   "id": 286,
+   "name": "Echostar 5 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0287 Akai 32 Bit": {
+   "id": 287,
+   "name": "Akai 32 Bit",
+   "commands": 213,
+   "with_pronto": 213,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0288 Magnavox 13 Bit 3": {
+   "id": 288,
+   "name": "Magnavox 13 Bit 3",
+   "commands": 27,
+   "with_pronto": 27,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0289 Digimatrix 24 Bit": {
+   "id": 289,
+   "name": "Digimatrix 24 Bit",
+   "commands": 365,
+   "with_pronto": 365,
+   "codesets": 15,
+   "handling": "pronto"
+  },
+  "0290 SA 22 Bit 2": {
+   "id": 290,
+   "name": "SA 22 Bit 2",
+   "commands": 9171,
+   "with_pronto": 9171,
+   "codesets": 224,
+   "handling": "pronto"
+  },
+  "0291 Audiovox 32 Bit": {
+   "id": 291,
+   "name": "Audiovox 32 Bit",
+   "commands": 971,
+   "with_pronto": 971,
+   "codesets": 38,
+   "handling": "pronto"
+  },
+  "0292 Azur 32 Bit Toggle": {
+   "id": 292,
+   "name": "Azur 32 Bit Toggle",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0293 BTX 10 Bit": {
+   "id": 293,
+   "name": "BTX 10 Bit",
+   "commands": 92,
+   "with_pronto": 92,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0294 Finlux 16 Bit": {
+   "id": 294,
+   "name": "Finlux 16 Bit",
+   "commands": 192,
+   "with_pronto": 192,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0295 Asus 17 Bit": {
+   "id": 295,
+   "name": "Asus 17 Bit",
+   "commands": 580,
+   "with_pronto": 580,
+   "codesets": 16,
+   "handling": "pronto"
+  },
+  "0296 Escient 20 Bit": {
+   "id": 296,
+   "name": "Escient 20 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0297 Emotiva 24 Bit": {
+   "id": 297,
+   "name": "Emotiva 24 Bit",
+   "commands": 75,
+   "with_pronto": 75,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0298 Mitsubishi Dual 8 16 Bit": {
+   "id": 298,
+   "name": "Mitsubishi Dual 8 16 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0301 Nokia 13 Bit Quad ToggleC": {
+   "id": 301,
+   "name": "Nokia 13 Bit Quad ToggleC",
+   "commands": 54,
+   "with_pronto": 54,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0302 Classe 16 Bit Toggle": {
+   "id": 302,
+   "name": "Classe 16 Bit Toggle",
+   "commands": 431,
+   "with_pronto": 431,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0303 Amino 32 Bit": {
+   "id": 303,
+   "name": "Amino 32 Bit",
+   "commands": 1482,
+   "with_pronto": 1482,
+   "codesets": 42,
+   "handling": "pronto"
+  },
+  "0304 B and O 7 bit": {
+   "id": 304,
+   "name": "B and O 7 bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0305 ReQuest 44 Bit": {
+   "id": 305,
+   "name": "ReQuest 44 Bit",
+   "commands": 210,
+   "with_pronto": 210,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0306 Kreatel 31 Bit Hex": {
+   "id": 306,
+   "name": "Kreatel 31 Bit Hex",
+   "commands": 43,
+   "with_pronto": 43,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0307 Samsung 38 Bit": {
+   "id": 307,
+   "name": "Samsung 38 Bit",
+   "commands": 2718,
+   "with_pronto": 2718,
+   "codesets": 66,
+   "handling": "pronto"
+  },
+  "0308 T+A 10 Bit": {
+   "id": 308,
+   "name": "T+A 10 Bit",
+   "commands": 273,
+   "with_pronto": 273,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0309 Metz 10 Bit Toggle": {
+   "id": 309,
+   "name": "Metz 10 Bit Toggle",
+   "commands": 312,
+   "with_pronto": 312,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0310 Polycom 16 Bit ToggleB": {
+   "id": 310,
+   "name": "Polycom 16 Bit ToggleB",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0311 Vimco 24 Bit": {
+   "id": 311,
+   "name": "Vimco 24 Bit",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0312 Nokia 11 Bit": {
+   "id": 312,
+   "name": "Nokia 11 Bit",
+   "commands": 149,
+   "with_pronto": 149,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0314 B and O 17 Bit 2": {
+   "id": 314,
+   "name": "B and O 17 Bit 2",
+   "commands": 357,
+   "with_pronto": 357,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0315 Toshiba 96 Bit": {
+   "id": 315,
+   "name": "Toshiba 96 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0316 Toshiba 112 Bit": {
+   "id": 316,
+   "name": "Toshiba 112 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0317 HitachiV2 24 Bit": {
+   "id": 317,
+   "name": "HitachiV2 24 Bit",
+   "commands": 516,
+   "with_pronto": 516,
+   "codesets": 18,
+   "handling": "pronto"
+  },
+  "0318 Microsoft 35 Bit": {
+   "id": 318,
+   "name": "Microsoft 35 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0319 Apple 15 Bit Toggle": {
+   "id": 319,
+   "name": "Apple 15 Bit Toggle",
+   "commands": 84,
+   "with_pronto": 84,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0320 Matrix 32 Bit": {
+   "id": 320,
+   "name": "Matrix 32 Bit",
+   "commands": 45,
+   "with_pronto": 45,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0321 Grundig 10 Bit Dual": {
+   "id": 321,
+   "name": "Grundig 10 Bit Dual",
+   "commands": 33,
+   "with_pronto": 33,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0322 HP 36 Bit Quad": {
+   "id": 322,
+   "name": "HP 36 Bit Quad",
+   "commands": 170,
+   "with_pronto": 170,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0323 Barco 11 Bit": {
+   "id": 323,
+   "name": "Barco 11 Bit",
+   "commands": 459,
+   "with_pronto": 459,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0324 Telefunken 11 Bit Toggle": {
+   "id": 324,
+   "name": "Telefunken 11 Bit Toggle",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0325 Intertechno 24 Bit": {
+   "id": 325,
+   "name": "Intertechno 24 Bit",
+   "commands": 725,
+   "with_pronto": 725,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0326 Proceed 8 Bit": {
+   "id": 326,
+   "name": "Proceed 8 Bit",
+   "commands": 14,
+   "with_pronto": 14,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0327 Concept 10 Bit": {
+   "id": 327,
+   "name": "Concept 10 Bit",
+   "commands": 58,
+   "with_pronto": 58,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0328 Toshiba 72 Bit": {
+   "id": 328,
+   "name": "Toshiba 72 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0329 Feller 16 Bit": {
+   "id": 329,
+   "name": "Feller 16 Bit",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0330 Holmes 8 Bit": {
+   "id": 330,
+   "name": "Holmes 8 Bit",
+   "commands": 23,
+   "with_pronto": 23,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0331 Sony HF 40 Bit": {
+   "id": 331,
+   "name": "Sony HF 40 Bit",
+   "commands": 63,
+   "with_pronto": 63,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0332 Sony HF 33 Bit Quad": {
+   "id": 332,
+   "name": "Sony HF 33 Bit Quad",
+   "commands": 50,
+   "with_pronto": 50,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0333 Telefunken 12 Bit Toggle": {
+   "id": 333,
+   "name": "Telefunken 12 Bit Toggle",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0334 Burmester 11 Bit Toggle": {
+   "id": 334,
+   "name": "Burmester 11 Bit Toggle",
+   "commands": 31,
+   "with_pronto": 31,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0335 Samsung 48 Bit": {
+   "id": 335,
+   "name": "Samsung 48 Bit",
+   "commands": 772,
+   "with_pronto": 772,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0336 Targus 20 Bit Quad": {
+   "id": 336,
+   "name": "Targus 20 Bit Quad",
+   "commands": 48,
+   "with_pronto": 48,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0337 Axium 43 Bit": {
+   "id": 337,
+   "name": "Axium 43 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0338 Axium 35 Bit": {
+   "id": 338,
+   "name": "Axium 35 Bit",
+   "commands": 716,
+   "with_pronto": 716,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0339 Axium 27 Bit": {
+   "id": 339,
+   "name": "Axium 27 Bit",
+   "commands": 29,
+   "with_pronto": 29,
+   "codesets": 16,
+   "handling": "pronto"
+  },
+  "0340 Kenwood HF 32 Bit": {
+   "id": 340,
+   "name": "Kenwood HF 32 Bit",
+   "commands": 29,
+   "with_pronto": 29,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0341 AMC 5 Bit": {
+   "id": 341,
+   "name": "AMC 5 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0342 Imon Multi2 Bit Hex": {
+   "id": 342,
+   "name": "Imon Multi2 Bit Hex",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0343 Imon Multi Bit Hex": {
+   "id": 343,
+   "name": "Imon Multi Bit Hex",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0344 Multichoice 8 Bit Hex": {
+   "id": 344,
+   "name": "Multichoice 8 Bit Hex",
+   "commands": 62,
+   "with_pronto": 62,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0345 Telenet 17 Bit": {
+   "id": 345,
+   "name": "Telenet 17 Bit",
+   "commands": 9511,
+   "with_pronto": 9511,
+   "codesets": 240,
+   "handling": "pronto"
+  },
+  "0346 Gilmore 16 Bit": {
+   "id": 346,
+   "name": "Gilmore 16 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0347 Toshiba 32 Bit 4": {
+   "id": 347,
+   "name": "Toshiba 32 Bit 4",
+   "commands": 101,
+   "with_pronto": 101,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0348 Shengya 32 Bit": {
+   "id": 348,
+   "name": "Shengya 32 Bit",
+   "commands": 162,
+   "with_pronto": 162,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0349 Fujitsu-Siemens 18 Bit": {
+   "id": 349,
+   "name": "Fujitsu-Siemens 18 Bit",
+   "commands": 37,
+   "with_pronto": 37,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0350 National 40 Bit": {
+   "id": 350,
+   "name": "National 40 Bit",
+   "commands": 66,
+   "with_pronto": 66,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0351 Tandberg 10 Bit": {
+   "id": 351,
+   "name": "Tandberg 10 Bit",
+   "commands": 374,
+   "with_pronto": 374,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0352 Metz 19 Bit Toggle": {
+   "id": 352,
+   "name": "Metz 19 Bit Toggle",
+   "commands": 568,
+   "with_pronto": 568,
+   "codesets": 16,
+   "handling": "pronto"
+  },
+  "0353 DLO 32 Bit": {
+   "id": 353,
+   "name": "DLO 32 Bit",
+   "commands": 137,
+   "with_pronto": 137,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0354 Hitachi 11 Bit": {
+   "id": 354,
+   "name": "Hitachi 11 Bit",
+   "commands": 23,
+   "with_pronto": 23,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0355 Schneider 39 Bit": {
+   "id": 355,
+   "name": "Schneider 39 Bit",
+   "commands": 23,
+   "with_pronto": 23,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0356 Loewe 16 Bit": {
+   "id": 356,
+   "name": "Loewe 16 Bit",
+   "commands": 261,
+   "with_pronto": 261,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0357 Melectronic 16 Bit": {
+   "id": 357,
+   "name": "Melectronic 16 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0358 MemorexV2 32 Bit Dual": {
+   "id": 358,
+   "name": "MemorexV2 32 Bit Dual",
+   "commands": 205,
+   "with_pronto": 205,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0359 Everview 32 Bit": {
+   "id": 359,
+   "name": "Everview 32 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0360 Densen 10 Bit Toggle": {
+   "id": 360,
+   "name": "Densen 10 Bit Toggle",
+   "commands": 123,
+   "with_pronto": 123,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0361 Skymaster 40 Bit": {
+   "id": 361,
+   "name": "Skymaster 40 Bit",
+   "commands": 14,
+   "with_pronto": 14,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0362 JVC 16 Bit V2": {
+   "id": 362,
+   "name": "JVC 16 Bit V2",
+   "commands": 35,
+   "with_pronto": 35,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0366 Akimbo 12 Bit Quad": {
+   "id": 366,
+   "name": "Akimbo 12 Bit Quad",
+   "commands": 41,
+   "with_pronto": 41,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0367 Akai 16 Bit": {
+   "id": 367,
+   "name": "Akai 16 Bit",
+   "commands": 196,
+   "with_pronto": 196,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0368 Siemens 15 Bit": {
+   "id": 368,
+   "name": "Siemens 15 Bit",
+   "commands": 81,
+   "with_pronto": 81,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0369 Elko 11 Bit": {
+   "id": 369,
+   "name": "Elko 11 Bit",
+   "commands": 66,
+   "with_pronto": 66,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0370 Optoma 32 Bit": {
+   "id": 370,
+   "name": "Optoma 32 Bit",
+   "commands": 13,
+   "with_pronto": 13,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0371 AudioAnalogue 13 Bit Quad": {
+   "id": 371,
+   "name": "AudioAnalogue 13 Bit Quad",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0372 Hitachi 264 Bit": {
+   "id": 372,
+   "name": "Hitachi 264 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0373 Mitsubishi 50 Bit": {
+   "id": 373,
+   "name": "Mitsubishi 50 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0374 IO Data 24 Bit Quad": {
+   "id": 374,
+   "name": "IO Data 24 Bit Quad",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0375 National 152 Bit": {
+   "id": 375,
+   "name": "National 152 Bit",
+   "commands": 61,
+   "with_pronto": 61,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0376 Daikin 64 and 152 Bit": {
+   "id": 376,
+   "name": "Daikin 64 and 152 Bit",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0377 Chofu 56 Bit": {
+   "id": 377,
+   "name": "Chofu 56 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0378 Sanyo 136 Bit": {
+   "id": 378,
+   "name": "Sanyo 136 Bit",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0379 Corona 48 Bit": {
+   "id": 379,
+   "name": "Corona 48 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0380 DaikinV2 64 and 152 Bit": {
+   "id": 380,
+   "name": "DaikinV2 64 and 152 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0381 Chofu 72 Bit": {
+   "id": 381,
+   "name": "Chofu 72 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0382 Hitachi 296 Bit": {
+   "id": 382,
+   "name": "Hitachi 296 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0383 Toshiba 80 Bit": {
+   "id": 383,
+   "name": "Toshiba 80 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0384 Daikin 56 and 104 Bit": {
+   "id": 384,
+   "name": "Daikin 56 and 104 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0385 3B Technology 27 Bit": {
+   "id": 385,
+   "name": "3B Technology 27 Bit",
+   "commands": 39,
+   "with_pronto": 39,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0386 Mitsubishi 48 Bit": {
+   "id": 386,
+   "name": "Mitsubishi 48 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0387 Mitsubishi 96 Bit": {
+   "id": 387,
+   "name": "Mitsubishi 96 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0388 DaikinV3 64 and 152 Bit": {
+   "id": 388,
+   "name": "DaikinV3 64 and 152 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0389 Daikin 56 Bit": {
+   "id": 389,
+   "name": "Daikin 56 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0390 Daikin 128 Bit": {
+   "id": 390,
+   "name": "Daikin 128 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0391 Toshiba 88 Bit": {
+   "id": 391,
+   "name": "Toshiba 88 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0392 Sharp 104 Bit": {
+   "id": 392,
+   "name": "Sharp 104 Bit",
+   "commands": 15,
+   "with_pronto": 15,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0393 Sanyo 152 Bit": {
+   "id": 393,
+   "name": "Sanyo 152 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0394 Uniden 17 Bit": {
+   "id": 394,
+   "name": "Uniden 17 Bit",
+   "commands": 256,
+   "with_pronto": 256,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0395 Elan 16 Bit Dual": {
+   "id": 395,
+   "name": "Elan 16 Bit Dual",
+   "commands": 1148,
+   "with_pronto": 1148,
+   "codesets": 32,
+   "handling": "pronto"
+  },
+  "0396 Daewoo 48 Bit Quad Dual": {
+   "id": 396,
+   "name": "Daewoo 48 Bit Quad Dual",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0397 Kreatel IP 22 Bit": {
+   "id": 397,
+   "name": "Kreatel IP 22 Bit",
+   "commands": 1382,
+   "with_pronto": 1382,
+   "codesets": 38,
+   "handling": "pronto"
+  },
+  "0398 Denon 15 Bit Dual": {
+   "id": 398,
+   "name": "Denon 15 Bit Dual",
+   "commands": 94,
+   "with_pronto": 94,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0399 Elite 16 Bit": {
+   "id": 399,
+   "name": "Elite 16 Bit",
+   "commands": 14,
+   "with_pronto": 14,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0400 Odelic 32 Bit": {
+   "id": 400,
+   "name": "Odelic 32 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0401 Imon Multi3 Bit Hex": {
+   "id": 401,
+   "name": "Imon Multi3 Bit Hex",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0402 Magnasonic 17 Bit Quad": {
+   "id": 402,
+   "name": "Magnasonic 17 Bit Quad",
+   "commands": 195,
+   "with_pronto": 195,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0403 Cinescreen 24 Bit": {
+   "id": 403,
+   "name": "Cinescreen 24 Bit",
+   "commands": 93,
+   "with_pronto": 93,
+   "codesets": 23,
+   "handling": "pronto"
+  },
+  "0405 Cytech 32 Bit": {
+   "id": 405,
+   "name": "Cytech 32 Bit",
+   "commands": 128,
+   "with_pronto": 128,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0406 Sharp 98 Bit": {
+   "id": 406,
+   "name": "Sharp 98 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0407 Shark 24 Bit": {
+   "id": 407,
+   "name": "Shark 24 Bit",
+   "commands": 43,
+   "with_pronto": 43,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0408 Screen Innovations 32 Bit": {
+   "id": 408,
+   "name": "Screen Innovations 32 Bit",
+   "commands": 121,
+   "with_pronto": 121,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0409 Philips 13 Bit": {
+   "id": 409,
+   "name": "Philips 13 Bit",
+   "commands": 583,
+   "with_pronto": 583,
+   "codesets": 89,
+   "handling": "pronto"
+  },
+  "0410 Dreambox 16 Bit Hex": {
+   "id": 410,
+   "name": "Dreambox 16 Bit Hex",
+   "commands": 74,
+   "with_pronto": 74,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0411 Hitachi 28 Bit": {
+   "id": 411,
+   "name": "Hitachi 28 Bit",
+   "commands": 25,
+   "with_pronto": 25,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0412 Adcom 12 Bit Quad Dual": {
+   "id": 412,
+   "name": "Adcom 12 Bit Quad Dual",
+   "commands": 331,
+   "with_pronto": 331,
+   "codesets": 59,
+   "handling": "pronto"
+  },
+  "0413 ToshibaV2 32 Bit": {
+   "id": 413,
+   "name": "ToshibaV2 32 Bit",
+   "commands": 66,
+   "with_pronto": 66,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0414 BW 8 Bit": {
+   "id": 414,
+   "name": "BW 8 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0415 Philips RC5Ex": {
+   "id": 415,
+   "name": "Philips RC5Ex",
+   "commands": 7182,
+   "with_pronto": 7182,
+   "codesets": 229,
+   "handling": "pronto"
+  },
+  "0416 GT 12 Bit Quad": {
+   "id": 416,
+   "name": "GT 12 Bit Quad",
+   "commands": 204,
+   "with_pronto": 204,
+   "codesets": 31,
+   "handling": "pronto"
+  },
+  "0417 Aethra 10 Bit": {
+   "id": 417,
+   "name": "Aethra 10 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0418 Systemline 5 Bit": {
+   "id": 418,
+   "name": "Systemline 5 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0420 MitsubishiV2 Dual 8 16 Bit": {
+   "id": 420,
+   "name": "MitsubishiV2 Dual 8 16 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0421 Corona 56 Bit": {
+   "id": 421,
+   "name": "Corona 56 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0422 Daiko 16 Bit": {
+   "id": 422,
+   "name": "Daiko 16 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0423 Maruzen 32 Bit": {
+   "id": 423,
+   "name": "Maruzen 32 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0425 Samsung 26 Bit": {
+   "id": 425,
+   "name": "Samsung 26 Bit",
+   "commands": 69,
+   "with_pronto": 69,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0428 Dam 12 Bit": {
+   "id": 428,
+   "name": "Dam 12 Bit",
+   "commands": 29,
+   "with_pronto": 29,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0429 Proscan 32 Bit": {
+   "id": 429,
+   "name": "Proscan 32 Bit",
+   "commands": 165,
+   "with_pronto": 165,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0431 Samsung 48 Bit 2": {
+   "id": 431,
+   "name": "Samsung 48 Bit 2",
+   "commands": 1613,
+   "with_pronto": 1613,
+   "codesets": 39,
+   "handling": "pronto"
+  },
+  "0432 Telsey 18 Bit": {
+   "id": 432,
+   "name": "Telsey 18 Bit",
+   "commands": 108,
+   "with_pronto": 108,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0433 Velodyne 7 Bit Hex": {
+   "id": 433,
+   "name": "Velodyne 7 Bit Hex",
+   "commands": 174,
+   "with_pronto": 174,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0435 Belgacom 16 Bit Quad": {
+   "id": 435,
+   "name": "Belgacom 16 Bit Quad",
+   "commands": 1114,
+   "with_pronto": 1114,
+   "codesets": 29,
+   "handling": "pronto"
+  },
+  "0437 Elite 23 Bit": {
+   "id": 437,
+   "name": "Elite 23 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0438 Carrier 32 Bit": {
+   "id": 438,
+   "name": "Carrier 32 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0439 Delonghi 48 Bit": {
+   "id": 439,
+   "name": "Delonghi 48 Bit",
+   "commands": 493,
+   "with_pronto": 493,
+   "codesets": 39,
+   "handling": "pronto"
+  },
+  "0441 Digital 24 Bit": {
+   "id": 441,
+   "name": "Digital 24 Bit",
+   "commands": 87,
+   "with_pronto": 87,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0442 Alphapro 13 Bit": {
+   "id": 442,
+   "name": "Alphapro 13 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0443 Audio 13 Bit Toggle": {
+   "id": 443,
+   "name": "Audio 13 Bit Toggle",
+   "commands": 25,
+   "with_pronto": 25,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0444 Cyberlabs 8 Bit": {
+   "id": 444,
+   "name": "Cyberlabs 8 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0445 Sonavis 19 Bit": {
+   "id": 445,
+   "name": "Sonavis 19 Bit",
+   "commands": 176,
+   "with_pronto": 176,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0446 LiftBox 12 Bit": {
+   "id": 446,
+   "name": "LiftBox 12 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0447 Whirlpool 52 Bit": {
+   "id": 447,
+   "name": "Whirlpool 52 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0448 Erard 24 Bit": {
+   "id": 448,
+   "name": "Erard 24 Bit",
+   "commands": 34,
+   "with_pronto": 34,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0449 Seitec 24 Bit": {
+   "id": 449,
+   "name": "Seitec 24 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0450 Seville 64 Bit": {
+   "id": 450,
+   "name": "Seville 64 Bit",
+   "commands": 31,
+   "with_pronto": 31,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0451 Radi 68 Bit": {
+   "id": 451,
+   "name": "Radi 68 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0452 Mitsubishi 64 Bit": {
+   "id": 452,
+   "name": "Mitsubishi 64 Bit",
+   "commands": 71,
+   "with_pronto": 71,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0453 Samsung 56 Bit Dual": {
+   "id": 453,
+   "name": "Samsung 56 Bit Dual",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0454 Midea 35 Bit": {
+   "id": 454,
+   "name": "Midea 35 Bit",
+   "commands": 12,
+   "with_pronto": 12,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0455 Fujitsu 128 Bit": {
+   "id": 455,
+   "name": "Fujitsu 128 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0456 UEC1 8 Bit Hex": {
+   "id": 456,
+   "name": "UEC1 8 Bit Hex",
+   "commands": 289,
+   "with_pronto": 289,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0457 UEC2 8 Bit Hex": {
+   "id": 457,
+   "name": "UEC2 8 Bit Hex",
+   "commands": 178,
+   "with_pronto": 178,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0458 Airwell 34 Bit": {
+   "id": 458,
+   "name": "Airwell 34 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0459 Amcor 72 Bit": {
+   "id": 459,
+   "name": "Amcor 72 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0460 Aux 104 Bit": {
+   "id": 460,
+   "name": "Aux 104 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0461 Mitsubishi 88 Bit": {
+   "id": 461,
+   "name": "Mitsubishi 88 Bit",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0462 Westinghouse 24 Bit": {
+   "id": 462,
+   "name": "Westinghouse 24 Bit",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0463 Velleman 10 Bit": {
+   "id": 463,
+   "name": "Velleman 10 Bit",
+   "commands": 236,
+   "with_pronto": 236,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0464 Cinescreen 24 Bit 2": {
+   "id": 464,
+   "name": "Cinescreen 24 Bit 2",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0465 Intertechno 24 Bit 2": {
+   "id": 465,
+   "name": "Intertechno 24 Bit 2",
+   "commands": 15,
+   "with_pronto": 15,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0467 Goelst 12 Bit": {
+   "id": 467,
+   "name": "Goelst 12 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0468 Lexel 34 Bit Quad": {
+   "id": 468,
+   "name": "Lexel 34 Bit Quad",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0469 Samsung 42 Bit 2": {
+   "id": 469,
+   "name": "Samsung 42 Bit 2",
+   "commands": 98,
+   "with_pronto": 98,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0470 KMD 77 Bit": {
+   "id": 470,
+   "name": "KMD 77 Bit",
+   "commands": 96,
+   "with_pronto": 96,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0471 Coship 48 Bit Quad": {
+   "id": 471,
+   "name": "Coship 48 Bit Quad",
+   "commands": 322,
+   "with_pronto": 322,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0472 iMuse 31 Bit Dual": {
+   "id": 472,
+   "name": "iMuse 31 Bit Dual",
+   "commands": 85,
+   "with_pronto": 85,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0473 Sharp 16 Bit Dual": {
+   "id": 473,
+   "name": "Sharp 16 Bit Dual",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0474 Sanyo 28 Bit": {
+   "id": 474,
+   "name": "Sanyo 28 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0475 Sharp 15 Bit Dual": {
+   "id": 475,
+   "name": "Sharp 15 Bit Dual",
+   "commands": 143,
+   "with_pronto": 143,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0476 Sharp 48 Bit 2": {
+   "id": 476,
+   "name": "Sharp 48 Bit 2",
+   "commands": 13271,
+   "with_pronto": 13271,
+   "codesets": 330,
+   "handling": "pronto"
+  },
+  "0477 PanasonicV2 57 Bit Quad": {
+   "id": 477,
+   "name": "PanasonicV2 57 Bit Quad",
+   "commands": 30,
+   "with_pronto": 30,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0478 Kramer 16 Bit Quad": {
+   "id": 478,
+   "name": "Kramer 16 Bit Quad",
+   "commands": 179,
+   "with_pronto": 179,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0479 Alpine 48 Bit": {
+   "id": 479,
+   "name": "Alpine 48 Bit",
+   "commands": 32,
+   "with_pronto": 32,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0480 Sharper Image 18 Bit Quad": {
+   "id": 480,
+   "name": "Sharper Image 18 Bit Quad",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0481 Sharper Image 5 Bit": {
+   "id": 481,
+   "name": "Sharper Image 5 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0482 QED 8 Bit": {
+   "id": 482,
+   "name": "QED 8 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0484 BelCanto 16 Bit": {
+   "id": 484,
+   "name": "BelCanto 16 Bit",
+   "commands": 63,
+   "with_pronto": 63,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0485 ILUV 27 Bit Hex": {
+   "id": 485,
+   "name": "ILUV 27 Bit Hex",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0486 Philips 29 Bit": {
+   "id": 486,
+   "name": "Philips 29 Bit",
+   "commands": 11,
+   "with_pronto": 11,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0487 Fujitsu 24 Bit Quad": {
+   "id": 487,
+   "name": "Fujitsu 24 Bit Quad",
+   "commands": 27,
+   "with_pronto": 27,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0488 Metronic 32 Bit": {
+   "id": 488,
+   "name": "Metronic 32 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0490 WowWee 11 Bit": {
+   "id": 490,
+   "name": "WowWee 11 Bit",
+   "commands": 44,
+   "with_pronto": 44,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0491 IOData 23 Bit Quad": {
+   "id": 491,
+   "name": "IOData 23 Bit Quad",
+   "commands": 41,
+   "with_pronto": 41,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0492 Curtain Call 34 Bit": {
+   "id": 492,
+   "name": "Curtain Call 34 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0493 Amino 65 Bit": {
+   "id": 493,
+   "name": "Amino 65 Bit",
+   "commands": 163,
+   "with_pronto": 163,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0494 Game Elements 15 Bit": {
+   "id": 494,
+   "name": "Game Elements 15 Bit",
+   "commands": 31,
+   "with_pronto": 31,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0495 Intellibus 17 Bit": {
+   "id": 495,
+   "name": "Intellibus 17 Bit",
+   "commands": 13,
+   "with_pronto": 13,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0496 FarmFresh 8 Bit": {
+   "id": 496,
+   "name": "FarmFresh 8 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0497 RCA 24 Bit Dual": {
+   "id": 497,
+   "name": "RCA 24 Bit Dual",
+   "commands": 24,
+   "with_pronto": 24,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0498 AudioAnalogue 14 Bit": {
+   "id": 498,
+   "name": "AudioAnalogue 14 Bit",
+   "commands": 134,
+   "with_pronto": 134,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0499 Mitsubishi 10 Bit Quad": {
+   "id": 499,
+   "name": "Mitsubishi 10 Bit Quad",
+   "commands": 11,
+   "with_pronto": 11,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0500 Wave 18 Bit": {
+   "id": 500,
+   "name": "Wave 18 Bit",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0501 Get 4 Bit": {
+   "id": 501,
+   "name": "Get 4 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0502 Hitachi 56 Bit": {
+   "id": 502,
+   "name": "Hitachi 56 Bit",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0503 InteractTV 11 Bit Quad": {
+   "id": 503,
+   "name": "InteractTV 11 Bit Quad",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0504 Traxon 15 Bit": {
+   "id": 504,
+   "name": "Traxon 15 Bit",
+   "commands": 53,
+   "with_pronto": 53,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0505 Grundig 7 Bit": {
+   "id": 505,
+   "name": "Grundig 7 Bit",
+   "commands": 21,
+   "with_pronto": 21,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0506 Freelux 16 Bit": {
+   "id": 506,
+   "name": "Freelux 16 Bit",
+   "commands": 12,
+   "with_pronto": 12,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0507 GPX 8 Bit": {
+   "id": 507,
+   "name": "GPX 8 Bit",
+   "commands": 67,
+   "with_pronto": 67,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0508 Lodgenet 32 Bit": {
+   "id": 508,
+   "name": "Lodgenet 32 Bit",
+   "commands": 19,
+   "with_pronto": 19,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0509 Scenario 12 Bit": {
+   "id": 509,
+   "name": "Scenario 12 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0510 Optoma 58 Bit": {
+   "id": 510,
+   "name": "Optoma 58 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0511 Kathrein 16 Bit Quad Toggle": {
+   "id": 511,
+   "name": "Kathrein 16 Bit Quad Toggle",
+   "commands": 129,
+   "with_pronto": 129,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0512 Legrand 15 Bit": {
+   "id": 512,
+   "name": "Legrand 15 Bit",
+   "commands": 55,
+   "with_pronto": 55,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0513 Ohm 8 Bit": {
+   "id": 513,
+   "name": "Ohm 8 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0514 Daiko 11 Bit Quad": {
+   "id": 514,
+   "name": "Daiko 11 Bit Quad",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0515 Insight 12 Bit Quad": {
+   "id": 515,
+   "name": "Insight 12 Bit Quad",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0516 Leaf 24 Bit Quad": {
+   "id": 516,
+   "name": "Leaf 24 Bit Quad",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0517 Leviton 32 Bit": {
+   "id": 517,
+   "name": "Leviton 32 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0518 LucePlan 4 Bit Quad": {
+   "id": 518,
+   "name": "LucePlan 4 Bit Quad",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0519 Odelic 10 Bit Quad": {
+   "id": 519,
+   "name": "Odelic 10 Bit Quad",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0520 Okoro 17 Bit": {
+   "id": 520,
+   "name": "Okoro 17 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0521 ChannelPlus 11 Bit": {
+   "id": 521,
+   "name": "ChannelPlus 11 Bit",
+   "commands": 35,
+   "with_pronto": 35,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0522 Fujikura 32 Bit": {
+   "id": 522,
+   "name": "Fujikura 32 Bit",
+   "commands": 28,
+   "with_pronto": 28,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0523 Reel 16 Bit Hex": {
+   "id": 523,
+   "name": "Reel 16 Bit Hex",
+   "commands": 177,
+   "with_pronto": 177,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0526 OmniMount 24 Bit": {
+   "id": 526,
+   "name": "OmniMount 24 Bit",
+   "commands": 46,
+   "with_pronto": 46,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0528 ElectrohomeHF 7 Bit": {
+   "id": 528,
+   "name": "ElectrohomeHF 7 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0529 Fastweb 15 Bit Hex": {
+   "id": 529,
+   "name": "Fastweb 15 Bit Hex",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0530 Verosol 5 Bit": {
+   "id": 530,
+   "name": "Verosol 5 Bit",
+   "commands": 6,
+   "with_pronto": 6,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0531 RCA 32 and 16 Bit": {
+   "id": 531,
+   "name": "RCA 32 and 16 Bit",
+   "commands": 128,
+   "with_pronto": 128,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0532 Belcanto 25 Bit": {
+   "id": 532,
+   "name": "Belcanto 25 Bit",
+   "commands": 54,
+   "with_pronto": 54,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0533 Test 16 Bit": {
+   "id": 533,
+   "name": "Test 16 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0534 Daikin 56 and 120 Bit": {
+   "id": 534,
+   "name": "Daikin 56 and 120 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0536 Quad 5 Bit": {
+   "id": 536,
+   "name": "Quad 5 Bit",
+   "commands": 20,
+   "with_pronto": 20,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0537 Daewoo 40 Bit": {
+   "id": 537,
+   "name": "Daewoo 40 Bit",
+   "commands": 27,
+   "with_pronto": 27,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0538 Logitech 24 Bit": {
+   "id": 538,
+   "name": "Logitech 24 Bit",
+   "commands": 240,
+   "with_pronto": 240,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0539 Legrand 11 Bit": {
+   "id": 539,
+   "name": "Legrand 11 Bit",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0541 Cisco 16 Bit Hex": {
+   "id": 541,
+   "name": "Cisco 16 Bit Hex",
+   "commands": 720,
+   "with_pronto": 720,
+   "codesets": 20,
+   "handling": "pronto"
+  },
+  "0542 Medion 18 Bit": {
+   "id": 542,
+   "name": "Medion 18 Bit",
+   "commands": 49,
+   "with_pronto": 49,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0543 Philips 65 Bit": {
+   "id": 543,
+   "name": "Philips 65 Bit",
+   "commands": 1919,
+   "with_pronto": 1919,
+   "codesets": 54,
+   "handling": "pronto"
+  },
+  "0544 LiftBox 11 Bit": {
+   "id": 544,
+   "name": "LiftBox 11 Bit",
+   "commands": 43,
+   "with_pronto": 43,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0545 Systemline 16 Bit": {
+   "id": 545,
+   "name": "Systemline 16 Bit",
+   "commands": 24,
+   "with_pronto": 24,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0546 Clipsal 9 Bit": {
+   "id": 546,
+   "name": "Clipsal 9 Bit",
+   "commands": 46,
+   "with_pronto": 46,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0547 Linn 5 Bit": {
+   "id": 547,
+   "name": "Linn 5 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0548 Samsung 38 Bit 2": {
+   "id": 548,
+   "name": "Samsung 38 Bit 2",
+   "commands": 676,
+   "with_pronto": 676,
+   "codesets": 23,
+   "handling": "pronto"
+  },
+  "0549 T+A 10 Bit 2": {
+   "id": 549,
+   "name": "T+A 10 Bit 2",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0550 Messiah 8 Bit": {
+   "id": 550,
+   "name": "Messiah 8 Bit",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0551 Motorola 16 Bit 2": {
+   "id": 551,
+   "name": "Motorola 16 Bit 2",
+   "commands": 47,
+   "with_pronto": 47,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0553 DishNetwork 10 Bit": {
+   "id": 553,
+   "name": "DishNetwork 10 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0554 Ferguson 9 Bit Toggle": {
+   "id": 554,
+   "name": "Ferguson 9 Bit Toggle",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0555 Entone 56 Bit": {
+   "id": 555,
+   "name": "Entone 56 Bit",
+   "commands": 161,
+   "with_pronto": 161,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0556 Toshiba HF 32 Bit": {
+   "id": 556,
+   "name": "Toshiba HF 32 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0557 ProjectionDesign HF 16 Bit": {
+   "id": 557,
+   "name": "ProjectionDesign HF 16 Bit",
+   "commands": 8,
+   "with_pronto": 8,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0565 Revox 11 Bit 2": {
+   "id": 565,
+   "name": "Revox 11 Bit 2",
+   "commands": 73,
+   "with_pronto": 73,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0566 ZeeVee 16 Bit": {
+   "id": 566,
+   "name": "ZeeVee 16 Bit",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0567 QE Pulse Test 2": {
+   "id": 567,
+   "name": "QE Pulse Test 2",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0570 JB Media 18 Bit Quad": {
+   "id": 570,
+   "name": "JB Media 18 Bit Quad",
+   "commands": 460,
+   "with_pronto": 460,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0572 JB Media 18 Bit Quad 2": {
+   "id": 572,
+   "name": "JB Media 18 Bit Quad 2",
+   "commands": 91,
+   "with_pronto": 91,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0573 Pretzel 32 Bit": {
+   "id": 573,
+   "name": "Pretzel 32 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0574 iMonFixed": {
+   "id": 574,
+   "name": "iMonFixed",
+   "commands": 482,
+   "with_pronto": 482,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0575 iMonFixed2": {
+   "id": 575,
+   "name": "iMonFixed2",
+   "commands": 59,
+   "with_pronto": 59,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0577 Microsoft 36 Bit": {
+   "id": 577,
+   "name": "Microsoft 36 Bit",
+   "commands": 704,
+   "with_pronto": 704,
+   "codesets": 15,
+   "handling": "pronto"
+  },
+  "0579 Microsoft 29 Bit": {
+   "id": 579,
+   "name": "Microsoft 29 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0580 MicrosoftV2 29 Bit": {
+   "id": 580,
+   "name": "MicrosoftV2 29 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0581 Samsung 38 Bit 3": {
+   "id": 581,
+   "name": "Samsung 38 Bit 3",
+   "commands": 60,
+   "with_pronto": 60,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0582 QE Frquency Test 100K": {
+   "id": 582,
+   "name": "QE Frquency Test 100K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0583 QE Frquency Test 10K": {
+   "id": 583,
+   "name": "QE Frquency Test 10K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0584 QE Frquency Test 125K": {
+   "id": 584,
+   "name": "QE Frquency Test 125K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0585 QE Frquency Test 15625": {
+   "id": 585,
+   "name": "QE Frquency Test 15625",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0586 QE Frquency Test 166667": {
+   "id": 586,
+   "name": "QE Frquency Test 166667",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0587 QE Frquency Test 200K": {
+   "id": 587,
+   "name": "QE Frquency Test 200K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0588 QE Frquency Test 222222": {
+   "id": 588,
+   "name": "QE Frquency Test 222222",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0589 QE Frquency Test 235294": {
+   "id": 589,
+   "name": "QE Frquency Test 235294",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0590 QE Frquency Test 250K": {
+   "id": 590,
+   "name": "QE Frquency Test 250K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0591 QE Frquency Test 25K": {
+   "id": 591,
+   "name": "QE Frquency Test 25K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0592 QE Frquency Test 266667": {
+   "id": 592,
+   "name": "QE Frquency Test 266667",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0593 QE Frquency Test 285714": {
+   "id": 593,
+   "name": "QE Frquency Test 285714",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0594 QE Frquency Test 307692": {
+   "id": 594,
+   "name": "QE Frquency Test 307692",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0595 QE Frquency Test 333333": {
+   "id": 595,
+   "name": "QE Frquency Test 333333",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0596 QE Frquency Test 34483": {
+   "id": 596,
+   "name": "QE Frquency Test 34483",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0597 QE Frquency Test 35714": {
+   "id": 597,
+   "name": "QE Frquency Test 35714",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0598 QE Frquency Test 37037": {
+   "id": 598,
+   "name": "QE Frquency Test 37037",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0599 QE Frquency Test 38462": {
+   "id": 599,
+   "name": "QE Frquency Test 38462",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0600 QE Frquency Test 400K": {
+   "id": 600,
+   "name": "QE Frquency Test 400K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0601 QE Frquency Test 40K": {
+   "id": 601,
+   "name": "QE Frquency Test 40K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0602 QE Frquency Test 41667": {
+   "id": 602,
+   "name": "QE Frquency Test 41667",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0603 QE Frquency Test 43478": {
+   "id": 603,
+   "name": "QE Frquency Test 43478",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0604 QE Frquency Test 444444": {
+   "id": 604,
+   "name": "QE Frquency Test 444444",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0605 QE Frquency Test 45455": {
+   "id": 605,
+   "name": "QE Frquency Test 45455",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0606 QE Frquency Test 47619": {
+   "id": 606,
+   "name": "QE Frquency Test 47619",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0607 QE Frquency Test 500K": {
+   "id": 607,
+   "name": "QE Frquency Test 500K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0608 QE Frquency Test 50K": {
+   "id": 608,
+   "name": "QE Frquency Test 50K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0609 QE Frquency Test 52632": {
+   "id": 609,
+   "name": "QE Frquency Test 52632",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0610 QE Frquency Test 55556": {
+   "id": 610,
+   "name": "QE Frquency Test 55556",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0611 QE Frquency Test 58824": {
+   "id": 611,
+   "name": "QE Frquency Test 58824",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0612 QE Frquency Test 5K": {
+   "id": 612,
+   "name": "QE Frquency Test 5K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0613 QE Frquency Test 62500": {
+   "id": 613,
+   "name": "QE Frquency Test 62500",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0614 QE Frquency Test 71429": {
+   "id": 614,
+   "name": "QE Frquency Test 71429",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0615 QE Frquency Test 83333": {
+   "id": 615,
+   "name": "QE Frquency Test 83333",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0620 QE Pulse Test 1": {
+   "id": 620,
+   "name": "QE Pulse Test 1",
+   "commands": 23,
+   "with_pronto": 23,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0623 QE Space Test 1": {
+   "id": 623,
+   "name": "QE Space Test 1",
+   "commands": 23,
+   "with_pronto": 23,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0624 QE Space Test 2": {
+   "id": 624,
+   "name": "QE Space Test 2",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0625 QE Time Delay A 20K": {
+   "id": 625,
+   "name": "QE Time Delay A 20K",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0626 QE Time Delay A 25K": {
+   "id": 626,
+   "name": "QE Time Delay A 25K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0627 QE Time Delay A 30K": {
+   "id": 627,
+   "name": "QE Time Delay A 30K",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0628 QE Time Delay B 20K": {
+   "id": 628,
+   "name": "QE Time Delay B 20K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0629 QE Time Delay B 25K": {
+   "id": 629,
+   "name": "QE Time Delay B 25K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0630 QE Time Delay B 30K": {
+   "id": 630,
+   "name": "QE Time Delay B 30K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0631 QE Time Delay C 25K": {
+   "id": 631,
+   "name": "QE Time Delay C 25K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0632 QE Pulse 100K Old": {
+   "id": 632,
+   "name": "QE Pulse 100K Old",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0633 QE Space 100K Old": {
+   "id": 633,
+   "name": "QE Space 100K Old",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0634 QE Time Delay C 30K": {
+   "id": 634,
+   "name": "QE Time Delay C 30K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0635 QE Time Delay C 20K": {
+   "id": 635,
+   "name": "QE Time Delay C 20K",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0636 DreamMultimedia 16 Bit Hex": {
+   "id": 636,
+   "name": "DreamMultimedia 16 Bit Hex",
+   "commands": 5462,
+   "with_pronto": 5462,
+   "codesets": 143,
+   "handling": "pronto"
+  },
+  "0639 ATandT 16 Bit Quad Toggle": {
+   "id": 639,
+   "name": "ATandT 16 Bit Quad Toggle",
+   "commands": 271,
+   "with_pronto": 271,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0640 Lintronic 33 Bit": {
+   "id": 640,
+   "name": "Lintronic 33 Bit",
+   "commands": 107,
+   "with_pronto": 107,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0641 Boston 32 Bit": {
+   "id": 641,
+   "name": "Boston 32 Bit",
+   "commands": 63,
+   "with_pronto": 63,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0642 T+A 10 Bit 3": {
+   "id": 642,
+   "name": "T+A 10 Bit 3",
+   "commands": 182,
+   "with_pronto": 182,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0643 OnCommand 16 Bit": {
+   "id": 643,
+   "name": "OnCommand 16 Bit",
+   "commands": 25,
+   "with_pronto": 25,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0644 RCA LF 24 Bit": {
+   "id": 644,
+   "name": "RCA LF 24 Bit",
+   "commands": 100,
+   "with_pronto": 100,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0645 LifesizeA 17 Bit Toggle": {
+   "id": 645,
+   "name": "LifesizeA 17 Bit Toggle",
+   "commands": 61,
+   "with_pronto": 61,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0646 LifesizeB 17 Bit Toggle": {
+   "id": 646,
+   "name": "LifesizeB 17 Bit Toggle",
+   "commands": 65,
+   "with_pronto": 65,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0647 iNetbox 16 Bit Hex": {
+   "id": 647,
+   "name": "iNetbox 16 Bit Hex",
+   "commands": 158,
+   "with_pronto": 158,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0649 HPM 2 Bit": {
+   "id": 649,
+   "name": "HPM 2 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0650 OrTek 17 Bit": {
+   "id": 650,
+   "name": "OrTek 17 Bit",
+   "commands": 421,
+   "with_pronto": 421,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0651 Logitech 32 Bit": {
+   "id": 651,
+   "name": "Logitech 32 Bit",
+   "commands": 65,
+   "with_pronto": 65,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0652 Philips 65 Bit 2": {
+   "id": 652,
+   "name": "Philips 65 Bit 2",
+   "commands": 11,
+   "with_pronto": 11,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0654 Roku 32 Bit 1": {
+   "id": 654,
+   "name": "Roku 32 Bit 1",
+   "commands": 983,
+   "with_pronto": 983,
+   "codesets": 36,
+   "handling": "pronto"
+  },
+  "0655 Microsoft HF 30 Bit": {
+   "id": 655,
+   "name": "Microsoft HF 30 Bit",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0656 Epson 14 Quad": {
+   "id": 656,
+   "name": "Epson 14 Quad",
+   "commands": 647,
+   "with_pronto": 647,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0657 Epson 14 Quad V2": {
+   "id": 657,
+   "name": "Epson 14 Quad V2",
+   "commands": 81,
+   "with_pronto": 81,
+   "codesets": 21,
+   "handling": "pronto"
+  },
+  "0658 Quickline 16 Bit": {
+   "id": 658,
+   "name": "Quickline 16 Bit",
+   "commands": 416,
+   "with_pronto": 416,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0659 NRC 17 Bit": {
+   "id": 659,
+   "name": "NRC 17 Bit",
+   "commands": 4114,
+   "with_pronto": 4114,
+   "codesets": 135,
+   "handling": "pronto"
+  },
+  "0660 Chinavasion 16 Bit": {
+   "id": 660,
+   "name": "Chinavasion 16 Bit",
+   "commands": 61,
+   "with_pronto": 61,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0661 Motorola LF 32 Bit": {
+   "id": 661,
+   "name": "Motorola LF 32 Bit",
+   "commands": 951,
+   "with_pronto": 951,
+   "codesets": 24,
+   "handling": "pronto"
+  },
+  "0662 Mitsubishi 16 Bit Dual": {
+   "id": 662,
+   "name": "Mitsubishi 16 Bit Dual",
+   "commands": 1810,
+   "with_pronto": 1810,
+   "codesets": 36,
+   "handling": "pronto"
+  },
+  "0663 Motorola HF 32 Bit": {
+   "id": 663,
+   "name": "Motorola HF 32 Bit",
+   "commands": 262,
+   "with_pronto": 262,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0664 JVC 48 Bit": {
+   "id": 664,
+   "name": "JVC 48 Bit",
+   "commands": 227,
+   "with_pronto": 227,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0665 LG 32 Bit": {
+   "id": 665,
+   "name": "LG 32 Bit",
+   "commands": 24795,
+   "with_pronto": 24795,
+   "codesets": 661,
+   "handling": "pronto"
+  },
+  "0666 Adcom 12 Bit Dual": {
+   "id": 666,
+   "name": "Adcom 12 Bit Dual",
+   "commands": 861,
+   "with_pronto": 861,
+   "codesets": 131,
+   "handling": "pronto"
+  },
+  "0667 Panasonic 56 Bit": {
+   "id": 667,
+   "name": "Panasonic 56 Bit",
+   "commands": 901,
+   "with_pronto": 901,
+   "codesets": 47,
+   "handling": "pronto"
+  },
+  "0669 Naxoo 32 Bit": {
+   "id": 669,
+   "name": "Naxoo 32 Bit",
+   "commands": 375,
+   "with_pronto": 375,
+   "codesets": 9,
+   "handling": "pronto"
+  },
+  "0670 Tilgin 17 Bit": {
+   "id": 670,
+   "name": "Tilgin 17 Bit",
+   "commands": 80,
+   "with_pronto": 80,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0671 PaceO1 16 Bit Quad": {
+   "id": 671,
+   "name": "PaceO1 16 Bit Quad",
+   "commands": 2893,
+   "with_pronto": 2893,
+   "codesets": 83,
+   "handling": "pronto"
+  },
+  "0672 SharpO1 48 Bit": {
+   "id": 672,
+   "name": "SharpO1 48 Bit",
+   "commands": 1430,
+   "with_pronto": 1430,
+   "codesets": 36,
+   "handling": "pronto"
+  },
+  "0673 Philips RECS80 11 Bit": {
+   "id": 673,
+   "name": "Philips RECS80 11 Bit",
+   "commands": 7966,
+   "with_pronto": 7966,
+   "codesets": 290,
+   "handling": "pronto"
+  },
+  "0674 Philips RC5 13 Bit Toggle": {
+   "id": 674,
+   "name": "Philips RC5 13 Bit Toggle",
+   "commands": 90969,
+   "with_pronto": 90969,
+   "codesets": 2822,
+   "handling": "reviewed:rc5-13"
+  },
+  "0675 JVCO1 16 Bit": {
+   "id": 675,
+   "name": "JVCO1 16 Bit",
+   "commands": 6547,
+   "with_pronto": 6547,
+   "codesets": 160,
+   "handling": "pronto"
+  },
+  "0676 ThomsonO1 22 Bit": {
+   "id": 676,
+   "name": "ThomsonO1 22 Bit",
+   "commands": 3272,
+   "with_pronto": 3272,
+   "codesets": 93,
+   "handling": "pronto"
+  },
+  "0677 GoVideoO1 32 Bit": {
+   "id": 677,
+   "name": "GoVideoO1 32 Bit",
+   "commands": 112247,
+   "with_pronto": 112247,
+   "codesets": 1831,
+   "handling": "reviewed:samsung32"
+  },
+  "0678 JerroldO1 16 Bit": {
+   "id": 678,
+   "name": "JerroldO1 16 Bit",
+   "commands": 13861,
+   "with_pronto": 13861,
+   "codesets": 331,
+   "handling": "pronto"
+  },
+  "0679 MemorexO1 32 Bit": {
+   "id": 679,
+   "name": "MemorexO1 32 Bit",
+   "commands": 24650,
+   "with_pronto": 24635,
+   "codesets": 1186,
+   "handling": "pronto"
+  },
+  "0680 SamsungO1 32 Bit": {
+   "id": 680,
+   "name": "SamsungO1 32 Bit",
+   "commands": 23569,
+   "with_pronto": 23569,
+   "codesets": 543,
+   "handling": "pronto"
+  },
+  "0681 MitsubishiO1 Dual 8 16 Bit": {
+   "id": 681,
+   "name": "MitsubishiO1 Dual 8 16 Bit",
+   "commands": 3080,
+   "with_pronto": 3080,
+   "codesets": 128,
+   "handling": "pronto"
+  },
+  "0682 JVCV1 48 Bit": {
+   "id": 682,
+   "name": "JVCV1 48 Bit",
+   "commands": 244,
+   "with_pronto": 244,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0683 General InstrumentsV1 12 Bit": {
+   "id": 683,
+   "name": "General InstrumentsV1 12 Bit",
+   "commands": 1167,
+   "with_pronto": 1167,
+   "codesets": 32,
+   "handling": "pronto"
+  },
+  "0684 Samsung STB 32 Bit": {
+   "id": 684,
+   "name": "Samsung STB 32 Bit",
+   "commands": 415,
+   "with_pronto": 415,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0685 MatsuiO1 10 Bit": {
+   "id": 685,
+   "name": "MatsuiO1 10 Bit",
+   "commands": 3424,
+   "with_pronto": 3424,
+   "codesets": 105,
+   "handling": "pronto"
+  },
+  "0686 Samsung 16 and 20 Bit": {
+   "id": 686,
+   "name": "Samsung 16 and 20 Bit",
+   "commands": 9782,
+   "with_pronto": 9782,
+   "codesets": 273,
+   "handling": "pronto"
+  },
+  "0688 BellV1 10 Bit": {
+   "id": 688,
+   "name": "BellV1 10 Bit",
+   "commands": 92,
+   "with_pronto": 92,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0689 Beamax 32 Bit": {
+   "id": 689,
+   "name": "Beamax 32 Bit",
+   "commands": 161,
+   "with_pronto": 161,
+   "codesets": 31,
+   "handling": "pronto"
+  },
+  "0690 ZenegaV1 14 Bit Toggle": {
+   "id": 690,
+   "name": "ZenegaV1 14 Bit Toggle",
+   "commands": 5237,
+   "with_pronto": 5237,
+   "codesets": 122,
+   "handling": "pronto"
+  },
+  "0691 ThuleV1 13 Bit Toggle": {
+   "id": 691,
+   "name": "ThuleV1 13 Bit Toggle",
+   "commands": 19935,
+   "with_pronto": 19935,
+   "codesets": 600,
+   "handling": "pronto"
+  },
+  "0692 PioneerO1 32 Bit Dual": {
+   "id": 692,
+   "name": "PioneerO1 32 Bit Dual",
+   "commands": 396,
+   "with_pronto": 396,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0693 PioneerO1 32 Bit": {
+   "id": 693,
+   "name": "PioneerO1 32 Bit",
+   "commands": 204,
+   "with_pronto": 204,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0694 RCAV1 24 Bit 2": {
+   "id": 694,
+   "name": "RCAV1 24 Bit 2",
+   "commands": 35,
+   "with_pronto": 35,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0695 RCAV1 24 Bit 3": {
+   "id": 695,
+   "name": "RCAV1 24 Bit 3",
+   "commands": 669,
+   "with_pronto": 669,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0696 Coship 24 and 16 Bit": {
+   "id": 696,
+   "name": "Coship 24 and 16 Bit",
+   "commands": 162,
+   "with_pronto": 162,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0697 URC 28 Bit": {
+   "id": 697,
+   "name": "URC 28 Bit",
+   "commands": 36,
+   "with_pronto": 36,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0698 GrundigO1 7 Bit Quad": {
+   "id": 698,
+   "name": "GrundigO1 7 Bit Quad",
+   "commands": 112,
+   "with_pronto": 112,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0699 Apex 24 and 16 Bit": {
+   "id": 699,
+   "name": "Apex 24 and 16 Bit",
+   "commands": 315,
+   "with_pronto": 315,
+   "codesets": 15,
+   "handling": "pronto"
+  },
+  "0700 Clipsal 8 Bit": {
+   "id": 700,
+   "name": "Clipsal 8 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0701 Sharp 15 Bit Quad Dual": {
+   "id": 701,
+   "name": "Sharp 15 Bit Quad Dual",
+   "commands": 153,
+   "with_pronto": 153,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0702 Dvico 32 Bit": {
+   "id": 702,
+   "name": "Dvico 32 Bit",
+   "commands": 4,
+   "with_pronto": 4,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0703 Cambridge Audio 32 Bit": {
+   "id": 703,
+   "name": "Cambridge Audio 32 Bit",
+   "commands": 51,
+   "with_pronto": 51,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0704 T+A 9 Bit": {
+   "id": 704,
+   "name": "T+A 9 Bit",
+   "commands": 142,
+   "with_pronto": 142,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0705 Dream Multimedia 32 Bit": {
+   "id": 705,
+   "name": "Dream Multimedia 32 Bit",
+   "commands": 445,
+   "with_pronto": 445,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0706 Pace 18 Bit Quad Toggle": {
+   "id": 706,
+   "name": "Pace 18 Bit Quad Toggle",
+   "commands": 409,
+   "with_pronto": 409,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0707 Motorola 16 Bit Quad Toggle": {
+   "id": 707,
+   "name": "Motorola 16 Bit Quad Toggle",
+   "commands": 679,
+   "with_pronto": 679,
+   "codesets": 19,
+   "handling": "pronto"
+  },
+  "0708 Idylis 24 Bit": {
+   "id": 708,
+   "name": "Idylis 24 Bit",
+   "commands": 15,
+   "with_pronto": 15,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0709 Scenario 13 Bit Toggle": {
+   "id": 709,
+   "name": "Scenario 13 Bit Toggle",
+   "commands": 29,
+   "with_pronto": 29,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0711 Entone 24 Bit": {
+   "id": 711,
+   "name": "Entone 24 Bit",
+   "commands": 510,
+   "with_pronto": 510,
+   "codesets": 13,
+   "handling": "pronto"
+  },
+  "0712 Samsung HA 32 Bit": {
+   "id": 712,
+   "name": "Samsung HA 32 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0714 LK 34 Bit Quad": {
+   "id": 714,
+   "name": "LK 34 Bit Quad",
+   "commands": 17,
+   "with_pronto": 17,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0715 MotorolaO1 16 Bit Hex": {
+   "id": 715,
+   "name": "MotorolaO1 16 Bit Hex",
+   "commands": 11258,
+   "with_pronto": 11258,
+   "codesets": 301,
+   "handling": "pronto"
+  },
+  "0716 Sim2 16 Bit Toggle": {
+   "id": 716,
+   "name": "Sim2 16 Bit Toggle",
+   "commands": 278,
+   "with_pronto": 278,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0717 Canton 22 Bit": {
+   "id": 717,
+   "name": "Canton 22 Bit",
+   "commands": 33,
+   "with_pronto": 33,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0718 Listo 15 Bit": {
+   "id": 718,
+   "name": "Listo 15 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0720 Dyson 15 Bit Double Toggle": {
+   "id": 720,
+   "name": "Dyson 15 Bit Double Toggle",
+   "commands": 96,
+   "with_pronto": 96,
+   "codesets": 14,
+   "handling": "pronto"
+  },
+  "0721 DarbeeVision 28 Bit": {
+   "id": 721,
+   "name": "DarbeeVision 28 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0722 Flirc 20 Bit": {
+   "id": 722,
+   "name": "Flirc 20 Bit",
+   "commands": 242,
+   "with_pronto": 242,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0723 Springer 24 Bit": {
+   "id": 723,
+   "name": "Springer 24 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0724 Domintell 7 Bit": {
+   "id": 724,
+   "name": "Domintell 7 Bit",
+   "commands": 33,
+   "with_pronto": 33,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0725 SamsungV2 26 Bit": {
+   "id": 725,
+   "name": "SamsungV2 26 Bit",
+   "commands": 628,
+   "with_pronto": 628,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0726 TelseyV2 18 Bit": {
+   "id": 726,
+   "name": "TelseyV2 18 Bit",
+   "commands": 1602,
+   "with_pronto": 1602,
+   "codesets": 41,
+   "handling": "pronto"
+  },
+  "0727 Telsey 13 Bit Toggle": {
+   "id": 727,
+   "name": "Telsey 13 Bit Toggle",
+   "commands": 90,
+   "with_pronto": 90,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0728 ORtek Mouse 16 Bit": {
+   "id": 728,
+   "name": "ORtek Mouse 16 Bit",
+   "commands": 40,
+   "with_pronto": 40,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0729 CP Electronics 13 Bit": {
+   "id": 729,
+   "name": "CP Electronics 13 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0730 CP Electronics 29 Bit": {
+   "id": 730,
+   "name": "CP Electronics 29 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0731 UEC 31 Bit Quad Toggle": {
+   "id": 731,
+   "name": "UEC 31 Bit Quad Toggle",
+   "commands": 48,
+   "with_pronto": 48,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0732 Venset 13 Bit Quad": {
+   "id": 732,
+   "name": "Venset 13 Bit Quad",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0733 ESI 8 Bit": {
+   "id": 733,
+   "name": "ESI 8 Bit",
+   "commands": 145,
+   "with_pronto": 145,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0734 Accuscreens 48 Bit": {
+   "id": 734,
+   "name": "Accuscreens 48 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0735 Somfy 11 Bit Toggle": {
+   "id": 735,
+   "name": "Somfy 11 Bit Toggle",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0736 Mecatronica 4 Bit": {
+   "id": 736,
+   "name": "Mecatronica 4 Bit",
+   "commands": 3,
+   "with_pronto": 3,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0737 Mecatronica 5 Bit": {
+   "id": 737,
+   "name": "Mecatronica 5 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0738 Cabasse 16 Bit": {
+   "id": 738,
+   "name": "Cabasse 16 Bit",
+   "commands": 22,
+   "with_pronto": 22,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0739 Beyond Platinum 32 Bit": {
+   "id": 739,
+   "name": "Beyond Platinum 32 Bit",
+   "commands": 603,
+   "with_pronto": 603,
+   "codesets": 17,
+   "handling": "pronto"
+  },
+  "0740 ORtek 26 Bit": {
+   "id": 740,
+   "name": "ORtek 26 Bit",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0741 PassLabs 13 Bit Toggle": {
+   "id": 741,
+   "name": "PassLabs 13 Bit Toggle",
+   "commands": 82,
+   "with_pronto": 82,
+   "codesets": 8,
+   "handling": "pronto"
+  },
+  "0742 Xiaomi 10 Bit Quad": {
+   "id": 742,
+   "name": "Xiaomi 10 Bit Quad",
+   "commands": 134,
+   "with_pronto": 134,
+   "codesets": 12,
+   "handling": "pronto"
+  },
+  "0743 Keene Electronics 9 Bit": {
+   "id": 743,
+   "name": "Keene Electronics 9 Bit",
+   "commands": 129,
+   "with_pronto": 129,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0744 Tidal 9 Bit": {
+   "id": 744,
+   "name": "Tidal 9 Bit",
+   "commands": 7,
+   "with_pronto": 7,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0745 Gefen 13 Bit Toggle": {
+   "id": 745,
+   "name": "Gefen 13 Bit Toggle",
+   "commands": 203,
+   "with_pronto": 203,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0746 Kimex 12 Bit": {
+   "id": 746,
+   "name": "Kimex 12 Bit",
+   "commands": 43,
+   "with_pronto": 43,
+   "codesets": 10,
+   "handling": "pronto"
+  },
+  "0747 LCN 24 Bit Quad": {
+   "id": 747,
+   "name": "LCN 24 Bit Quad",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0748 Leviton 16 Bit": {
+   "id": 748,
+   "name": "Leviton 16 Bit",
+   "commands": 26,
+   "with_pronto": 26,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0749 Medium 24 Bit": {
+   "id": 749,
+   "name": "Medium 24 Bit",
+   "commands": 11,
+   "with_pronto": 11,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0750 Sapphire 40 Bit": {
+   "id": 750,
+   "name": "Sapphire 40 Bit",
+   "commands": 128,
+   "with_pronto": 128,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0751 LG 20 Bit": {
+   "id": 751,
+   "name": "LG 20 Bit",
+   "commands": 79,
+   "with_pronto": 79,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0752 Metz 23 Bit Toggle": {
+   "id": 752,
+   "name": "Metz 23 Bit Toggle",
+   "commands": 156,
+   "with_pronto": 156,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0753 RCAV1 LF 24 Bit": {
+   "id": 753,
+   "name": "RCAV1 LF 24 Bit",
+   "commands": 9215,
+   "with_pronto": 9215,
+   "codesets": 231,
+   "handling": "pronto"
+  },
+  "0754 EntoneV1 24 Bit": {
+   "id": 754,
+   "name": "EntoneV1 24 Bit",
+   "commands": 564,
+   "with_pronto": 564,
+   "codesets": 15,
+   "handling": "pronto"
+  },
+  "0755 Audio Synthesis 8 Bit": {
+   "id": 755,
+   "name": "Audio Synthesis 8 Bit",
+   "commands": 19,
+   "with_pronto": 19,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0756 Sorenson 16 Bit": {
+   "id": 756,
+   "name": "Sorenson 16 Bit",
+   "commands": 47,
+   "with_pronto": 47,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0757 Canton 32 Bit": {
+   "id": 757,
+   "name": "Canton 32 Bit",
+   "commands": 24,
+   "with_pronto": 24,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0758 LifesizeIconA 17 Bit Toggle": {
+   "id": 758,
+   "name": "LifesizeIconA 17 Bit Toggle",
+   "commands": 14,
+   "with_pronto": 14,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0759 LifesizeIconB 17 Bit Toggle": {
+   "id": 759,
+   "name": "LifesizeIconB 17 Bit Toggle",
+   "commands": 5,
+   "with_pronto": 5,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0760 BarcoV1 11 Bit": {
+   "id": 760,
+   "name": "BarcoV1 11 Bit",
+   "commands": 31,
+   "with_pronto": 31,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0762 Hager 24 Bit Toggle": {
+   "id": 762,
+   "name": "Hager 24 Bit Toggle",
+   "commands": 97,
+   "with_pronto": 97,
+   "codesets": 4,
+   "handling": "pronto"
+  },
+  "0763 Auvio 32 Bit": {
+   "id": 763,
+   "name": "Auvio 32 Bit",
+   "commands": 111,
+   "with_pronto": 111,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0764 Abacus 13 Bit": {
+   "id": 764,
+   "name": "Abacus 13 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0765 WowWee 8 Bit": {
+   "id": 765,
+   "name": "WowWee 8 Bit",
+   "commands": 55,
+   "with_pronto": 55,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0767 Sydia 64 Bit": {
+   "id": 767,
+   "name": "Sydia 64 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0768 Sydia 72 Bit": {
+   "id": 768,
+   "name": "Sydia 72 Bit",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0769 Contemporary Research 16 Bit": {
+   "id": 769,
+   "name": "Contemporary Research 16 Bit",
+   "commands": 38,
+   "with_pronto": 38,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0770 PDP 32 Bit": {
+   "id": 770,
+   "name": "PDP 32 Bit",
+   "commands": 42,
+   "with_pronto": 42,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0771 Sky 28 Bit": {
+   "id": 771,
+   "name": "Sky 28 Bit",
+   "commands": 808,
+   "with_pronto": 808,
+   "codesets": 23,
+   "handling": "pronto"
+  },
+  "0772 Vinnie Rossi 26 Bit": {
+   "id": 772,
+   "name": "Vinnie Rossi 26 Bit",
+   "commands": 18,
+   "with_pronto": 18,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0773 AvantgardeA 6 Bit Toggle": {
+   "id": 773,
+   "name": "AvantgardeA 6 Bit Toggle",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0774 AvantgardeB 6 Bit Toggle": {
+   "id": 774,
+   "name": "AvantgardeB 6 Bit Toggle",
+   "commands": 1,
+   "with_pronto": 1,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0775 AvantgardeC 6 Bit Toggle": {
+   "id": 775,
+   "name": "AvantgardeC 6 Bit Toggle",
+   "commands": 10,
+   "with_pronto": 10,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0776 AvantgardeD 6 Bit Toggle": {
+   "id": 776,
+   "name": "AvantgardeD 6 Bit Toggle",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 2,
+   "handling": "pronto"
+  },
+  "0777 Arris 32 Bit": {
+   "id": 777,
+   "name": "Arris 32 Bit",
+   "commands": 42,
+   "with_pronto": 42,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0779 HID 16 Bit": {
+   "id": 779,
+   "name": "HID 16 Bit",
+   "commands": 109,
+   "with_pronto": 0,
+   "codesets": 4,
+   "handling": "non-ir"
+  },
+  "0782 Roku IP": {
+   "id": 782,
+   "name": "Roku IP",
+   "commands": 19,
+   "with_pronto": 0,
+   "codesets": 1,
+   "handling": "non-ir"
+  },
+  "0783 Sonos IP": {
+   "id": 783,
+   "name": "Sonos IP",
+   "commands": 13,
+   "with_pronto": 0,
+   "codesets": 1,
+   "handling": "non-ir"
+  },
+  "0786 LoeweV1 16 Bit": {
+   "id": 786,
+   "name": "LoeweV1 16 Bit",
+   "commands": 25,
+   "with_pronto": 25,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0787 TechniSat 18 Bit": {
+   "id": 787,
+   "name": "TechniSat 18 Bit",
+   "commands": 125,
+   "with_pronto": 125,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0789 Lutron 28 Bit": {
+   "id": 789,
+   "name": "Lutron 28 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0790 EluneVision 32 Bit": {
+   "id": 790,
+   "name": "EluneVision 32 Bit",
+   "commands": 9,
+   "with_pronto": 9,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "0791 T and AV2 9 Bit": {
+   "id": 791,
+   "name": "T and AV2 9 Bit",
+   "commands": 444,
+   "with_pronto": 444,
+   "codesets": 11,
+   "handling": "pronto"
+  },
+  "0792 T and AV3 9 Bit": {
+   "id": 792,
+   "name": "T and AV3 9 Bit",
+   "commands": 69,
+   "with_pronto": 69,
+   "codesets": 7,
+   "handling": "pronto"
+  },
+  "0794 Axium 14 Bit": {
+   "id": 794,
+   "name": "Axium 14 Bit",
+   "commands": 75,
+   "with_pronto": 75,
+   "codesets": 5,
+   "handling": "pronto"
+  },
+  "0795 Activated Designs 8 Bit": {
+   "id": 795,
+   "name": "Activated Designs 8 Bit",
+   "commands": 2,
+   "with_pronto": 2,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0796 LCN 24 Bit Quad v1": {
+   "id": 796,
+   "name": "LCN 24 Bit Quad v1",
+   "commands": 16,
+   "with_pronto": 16,
+   "codesets": 1,
+   "handling": "pronto"
+  },
+  "0798 Nova 26 Bit Toggle": {
+   "id": 798,
+   "name": "Nova 26 Bit Toggle",
+   "commands": 177,
+   "with_pronto": 177,
+   "codesets": 6,
+   "handling": "pronto"
+  },
+  "0801 Eufy 40 Bit": {
+   "id": 801,
+   "name": "Eufy 40 Bit",
+   "commands": 42,
+   "with_pronto": 42,
+   "codesets": 3,
+   "handling": "pronto"
+  },
+  "learned": {
+   "id": null,
+   "name": null,
+   "commands": 319,
+   "with_pronto": 0,
+   "codesets": 17,
+   "handling": "learned"
+  }
+ }
+}

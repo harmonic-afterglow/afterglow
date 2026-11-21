@@ -142,6 +142,15 @@ class SourceSettingsDialog(QDialog):
         irdb_layout = QVBoxLayout(self.irdb)
         irdb_layout.addWidget(QLabel(
             "Crowd-sourced protocol, device, and function infrared codes."))
+        # The notice IRDB's licence asks every product that reads it to carry.
+        notice = QLabel(
+            "Contains/accesses irdb by Simon Peter and contributors, used under "
+            "permission. For licensing details and for information on how to contribute "
+            'to the database, see <a href="https://github.com/probonopd/irdb">'
+            "https://github.com/probonopd/irdb</a>")
+        notice.setWordWrap(True)
+        notice.setOpenExternalLinks(True)
+        irdb_layout.addWidget(notice)
         test_irdb = QPushButton("Test online source")
         test_irdb.clicked.connect(self._test_irdb)
         irdb_layout.addWidget(test_irdb, alignment=Qt.AlignmentFlag.AlignLeft)
