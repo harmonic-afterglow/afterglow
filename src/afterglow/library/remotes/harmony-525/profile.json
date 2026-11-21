@@ -63,6 +63,11 @@
       "DirectionLeft",
       "ChannelUp"
     ],
+    "_hard_key_aliases_comment": "The key left of 0 under the name each other remote gives it: NumberPlus on the One, 600/650/665, 700 and 900, NumberStar on the 515, 525 and Xbox 360, Clear on the 555. A project moved here keeps a command on it.",
+    "hard_key_aliases": {
+      "NumberPlus": "NumberStar",
+      "Clear": "NumberStar"
+    },
     "hard_key_scans": {
       "Number3": 1,
       "Number2": 2,
@@ -111,6 +116,7 @@
     "tabs": [
       "devices",
       "activities",
+      "settings",
       "flash"
     ],
     "device_pages": [
@@ -134,8 +140,7 @@
       "always_on",
       "power_delay",
       "press_interkey",
-      "input_delay",
-      "app_power_delay"
+      "input_delay"
     ],
     "settings": [
       "output_file",
