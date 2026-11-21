@@ -371,7 +371,7 @@ class ActivityCard(QWidget):
 
         # Its Sound and Picture layouts, on a remote with those keys: each edited in a
         # window of its own, hung under the activity they belong to
-        from .activity_layouts_dialog import summary
+        from .activity_layouts_dialog import details, summary
         devices = list(devices_by_id.values())
         self.layout_buttons = {}
         # under the activity's name, where its text starts: past the grip, and the icon
@@ -387,6 +387,8 @@ class ActivityCard(QWidget):
             name.setFixedWidth(64)
             what = QLabel(text)
             what.setStyleSheet("color: gray;")
+            for widget in (name, what):
+                widget.setToolTip(details(spec, devices, kind))
             if not has:
                 name.setStyleSheet("color: gray;")
             button = QPushButton("Edit" if has else "Add")
