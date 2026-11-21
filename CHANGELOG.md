@@ -34,10 +34,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Every remote is listed by its own name, as Logitech lists them.** Remotes built the
   same way were listed once: the European 1100 and the One+ appeared only as the 1100 and
   the One, and the six Monster AVL 300 and 305 models as one. Now each is there, by
-  MyHarmony's catalogue: the 1100i, 610, 620, 2000 Pro, Harmony for Xbox 360 and the
+  MyHarmony's catalogue - the One as "Harmony One / One+", the skin both share - and
+  the 1100i, 610, 620, 2000 Pro, Harmony for Xbox 360 and the
   later hubs and remotes are listed too, and Europe's 600, 650, 700, 200 and 300 are
   "(EMEA)", not "600i" and the like. A European 600, 650 or 700's welcome tour names it
   as the remote does, "Harmony 650".
+- **An activity's row names where its volume goes** when that is not the display, and
+  the review of a move wraps a long line instead of cutting it off. A receiver an
+  activity turns up read as lost after a move: it was there, but nowhere on the row.
 - **The Flash log starts empty for another project.** After opening, importing or
   moving one, it still showed the last project's build.
 - **The 600, 650, 665 and 700's Commands page says how the device's own page is

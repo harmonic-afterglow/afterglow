@@ -231,6 +231,10 @@ class MigrationDialog(QDialog):
 
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["", "What"])
+        # a long list of settings or keys wraps rather than running off the edge
+        self.tree.setWordWrap(True)
+        self.tree.setUniformRowHeights(False)
+        self.tree.setTextElideMode(Qt.TextElideMode.ElideNone)
         groups: OrderedDict[str, list] = OrderedDict()
         for row in report:
             groups.setdefault(row["subject"], []).append(row)

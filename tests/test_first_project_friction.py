@@ -228,3 +228,18 @@ def test_the_commands_page_says_where_the_device_page_is_arranged(qapp_or_skip, 
     from afterglow.gui.device_wizard import CommandsPage
     page = CommandsPage({"id": "1", "commands": []}, remote=remotes.get(remote))
     assert ("Screen page" in page.subTitle()) is screen_page
+
+
+def test_an_activity_row_names_its_volume_device(qapp_or_skip):
+    """A receiver an activity turns up was nowhere on its row: after a move it read as
+    lost. Shown only when it is not the display's own volume."""
+    from afterglow.qt.QtWidgets import QLabel
+    from afterglow.gui.tabs import ActivityCard
+    devices = {"tv": {"label": "TV"}, "amp": {"label": "Receiver"}}
+
+    def text(spec):
+        card = ActivityCard(spec, devices, lambda *_: None, lambda *_: None)
+        return " ".join(label.text() for label in card.findChildren(QLabel))
+    assert "Volume: Receiver" in text({"label": "Watch", "display": "tv", "volume": "amp",
+                                       "control": "tv"})
+    assert "Volume" not in text({"label": "Watch", "display": "tv", "volume": "tv"})

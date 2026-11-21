@@ -281,6 +281,10 @@ class ActivityCard(QWidget):
         layout.addWidget(_grip())
         disp_lbl = devices_by_id.get(spec.get("display",""), {}).get("label")
         ctrl_lbl = devices_by_id.get(spec.get("control",""), {}).get("label")
+        # where the volume goes, when it is not the display's: a receiver an activity
+        # turns up was nowhere on its row, and read as lost after a move
+        vol_lbl = (devices_by_id.get(spec.get("volume") or "", {}).get("label")
+                   if spec.get("volume") not in (None, spec.get("display")) else None)
         atype    = spec.get("type","VirtualTelevisionN")
 
         # no activity types on this remote (a 5xx): no type and no icon, as for devices
@@ -296,7 +300,8 @@ class ActivityCard(QWidget):
         shown = type_names.get(atype, atype) if typed else ""
         # A role the activity does not fill is left out, not shown as "?".
         sub = QLabel("  ·  ".join(part for part in (
-            shown, disp_lbl and f"Display: {disp_lbl}", ctrl_lbl and f"Control: {ctrl_lbl}")
+            shown, disp_lbl and f"Display: {disp_lbl}", vol_lbl and f"Volume: {vol_lbl}",
+            ctrl_lbl and f"Control: {ctrl_lbl}")
             if part))
         sub.setStyleSheet("color: gray;")
         info.addWidget(sub)
