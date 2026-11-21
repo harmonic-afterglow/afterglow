@@ -177,14 +177,16 @@ def _models(profiles, known=None) -> tuple[list, list[str]]:
     from .. import remotes
     names = {int(skin): entry.get("model") or "" for skin, entry in remotes.models().items()
              if str(skin).isdigit()}
+    # Every skin its own entry, even where one profile builds several: folding entries
+    # that came out with the same name hid the 510, which had no name of its own and was
+    # listed - once - as the 515 it is built like.
     supported, seen = [], set()
     for profile in profiles:
         mine = []
         for skin in profile.skins:
             name = names.get(skin) or profile.model
-            if name not in seen:
-                seen.add(name)
-                mine.append((name, profile, skin))
+            seen.add(name)
+            mine.append((name, profile, skin))
         supported += sorted(mine, key=lambda entry: _natural(entry[0]))
     taken = {skin for profile in (known or profiles) for skin in profile.skins}
     taken_names = {names.get(skin) for skin in taken} | seen

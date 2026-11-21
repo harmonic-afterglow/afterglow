@@ -1,6 +1,7 @@
 {
   "schema": "afterglow-remote-models/1",
   "source": "Concordance libconcord/remote_info.h (GPL-3.0) - the table is indexed by SKIN id",
+  "_names": "Each skin is its own remote and has its own name here, as MyHarmony's catalogue (GetAllProducts, 2026-11-16) lists it - a European skin with \"(EMEA)\" - so the remote pickers list each one; `on_remote` is what the remote itself calls its model where that differs. The 510 had no name and was listed as a 515.",
   "models": {
     "0": {
       "model": "0",
@@ -87,9 +88,10 @@
       "codename": "Cappuccino"
     },
     "20": {
-      "model": "Harmony 891",
+      "model": "RF Wireless Extender",
       "manufacturer": "HAR",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "21": {
       "model": "Harmony 892",
@@ -107,9 +109,10 @@
       "codename": "Cappuccino"
     },
     "24": {
-      "model": "Harmony 896",
+      "model": "RF Wireless Extender (EMEA)",
       "manufacturer": "HAR",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "25": {
       "model": "Harmony 897",
@@ -117,65 +120,77 @@
       "codename": "Sugar"
     },
     "26": {
-      "model": "AVL-300",
+      "model": "Monster AVL 300",
       "manufacturer": "MON",
-      "codename": "Godzilla"
+      "codename": "Godzilla",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "27": {
-      "model": "AVL-300",
+      "model": "Monster AVL 300S",
       "manufacturer": "MON",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "28": {
-      "model": "AVL-300",
+      "model": "Monster AVL 300W",
       "manufacturer": "MON",
-      "codename": "Sugar"
+      "codename": "Sugar",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "29": {
-      "model": "AVL-300",
+      "model": "Monster AVL 305",
       "manufacturer": "MON",
-      "codename": "Godzilla"
+      "codename": "Godzilla",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "30": {
-      "model": "AVL-300",
+      "model": "Monster AVL 305S",
       "manufacturer": "MON",
-      "codename": "Whisky"
+      "codename": "Whisky",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "31": {
-      "model": "AVL-300",
+      "model": "Monster AVL 305W",
       "manufacturer": "MON",
-      "codename": "Sugar"
+      "codename": "Sugar",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "32": {
-      "model": "AVL-200",
+      "model": "Monster AVL 200",
       "manufacturer": "MON",
-      "codename": "Godzilla"
+      "codename": "Godzilla",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "33": {
-      "model": "AVL-200",
+      "model": "Monster AVL 205",
       "manufacturer": "MON",
-      "codename": "Godzilla"
+      "codename": "Godzilla",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "34": {
-      "model": "TC-30",
-      "manufacturer": "HK"
+      "model": "Harman Kardon TC 30 (bundled)",
+      "manufacturer": "HK",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "35": {
-      "model": "TC-30",
-      "manufacturer": "HK"
+      "model": "Harman Kardon TC 30 (EMEA, bundled)",
+      "manufacturer": "HK",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "36": {
-      "model": "Harmony XBOX360",
+      "model": "Harmony for Xbox 360",
       "manufacturer": "HAR",
-      "codename": "Mountain Dew"
+      "codename": "Mountain Dew",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "37": {
       "model": "AV-100",
       "manufacturer": "MON"
     },
     "38": {
-      "model": "AV-100",
-      "manufacturer": "MON"
+      "model": "AV-100 (EMEA)",
+      "manufacturer": "MON",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "39": {
       "model": "Harmony 880 Pro",
@@ -193,12 +208,14 @@
       "codename": "Mocha Grande"
     },
     "42": {
-      "model": "TC-30",
-      "manufacturer": "HK"
+      "model": "Harman Kardon TC 30 (retail)",
+      "manufacturer": "HK",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "43": {
-      "model": "TC-30",
-      "manufacturer": "HK"
+      "model": "Harman Kardon TC 30 (EMEA, retail)",
+      "manufacturer": "HK",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "44": {
       "model": "Harmony 720",
@@ -212,8 +229,9 @@
     },
     "46": {
       "model": "Harmony 522",
-      "manufacturer": "HAR",
-      "codename": "Mocha Decaf"
+      "manufacturer": "COOL",
+      "codename": "Mocha Decaf",
+      "note": "Logicool's own installer (7.3.0): Logicool's Japanese 525, USB 046D:C11A; Concordance lists it as Logitech's"
     },
     "47": {
       "model": "Harmony 882",
@@ -235,28 +253,49 @@
       "manufacturer": "HAR"
     },
     "51": {
-      "model": "Harmony 552",
-      "manufacturer": "COOL",
-      "codename": "Mocha Grande"
+      "model": "Telus Advanced Remote",
+      "manufacturer": "UNK",
+      "codename": "Mocha Grande",
+      "note": "MyHarmony's catalogue (GetAllProducts): Telus's remote, Region 1; Concordance names it a Logicool Harmony 552, which no Logicool lineup or installer lists"
     },
     "52": {
       "model": "Harmony 1000i",
       "manufacturer": "HAR",
       "codename": "Cognac"
     },
+    "53": {
+      "model": "Harmony 1000 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 1000",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
     "54": {
-      "model": "Harmony One",
-      "manufacturer": "HAR"
+      "model": "Harmony One / One+",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts) lists skin 54 as \"Harmony One+\" (its display name) and \"Harmony One\" (its own): the One and the later One+ are one skin",
+      "on_remote": "Harmony One"
+    },
+    "55": {
+      "model": "Harmony 2000 Pro",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "58": {
+      "model": "Harmony 620",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "59": {
       "model": "Harmony One (EMEA)",
       "manufacturer": "HAR",
-      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2",
+      "on_remote": "Harmony One"
     },
     "60": {
       "model": "Harmony 900 (EMEA)",
       "manufacturer": "HAR",
-      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2",
+      "on_remote": "Harmony 900"
     },
     "61": {
       "model": "Harmony 900",
@@ -267,8 +306,20 @@
       "manufacturer": "HAR"
     },
     "63": {
-      "model": "Harmony 1100",
-      "manufacturer": "HAR"
+      "model": "Harmony 1100 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 1100",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "64": {
+      "model": "Harmony 1100i",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "65": {
+      "model": "Harmony 610",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "66": {
       "model": "Harmony 700",
@@ -279,9 +330,16 @@
       "model": "Harmony 515",
       "manufacturer": "HAR"
     },
+    "68": {
+      "model": "Harmony 510",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
     "69": {
-      "model": "Harmony 700i",
-      "manufacturer": "HAR"
+      "model": "Harmony 700 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 700",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "71": {
       "model": "Harmony 600",
@@ -292,12 +350,16 @@
       "manufacturer": "HAR"
     },
     "73": {
-      "model": "Harmony 600i",
-      "manufacturer": "HAR"
+      "model": "Harmony 600 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 600",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "74": {
-      "model": "Harmony 650i",
-      "manufacturer": "HAR"
+      "model": "Harmony 650 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 650",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "75": {
       "model": "Harmony 665",
@@ -308,16 +370,20 @@
       "manufacturer": "HAR"
     },
     "79": {
-      "model": "Harmony 300i",
-      "manufacturer": "HAR"
+      "model": "Harmony 300 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 300",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "80": {
       "model": "Harmony 200",
       "manufacturer": "HAR"
     },
     "81": {
-      "model": "Harmony 200i",
-      "manufacturer": "HAR"
+      "model": "Harmony 200 (EMEA)",
+      "manufacturer": "HAR",
+      "on_remote": "Harmony 200",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "82": {
       "model": "Harmony Link",
@@ -325,7 +391,14 @@
     },
     "83": {
       "model": "Harmony Link (EMEA)",
-      "manufacturer": "HAR"
+      "manufacturer": "HAR",
+      "on_remote": "Harmony Link",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "84": {
+      "model": "Logitech Revue",
+      "manufacturer": "LOG",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "86": {
       "model": "Harmony 800",
@@ -334,11 +407,17 @@
     "87": {
       "model": "Harmony 800 (EMEA)",
       "manufacturer": "HAR",
-      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2"
+      "note": "MyHarmony's catalogue (GetAllProducts): the European skin, Region 2",
+      "on_remote": "Harmony 800"
     },
     "97": {
       "model": "Harmony Ultimate Hub",
       "manufacturer": "HAR"
+    },
+    "98": {
+      "model": "Harmony Smart Control",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "99": {
       "model": "Harmony Touch",
@@ -348,6 +427,11 @@
       "model": "Harmony Ultimate",
       "manufacturer": "HAR"
     },
+    "101": {
+      "model": "Harmony Smart Keyboard",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
     "102": {
       "model": "Harmony Ultimate One",
       "manufacturer": "HAR"
@@ -356,13 +440,64 @@
       "model": "Harmony 350",
       "manufacturer": "HAR"
     },
+    "105": {
+      "model": "Harmony Ultimate Home",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
     "106": {
-      "model": "Harmony Home Hub",
-      "manufacturer": "HAR"
+      "model": "Harmony Hub / Home Hub",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "107": {
+      "model": "Harmony Companion / Home Control",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "108": {
+      "model": "Harmony Ultimate Home (white)",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "109": {
+      "model": "Harmony Companion / Home Control (white)",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "110": {
+      "model": "Harmony Home Hub Extender",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "111": {
+      "model": "Harmony Elite",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     },
     "112": {
       "model": "Harmony 950",
       "manufacturer": "HAR"
+    },
+    "113": {
+      "model": "Harmony Express",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "114": {
+      "model": "Harmony Express Remote",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "115": {
+      "model": "Harmony Pro 2400 Hub",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
+    },
+    "116": {
+      "model": "Harmony Pro 2400",
+      "manufacturer": "HAR",
+      "note": "MyHarmony's catalogue (GetAllProducts): the name Logitech lists for this skin"
     }
   }
 }

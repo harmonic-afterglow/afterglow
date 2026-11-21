@@ -180,7 +180,7 @@ def build_project(project, profile, context) -> BuildResult:
     from ... import remotes
     built = compose.build(project, directory=directory,
                           look=profile.looks.get(skin) if skin is not None else None,
-                          model=remotes.model_name(
+                          model=remotes.printed_name(
                               profile, skin if skin is not None else profile.skin))
     payload = built["image"]
     validation = validate_payload(payload, profile)

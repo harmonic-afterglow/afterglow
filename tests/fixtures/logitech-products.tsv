@@ -1,0 +1,100 @@
+# MyHarmony's product catalogue (ProductsManager/GetAllProducts), 2026-11-16: every
+# product Logitech lists by skin - region 1 North America, 2 Europe, 3 everywhere -
+# by its display name and its own name (skin 54 is "Harmony One+" and "Harmony One").
+# skin	region	display name	name
+2	1	Harmony 745	Harmony 745
+3	1	Harmony 768	Harmony 768
+7	1	Harmony 748	Harmony 748
+9	1	Harmony 659	Harmony 659
+10	1	Harmony 688	Harmony 688
+11	1	Harmony 655	Harmony 655
+12	1	Harmony 676	Harmony 676
+13	1	Harmony 628	Harmony 628
+14	1	Harmony 680	Harmony 680
+15	1	Harmony 880	Harmony 880
+16	1	Harmony 675	Harmony 675
+17	1	Harmony 885	Harmony 885
+18	1	Harmony 520	Harmony 520
+19	1	Harmony 890	Harmony 890
+20	1	RF Wireless Extender	RF Wireless Extender
+21	1	Harmony 892	Harmony 892
+22	1	Harmony 525	Harmony 525
+23	1	Harmony 895	Harmony 895
+24	2	RF Wireless Extender/EU	RF Wireless Extender/EU
+25	1	Harmony 897	Harmony 897
+26	1	Monster AVL 300	Monster AVL 300
+27	1	Monster AVL 300S	Monster AVL 300S
+28	1	Monster AVL 300W	Monster AVL 300W
+29	1	Monster AVL 305	Monster AVL 305
+30	1	Monster AVL 305S	Monster AVL 305S
+31	1	Monster AVL 305W	Monster AVL 305W
+32	1	Monster AVL 200	Monster AVL 200
+33	1	Monster AVL 205	Monster AVL 205
+34	1	Harman Kardon TC 30 (bundled)	Harman Kardon TC 30 (bundled)
+35	2	Harman Kardon TC 30/EU (bundled)	Harman Kardon TC 30/EU (bundled)
+36	1	Harmony for Xbox 360	Harmony for Xbox 360
+37	1	Monster AVL 100	Monster AVL 100
+38	2	Monster AVL 100 EU	Monster AVL 100 EU
+39	1	Harmony 880 Pro	Harmony 880 Pro
+40	1	Harmony 890 Pro	Harmony 890 Pro
+41	1	Harmony 550	Harmony 550
+42	1	Harman Kardon TC 30 (retail)	Harman Kardon TC 30 (retail)
+43	2	Harman Kardon TC 30/EU (retail)	Harman Kardon TC 30/EU (retail)
+44	1	Harmony 720	Harmony 720
+45	1	Harmony 785	Harmony 785
+46	1	Harmony 522	Harmony 522
+47	1	Harmony 882	Harmony 882
+48	1	Harmony 555	Harmony 555
+49	1	Harmony 1000	Harmony 1000
+50	1	Harmony 670	Harmony 670
+51	1	Telus Advanced Remote	Telus Advanced Remote
+52	1	Harmony 1000i	Harmony 1000i
+53	2	Harmony 1000EU	Harmony 1000EU
+54	3	Harmony One+	Harmony One
+55	1	Harmony 2000 Pro	Harmony 2000 Pro
+58	1	Harmony 620	Harmony 620
+59	2	Harmony One EMEA	Harmony One EMEA
+60	2	Harmony 900 EMEA	Harmony 900 EMEA
+61	1	Harmony 900	Harmony 900
+62	1	Harmony 1100	Harmony 1100
+63	2	Harmony 1100eu	Harmony 1100eu
+64	1	Harmony 1100i	Harmony 1100i
+65	1	Harmony 610	Harmony 610
+66	1	Harmony 700	Harmony 700
+67	1	Harmony 515	Harmony 515
+68	1	Harmony 510	Harmony 510
+69	2	Harmony 700	Harmony 700 EMEA
+71	1	Harmony 600	Harmony 600
+72	1	Harmony 650	Harmony 650
+73	2	Harmony 600	Harmony 600 EMEA
+74	2	Harmony 650	Harmony 650 EMEA
+75	1	Harmony 665	Harmony 665
+78	1	Harmony 300	Harmony 300
+79	2	Harmony 300	Harmony 300 EMEA
+80	1	Harmony 200	Harmony 200
+81	2	Harmony 200	Harmony 200 EMEA
+82	1	Harmony Link	Olive
+83	2	Harmony Link	Olive EMEA
+84	3	Logitech Revue	Logitech Revue
+84	3	OEM GoogleTV with HarmonyLink	OEM GoogleTV with HarmonyLink
+86	1	Harmony 800	Harmony 800
+87	2	Harmony 800	Harmony 800 EMEA
+97	3	Harmony Ultimate Hub	Harmony Ultimate Hub
+98	3	Harmony Smart Control	Harmony Smart Control
+99	3	Harmony Touch	Harmony Touch
+100	3	Harmony Ultimate	Harmony Touch Plus
+101	3	Harmony Smart Keyboard	HarmonySmartKeyboard
+102	3	Harmony Ultimate One	Harmony Ultimate One
+104	3	Harmony 350	Harmony 350
+105	3	Harmony Ultimate Home	HarmonyUltimateHome
+106	3	Harmony Hub / Home Hub	HarmonyHomeHub
+107	3	Harmony Companion / Home Control	HarmonyHomeControl
+108	3	Harmony Ultimate Home	HarmonyUltimateHomeWhite
+109	3	Harmony Companion / Home Control	HarmonyHomeControlWhite
+110	3	Harmony Home Hub Extender	Harmony Home Hub Extender
+111	3	Harmony Elite	HarmonyElitePlus
+112	3	Harmony 950	HarmonyElite
+113	3	Harmony Express	PavarottiHub
+114	3	Harmony Express Remote	PavarottiRemote
+115	3	Harmony Pro 2400 Hub	Crackerjack
+116	3	Harmony Pro 2400	Orville

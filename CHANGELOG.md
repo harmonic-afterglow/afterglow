@@ -31,6 +31,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **The review of a move names keys and settings as the remote shows them** - "Page
   up" and "Clock", not "UpArrow" and "time_format" - and no longer reports the model
   changing ("skin 22 is not a ...'s"), which is what moving means.
+- **Every remote is listed by its own name, as Logitech lists them.** Remotes built the
+  same way were listed once: the European 1100 and the One+ appeared only as the 1100 and
+  the One, and the six Monster AVL 300 and 305 models as one. Now each is there, by
+  MyHarmony's catalogue: the 1100i, 610, 620, 2000 Pro, Harmony for Xbox 360 and the
+  later hubs and remotes are listed too, and Europe's 600, 650, 700, 200 and 300 are
+  "(EMEA)", not "600i" and the like. A European 600, 650 or 700's welcome tour names it
+  as the remote does, "Harmony 650".
 - **The Flash log starts empty for another project.** After opening, importing or
   moving one, it still showed the last project's build.
 - **The 600, 650, 665 and 700's Commands page says how the device's own page is

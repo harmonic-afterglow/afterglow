@@ -2174,4 +2174,4 @@ def _model_named_by(manifest: dict) -> str:
         profile = remotes.get(manifest.get("remote") or "")
     except (KeyError, LookupError, ValueError):
         return "Harmony"
-    return remotes.model_name(profile, profile.skin)
+    return remotes.printed_name(profile, profile.skin)

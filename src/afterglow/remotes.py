@@ -916,6 +916,17 @@ def model_name(profile: RemoteProfile, skin=None) -> str:
     return profile.model
 
 
+def printed_name(profile: RemoteProfile, skin=None) -> str:
+    """What the remote itself calls its model, for text it shows - a welcome tour's "your
+    Harmony 650" - which is not always the name it is listed by: a European skin is listed
+    "Harmony 650 (EMEA)" and says "Harmony 650" (models.json `on_remote`)."""
+    if skin is not None and int(skin) in profile.skins:
+        printed = (models().get(str(int(skin))) or {}).get("on_remote")
+        if printed:
+            return printed
+    return model_name(profile, skin)
+
+
 # identifying a remote from a configuration
 _FIELDS = {"arch": rb"<PROTOCOL>(\d+)</PROTOCOL>", "skin": rb"<SKIN>(\d+)</SKIN>",
            "software_type": rb"<SOFTWARETYPE>(\d+)</SOFTWARETYPE>"}
