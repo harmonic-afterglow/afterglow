@@ -29,7 +29,7 @@ UNREADABLE_CONFIG_NOTE = (
     "1000's firmware never hands its configuration over, and Logitech's own software "
     "never read one either. It can be written; it cannot be backed up.")
 SAFE_MODE_NOTE = ("The remote is in Safe Mode. It can still be read, and writing a "
-                  "configuration to it - Flash, or Settings › Flash a Configuration File "
+                  "configuration to it - Flash, or Settings > Flash a Configuration File "
                   "with a backup - is how it is brought back.")
 
 

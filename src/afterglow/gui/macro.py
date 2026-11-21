@@ -63,8 +63,15 @@ class CommandPicker(QDialog):
     def _dev_changed(self):
         device = next((d for d in self.devices
                        if d["id"] == self.dev_combo.currentData()), None)
-        self.cmd_combo.set_items([(c[0], c[0]) for c in (device or {}).get("commands", [])])
-        self.cmd_combo.setCurrentIndex(-1)
+        # the command chosen, kept where the other device has one of that name: a step
+        # moved from the receiver's Mute to the TV's had to have Mute found again
+        before = self.cmd_combo.currentData()
+        names = [c[0] for c in (device or {}).get("commands", [])]
+        self.cmd_combo.set_items([(name, name) for name in names])
+        same = next((name for name in names if before and name == before), None) or \
+            next((name for name in names
+                  if before and name.casefold() == str(before).casefold()), None)
+        self.cmd_combo.setCurrentIndex(self.cmd_combo.findData(same) if same else -1)
         self.cmd_combo.lineEdit().setPlaceholderText("choose a command (type to filter)")
         self._ready()
 

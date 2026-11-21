@@ -55,7 +55,7 @@ def choose_default_remote(parent, settings=None) -> str | None:
     dialog = ChooseRemoteDialog(
         remote_profiles(), "Your remote",
         "Which Harmony do you have? Afterglow starts with a project for it, and new "
-        "projects are for it unless you choose otherwise. Settings → Default Remote "
+        "projects are for it unless you choose otherwise. Settings > Default Remote "
         "changes it later.", parent, selected=default_remote_id(store),
         selected_skin=default_remote_skin(store))
     chosen = dialog.chosen() if dialog.exec() else None

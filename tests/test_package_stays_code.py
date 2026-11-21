@@ -23,7 +23,7 @@ GUI = [p for p in PACKAGE.rglob("*.py")
 # install carries it. Everything else non-Python under the package is a stray.
 # `linux` holds the USB-RNDIS helper and its udev rule. They belong inside the package
 # so an installed copy carries them; at the top of a checkout they ship with nothing.
-SHIPPED = ("library", "icons", "scaffolds", "backends", "linux", "branding")
+SHIPPED = ("library", "icons", "scaffolds", "backends", "linux", "branding", "symbols")
 
 
 def test_the_package_contains_only_code_and_the_data_it_ships():

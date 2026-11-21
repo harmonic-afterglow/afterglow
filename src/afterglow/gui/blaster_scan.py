@@ -132,7 +132,7 @@ class BlasterScanDialog(QDialog):
                 self, "The remote did not answer",
                 "The remote's event channel is not reachable.\n\nCheck that the "
                 "remote is plugged in and awake, or pair on the remote itself: "
-                "Options → RF Receiver Settings → Advanced → Add.")
+                "Options > RF Receiver Settings > Advanced > Add.")
             return
         try:
             self._before = {r.get("mac") for r in _receivers(self._link)}

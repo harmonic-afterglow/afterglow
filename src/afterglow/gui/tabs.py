@@ -9,7 +9,7 @@ from ..qt.QtWidgets import (
     QProgressBar
 )
 from ..qt.QtCore import Qt, pyqtSignal
-from ..qt.QtGui import QFont
+from ..qt.QtGui import QFont, QPalette
 
 from .build_service import BuildWorker as ConfigBuildWorker
 from .project import (mark_device_new, new_device_ids)
@@ -21,6 +21,8 @@ from .device_wizard import DeviceEditor, DeviceWizard
 from .rf_routing import rf_label, rf_set
 from .drag_rows import RowDragger, grip_pixmap, moved_list
 from .widgets import bold, sep
+from .symbols import icon as symbol
+from ..project_devices import ROLE_NAMES
 
 
 def project_remote(project):
@@ -79,6 +81,9 @@ class DeviceCard(QWidget):
         actions.append(("Delete", on_delete, None))
         self.menu = _row_buttons(self, layout, on_edit, actions)
 
+_ROW_ICONS = {"Delete": "delete", "Find model...": "search", "Duplicate": "content_copy"}
+
+
 def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
     """A row's Edit, and a menu of the rest - Delete and what else the row can do -
     behind a button and on a right-click: one button a row, not four."""
@@ -88,12 +93,14 @@ def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
     menu = QMenu(card)
     for text, call, tip in actions:
         action = menu.addAction(text)
+        if text in _ROW_ICONS:
+            action.setIcon(symbol(_ROW_ICONS[text]))
         if tip:
             action.setToolTip(tip)
         action.triggered.connect(call)
     menu.setToolTipsVisible(True)
     more = QToolButton()
-    more.setText("...")
+    more.setIcon(symbol("menu"))
     more.setToolTip("More: " + ", ".join(text.rstrip(".") for text, _c, _t in actions))
     more.setMenu(menu)
     more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -110,7 +117,7 @@ def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
 def _grip() -> QLabel:
     """Where a card is picked up to move it."""
     grip = QLabel()
-    grip.setPixmap(grip_pixmap(18))
+    grip.setPixmap(symbol("drag_indicator", QPalette.ColorRole.Mid).pixmap(18, 18))
     grip.setFixedWidth(20)
     grip.setCursor(Qt.CursorShape.OpenHandCursor)
     grip.setToolTip("Drag to move it: the remote lists them in this order.")
@@ -166,7 +173,7 @@ class DevicesTab(QWidget):
         top = QHBoxLayout()
         top.addWidget(bold("Devices", 11))
         top.addStretch()
-        add_btn = QPushButton("+ Add Device")
+        add_btn = QPushButton(symbol("add"), "Add Device")
         add_btn.clicked.connect(self.add_device)
         top.addWidget(add_btn)
         layout.addLayout(top)
@@ -185,7 +192,7 @@ class DevicesTab(QWidget):
                        project   = self.project,
                        on_find   = lambda _, idx=i: self.find_model(idx))
             for i, spec in enumerate(self.project["devices"])],
-            "No devices yet. Click '+ Add Device' to get started.")
+            "No devices yet. Click Add Device to get started.")
 
     def _moved(self, from_row, to_row):
         """In the order the remote lists them."""
@@ -322,8 +329,10 @@ class ActivityCard(QWidget):
         shown = type_names.get(atype, atype) if typed else ""
         # A role the activity does not fill is left out, not shown as "?".
         sub = QLabel("  ·  ".join(part for part in (
-            shown, disp_lbl and f"Display: {disp_lbl}", vol_lbl and f"Volume: {vol_lbl}",
-            ctrl_lbl and f"Control: {ctrl_lbl}")
+            # named as the activity's Devices page asks for them
+            shown, disp_lbl and f"{ROLE_NAMES['display']}: {disp_lbl}",
+            vol_lbl and f"{ROLE_NAMES['volume']}: {vol_lbl}",
+            ctrl_lbl and f"{ROLE_NAMES['control']}: {ctrl_lbl}")
             if part))
         sub.setStyleSheet("color: gray;")
         info.addWidget(sub)
@@ -341,7 +350,7 @@ class ActivitiesTab(QWidget):
         top = QHBoxLayout()
         top.addWidget(bold("Activities", 11))
         top.addStretch()
-        add_btn = QPushButton("+ Add Activity")
+        add_btn = QPushButton(symbol("add"), "Add Activity")
         add_btn.clicked.connect(self.add_activity)
         top.addWidget(add_btn)
         layout.addLayout(top)
@@ -383,7 +392,7 @@ class ActivitiesTab(QWidget):
                          on_delete = lambda _, idx=i: self.delete_activity(idx),
                          type_names=names, remote=remote)
             for i, spec in enumerate(self.project["activities"])],
-            "No activities yet. Click '+ Add Activity' to create one.")
+            "No activities yet. Click Add Activity to create one.")
 
     def add_activity(self):
         devs = self.project["devices"]
@@ -778,7 +787,7 @@ class UpdateTab(QWidget):
             "Flash to Remote builds this project and writes it to the remote. Read from "
             "Remote saves what is on the remote now - do that once before you change "
             "anything, and keep the file. To keep a built .ezhex without writing it, use "
-            "File › Export .ezhex."
+            "File > Export .ezhex."
         )
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -1161,7 +1170,7 @@ class UpdateTab(QWidget):
             "for it have been tried on only a few remotes, so something may not work.\n\n"
             "Before writing, Afterglow saves what is on the remote now to\n"
             f"{backup}\n\n"
-            "If the remote does not work afterwards, put that file back with Settings › "
+            "If the remote does not work afterwards, put that file back with Settings > "
             "Flash a Configuration File, and please tell us what happened.")
         write = box.addButton("Back up and write", QMessageBox.ButtonRole.AcceptRole)
         box.addButton(QMessageBox.StandardButton.Cancel)

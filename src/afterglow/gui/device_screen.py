@@ -21,6 +21,7 @@ from ..qt.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
                              QTableWidgetItem, QVBoxLayout, QWizardPage)
 
 from .. import backends, project_devices
+from .symbols import icon as symbol
 from .drag_rows import RowDragger, move_table_row
 from .screen_preview import ScreenPreview
 
@@ -57,7 +58,7 @@ class DeviceScreenPage(QWizardPage):
 
         buttons = QVBoxLayout()
         buttons.addStretch()
-        self.add_btn = QPushButton("Add →")
+        self.add_btn = QPushButton(symbol("arrow_forward"), "Add")
         self.gap_btn = QPushButton("Add gap")
         self.gap_btn.setToolTip("An empty place between buttons, where the remote shows "
                                 "nothing.")

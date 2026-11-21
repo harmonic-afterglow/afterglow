@@ -49,6 +49,7 @@ afterglow = [
     "library/**/*",
     "icons/**/*",
     "branding/*",
+    "symbols/*",
     "scaffolds/**/*",
     "scaffolds/**/.*",
     # The Linux USB-RNDIS helper and its udev rule. They used to sit at the top of the

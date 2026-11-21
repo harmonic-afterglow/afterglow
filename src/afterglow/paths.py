@@ -296,6 +296,11 @@ def icons(*parts) -> Path:
     return root().joinpath("icons", *parts)
 
 
+def symbols(*parts) -> Path:
+    """The line icons on Afterglow's own buttons: Google's Material Symbols."""
+    return root().joinpath("symbols", *parts)
+
+
 def branding(*parts) -> Path:
     """Application artwork: the window icon and the mark."""
     return root().joinpath("branding", *parts)

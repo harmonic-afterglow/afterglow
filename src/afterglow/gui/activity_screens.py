@@ -77,7 +77,10 @@ class _Grip(QLabel):
     place on this screen's side bars and the two change places."""
 
     def __init__(self, button: "_SlotButton"):
-        super().__init__("⠿")
+        super().__init__()
+        from ..qt.QtGui import QPalette
+        from .symbols import icon as symbol
+        self.setPixmap(symbol("drag_indicator", QPalette.ColorRole.Mid).pixmap(16, 16))
         self.button = button
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setCursor(Qt.CursorShape.OpenHandCursor)

@@ -376,6 +376,12 @@ def _names(entry, ours: str) -> bool:
     return False
 
 
+# An activity's roles as its Devices page asks for them, and as its row names them.
+ROLE_QUESTIONS = {"display": "you watch on", "volume": "volume goes to",
+                  "control": "play, channels and menus go to"}
+ROLE_NAMES = {"display": "Watch on", "volume": "Volume", "control": "Play and menus"}
+
+
 def remove_device(project: dict, device_id) -> list[str]:
     """Take a device out of a project with everything that points at it, and say what
     went: one line per activity that used it.
@@ -395,7 +401,9 @@ def remove_device(project: dict, device_id) -> list[str]:
         for role in ("display", "control", "volume"):
             if str(activity.get(role)) == ours:
                 activity[role] = None
-                what.append(f"its {role} device (choose another)")
+                # in the words its Devices page asks it in, where another is chosen
+                what.append(f"the device {ROLE_QUESTIONS[role]} (choose another on its Devices "
+                            f"page)")
                 if role == "control" and isinstance(activity.get("channel_confirm"), str):
                     del activity["channel_confirm"]
         roles = activity.get("roles") or {}

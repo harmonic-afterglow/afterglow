@@ -12,16 +12,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   where a device has no model, are in the row's "..." menu, which a right-click on the
   row also opens. On a remote that draws no device or activity icons (the 650, 700 and
   the 5xx), the rows no longer leave an empty space where one would be.
+- **Icons instead of "+" and arrows.** Add Device, Add Activity, the row menu, Delete,
+  Find model, the screen preview's page arrows and the drag handles draw Google's
+  Material Symbols (Apache 2.0, see `src/afterglow/symbols/NOTICE.md`) in the window's
+  text colour. Menu paths in messages read "Settings > Remote connection".
+- **An activity's row names its devices as its Devices page asks for them:** "Watch on",
+  "Volume" and "Play and menus", not "Display" and "Control".
 
 ### Fixed
 
+- **Harmony One: every favourite comes back when a configuration is read.** A favourite
+  that dials with a separator ("8", Space, "3") or runs a macro was taken for one of the
+  activity's own screen buttons, so a One with 23 favourites came back with 16, on three
+  pages instead of four, and seven extra buttons. Favourites have a screen of their own,
+  and everything on it is now a favourite.
+- **Removing a device says where to choose another.** The warning said "its control
+  device (choose another)" and offered no choice; it now names the role as the
+  activity's Devices page asks it, where another is chosen.
 - **Harmony 900 and 1100: the first build of a new project no longer stops to ask for
   your first and last name.** They are optional; the configuration says "Harmony User"
   when they are left empty, as it already did.
 - **A step's command is no longer chosen for you.** Adding a command to a key or a
   sequence picked the device's first one - on a TV the "-" of a channel like 7-1 -
-  and OK accepted it. Now OK waits until you choose. A step can also be changed by
-  double-clicking it, in its place, rather than removed and added again at the end.
+  and OK accepted it. Now OK waits until you choose, and changing a step's device
+  keeps its command where that device has one of the same name. A step can also be
+  changed by double-clicking it, in its place, rather than removed and added again at
+  the end.
 - **A new project is saved under its remote's name**, such as "Harmony 650.json",
   instead of "project.json", which the window showed as "Projects".
 - **After Save As, the window names the file it saved.** The title and the status bar

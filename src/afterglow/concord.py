@@ -477,7 +477,7 @@ LINK_SUPPORT = {
     # looking like an unfixed one.
     "linux": ("tested",
               "The remote waits for a DHCP lease before it will answer, which Afterglow "
-              "arranges - see Settings → Remote connection."),
+              "arranges - see Settings > Remote connection."),
     "darwin": ("untested",
                "Reaching the remote from macOS needs Afterglow's own libconcord, which "
                "the macOS download includes; Logitech's driver crashes on macOS 13 and "
@@ -503,7 +503,7 @@ WINDOWS_USB_LINK = ("Afterglow reaches the remote with direct access, over USB t
 
 
 LINUX_USB_LINK = ("Afterglow reaches the remote with direct access, over USB, with no "
-                  "network setup. Settings → Remote connection turns it on, which asks "
+                  "network setup. Settings > Remote connection turns it on, which asks "
                   "for your password once.")
 
 

@@ -57,6 +57,7 @@ datas = [
     (str(PACKAGE / "scaffolds"), "afterglow/scaffolds"),
     (str(PACKAGE / "icons"), "afterglow/icons"),
     (str(PACKAGE / "branding"), "afterglow/branding"),
+    (str(PACKAGE / "symbols"), "afterglow/symbols"),
     # The Linux USB-RNDIS helper, its udev rule and the rule installer. `paths` copies
     # the set out to the user's own folder on demand, because a script that needs `sudo`
     # cannot usefully live in a mode-700 extraction directory that vanishes on exit.

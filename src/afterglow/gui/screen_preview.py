@@ -13,6 +13,7 @@ from ..qt.QtWidgets import (QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushBu
                              QSizePolicy, QToolButton, QVBoxLayout)
 
 from .icons import pixmap as glyph_pixmap
+from .symbols import icon as symbol
 
 ICON = 32
 
@@ -50,12 +51,12 @@ class ScreenPreview(QGroupBox):
 
         turn = QHBoxLayout()
         self.back = QToolButton()
-        self.back.setArrowType(Qt.ArrowType.LeftArrow)
+        self.back.setIcon(symbol("chevron_left"))
         self.back.clicked.connect(lambda: self._turn(-1))
         self.count = QLabel()
         self.count.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.next = QToolButton()
-        self.next.setArrowType(Qt.ArrowType.RightArrow)
+        self.next.setIcon(symbol("chevron_right"))
         self.next.clicked.connect(lambda: self._turn(1))
         turn.addWidget(self.back)
         turn.addWidget(self.count, 1)

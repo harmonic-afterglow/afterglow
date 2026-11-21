@@ -272,3 +272,27 @@ def test_a_row_with_no_icon_leaves_no_room_for_one(qapp_or_skip, monkeypatch):
                       project=project)
     assert not [label for label in card.findChildren(QLabel) if label.width() == 42
                 or label.minimumWidth() == 42]
+
+
+def test_another_device_keeps_the_command_it_also_has(qapp_or_skip):
+    """A step moved from the receiver's Mute to the TV's had to have Mute found again
+    among sixty commands."""
+    from afterglow.gui.macro import CommandPicker
+    devices = [{"id": "amp", "label": "Amp", "commands": [["Mute", "Mute"]]},
+               {"id": "tv", "label": "TV", "commands": [["Input", "Input"], ["Mute", "Mute"]]},
+               {"id": "dvd", "label": "DVD", "commands": [["Play", "Play"]]}]
+    picker = CommandPicker(devices, preset=("amp", "Mute", "Press"))
+    picker.dev_combo.select_data("tv")
+    assert picker.cmd_combo.currentData() == "Mute" and picker.ok.isEnabled()
+    picker.dev_combo.select_data("dvd")
+    assert picker.cmd_combo.currentData() is None and not picker.ok.isEnabled()
+
+
+def test_removing_a_device_says_where_to_choose_another():
+    """It said "its control device (choose another)", and offered no choice."""
+    from afterglow import project_devices
+    project = {"devices": [{"id": "tv"}, {"id": "dvd"}], "activities": [
+        {"label": "Watch", "display": "tv", "control": "dvd"}]}
+    [line] = project_devices.remove_device(project, "dvd")
+    assert "play, channels and menus go to" in line
+    assert "Devices page" in line

@@ -15,6 +15,7 @@ from .activity_buttons import FavouritesPage, ScreenButtonsPage
 from .ui_helpers import (FilterCombo)
 
 from .. import project_devices, vocabulary
+from .symbols import icon as symbol
 from .icons import icon as type_icon
 from .activity_power import ActivityPowerPage, apply_plan
 from .properties_editor import PropertiesEditor, PropertiesPage
@@ -401,7 +402,8 @@ class ActivityRolesPage(QWizardPage):
             if r_dev:
                 dev_combo.select_data(r_dev)
 
-            del_btn = QPushButton("x")
+            del_btn = QPushButton(symbol("delete"), "")
+            del_btn.setToolTip("Take this device out of the activity")
             del_btn.setFixedWidth(30)
             
             row.addWidget(name_edit)
@@ -422,11 +424,11 @@ class ActivityRolesPage(QWizardPage):
             add_extra_role_row(r_name, r_dev)
             
         self._add_extra_role_row = add_extra_role_row
-        self.add_role_btn = QPushButton("+ Add another device")
+        self.add_role_btn = QPushButton(symbol("add"), "Add another device")
         self.add_role_btn.clicked.connect(lambda: add_extra_role_row())
         # PASSTHROUGH is the only extra role any real configuration uses, so it gets a
         # button rather than making the user remember how to spell it.
-        self.add_passthrough_btn = QPushButton("+ Passthrough device")
+        self.add_passthrough_btn = QPushButton(symbol("add"), "Passthrough device")
         self.add_passthrough_btn.setToolTip(
             "For something the signal passes through - an amplifier or a switch that "
             "must be on and listed with the activity, but is not its screen, volume "

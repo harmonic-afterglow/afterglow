@@ -69,7 +69,7 @@ def _switch(parent, action: str) -> tuple[bool, str]:
     thread.join(timeout=60)
     ok, message = outcome.get("result") or (
         False, "Windows did not say whether the change was made. Unplug the remote, "
-               "plug it back in, and look at Settings › Remote connection again.")
+               "plug it back in, and look at Settings > Remote connection again.")
     if message == windows_driver.CANCELLED:
         QMessageBox.information(parent, "Remote connection",
                                 "Nothing was changed: Windows did not get permission.")

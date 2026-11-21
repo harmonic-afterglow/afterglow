@@ -141,7 +141,7 @@ def test_a_card_is_dragged_by_its_grip(qapp_or_skip):
 
 def test_a_card_says_only_what_is_known(qapp_or_skip):
     """A device imported from a configuration has no make or model: its line started
-    with a lone dot. An activity without a screen said "Display: ?"."""
+    with a lone dot. An activity without a screen said "Display: ?" (now "Watch on")."""
     from afterglow.gui.tabs import ActivityCard, DeviceCard
     from afterglow.qt.QtWidgets import QLabel
     device = DeviceCard({"id": "1", "label": "TV", "type": "Television", "commands": []},
@@ -155,5 +155,5 @@ def test_a_card_says_only_what_is_known(qapp_or_skip):
     assert "front IR" in nine.findChildren(QLabel)[-1].text()
     activity = ActivityCard({"id": "1001", "label": "Radio", "control": "1"},
                             {"1": {"label": "Tuner"}}, lambda *_: None, lambda *_: None)
-    assert "Display" not in activity.findChildren(QLabel)[-1].text()
-    assert "Control: Tuner" in activity.findChildren(QLabel)[-1].text()
+    assert "Watch on" not in activity.findChildren(QLabel)[-1].text()
+    assert "Play and menus: Tuner" in activity.findChildren(QLabel)[-1].text()
