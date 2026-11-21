@@ -162,3 +162,22 @@ def test_a_layout_on_a_device_outside_the_activity_builds(tmp_path):
     with contextlib.redirect_stdout(io.StringIO()):
         built = ConfigBuildService(root, lambda _m: None).build(project)
     assert Path(built).stat().st_size > 0
+
+
+def test_the_row_says_which_keys_its_counts_are():
+    """"3 keys - 6 buttons" was not explained anywhere."""
+    from afterglow.gui.activity_layouts_dialog import details
+    said = details(WATCH, DEVICES, "sound")
+    assert said.startswith("After Sound is pressed, it takes over: Volume Down")
+    assert "Volume Mute" in said and "Volume Up" in said
+    assert details(MUSIC, DEVICES, "picture") == "Picture does nothing in this activity."
+
+
+def test_the_device_page_says_what_each_layout_takes_by_default(qapp_or_skip):
+    """Picture taking the arrows, OK, Exit, Info and Guide surprised a tester; so did
+    Sound taking the menu keys once Picture was given to the same device."""
+    from afterglow.gui.activity_layouts_dialog import LayoutDialog
+    sound = LayoutDialog(WATCH, DEVICES, "sound", remote=remotes.get("harmony-555"))
+    assert "menu keys" in sound.device_page.subTitle()
+    picture = LayoutDialog(WATCH, DEVICES, "picture", remote=remotes.get("harmony-555"))
+    assert "the arrows, OK, Exit, Info and Guide" in picture.device_page.subTitle()

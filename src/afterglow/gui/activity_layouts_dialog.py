@@ -14,6 +14,7 @@ so a layout nobody changed follows the activity's Volume and Display.
 from __future__ import annotations
 
 import copy
+import re
 
 from ..qt.QtCore import QObject, pyqtSignal
 from ..qt.QtGui import QStandardItemModel
@@ -130,6 +131,38 @@ def summary(activity: dict, devices: list, kind: str) -> tuple[str, bool]:
     return " - ".join(parts), True
 
 
+def _key_name(key: str) -> str:
+    """VolumeUp -> Volume Up, as a person says the key."""
+    return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", key)
+
+
+def details(activity: dict, devices: list, kind: str) -> str:
+    """The row's tooltip: the keys the layout takes over and the buttons it shows, which
+    its counts stand for."""
+    layout = activity_layouts.resolve(activity, devices, kinds=(kind,)).get(kind)
+    title = activity_layouts.TITLES[kind]
+    if layout is None:
+        return f"{title} does nothing in this activity."
+    keys = sorted(layout["hard_macros"], key=lambda k: (k not in activity_layouts.VOLUME_KEYS,
+                                                        k))
+    out = [f"After {title} is pressed, it takes over: "
+           + (", ".join(_key_name(k) for k in keys) if keys else "no keys")]
+    buttons = [b for b in layout["soft_buttons"] if b is not None]
+    if buttons:
+        names = [(b.get("label") if isinstance(b, dict) else b[0]) or "?" for b in buttons]
+        out.append("and shows on the screen: " + ", ".join(names))
+    return "\n".join(out)
+
+
+# What each layout takes over by default, as Logitech's software chose.
+DEFAULT_KEYS = {
+    "sound": "Volume up, Volume down and Mute - and the menu keys (the arrows, OK, Menu "
+             "and Exit) too when the same device also shows the picture, as a TV playing "
+             "its own sound does",
+    "picture": "the arrows, OK, Exit, Info and Guide",
+}
+
+
 class _DevicePage(QWizardPage):
     """Which device the layout is for, or none; Default for Logitech's choice."""
 
@@ -140,7 +173,9 @@ class _DevicePage(QWizardPage):
             f"Pressing {title} in {activity_label} turns some keys and the screen over "
             f"to one device until {title} is pressed again. By default it is the "
             + ("activity's volume device." if title == "Sound" else
-               "activity's display; an activity with none has no Picture layout."))
+               "activity's display; an activity with none has no Picture layout.")
+            + f" It takes over {DEFAULT_KEYS[title.lower()]}, where the device has "
+              f"commands for them; every other key does what it does in the activity.")
         form = QFormLayout(self)
         row = QHBoxLayout()
         self.device = QComboBox()
