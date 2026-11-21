@@ -344,6 +344,32 @@ def _imported(image: bytes, tmp_path) -> dict:
     return backend.import_project(str(source), remotes.get("harmony-555"), {}).project
 
 
+def test_a_device_page_arranged_is_built_and_reads_back_as_it_is(tmp_path):
+    names = ["PowerToggle", "VolumeUp", "InputHdmi1", "SleepTimer", "PictureMode"]
+    tv = _device("Television", 0x20, names, {"VolumeUp": ["VolumeUp"]})
+    # its own order and texts, a corner left empty, a command twice
+    tv["screen_buttons"] = [["SleepTimer", "Sleep"], None, ["PowerToggle", "Power"],
+                            ["InputHdmi1", "HDMI 1"], ["PictureMode", "Picture"],
+                            ["SleepTimer", "Again"]]
+    player = _device("Receiver", 0x40, ["PowerOn", "PowerOff"])
+    image = _built(_project([tv, player]))
+    read = importing.Image(image)
+    at = next(i for i, s in enumerate(read.screens) if s["slots"] and [
+        t["text"] for t in read.page_text(s["slots"][0]["program_offset"])][:1] == ["Television"])
+    assert [[t["text"] for t in read.page_text(slot["program_offset"])][1:-1]
+            for slot in read.screens[at]["slots"]] == [["Sleep", "Power", "HDMI 1"],
+                                                      ["Picture", "Again"]]
+    back = _imported(image, tmp_path)
+    # a 5xx keeps only what a button draws, so a command comes back by that name
+    assert back["devices"][0]["screen_buttons"] == [
+        ["Sleep", "Sleep"], None, ["Power", "Power"], ["HDMI 1", "HDMI 1"],
+        ["Picture", "Picture"], ["Sleep", "Again"]]
+    # a page its labels in order can say is left to them, as before
+    assert "screen_buttons" not in back["devices"][1]
+    assert [row[1] for row in back["devices"][1]["commands"] if row[1]] == [
+        "PowerOn", "PowerOff"]
+
+
 def test_a_device_builds_its_commands_keys_and_pages_and_reads_back(tmp_path):
     from afterglow.backends.harmony_555 import render
 

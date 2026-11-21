@@ -20,7 +20,7 @@ from pathlib import Path
 
 from . import activities as activities_module, artwork, catalogue, \
     devices as devices_module, drawing, gspm, infrared, keys, pixels, records, typeface
-from ... import activity_layouts
+from ... import activity_layouts, project_devices
 from .link import Pieces
 from .structures import (
     context_record, engine_record, name_chain, object_body, stamp, stamp_weekday,
@@ -533,15 +533,14 @@ class Image:
                     bound.setdefault(self.keypad.by_name(name), command["object"])
             header = [(code, bound[code], OBJECT) if code in bound else (code, 0, 0)
                       for code in command_keys]
-            shown = sorted((c for c in device["commands"] if not c["hidden"]),
-                           key=lambda c: c["rank"])
+            shown = self._device_page(device)
             chunks = [shown[at:at + CORNERS] for at in range(0, len(shown), CORNERS)] or [[]]
             pages = []
             for number, chunk in enumerate(chunks):
-                page = self.page(device["label"], [c["label"] for c in chunk], number,
-                                 len(chunks))
-                page["keys"] = [(corner_keys[corner], c["object"], OBJECT)
-                                for corner, c in enumerate(chunk)]
+                page = self.page(device["label"], [button and button[0] for button in chunk],
+                                 number, len(chunks))
+                page["keys"] = [(corner_keys[corner], button[1]["object"], OBJECT)
+                                for corner, button in enumerate(chunk) if button]
                 pages.append(page)
             self.screens.append({"flag": 0, "keys": header, "pages": pages})
             device["screen"] = len(self.screens) - 1
@@ -560,6 +559,20 @@ class Image:
             pages.append(page)
         self.screens[devices_screen]["pages"] = pages
         self.place_device_layouts()
+
+    def _device_page(self, device: dict) -> list:
+        """A device's own page, ``(text, command)`` a corner or None for one left empty:
+        the page arranged on its Screen page (`screen_buttons`) - in its order, under its
+        texts, a command twice where it is there twice, a gap kept - else, as it was
+        always built, every command with a label in the order the project lists them."""
+        spec = (self.project.get("devices") or [])[device["index"]]
+        if spec.get("screen_buttons") is None:
+            return [(c["label"], c) for c in sorted(
+                (c for c in device["commands"] if not c["hidden"]), key=lambda c: c["rank"])]
+        by_name = {c["name"]: c for c in device["commands"]}
+        return [entry and (entry[1] or entry[0], by_name[entry[0]])
+                for entry in project_devices.screen_buttons(spec)
+                if entry is None or entry[0] in by_name]
 
     def _devices_entry(self) -> tuple[int, int]:
         """The Devices screen and the variable that says a device was picked from it:

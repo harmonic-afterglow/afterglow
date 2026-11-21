@@ -344,6 +344,8 @@ def test_a_device_page_moved_to_the_650_loses_its_gaps_and_icons():
     ("harmony-one", (2, 3), (2, 3), True),       # pages.BUTTON_POSITIONS
     ("harmony-650", (2, 2), (2, 2), False),      # four corners, filled in turn
     ("harmony-700", (2, 2), (2, 2), False),
+    ("harmony-525", (2, 2), (2, 2), True),       # four corners, one left empty
+    ("harmony-555", (2, 2), (2, 2), True),
 ])
 def test_each_remote_says_how_its_pages_are_laid_out(remote, device, activity, gaps):
     from afterglow import backends, remotes

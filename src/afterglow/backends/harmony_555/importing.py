@@ -462,7 +462,7 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
     labels = labels or {}
     out = {}
     for device, ordinals in command_pages(image).items():
-        titles, names, bound = [], {}, {}
+        titles, names, bound, layout = [], {}, {}, []
         for ordinal in ordinals:
             screen = image.screens[ordinal]
             titled = [item["text"] for slot in screen["slots"]
@@ -475,8 +475,12 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
                 items = image.page_text(slot["program_offset"])
                 titles += [item["text"] for item in items if _is_title(item)]
                 # in the order the pages show them: page by page, corner by corner
-                for position, command in sorted((_touch_sends(image, slot) or {}).items()):
-                    lines = _button_label(items, position)
+                # a page whose buttons are not one command each is no part of the layout
+                sends = _touch_sends(image, slot) or {}
+                for position in range(4 if sends else 0):
+                    command = sends.get(position)
+                    lines = _button_label(items, position) if command is not None else None
+                    layout.append((command, image.join(lines)) if lines else None)
                     if lines:
                         names.setdefault(command, image.join(lines))
             for entry in screen["header_entries"] + [
@@ -487,8 +491,10 @@ def read_pages(image: Image, labels: dict[int, str] | None = None) -> dict[int, 
                 sends = [step for step in image.steps(entry["operand"]) if step[0] == SEND]
                 if len(sends) == 1 and sends[0][1] >> 8 == device:
                     bound.setdefault(name, sends[0][1])
+        while layout and layout[-1] is None:
+            layout.pop()
         out[device] = {"title": max(dict.fromkeys(titles), key=titles.count) if titles else None,
-                       "names": names, "keys": bound}
+                       "names": names, "keys": bound, "layout": layout}
     return out
 
 
@@ -1108,6 +1114,14 @@ def project_devices(image: Image, native: list[dict], notes: list[str] | None = 
              if command in page["names"] else "", "", "",
              sorted(slots[command]) or None]
             for command in order if command not in same])
+        # A page with a corner left empty, or a command on it twice, is more than its
+        # labels in order can say: it is kept as the device's own page (screen_buttons).
+        layout = page.get("layout") or []
+        shown = [entry[0] for entry in layout if entry]
+        if None in layout or len(shown) != len(set(shown)):
+            project["screen_buttons"] = [
+                [names[same.get(entry[0], entry[0])], entry[1]] if entry else None
+                for entry in layout if entry is None or entry[0] in ids]
         # kept on only where what Help sends is a power toggle: a television's copies
         # that only Help's Off asks after send PowerOff, which is no way to turn one on
         if state.get("always_on") and "Toggle" not in names[state["power"]["on"]]:

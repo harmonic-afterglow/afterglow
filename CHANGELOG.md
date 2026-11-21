@@ -35,7 +35,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     for (any device of the project, or none), the keys it takes over and its screen
     buttons. Left alone, they are what Logitech's software made.
   - Editor pages for devices and activities, with each model's keys drawn from
-    Logitech's user guides and photos of the remotes.
+    Logitech's user guides and photos of the remotes. A device's own page is arranged on
+    its Screen page: which commands, in what order, under what text, a corner left
+    empty. A page Logitech laid out with an empty corner or a command twice reads back
+    as it was laid out.
   - The 510 is the 515 under its own model number: a build for one keeps its number.
   - Themes: a 5xx's backdrops, the line under its titles and its typeface can be
     changed, as any PNG and a BDF font, in a theme picked under Remote Settings. The
@@ -53,8 +56,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     the remotes, but no build has run on a 520 yet. On the Xbox 360 a key test has run,
     and every key is where Afterglow puts it.
   - A device's own Sound and Picture screens show its sound or picture settings, most
-    often none, as Logitech's do. Not done yet: a gap Logitech left on a device's page is
-    closed up.
+    often none, as Logitech's do.
 - **Every IR protocol IRDB and Flipper-IRDB use.** A command in a protocol Afterglow
   had no definition for was left out of the device, and IRDB's most common protocol,
   plain "NEC", was one of them: only half of IRDB's commands could be added. Afterglow

@@ -108,6 +108,7 @@
       "search",
       "identity",
       "commands",
+      "screen",
       "inputs",
       "timing"
     ],
@@ -120,7 +121,7 @@
       "power"
     ],
     "screen_icons": false,
-    "screen_grid": {"activity": [2, 2]},
+    "screen_grid": {"device": [2, 2], "activity": [2, 2]},
     "timing": [
       "always_on",
       "power_delay",
