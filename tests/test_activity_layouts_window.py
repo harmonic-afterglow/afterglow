@@ -59,7 +59,7 @@ def test_the_row_says_device_default_and_keys():
 
 
 def _card_rows(card):
-    return {kind: button.text() for kind, button in card.layout_buttons.items()}
+    return {kind: button.accessibleName() for kind, button in card.layout_buttons.items()}
 
 
 def test_the_layouts_hang_under_their_activity(qapp_or_skip):

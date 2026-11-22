@@ -391,13 +391,17 @@ class ActivityCard(QWidget):
                 widget.setToolTip(details(spec, devices, kind))
             if not has:
                 name.setStyleSheet("color: gray;")
-            button = QPushButton("Edit" if has else "Add")
-            # smaller than the activity's own buttons: a part of it, not one beside it
-            button.setFixedSize(60, max(20, button.fontMetrics().height() + 6))
-            button.setStyleSheet("padding: 0px;")
+            # a pencil, or a plus where there is none yet, under the activity's own
+            # pencil and smaller: a part of it, not one beside it
+            word = "Edit" if has else "Add"
+            button = QToolButton()
+            button.setIcon(symbol("edit" if has else "add"))
+            button.setAccessibleName(word)
+            button.setFixedSize(self.edit.maximumWidth(),
+                                max(20, button.fontMetrics().height() + 6))
             button.setToolTip(
-                f"What {activity_layouts.TITLES[kind]} does in this activity: the device, "
-                f"the keys it takes over and its screen buttons")
+                f"{word} what {activity_layouts.TITLES[kind]} does in this activity: the "
+                f"device, the keys it takes over and its screen buttons")
             if on_layout is not None:
                 button.clicked.connect(lambda _=False, k=kind: on_layout(k))
             self.layout_buttons[kind] = button
@@ -405,7 +409,7 @@ class ActivityCard(QWidget):
             row.addWidget(what, 1)
             row.addWidget(button)
             # under Edit, with the menu's width left empty: a layout cannot be deleted
-            row.addSpacing(self.more.sizeHint().width() + layout.spacing())
+            row.addSpacing(self.more.maximumWidth() + layout.spacing())
             outer.addLayout(row)
 
 
