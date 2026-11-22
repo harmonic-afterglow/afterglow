@@ -93,8 +93,12 @@ _ROW_ICONS = {"Delete": "delete", "Find model...": "search", "Duplicate": "conte
 def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
     """A row's Edit, and a menu of the rest - Delete and what else the row can do -
     behind a button and on a right-click: one button a row, not four."""
-    edit = QPushButton("Edit")
-    edit.setFixedWidth(60)
+    # a pencil, beside the menu button and the same size as it: the word made the
+    # row's one action look like a form's button
+    edit = QToolButton()
+    edit.setIcon(symbol("edit"))
+    edit.setToolTip("Edit")
+    edit.setAccessibleName("Edit")
     edit.clicked.connect(on_edit)
     menu = QMenu(card)
     for text, call, tip in actions:
@@ -111,7 +115,10 @@ def _row_buttons(card: QWidget, layout, on_edit, actions) -> QMenu:
     more.setMenu(menu)
     more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
     more.setStyleSheet("QToolButton::menu-indicator { image: none; }")
-    more.setFixedHeight(edit.sizeHint().height())
+    side = max(QPushButton().sizeHint().height(), 26)
+    for button in (edit, more):
+        button.setFixedSize(side, side)
+    card.edit = edit
     card.more = more
     layout.addWidget(edit)
     layout.addWidget(more)

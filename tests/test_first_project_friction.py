@@ -262,7 +262,10 @@ def test_a_row_has_edit_and_a_menu_for_the_rest(qapp_or_skip):
     deleted = []
     card = ActivityCard({"label": "Watch"}, {}, lambda *_: None,
                         lambda *_: deleted.append(1))
-    assert [b.text() for b in card.findChildren(QPushButton)] == ["Edit"]
+    # Edit is a pencil, named for a screen reader and on hover
+    assert not card.findChildren(QPushButton)
+    assert card.edit.toolTip() == "Edit" and card.edit.text() == ""
+    assert not card.edit.icon().isNull()
     assert [a.text() for a in card.menu.actions()] == ["Delete"]
     card.menu.actions()[0].trigger()
     assert deleted == [1]

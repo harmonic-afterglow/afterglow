@@ -41,9 +41,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- **Device and activity rows have one button besides Edit.** Delete, and Find model
-  where a device has no model, are in the row's "..." menu, which a right-click on the
-  row also opens. On a remote that draws no device or activity icons (the 650, 700 and
+- **Device and activity rows have two small buttons: a pencil to edit, and a menu.**
+  Delete, Duplicate, and Find model where a device has no model, are in the row's
+  menu, which a right-click on the row also opens. On a remote that draws no device or activity icons (the 650, 700 and
   the 5xx), the rows no longer leave an empty space where one would be.
 - **Icons instead of "+" and arrows.** Add Device, Add Activity, the row menu, Delete,
   Find model, the screen preview's page arrows and the drag handles draw Google's
