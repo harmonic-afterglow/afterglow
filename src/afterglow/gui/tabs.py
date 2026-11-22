@@ -34,7 +34,8 @@ def project_remote(project):
 
 class DeviceCard(QWidget):
     """Single device row displayed in the list."""
-    def __init__(self, spec, on_edit, on_delete, parent=None, project=None, on_find=None):
+    def __init__(self, spec, on_edit, on_delete, parent=None, project=None, on_find=None,
+                 on_duplicate=None):
         super().__init__(parent)
         self.spec = spec
         self.project = project
@@ -79,6 +80,10 @@ class DeviceCard(QWidget):
             actions.append(("Find model...", on_find,
                             "Look this device up in the Logitech database by the codes "
                             "it sends and its name, and pick the model it is."))
+        if on_duplicate is not None:
+            actions.append(("Duplicate", on_duplicate,
+                            "A copy of this device with its commands and settings, to "
+                            "change what differs - a second TV of the same kind."))
         actions.append(("Delete", on_delete, None))
         self.menu = _row_buttons(self, layout, on_edit, actions)
 
@@ -191,7 +196,8 @@ class DevicesTab(QWidget):
                        on_edit   = lambda _, idx=i: self.edit_device(idx),
                        on_delete = lambda _, idx=i: self.delete_device(idx),
                        project   = self.project,
-                       on_find   = lambda _, idx=i: self.find_model(idx))
+                       on_find   = lambda _, idx=i: self.find_model(idx),
+                       on_duplicate = lambda _, idx=i: self.duplicate_device(idx))
             for i, spec in enumerate(self.project["devices"])],
             "No devices yet. Click Add Device to get started.")
 
@@ -224,6 +230,31 @@ class DevicesTab(QWidget):
             from .. import project_devices
             project_devices.rename_commands(wiz.result_spec, wiz.renames(),
                                             self.project.get("activities") or [])
+            rf_set(self.project, wiz.result_spec.get("id"), wiz.rf_token())
+            self.refresh()
+            self.changed.emit()
+        wiz.deleteLater()
+
+    def duplicate_device(self, idx):
+        """A copy of the device opened in its editor; saved under the original, or not
+        made at all if the editor is cancelled."""
+        from .rf_routing import rf_get
+        from .widgets import _new_id
+        original = self.project["devices"][idx]
+        taken = [d.get("id") for d in self.project["devices"]]
+        copy = project_devices.device_copy(self.project, original, _new_id(taken))
+        wiz = DeviceEditor(
+            self.templates, self, existing=copy, project=self.project,
+            source_preferences=self.source_preferences)
+        wiz.setWindowTitle("Duplicate Device")
+        # it goes out where the original does, until told otherwise
+        rf = wiz.page_identity.rf_combo
+        found = rf.findData(rf_get(self.project, original.get("id")))
+        if found >= 0:
+            rf.setCurrentIndex(found)
+        if wiz.exec() and wiz.result_spec:
+            mark_device_new(wiz.result_spec)
+            project_devices.place_device_copy(self.project, original, wiz.result_spec)
             rf_set(self.project, wiz.result_spec.get("id"), wiz.rf_token())
             self.refresh()
             self.changed.emit()
@@ -302,7 +333,7 @@ class DevicesTab(QWidget):
             self.changed.emit()
 class ActivityCard(QWidget):
     def __init__(self, spec, devices_by_id, on_edit, on_delete, parent=None, type_names=None,
-                 remote=None):
+                 remote=None, on_duplicate=None):
         super().__init__(parent)
         self.spec = spec
         layout = QHBoxLayout(self)
@@ -339,7 +370,13 @@ class ActivityCard(QWidget):
         info.addWidget(sub)
 
         layout.addLayout(info, stretch=1)
-        self.menu = _row_buttons(self, layout, on_edit, [("Delete", on_delete, None)])
+        actions = []
+        if on_duplicate is not None:
+            actions.append(("Duplicate", on_duplicate,
+                            "A copy of this activity - its devices, steps, keys and "
+                            "screens - to change what differs, such as one input."))
+        actions.append(("Delete", on_delete, None))
+        self.menu = _row_buttons(self, layout, on_edit, actions)
 class ActivitiesTab(QWidget):
     changed = pyqtSignal()
 
@@ -391,7 +428,8 @@ class ActivitiesTab(QWidget):
             ActivityCard(spec, by_id,
                          on_edit   = lambda _, idx=i: self.edit_activity(idx),
                          on_delete = lambda _, idx=i: self.delete_activity(idx),
-                         type_names=names, remote=remote)
+                         type_names=names, remote=remote,
+                         on_duplicate = lambda _, idx=i: self.duplicate_activity(idx))
             for i, spec in enumerate(self.project["activities"])],
             "No activities yet. Click Add Activity to create one.")
 
@@ -437,6 +475,26 @@ class ActivitiesTab(QWidget):
         if editor.exec() and editor.result_spec:
             self.project["activities"][idx] = editor.result_spec
             one_activity_a_button(self.project["activities"], editor.result_spec)
+            self._keep_assets(editor)
+            self.refresh()
+            self.changed.emit()
+        editor.deleteLater()
+
+    def duplicate_activity(self, idx):
+        """A copy of the activity opened in its editor; saved under the original, or
+        not made at all if the editor is cancelled."""
+        from .widgets import _new_act_id
+        activities = self.project["activities"]
+        original = activities[idx]
+        copy = project_devices.activity_copy(
+            activities, original, _new_act_id([a.get("id") for a in activities]))
+        editor = ActivityEditor(self.project["devices"], self, existing=copy,
+                                remote=project_remote(self.project), activities=activities)
+        editor.setWindowTitle("Duplicate Activity")
+        if editor.exec() and editor.result_spec:
+            at = next((i for i, a in enumerate(activities) if a is original), idx)
+            activities.insert(at + 1, editor.result_spec)
+            one_activity_a_button(activities, editor.result_spec)
             self._keep_assets(editor)
             self.refresh()
             self.changed.emit()

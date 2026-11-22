@@ -376,6 +376,50 @@ def _names(entry, ours: str) -> bool:
     return False
 
 
+def copy_label(label: str, taken) -> str:
+    """A copy's name: "Watch TV (2)", or the next number no other has. A copy of a
+    copy counts on from the original's name, not "Watch TV (2) (2)"."""
+    base = re.sub(r"\s*\(\d+\)$", "", (label or "").strip())
+    used = {str(name).strip().casefold() for name in taken if name}
+    number = 2
+    while f"{base} ({number})".casefold() in used:
+        number += 1
+    return f"{base} ({number})"
+
+
+def device_copy(project: dict, device: dict, new_id: str) -> dict:
+    """A copy of a device under its own id and name, to change what differs: the
+    commands, timing and inputs come along; no activity uses it yet."""
+    copy = deepcopy(device)
+    copy["id"] = new_id
+    copy["label"] = copy_label(device.get("label"),
+                               [d.get("label") for d in project.get("devices") or []])
+    return copy
+
+
+def place_device_copy(project: dict, original: dict, copy: dict) -> None:
+    """The copy goes in under its original, and the off button turns it off as it does
+    the original."""
+    devices = project.setdefault("devices", [])
+    at = next((i for i, d in enumerate(devices) if d is original), len(devices) - 1)
+    devices.insert(at + 1, copy)
+    off = project.get("power_off_all")
+    if off is not None and str(original.get("id")) in {str(d) for d in off}:
+        off.append(copy["id"])
+
+
+def activity_copy(activities: list, activity: dict, new_id: str) -> dict:
+    """A copy of an activity under its own id and name - its devices, steps, keys,
+    screen buttons, favourites and Sound and Picture layouts - to change what differs.
+    The key that starts the original stays the original's: a key starts one
+    activity."""
+    copy = deepcopy(activity)
+    copy["id"] = new_id
+    copy["label"] = copy_label(activity.get("label"), [a.get("label") for a in activities])
+    copy.pop("activity_button", None)
+    return copy
+
+
 # An activity's roles as its Devices page asks for them, and as its row names them.
 ROLE_QUESTIONS = {"display": "you watch on", "volume": "volume goes to",
                   "control": "play, channels and menus go to"}

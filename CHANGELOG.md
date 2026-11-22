@@ -31,6 +31,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   page moved from a remote with gaps or icons comes over without them, and the review
   of the move says so.
 
+- **Duplicate an activity or a device.** The row menu has Duplicate: a copy of an
+  activity that works - its devices, starting steps, keys, screen buttons and
+  favourites - or of a device with its commands and settings, opened in its editor to
+  change what differs, such as one input. It is named "Watch TV (2)" until renamed and
+  goes in under the original. A copied activity leaves the key that starts the original
+  to the original; a copied device is sent where the original is, and the off button
+  turns it off too. Cancel makes no copy.
+
 ### Changed
 
 - **Device and activity rows have one button besides Edit.** Delete, and Find model
