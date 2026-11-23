@@ -84,6 +84,34 @@ def test_a_key_is_learned_twice_and_the_two_compared():
     assert not same_capture(one, dict(one, pulses_us=one["pulses_us"][:4]))
 
 
+def _nec(repeats, *, last_gap=-523726):
+    """An NEC frame (address 0x02, command 0x05) as a Harmony 665 learned it from a
+    One4All, with `repeats` repeat bursts after it."""
+    pulses = [8987, -4550]
+    for byte in (0x02, 0xFD, 0x05, 0xFA):
+        for bit in range(8):
+            pulses += [562, -1712] if (byte >> bit) & 1 else [562, -575]
+    pulses += [562, -39731]
+    for _ in range(repeats):
+        pulses += [8985, -2302, 562, -96000]
+    pulses[-1] = last_gap
+    return {"carrier_hz": 38054, "pulses_us": pulses}
+
+
+def test_presses_held_for_different_times_are_the_same_code():
+    """The 665 captured one key as 36, 38 and 40 pairs: the frame and one to three
+    repeats. Only the frame is the code."""
+    from afterglow.gui.device_wizard import first_frame, same_capture
+    assert len(first_frame(_nec(1)["pulses_us"])) == 67
+    assert same_capture(_nec(1), _nec(3))
+    assert same_capture(_nec(0), _nec(2))
+    cut = dict(_nec(0), pulses_us=_nec(0)["pulses_us"][:30])
+    assert not same_capture(_nec(1), cut)                # a frame cut short is not it
+    other = _nec(1)
+    other["pulses_us"][21] = -1712                       # one bit flipped
+    assert not same_capture(_nec(1), other)
+
+
 def test_two_presses_that_differ_are_not_kept(qapp_or_skip, monkeypatch):
     from afterglow.gui import device_wizard, remote_ops
     from afterglow.qt.QtWidgets import QInputDialog, QMessageBox

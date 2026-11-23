@@ -851,19 +851,41 @@ class IdentityPage(QWizardPage):
         if t.get("model"): self.model_edit.setText(t["model"])
         self._existing = t
         self.proto_label.setText(self._protocol_text())
+# A space at least this long ends a frame. Inside a frame the longest space of the
+# common protocols is NEC's 4.5 ms leader; between frames a held key leaves 20 ms or more.
+FRAME_GAP_US = 10_000
+
+
+def first_frame(pulses) -> list:
+    """The marks and spaces up to the first gap between frames, without the gap.
+
+    A remote repeats the code - or, like NEC, a short repeat burst - for as long as the
+    key is down, so how many repeats a capture holds is only how long the key was held.
+    A Harmony 665 captured one NEC key as 36, 38 and 40 mark/space pairs on three
+    presses: the same 34-pair frame each time, followed by one, two or three repeats.
+    With no such gap the whole capture is the frame, cut short or not."""
+    pulses = list(pulses or [])
+    for index in range(1, len(pulses), 2):
+        if abs(pulses[index]) >= FRAME_GAP_US:
+            return pulses[:index]
+    return pulses
+
+
 def same_capture(first: dict, second: dict, *, share: float = 0.2,
                  slack_us: int = 150) -> bool:
-    """Whether two learned captures are the same code: the same carrier within 5%, as
-    many marks and spaces, and each within ``share`` of the other or ``slack_us``. The
-    gap after the last frame is left out, since it is only how long the key was held."""
-    a, b = list(first.get("pulses_us") or []), list(second.get("pulses_us") or [])
+    """Whether two learned captures are the same code: the same carrier within 5%, and
+    first frames (see `first_frame`) of as many marks and spaces, each within ``share``
+    of the other or ``slack_us``. What follows the first frame - repeats and the final
+    gap - is left out, since it is only how long the key was held."""
+    a = first_frame(first.get("pulses_us"))
+    b = first_frame(second.get("pulses_us"))
     if not a or len(a) != len(b):
         return False
     carriers = first.get("carrier_hz") or 0, second.get("carrier_hz") or 0
     if max(carriers) and abs(carriers[0] - carriers[1]) > 0.05 * max(carriers):
         return False
     return all(abs(abs(x) - abs(y)) <= max(slack_us, share * max(abs(x), abs(y)))
-               for x, y in zip(a[:-1], b[:-1]))
+               for x, y in zip(a, b))
 
 
 def _cannot_save(parent, problem) -> None:
