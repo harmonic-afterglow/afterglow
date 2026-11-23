@@ -218,6 +218,8 @@ LC_FILE_TYPE_CONFIGURATION = 2
 # said who it is, but its configuration area does not start with its model's cookie - an
 # interrupted or a bad write, or none yet. Concordance itself only warns about it, since a
 # remote in that state is exactly the one that needs a configuration written.
+LC_ERROR = 1
+LC_ERROR_READ = 3
 LC_ERROR_UNSUPP = 15
 LC_ERROR_INVALID_CONFIG = 16
 IDENTITY_FIELDS = ("arch", "skin", "flash", "board", "software_type")
@@ -1025,11 +1027,17 @@ class Remote:
 
     # learning
     def set_learning_mode(self, mode: int, timeout_ms: int) -> bool:
-        """False when the installed libconcord predates learning modes."""
+        """False when the installed libconcord predates learning modes, or when the
+        attached remote has none: libconcord's `set_learning_mode` answers a bare
+        LC_ERROR for every remote that is not a usbnet one (900/1000/1100), and a HID
+        remote - a 600/650/665/700 - learns in its one way, `learn_from_remote`'s
+        default, exactly as Concordance 1.5 does."""
         if not self.has_learning_modes:
             return False
-        self._check(self.lib.set_learning_mode(mode, timeout_ms),
-                    "setting the learning mode")
+        err = self.lib.set_learning_mode(mode, timeout_ms)
+        if err == LC_ERROR:
+            return False
+        self._check(err, "setting the learning mode")
         return True
 
     def learn(self, on_progress=None) -> tuple[int, list[int]]:
@@ -1046,9 +1054,17 @@ class Remote:
         carrier = ctypes.c_uint32()
         signal = ctypes.POINTER(ctypes.c_uint32)()
         length = ctypes.c_uint32()
-        self._check(self.lib.learn_from_remote(
+        err = self.lib.learn_from_remote(
             ctypes.byref(carrier), ctypes.byref(signal), ctypes.byref(length),
-            self._callback(on_progress), None), "learning an IR code")
+            self._callback(on_progress), None)
+        if err == LC_ERROR_READ and not length.value:
+            # A HID remote (600/650/665/700) whose wait for the first IR word runs out
+            # says so as a read error, with nothing captured: that is "nothing was
+            # received", which the caller reports as such, not a fault.
+            if signal:
+                self.lib.delete_ir_signal(signal)
+            return carrier.value, []
+        self._check(err, "learning an IR code")
         try:
             return carrier.value, [signal[i] for i in range(length.value)]
         finally:

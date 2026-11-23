@@ -16,7 +16,7 @@
   "backend": "harmony-650",
   "status": "experimental",
   "capabilities": {
-    "ir_learning": false,
+    "ir_learning": true,
     "hard_keys": true
   },
   "infrared": {
