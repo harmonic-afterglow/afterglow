@@ -829,6 +829,30 @@ def test_macos_with_our_libconcord_needs_nothing_installed(monkeypatch):
     assert concord.DRIVER_ADVICE not in concord.connection_advice()
 
 
+def test_windows_offers_direct_access_only_for_a_usbnet_remote_not_on_winusb(monkeypatch):
+    """Direct access is WinUSB for the 900/1000/1100. A HID remote (a 665) that does not
+    connect must not be told to turn it on; a 900 still on Logitech's driver must."""
+    from afterglow import concord, windows_driver
+
+    monkeypatch.setattr(concord.sys, "platform", "win32")
+    monkeypatch.setattr(concord, "has_usb_link", lambda: True)
+    monkeypatch.setattr(windows_driver, "remotes", lambda: [])
+    assert concord.WINUSB_ADVICE not in concord.connection_advice()
+    monkeypatch.setattr(windows_driver, "remotes",
+                        lambda: [{"id": "USB\\VID_046D&PID_C11F\\1", "service": "WinUSB",
+                                  "started": True}])
+    assert concord.WINUSB_ADVICE not in concord.connection_advice()
+    monkeypatch.setattr(windows_driver, "remotes",
+                        lambda: [{"id": "USB\\VID_046D&PID_C11F\\1", "service": "usbnet",
+                                  "started": True}])
+    assert concord.WINUSB_ADVICE in concord.connection_advice()
+
+    def unlisted():
+        raise OSError("SetupAPI")
+    monkeypatch.setattr(windows_driver, "remotes", unlisted)
+    assert concord.WINUSB_ADVICE in concord.connection_advice()
+
+
 def test_the_usb_link_is_recognised_by_its_symbol(monkeypatch):
     class WithLink:
         _Z15UsbNetLink_Openj = object()
@@ -1079,10 +1103,14 @@ def test_windows_with_our_libconcord_needs_no_logitech_software(monkeypatch):
     """With the USB link, Windows reaches the remote through Windows' own WinUSB driver,
     which Afterglow switches the remote to itself - proven against a Harmony 900 on
     Windows 10, from Logitech's driver and from none."""
-    from afterglow import concord
+    from afterglow import concord, windows_driver
 
     monkeypatch.setattr(concord.sys, "platform", "win32")
     monkeypatch.setattr(concord, "has_usb_link", lambda: True)
+    # a 900 still on Logitech's driver: the advice is the switch to direct access
+    monkeypatch.setattr(windows_driver, "remotes",
+                        lambda: [{"id": "USB\\VID_046D&PID_C11F\\1", "service": "usbnet",
+                                  "started": True}])
     status, explanation = concord.link_support()
 
     assert status == "tested"
