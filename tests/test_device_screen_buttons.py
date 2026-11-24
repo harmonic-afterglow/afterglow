@@ -192,6 +192,27 @@ def test_the_screen_page_arranges_a_device_s_buttons(qapp_or_skip):
     assert spec["screen_buttons"] == []
 
 
+def test_the_rest_of_the_commands_are_added_and_the_ones_on_the_page_are_grey(
+        qapp_or_skip):
+    """A tester cleared a full page down to the buttons they wanted: the other way round
+    is to start from a few and add the rest - what has no button yet, at the end."""
+    from afterglow.qt.QtCore import Qt
+    from afterglow.gui.device_screen import DeviceScreenPage
+    rows = [["PowerOn", "On", "", "", None], ["Guide", "", "", "", None],
+            ["Menu", "Menu", "", "", None]]
+    page = DeviceScreenPage({"screen_buttons": [["Menu", "Menu"]]}, lambda: rows)
+
+    def grey():
+        return [page.commands.item(i).text() for i in range(page.commands.count())
+                if page.commands.item(i).foreground().color() == Qt.GlobalColor.gray]
+    assert grey() == ["Menu"]
+    page.rest_btn.click()
+    assert page.entries() == [["Menu", "Menu"], ["PowerOn", "On"], ["Guide", "Guide"]]
+    assert grey() == ["Guide", "Menu", "PowerOn"]
+    page.rest_btn.click()                   # nothing left to add
+    assert len(page.entries()) == 3
+
+
 def test_the_screen_page_keeps_an_imported_page_and_its_icons(qapp_or_skip):
     from afterglow.gui.device_screen import DeviceScreenPage
     rows = [["PowerOn", "PowerOn", "", "", None], ["Menu", "Menu", "", "", None]]

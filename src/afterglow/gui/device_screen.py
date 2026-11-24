@@ -65,9 +65,14 @@ class DeviceScreenPage(QWizardPage):
         self.remove_btn = QPushButton("Remove")
         self.every_btn = QPushButton("Every command")
         self.every_btn.setToolTip("A button for every command, under its label.")
+        # A tester cleared a full page down to what they wanted; the other way round is
+        # Clear, then a pick, or this: what is not on the page yet, added at its end.
+        self.rest_btn = QPushButton("Add the rest")
+        self.rest_btn.setToolTip("A button for each command that has none yet, at the end "
+                                 "of the page. The commands already on it are grey.")
         self.clear_btn = QPushButton("Clear")
         for button in (self.add_btn, self.gap_btn, self.remove_btn, self.every_btn,
-                       self.clear_btn):
+                       self.rest_btn, self.clear_btn):
             buttons.addWidget(button)
         buttons.addStretch()
         lists.addLayout(buttons)
@@ -109,6 +114,7 @@ class DeviceScreenPage(QWizardPage):
         self.gap_btn.clicked.connect(self._add_gap)
         self.remove_btn.clicked.connect(self._remove)
         self.every_btn.clicked.connect(self._every)
+        self.rest_btn.clicked.connect(self._rest)
         self.clear_btn.clicked.connect(self._clear)
         self.refresh()
 
@@ -154,6 +160,7 @@ class DeviceScreenPage(QWizardPage):
             item.setData(Qt.ItemDataRole.UserRole,
                          str(row[1]) if len(row) > 1 and row[1] else str(row[0]))
             self.commands.addItem(item)
+        self._mark_used()
 
     def _fill(self, entries: list):
         self._filling = True
@@ -164,8 +171,19 @@ class DeviceScreenPage(QWizardPage):
         self.dragger.refresh_grips()
         self._show()
 
+    def _mark_used(self):
+        """The commands already on the page in grey, the rest as they are."""
+        used = {entry[0] for entry in self.entries() if entry is not None}
+        for index in range(self.commands.count()):
+            item = self.commands.item(index)
+            on_page = item.text() in used
+            item.setForeground(Qt.GlobalColor.gray if on_page
+                               else self.commands.palette().text().color())
+            item.setToolTip("On the page already" if on_page else "")
+
     def _show(self):
         """Draw the page as the table has it now."""
+        self._mark_used()
         self.preview.set_buttons([
             None if entry is None else (entry[1], entry[2] if len(entry) > 2 else None)
             for entry in self.entries()])
@@ -245,6 +263,16 @@ class DeviceScreenPage(QWizardPage):
     def _every(self):
         self._fill([[str(row[0]), str(row[1]) if len(row) > 1 and row[1] else str(row[0])]
                     for row in self._rows() if row and row[0]])
+        self._changed()
+
+    def _rest(self):
+        used = {entry[0] for entry in self.entries() if entry is not None}
+        rest = [[str(row[0]), str(row[1]) if len(row) > 1 and row[1] else str(row[0])]
+                for row in self._rows() if row and row[0] and str(row[0]) not in used]
+        if not rest:
+            return
+        for entry in rest:
+            self._insert(self.table.rowCount(), entry)
         self._changed()
 
     def _clear(self):

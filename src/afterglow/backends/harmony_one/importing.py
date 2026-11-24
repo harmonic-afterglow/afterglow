@@ -25,6 +25,7 @@ from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
 
+from .. import help_inputs
 from . import (
     activity_index, bitmap, command_index, font_index, gspm, ir_lowering, keys, labels,
     named_index, ui_index)
@@ -1116,6 +1117,14 @@ OFF_KEY = keys.by_name("Off")
 DIGIT_KEYS = {f"Number{digit}": str(digit) for digit in range(10)}
 
 
+# Help's answers, and its questions about an input in every language this remote has
+ANSWER_KEYS = (0xB1, 0xB2)
+HELP_QUESTIONS = help_inputs.questions(
+    Path(__file__).parent / "locale", {"assistant.input", "assistant.now-input"},
+    ("Is the {device} set to the {input} input?",
+     "Now is the {device} set to the {input} input?"))
+
+
 class Activities:
     """An image's activities read back, with the devices as the project has them
     (project_devices) and ``naming``, each command id's device id and name."""
@@ -1236,6 +1245,10 @@ class Activities:
 
     def read(self) -> tuple[list[dict], dict]:
         """The project's activities, and its settings for Off."""
+        # the inputs' own names, from what each activity's Help asks (help_inputs)
+        help_inputs.apply(self.devices, help_inputs.read(
+            self, enter=activity_index.ENTER, help_key=keys.code(keys.HELP), entered=0x06,
+            answers=ANSWER_KEYS, questions=HELP_QUESTIONS))
         labels_ = self.menu_rows()
         activities = [self.activity(ordinal, labels_.get(ordinal)) for ordinal in self.starts()]
         extra = {}

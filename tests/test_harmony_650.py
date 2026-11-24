@@ -1040,6 +1040,36 @@ def test_a_menu_input_builds_and_comes_back(tmp_path):
             cycle["finish"], cycle["delay_ms"], len(cycle["values"])) == (
         ["Source"], ["DirectionUp"], ["DirectionDown"], ["OK"], 1000, 5)
 
+def test_an_inputs_name_comes_back_from_the_help_that_asks_for_it(tmp_path):
+    """The image keeps only how many inputs a device steps through, but an activity's
+    Help asks "Is the Soniq TV set to the HDMI 1 input?": the import names the input it
+    asks about from it, where it read "Input 3" before (a tester's 650). An input no
+    activity uses has no question, and keeps its number."""
+    from afterglow.backends.harmony_650 import compose
+    names = ("PowerToggle", "Source", "DirectionUp", "DirectionDown", "OK")
+    tv = {"id": "tv", "label": "Soniq TV", "type": "Television",
+          "signals": {name: _nec(3, number) for number, name in enumerate(names)},
+          "commands": [[name, name, "", "", None] for name in names],
+          "power_cmd": "PowerToggle", "power_delay": 3000,
+          "input_cycle": {"values": ["DTV", "AV", "HDMI 1", "HDMI 2", "Media"],
+                          "start": ["Source"], "next": ["DirectionUp"],
+                          "previous": ["DirectionDown"], "finish": ["OK"],
+                          "delay_ms": 1000}}
+    games = {"id": "1", "label": "Games", "display": "tv", "control": "tv",
+             "type": "VirtualGameConsole", "power_on_devices": ["tv"],
+             "enter": [["input", "tv", "HDMI 1"]]}
+    image = compose.build({"devices": [tv], "activities": [games]},
+                          stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    payloads.get("blob").unpack(image, str(tmp_path))
+    read = backend.import_project(str(tmp_path), remotes.get("harmony-650"),
+                                  {"name": "t"}).project
+    [device] = read["devices"]
+    assert device["input_cycle"]["values"] == ["Input 1", "Input 2", "HDMI 1", "Input 4",
+                                               "Input 5"]
+    [activity] = read["activities"]
+    assert ["input", device["id"], "HDMI 1"] in activity["enter"]
+
+
 def test_the_backlight_time_and_tilt_sensor_build_and_come_back(tmp_path):
     """MyHarmony's Remote Backlight Settings: how long the screen stays lit, a timer of
     the wiring, and whether picking the remote up wakes it, the `3F F101` arming the

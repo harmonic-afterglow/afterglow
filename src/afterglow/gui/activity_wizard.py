@@ -341,6 +341,9 @@ def suits_control(device) -> bool:
     return device.get("type") not in NOT_CONTROL_TYPES
 
 
+PASSTHROUGH = "PASSTHROUGH"
+
+
 class ActivityRolesPage(QWizardPage):
     def __init__(self, devices, existing, parent=None):
         super().__init__(parent)
@@ -391,11 +394,10 @@ class ActivityRolesPage(QWizardPage):
         layout.addRow(QLabel(""))
         layout.addRow(QLabel("<b>Other devices this activity uses</b>"))
         explain = QLabel(
-            "A device listed here is part of the activity: the remote powers it on "
-            "and shows it among the activity's devices. A device that is only driven "
-            "by a button still works, but will not appear in that list. "
-            "PASSTHROUGH is the usual name for something in the signal chain, like an "
-            "amplifier the sound passes through.")
+            "Devices the activity uses besides these three, such as an amplifier the "
+            "sound passes through: one listed here is switched on with the activity, "
+            "unless its Power page says otherwise. A screen button or a key can send to "
+            "any device, listed here or not.")
         explain.setWordWrap(True)
         explain.setStyleSheet("color: gray;")
         layout.addRow(explain)
@@ -405,11 +407,14 @@ class ActivityRolesPage(QWizardPage):
 
         def add_extra_role_row(r_name="", r_dev=None):
             row = QHBoxLayout()
-            name_edit = QLineEdit(r_name)
-            name_edit.setPlaceholderText("Role name")
-            # Kept narrow: a role name is one short word, and letting it stretch
-            # squeezed the device picker next to it down to nothing.
-            name_edit.setMaximumWidth(170)
+            # The role a device plays is kept as it came (a 900 writes it: PASSTHROUGH
+            # is the one Logitech's use), and named here only when it is another; a row
+            # added here gets one when saved. A "Role name" box to fill in was jargon,
+            # and a row left without one was dropped on saving.
+            shown = "" if r_name in ("", PASSTHROUGH) else r_name.title()
+            name_label = QLabel(shown)
+            name_label.setStyleSheet("color: gray;")
+            name_label.setVisible(bool(shown))
             dev_combo = FilterCombo()
             dev_combo.setEditable(False)
             # Rebuilt from `devices`, not from a pair of parallel lists that no longer
@@ -422,56 +427,72 @@ class ActivityRolesPage(QWizardPage):
             del_btn = QPushButton(symbol("delete"), "")
             del_btn.setToolTip("Take this device out of the activity")
             del_btn.setFixedWidth(30)
-            
-            row.addWidget(name_edit)
+
+            row.addWidget(name_label)
             row.addWidget(dev_combo, 1)          # the picker gets the spare width
             row.addWidget(del_btn)
-            
+
             row_widget = QWidget()
             row_widget.setLayout(row)
             self.extra_roles_layout.addWidget(row_widget)
-            
-            row_data = {"widget": row_widget, "name": name_edit, "dev": dev_combo}
+
+            row_data = {"widget": row_widget, "name": r_name, "dev": dev_combo}
             self.extra_roles_rows.append(row_data)
-            
+
             del_btn.clicked.connect(lambda: self._remove_extra_role(row_data))
-            
-        extra_roles = existing.get("roles", {})
+
+        extra_roles = existing.get("roles") or {}
         for r_name, r_dev in extra_roles.items():
             add_extra_role_row(r_name, r_dev)
-            
+
         self._add_extra_role_row = add_extra_role_row
-        self.add_role_btn = QPushButton(symbol("add"), "Add another device")
+        self.add_role_btn = QPushButton(symbol("add"), "Add a device")
+        self.add_role_btn.setToolTip(
+            "A device the activity also uses - an amplifier or a switch the signal "
+            "passes through - that must be on, but is not its screen, volume or control.")
         self.add_role_btn.clicked.connect(lambda: add_extra_role_row())
-        # PASSTHROUGH is the only extra role any real configuration uses, so it gets a
-        # button rather than making the user remember how to spell it.
-        self.add_passthrough_btn = QPushButton(symbol("add"), "Passthrough device")
-        self.add_passthrough_btn.setToolTip(
-            "For something the signal passes through - an amplifier or a switch that "
-            "must be on and listed with the activity, but is not its screen, volume "
-            "or control.")
-        self.add_passthrough_btn.clicked.connect(
-            lambda: add_extra_role_row("PASSTHROUGH"))
+        # kept for what reads it: the one button now does what both did
+        self.add_passthrough_btn = self.add_role_btn
 
         buttons = QHBoxLayout()
-        buttons.addWidget(self.add_passthrough_btn)
         buttons.addWidget(self.add_role_btn)
         buttons.addStretch()
 
         layout.addRow(self.extra_roles_layout)
         layout.addRow(buttons)
-        
+
+        # Devices the activity's own power plan switches on besides these: an imported
+        # activity names them there, not here, and the list looked empty while the
+        # remote did switch them on (a tester's 555: "Monitor").
+        listed = {existing.get(role) for role in ("display", "volume", "control")}
+        listed |= set(extra_roles.values())
+        by_id = {d["id"]: d.get("label", "?") for d in devices}
+        also = [by_id[did] for did in existing.get("power_on_devices") or []
+                if did in by_id and did not in listed]
+        self.also_on = QLabel("Also switched on when it starts (see its Power page): "
+                              + ", ".join(also))
+        self.also_on.setWordWrap(True)
+        self.also_on.setStyleSheet("color: gray;")
+        self.also_on.setVisible(bool(also))
+        layout.addRow(self.also_on)
+
     def _remove_extra_role(self, row_data):
         row_data["widget"].deleteLater()
         self.extra_roles_rows.remove(row_data)
 
     def get_roles(self):
+        """The devices listed, by the role each plays: the one it came with, or for a
+        row added here PASSTHROUGH - then PASSTHROUGH 2, 3 - as Logitech's name the one
+        role besides the three."""
         roles = {}
         for row in self.extra_roles_rows:
-            name = row["name"].text().strip()
             dev = row["dev"].currentData()
-            if name and dev:
-                roles[name] = dev
+            if not dev:
+                continue
+            name, number = row["name"] or PASSTHROUGH, 2
+            while name in roles:
+                name, number = f"{row['name'] or PASSTHROUGH} {number}", number + 1
+            roles[name] = dev
         return roles
 class HardButtonMacroDialog(QDialog):
     def __init__(self, devices, slot_name, existing_macro, parent=None):

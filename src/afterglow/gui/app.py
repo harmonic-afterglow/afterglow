@@ -602,11 +602,11 @@ class MainWindow(QMainWindow):
             # the devices' command sets, any recorded waveforms. Without it the knowledge
             # stays in one project file, and a config using an unknown protocol cannot be
             # rebuilt.
-            learned = ""
+            learned, report = "", None
             try:
                 from ..library import learn, summarise
-                learned = "\n\nLearned into the library:\n" + summarise(
-                    learn(self.project, path))
+                report = learn(self.project, path)
+                learned = "\n\nLearned into the library:\n" + summarise(report)
                 from .. import paths
                 self.templates[:] = load_repo_templates(paths.user_library())
             except Exception as exc:                       # never block an import
@@ -630,8 +630,10 @@ class MainWindow(QMainWindow):
             if imported.warnings:
                 parts.append("Not carried over:\n" + "\n".join(
                     f"- {note}" for note in imported.warnings))
+            _log_import(path, parts, report, imported.warnings)
             QMessageBox.information(self, "Import Complete", "\n\n".join(parts))
         except Exception as e:
+            logging.getLogger(__name__).exception("import of %s failed", path)
             QMessageBox.critical(self, "Import Failed", str(e))
 
     def save_project(self):
@@ -1173,3 +1175,17 @@ def main():
         from .default_remote import ask_at_first_start
         win.start_with_default_remote(ask_at_first_start(win))
     sys.exit(app.exec())
+
+
+def _log_import(path, parts, report, warnings) -> None:
+    """The import's report in the log file, whole: the dialog shortens what was learned
+    ("..."), and a tester looking for the rest found nothing in the log."""
+    log = logging.getLogger(__name__)
+    log.info("import of %s: %s", path, parts[0] if parts else "")
+    for key, title in (("devices", "new device"), ("protocols", "new protocol"),
+                       ("captures", "new capture"), ("known_devices", "known device"),
+                       ("unresolved_protocols", "protocol with assumed fields")):
+        for item in (report or {}).get(key) or []:
+            log.info("import: %s: %s", title, item)
+    for note in warnings or []:
+        log.info("import: not carried over: %s", note)

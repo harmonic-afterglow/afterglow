@@ -25,8 +25,27 @@ from ..qt.QtWidgets import (
 NONE, DIRECT, CYCLE = "none", "direct", "cycle"
 NO_COMMAND = "(none)"
 # An input reached by a sequence or through another state is kept as it is; it is shown
-# but not offered for editing, because one command cannot say what it does.
+# but not offered for editing, because one command cannot say what it does. It says what
+# it does instead ("Screen: HDMI2"), which "(kept as imported)" did not.
 KEPT = "(kept as imported)"
+KEPT_TIP = ("Read from the remote's file as more than one step, and kept as it is: one "
+            "command here cannot say it. What it does: {steps}")
+
+
+def describe_steps(selection) -> str:
+    """What an input's steps do, in a few words: its commands, the device's other
+    states it sets ("Screen: HDMI2") and its waits."""
+    words = []
+    for step in selection if isinstance(selection, list) else [selection]:
+        if isinstance(step, str):
+            words.append(step.removesuffix(" (press)"))
+        elif isinstance(step, dict) and "set" in step:
+            words.append(f"{step['set']}: {step.get('to')}")
+        elif isinstance(step, dict) and isinstance(step.get("command"), str):
+            words.append(step["command"].removesuffix(" (press)"))
+        elif isinstance(step, dict) and step.get("delay_ms"):
+            words.append(f"wait {step['delay_ms'] / 1000:g} s")
+    return ", ".join(words) or KEPT
 
 
 def _row_command(selection) -> str | None:
@@ -70,7 +89,7 @@ class DeviceInputsPage(QWizardPage):
         direct = QVBoxLayout(self.direct)
         direct.setContentsMargins(20, 0, 0, 0)
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Input", "Command", "App"])
+        self.table.setHorizontalHeaderLabels(["Input", "Command", "Is an app"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         # A smart TV's apps (Netflix) answer only a while after it comes on: the remote
         # waits the Timing section's "Apps ready after switching on" before the first after
@@ -80,6 +99,12 @@ class DeviceInputsPage(QWizardPage):
             "waits until its apps are ready before choosing it.")
         self.table.itemChanged.connect(self._touch_inputs)
         direct.addWidget(self.table)
+        app_note = QLabel("Is an app: an input that is one of the device's own apps, such "
+                          "as Netflix on a TV. The remote waits until the apps are ready "
+                          "after switching the device on (Timing) before choosing it.")
+        app_note.setWordWrap(True)
+        app_note.setStyleSheet("color: gray;")
+        direct.addWidget(app_note)
         row = QHBoxLayout()
         for text, slot in (("Add input", self._add_direct), ("Remove", self._remove_direct)):
             button = QPushButton(text)
@@ -272,7 +297,9 @@ class DeviceInputsPage(QWizardPage):
         self.table.setItem(row, 2, app)
         command = _row_command(selection)
         if selection is not None and command is None:
-            kept = QTableWidgetItem(KEPT)
+            what = describe_steps(selection)
+            kept = QTableWidgetItem(what)
+            kept.setToolTip(KEPT_TIP.format(steps=what))
             kept.setData(256, selection)
             kept.setFlags(kept.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 1, kept)

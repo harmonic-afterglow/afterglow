@@ -212,19 +212,34 @@ def test_the_extra_role_buttons_work(qapp_or_skip):
     from afterglow.gui.activity_wizard import ActivityRolesPage
     page = ActivityRolesPage(project_devices(), {})
 
-    page.add_passthrough_btn.click()
+    page.add_role_btn.click()
     assert page.extra_roles_rows, "no row was added"
-    assert page.extra_roles_rows[0]["name"].text() == "PASSTHROUGH"
-
     page.add_role_btn.click()
     assert len(page.extra_roles_rows) == 2
-    assert page.extra_roles_rows[1]["name"].text() == ""
 
+    # no name to type: a device added here plays PASSTHROUGH, the role Logitech's
+    # name besides the three, and a second one is numbered
     page.extra_roles_rows[0]["dev"].select_data("40009002")
     assert page.get_roles() == {"PASSTHROUGH": "40009002"}
+    page.extra_roles_rows[1]["dev"].select_data("40009001")
+    assert page.get_roles() == {"PASSTHROUGH": "40009002", "PASSTHROUGH 2": "40009001"}
 
     page._remove_extra_role(page.extra_roles_rows[1])
     assert len(page.extra_roles_rows) == 1
+
+
+def test_a_device_the_power_plan_switches_on_is_said_under_the_list(qapp_or_skip):
+    """An imported activity names the devices it switches on in its power plan, not
+    among its roles: the list of other devices looked empty while the remote switched
+    them on (a tester's 555), so they are named under it."""
+    from afterglow.gui.activity_wizard import ActivityRolesPage
+    page = ActivityRolesPage(project_devices(), {
+        "display": "40009001", "power_on_devices": ["40009001", "40009002"]})
+    assert not page.extra_roles_rows
+    assert not page.also_on.isHidden()
+    assert page.also_on.text().endswith(": Blinds")
+    plain = ActivityRolesPage(project_devices(), {"display": "40009001"})
+    assert plain.also_on.isHidden()
 
 
 def test_every_add_button_in_the_activity_pages_survives_a_press(qapp_or_skip,

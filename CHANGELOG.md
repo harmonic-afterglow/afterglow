@@ -41,6 +41,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **A device's inputs say what an imported one does.** An input chosen in several steps
+  reads "Screen: HDMI2" or "Source, Down, OK" instead of "(kept as imported)", and the
+  App column is "Is an app", explained under the table.
+- **Screen page: Add the rest.** Commands already on a device's page are grey in the
+  list, and Add the rest gives a button to each one that has none, at the end - to
+  start from a few buttons instead of clearing a full page.
+
 - **Device and activity rows have two small buttons: a pencil to edit, and a menu.**
   Delete, Duplicate, and Find model where a device has no model, are in the row's
   menu, which a right-click on the row also opens. On a remote that draws no device or activity icons (the 650, 700 and
@@ -65,6 +72,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   question about the default remote says it is about the remote just moved to.
 
 ### Fixed
+
+- **Harmony One, 800, 600, 650, 665 and 700: imported inputs keep their names.** An
+  input the remote reaches by stepping through its inputs, or in several steps, came in
+  as "Input 8", and a remote built from the import asked "Is the TV set to the Input 8
+  input?" where Logitech's had asked about "HDMI 3". The names are read back from the
+  remote's own Help, in English, German, French, Dutch or Bulgarian; an input no
+  activity uses keeps its number.
+- **An activity's Devices page names every device it switches on.** An imported
+  activity lists those in its power plan, so "Other devices" looked empty while the
+  remote did switch them on; they are named under the list now. Adding a device there
+  no longer asks for a "role name" - a row left without one was dropped on saving.
+- **The whole report of an import is in the log file**, not only in its window, which
+  shortens what was learned.
 
 - **Devices from IRDB and Flipper-IRDB get their type.** A set-top box, cable box or
   satellite receiver came in as a recorder (PVR) and an air conditioner as a home

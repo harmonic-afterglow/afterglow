@@ -25,6 +25,7 @@ from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
 
+from .. import help_inputs
 from . import (
     activity_index, catalogue, command_index, gspm, ir_lowering, keys, labels, named_index,
     ui_index)
@@ -1406,6 +1407,16 @@ OFF_KEY = keys.by_name("Off")
 DIGIT_KEYS = {f"Number{digit}": str(digit) for digit in range(10)}
 
 
+# Help released, the entry of the screen it opens, and the answers No and Yes
+HELP_KEY, ENTERED, ANSWER_KEYS = 0x43, 0x06, (0x89, 0xA2)
+# Help's questions about an input, as Logitech's images and a build's ask them
+HELP_QUESTIONS = help_inputs.questions(
+    Path(__file__).parent / "locale", {"help.input", "help.now-input"},
+    ("Is the {device} set to the {input} input?",
+     "Now is the {device} set to the {input} input?",
+     "Is your {device} set to the {input} input?"))
+
+
 class Activities:
     """An image's activities read back, with the devices as the project has them
     (project_devices) and ``naming``, each command id's device id and name."""
@@ -1527,6 +1538,7 @@ class Activities:
 
     def read(self) -> tuple[list[dict], dict]:
         """The project's activities, and its settings for Off."""
+        self.name_inputs_from_help()
         labels_ = self.menu_rows()
         activities = [self.activity(ordinal, labels_.get(ordinal)) for ordinal in self.starts()]
         extra = {}
@@ -1548,6 +1560,20 @@ class Activities:
             self.notes.append("left out, as a project cannot say them: " + ", ".join(
                 f"{what} ({count})" for what, count in sorted(self.left_out.items())))
         return activities, extra
+
+    def _bound(self, ordinal: int, where: str) -> dict[int, list[tuple]]:
+        """What a screen's keys do: its softkeys' (``soft``) or its header's."""
+        screen = self.image.screens[ordinal]
+        entries = (screen["slots"][0]["entries"] if where == "soft"
+                   else screen["header_entries"])
+        return {entry["key_code"]: self.image.row(entry) for entry in entries
+                if entry["category"]}
+
+    def name_inputs_from_help(self) -> None:
+        """The inputs' own names, from what each activity's Help asks (help_inputs)."""
+        help_inputs.apply(self.devices, help_inputs.read(
+            self, enter=activity_index.ENTER, help_key=HELP_KEY, entered=ENTERED,
+            answers=ANSWER_KEYS, questions=HELP_QUESTIONS))
 
     def ensured(self, home: int, on: list[str]) -> list[str]:
         """``on`` with the devices the activity's Help asks to be turned on by hand - a

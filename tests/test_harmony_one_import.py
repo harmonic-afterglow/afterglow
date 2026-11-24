@@ -266,8 +266,9 @@ def test_an_input_chosen_in_several_steps_is_sent_and_read_back_whole(tmp_path):
                             ["TV", "InputTv"]])
     project = {**PROJECT, "devices": [TV, amp]}
     imported = _imported(generate.build(project)["image"], tmp_path)
+    # its name too, which the image keeps only in Help's question about it (help_inputs)
     assert imported["devices"][1]["inputs"] == [
-        ["Input 1", ["Power", {"delay_ms": 500}, "InputCd"]], ["InputTv", "InputTv"]]
+        ["CD", ["Power", {"delay_ms": 500}, "InputCd"]], ["InputTv", "InputTv"]]
     # and building the import sends the same sequence again
     again = _imported(generate.build(imported)["image"], tmp_path / "again")
     assert again["devices"][1]["inputs"] == imported["devices"][1]["inputs"]
