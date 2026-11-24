@@ -120,9 +120,29 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the architecture, and [docs/](docs/) 
 
 Running from source instead of a release build:
 
+Afterglow needs Python 3.11 or newer. Check `python3 -V` first: on an older Python
+(Ubuntu 22.04 ships 3.10) an old pip does not say so, it backtracks through every
+version of every dependency until it fails with `ResolutionTooDeep`.
+
+With [uv](https://docs.astral.sh/uv/), which fetches a suitable Python itself:
+
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e '.[dev,gui]'
-.venv/bin/python afterglow.py          # or: python3 afterglow.py
+uv sync --extra gui --extra dev        # creates .venv with Python 3.11+ and the GUI
+.venv/bin/afterglow                    # or: uv run --extra gui --extra dev afterglow
+.venv/bin/python -m pytest
+```
+
+`uv run` and `uv sync` make `.venv` match exactly what you ask for, so a bare
+`uv run afterglow` removes the optional extras again, PyQt6 included, and the app stops
+with "Afterglow's interface needs PyQt6". Either keep passing the `--extra` flags or run
+`.venv/bin/afterglow` directly. To choose the Python version, run `uv python pin 3.12`
+before `uv sync`.
+
+With pip, if `python3` is already 3.11 or newer:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -U pip && .venv/bin/pip install -e '.[dev,gui]'
+.venv/bin/python afterglow.py          # or: .venv/bin/afterglow
 .venv/bin/python -m pytest
 ```
 
