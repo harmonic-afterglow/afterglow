@@ -1196,3 +1196,18 @@ def test_a_household_saved_through_every_editor_page_builds_byte_for_byte_the_sa
             saved["devices"], existing=activity, remote=profile,
             activities=saved["activities"])._collect()
     assert built(saved) == built(project)
+
+
+def test_an_input_known_by_its_number_is_named_after_the_states_it_sets():
+    """A tester's 555 television reaches each input by setting its Screen: they came in
+    as Input 1 to 12. One that sets Screen to HDMI2 is "HDMI2"; Antenna with TVInput 1
+    is "Antenna 1"; one whose value is a number keeps its number."""
+    from afterglow.backends.harmony_555.importing import _name_from_help
+    device = {"inputs": [
+        ["Input 1", [{"set": "Screen", "to": "Antenna"}, {"set": "TVInput", "to": "1"}]],
+        ["Input 4", [{"set": "Screen", "to": "6"}]],
+        ["Input 7", [{"set": "Screen", "to": "HDMI2"}]],
+        ["InputHdmi1", "InputHdmi1"]]}
+    _name_from_help(device, {})
+    assert [entry[0] for entry in device["inputs"]] == [
+        "Antenna 1", "Input 4", "HDMI2", "InputHdmi1"]

@@ -1241,6 +1241,19 @@ def _name_from_help(project: dict, named: dict[str, str]) -> None:
                 if isinstance(step, dict) and step.get("set") == state["id"] \
                         and step.get("to") in renamed:
                     step["to"] = renamed[step["to"]]
+    # an input known only by its number that sets the device's states - a television
+    # whose "Screen" is HDMI2 - is named after what it sets: "HDMI2", "Antenna 1"; one
+    # whose states are only numbers keeps its number
+    for entry in inputs:
+        steps = entry[1] if len(entry) > 1 and isinstance(entry[1], list) else None
+        if not steps or not re.fullmatch(r"Input \d+", entry[0]) or not all(
+                isinstance(step, dict) and "set" in step for step in steps):
+            continue
+        values = [str(step.get("to")) for step in steps]
+        name = " ".join(values)
+        if not all(value.isdigit() for value in values) and name not in taken:
+            taken.add(name)
+            entry[0] = name
 
 
 def _drawn_label(drawn: str | None, name: str) -> str:
