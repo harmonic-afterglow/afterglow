@@ -91,6 +91,8 @@ class DeviceInputsPage(QWizardPage):
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Input", "Command", "Is an app"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        # as wide as the name: an imported input's steps are said there ("Screen: HDMI2")
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         # A smart TV's apps (Netflix) answer only a while after it comes on: the remote
         # waits the Timing section's "Apps ready after switching on" before the first after
         # power-on. Not an edit of the inputs, so an imported Input state stays as it was.
