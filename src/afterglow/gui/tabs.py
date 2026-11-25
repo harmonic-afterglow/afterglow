@@ -268,54 +268,14 @@ class DevicesTab(QWidget):
         wiz.deleteLater()
 
     def find_model(self, idx):
-        """Which archive model this device is, from its codes and its name: the
-        suggestions listed best first, the one picked named onto the device, and the
-        commands it could not name called what that model calls them."""
-        from ..qt.QtWidgets import QInputDialog
-        from .. import device_match, harmony_archive, paths
-        from ..corpus_provider import logitech_archive_url
-        from . import background
-        spec = self.project["devices"][idx]
-
-        def look_up():
-            archive = harmony_archive.ApiArchive(
-                logitech_archive_url(), paths.cache_dir() / "sources" / "harmony-ir-archive")
-            return device_match.suggest(spec, archive)
-        try:
-            found = background.call(self, f"Looking up {spec.get('label', 'the device')}...",
-                                    look_up)
-        except background.Cancelled:
-            return
-        except Exception as exc:                   # offline, or the archive is down
-            QMessageBox.warning(self, "Find model", f"The database could not be read: {exc}")
-            return
-        choices = []
-        for suggestion in found:
-            for model in suggestion["models"][:5]:
-                choices.append((
-                    f"{model.get('manufacturer')} {model.get('model')} - sends "
-                    f"{suggestion['matched']} of {suggestion['keyed']} of its commands",
-                    suggestion, model))
-        if not choices:
-            QMessageBox.information(
-                self, "Find model",
-                f"No model in the database sends {spec.get('label', 'this device')}'s codes.")
-            return
-        picked, chosen = QInputDialog.getItem(
-            self, "Find model", f"Which model is {spec.get('label', 'this device')}?",
-            [text for text, _suggestion, _model in choices], 0, False)
-        if not chosen:
-            return
-        _text, suggestion, model = next(item for item in choices if item[0] == picked)
-        renames = device_match.apply(spec, suggestion, model,
-                                     self.project.get("activities") or [])
-        if renames:
-            QMessageBox.information(
-                self, "Find model",
-                f"{len(renames)} command(s) it could not name are now called what "
-                f"{model.get('model')} calls them.")
-        self.refresh()
-        self.changed.emit()
+        """Which database model this device is, from its codes and its name: every
+        model that sends them, searchable (device_lookup), the one picked named onto
+        the device, and the commands it could not name called what that model calls
+        them."""
+        from .device_lookup import look_up
+        if look_up(self, self.project, [idx], ask=False):
+            self.refresh()
+            self.changed.emit()
 
     def delete_device(self, idx):
         import copy

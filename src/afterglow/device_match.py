@@ -99,6 +99,68 @@ def suggest(device: dict, archive, *, limit: int = 3) -> list[dict]:
     return out[:limit]
 
 
+# An import looks up only a device with this many commands it can key: the
+# testers' two-command IR relays "matched" an LG television.
+LOOK_UP_FROM = 8
+# How much of a device a set must send for its model to be set without asking, and
+# to be offered at all: a Daikin set sending one of ten codes is chance.
+CONFIDENT, PLAUSIBLE = 0.9, 0.5
+
+
+def keyed(device: dict) -> int:
+    """How many of the device's commands have a key the code index can look up."""
+    return len(_keys(device))
+
+
+def needs_model(device: dict) -> bool:
+    """Whether the device says nothing of what it is: no maker, no model."""
+    return not any(str(device.get(field) or "").strip()
+                   for field in ("mfr", "manufacturer", "model"))
+
+
+def worth_looking_up(device: dict) -> bool:
+    """A device an import offers to look up: it names no model, and sends enough
+    codes that a set sending them all is no chance."""
+    return needs_model(device) and keyed(device) >= LOOK_UP_FROM
+
+
+def plausible(found: list[dict]) -> list[dict]:
+    """The suggestions that send at least half of the device's keyed codes."""
+    return [item for item in found if item["matched"] >= PLAUSIBLE * item["keyed"]]
+
+
+def candidates(found: list[dict]) -> list[tuple[dict, dict]]:
+    """Every model the suggestions name, once, ``(suggestion, model)`` best first: the
+    set that sends most of the device's codes, then the model whose name agrees."""
+    out, seen = [], set()
+    for suggestion in found:
+        for model in suggestion["models"]:
+            name = (str(model.get("manufacturer") or "").casefold(),
+                    str(model.get("model") or "").casefold())
+            if name not in seen:
+                seen.add(name)
+                out.append((suggestion, model))
+    return out
+
+
+def confident(device: dict, found: list[dict]) -> tuple[dict, dict] | None:
+    """The one model ``device`` must be, or None when someone should choose: it sends
+    nearly all the device's codes, no other model sends as many, and the device's
+    name names its maker - many models share one set, and a set can be anyone's."""
+    if not found or found[0]["keyed"] < LOOK_UP_FROM or \
+            found[0]["matched"] < CONFIDENT * found[0]["keyed"]:
+        return None
+    best = [item for item in found if item["matched"] == found[0]["matched"]]
+    models = candidates(best)
+    if len(models) != 1:
+        return None
+    suggestion, model = models[0]
+    said = _words(device.get("label"))
+    if not _words(model.get("manufacturer")) & said:
+        return None
+    return suggestion, model
+
+
 def _pronto(text) -> list[int] | None:
     from .logitech_archive import ArchiveError, parse_pronto
 

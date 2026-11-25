@@ -16,6 +16,7 @@
   "status": "verified",
   "default": true,
   "capabilities": {
+    "device_models": true,
     "rf_blaster": true,
     "touchscreen": true,
     "ir_learning": true,

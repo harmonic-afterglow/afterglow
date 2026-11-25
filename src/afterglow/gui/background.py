@@ -69,3 +69,70 @@ def call(parent, message: str, work, *, title: str = "Please wait", delay_ms: in
     if outcome["error"] is not None:
         raise outcome["error"]
     return outcome["result"]
+
+
+class _Steps(QThread):
+    step = pyqtSignal(int)                              # which item is being worked on
+    finished_with = pyqtSignal(object)                  # the error that stopped it, or None
+
+    def __init__(self, items, work):
+        super().__init__()
+        self._items, self._work = items, work
+        self.results, self.stop = [], False
+
+    def run(self):
+        try:
+            for index, item in enumerate(self._items):
+                if self.stop:
+                    break
+                self.step.emit(index)
+                self.results.append(self._work(item))
+        except BaseException as exc:                    # handed back, raised there
+            self.finished_with.emit(exc)
+        else:
+            self.finished_with.emit(None)
+
+
+def each(parent, items, work, message, *, title: str = "Please wait",
+         delay_ms: int = 400) -> list:
+    """``work(item)`` for each of ``items`` in turn on a thread, behind a progress dialog
+    that says ``message(index, item)``. Their results, in order; Cancel stops before the
+    next item and returns those done, so a long look-up keeps what it found."""
+    from ..qt.QtWidgets import QProgressDialog
+
+    items = list(items)
+    dialog = QProgressDialog(message(0, items[0]) if items else "", "Cancel", 0,
+                             len(items), parent)
+    dialog.setWindowTitle(title)
+    dialog.setWindowModality(Qt.WindowModality.WindowModal)
+    dialog.setMinimumDuration(delay_ms)
+    dialog.setAutoClose(False)
+    dialog.setAutoReset(False)
+
+    loop = QEventLoop()
+    outcome = {}
+    worker = _Steps(items, work)
+
+    def step(index):
+        dialog.setValue(index)
+        dialog.setLabelText(message(index, items[index]))
+
+    def done(error):
+        outcome["error"] = error
+        loop.quit()
+
+    def cancel():
+        worker.stop = True
+        dialog.setLabelText("Stopping after this one...")
+
+    worker.step.connect(step)
+    worker.finished_with.connect(done)
+    dialog.canceled.connect(cancel)
+    worker.start()
+    loop.exec()
+    worker.wait()
+    dialog.close()
+    dialog.deleteLater()
+    if outcome["error"] is not None:
+        raise outcome["error"]
+    return list(worker.results)

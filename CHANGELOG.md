@@ -8,6 +8,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **Imported devices looked up in the IR database.** A Harmony One, 600 / 650 / 665,
+  700 or 800 keeps a device's commands but not its maker or model. After importing
+  one, Afterglow asks whether to look its devices up by the codes they send (the 900
+  and 1100 keep each device's model, and are not asked).
+  - A device whose codes and name point at one model is set without asking.
+  - Where several models send the same codes - one Panasonic set is 459 models - a
+    window lists every one of them, with a search, and "Leave as it is".
+  - Devices with fewer than 8 commands are not looked up: two-command IR relays
+    "matched" a television. A set sending under half a device's codes is not offered.
+  - **Find model** on a device's menu opens the same window, with every model instead
+    of the first five.
+
 - **Every IR protocol IRDB and Flipper-IRDB use.** A command in a protocol Afterglow
   had no definition for was left out of the device, and IRDB's most common protocol,
   plain "NEC", was one of them: only half of IRDB's commands could be added. Afterglow

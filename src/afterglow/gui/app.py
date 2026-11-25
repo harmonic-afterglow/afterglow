@@ -635,6 +635,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.getLogger(__name__).exception("import of %s failed", path)
             QMessageBox.critical(self, "Import Failed", str(e))
+            return
+        # a remote that keeps no maker or model: what its devices are, if wanted
+        try:
+            from .device_lookup import offer_after_import
+            if offer_after_import(self, self.project):
+                self.devices_tab.refresh()
+                self.activities_tab.refresh()
+        except Exception:                                  # the import itself stands
+            logging.getLogger(__name__).exception("looking up %s's devices failed", path)
 
     def save_project(self):
         if self._project_path:
