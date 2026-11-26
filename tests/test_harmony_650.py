@@ -363,6 +363,18 @@ def test_devices_build_and_come_back_with_their_commands_and_keys(tmp_path):
         assert bound == {entry[0]: [entry[4]] for entry in source["commands"]}
 
 
+def test_latin1_signs_in_a_name_come_back(tmp_path):
+    """The signs a German keyboard types - ° § € µ ² ³ ´ - are drawn by the build and
+    read back as themselves, not as "?"."""
+    from afterglow.backends.harmony_650 import compose
+    project = json.loads(json.dumps(DEVICES))
+    project["devices"][0]["label"] = "TV 20° §3 €5 µ²³ ´"
+    image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+    payloads.get("blob").unpack(image, str(tmp_path))
+    result = backend.import_project(str(tmp_path), remotes.get("harmony-650"), {"name": "t"})
+    assert result.project["devices"][0]["label"] == "TV 20° §3 €5 µ²³ ´"
+
+
 def _household() -> dict:
     project = json.loads(json.dumps(DEVICES))
     tv, player = project["devices"]

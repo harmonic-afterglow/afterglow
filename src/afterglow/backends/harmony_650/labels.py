@@ -45,10 +45,15 @@ SHAPES_SCHEMA = "afterglow-arch14-glyph-shapes/1"
 # right later. Which texts have one is kept (`Text.unread`), since a "?" may be real.
 UNKNOWN = "?"
 # What this backend's own fonts are asked to draw, to know their shapes: printable ASCII,
-# Latin-1's and Latin Extended-A's letters - a Polish 600's ł and ś - and the quotes and
-# dashes Logitech's translations use.
-OWN_CHARACTERS = "".join(chr(code) for code in range(0x20, 0x7F)) + "".join(
-    chr(code) for code in range(0xC0, 0x180)) + "\u2013\u2014\u2018\u2019\u201c\u201d\u201e"
+# Latin-1's signs (° § µ ² ³, with the euro what a German keyboard types), Latin-1's
+# and Latin Extended-A's letters - a Polish 600's ł and ś - and the quotes and dashes
+# Logitech's translations use. Not the signs these fonts draw as another character: the
+# no-break space (a space), the soft hyphen (a hyphen) and the cedilla (a comma in the
+# small faces), which would make that character ambiguous where it is read today.
+LATIN1_SIGNS = "".join(chr(code) for code in range(0xA1, 0xC0) if code not in (0xAD, 0xB8))
+OWN_CHARACTERS = ("".join(chr(code) for code in range(0x20, 0x7F)) + LATIN1_SIGNS
+                  + "".join(chr(code) for code in range(0xC0, 0x180))
+                  + "\u2013\u2014\u2018\u2019\u201c\u201d\u201e\u20ac")
 
 
 @lru_cache(maxsize=1)
