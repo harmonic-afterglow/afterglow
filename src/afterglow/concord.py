@@ -332,9 +332,22 @@ def connection_advice() -> str:
     """What to try when the remote cannot be reached, for this platform."""
     if needs_driver():
         return f"{NOT_CONNECTED_ADVICE}\n\n{DRIVER_ADVICE}"
-    if sys.platform == "win32":
+    if sys.platform == "win32" and _usbnet_remote_off_winusb():
         return f"{NOT_CONNECTED_ADVICE}\n\n{WINUSB_ADVICE}"
     return NOT_CONNECTED_ADVICE
+
+
+def _usbnet_remote_off_winusb() -> bool:
+    """Whether direct access is the answer: a 900/1000/1100 is plugged in and is not on
+    WinUSB yet. A HID remote - a 600/650/665/700 or a One - uses Windows' own HID driver
+    and has no direct access to turn on, so for it the hint only sends people looking
+    for a switch that does not apply. If the plugged-in devices cannot be listed, the
+    hint stays, as before."""
+    try:
+        from . import windows_driver
+        return windows_driver.needs_switch()
+    except Exception:                                              # noqa: BLE001
+        return True
 
 
 def _bundled_candidates():
