@@ -139,6 +139,17 @@ class Text:
             _read_accents(payload, font, read)
         layout = glyph_codec.inspect(payload) if self.logitech else {"error": "per font"}
         self.layout = {} if layout.get("error") else dict(layout["code_to_character"])
+        # The layout is chosen by the repertoire's size alone, and households number
+        # their own characters as they first use them: a 665 with 77 codes need not be
+        # the donor's 77. Kept only where the codes its shapes read mostly agree with it -
+        # otherwise its guess for a shape no table knows is a wrong letter (a triangle
+        # read as "Q"), where "?" would be the honest answer.
+        read = {code: character for font in self.fonts for code, character in font.items()
+                if len(character) == 1}
+        checked = [code for code in self.layout if code in read]
+        if checked and sum(self.layout[code] != read[code] for code in checked) * 2 > len(
+                checked):
+            self.layout = {}
         self.unknown = 0
         self.unread: set[str] = set()
         self.inferred = 0
