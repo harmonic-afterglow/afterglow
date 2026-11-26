@@ -80,12 +80,23 @@ bits in one of two shapes, a trailer - and keys it as `"<header class>-<bits>-<h
 header's first mark in classes of 250 us, how many bits, their value. It names no
 protocol, so a code recorded off a remote and Logitech's Pronto of it give one key.
 
+A frame that is not that - bits split by a longer space (Samsung's 36-bit, the Flirc's),
+bi-phase (RC5, RC6), spaces of four lengths (XMP, Foxtel's) - is keyed by its pairs:
+a header when its mark is longer than any other, then each (mark, space) pair as the rank
+of its kind, the kinds ordered by length, as `"g<header class>-<pairs>-<ranks>"`. The `g`
+keeps it from ever being a key the first rules give, so an index built before it, and an
+Afterglow that predates it, read each other as before. RC6's toggle bit is one of the
+pairs, so a set recorded with the other toggle matches only part of a device's codes.
+
 Afterglow's IR archive (harmonic-afterglow/harmony-ir-archive, `build_index.py`) keys every
 command of every command set that has a Pronto with the same rules - the functions are a
 copy, and the manifest's `code_key` is their version - into
 `codes/<sha1(key)[:2]>.json.gz` (key -> command set and name) and
-`codeset_devices/<codeset[:3]>.json.gz` (command set -> the models that use it). 1,771,049
-of the archive's 2,214,024 commands are keyed, into 92,295 keys.
+`codeset_devices/<codeset[:3]>.json.gz` (command set -> the models that use it). 2,211,265
+of the archive's 2,214,024 commands are keyed, into 124,221 keys (1,771,049 into 92,295
+before pairs were keyed). On the testers' files that found a Samsung BD-F6500 (57 of 58
+commands), a Flirc (77 of 77), a Foxtel PACE420 (54 of 55) and a Vu+ (36 of 60) that
+matched nothing before.
 
 `device_match.suggest` looks up a dozen of a device's keys, ranks the command sets by how
 many of them each sends and, among equals, by how much a model's manufacturer, model and
@@ -94,6 +105,8 @@ the best few sets whole to count every command they send. On a tester's One: the
 Vizio E320i-A0 set (78 of 83 commands), the PS3 a Sony PlayStation 3 (69 of 69), the Sony
 DVD a BDP-S590 set (43 of 43), the Roku a Roku Express 4K Plus (27 of 27).
 
-A suggestion is offered, never applied: the Devices tab's "Find model" lists them, and the
-model picked gives the device its manufacturer and model, and each command the import could
+After an import that keeps no models (gui/device_lookup.py) Afterglow asks whether to look
+the devices up; only a device whose codes and name point at one model is set without the
+person choosing. Otherwise a suggestion is offered, never applied: "Find model" and the
+import's window list every model, and the model picked gives the device its manufacturer and model, and each command the import could
 not name (`Command 1F`) the name that model's set gives it.

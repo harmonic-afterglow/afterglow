@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
     "matched" a television. A set sending under half a device's codes is not offered.
   - **Find model** on a device's menu opens the same window, with every model instead
     of the first five.
+  - Codes the database could not key before are found too: bits split by a pause
+    (Samsung's 36-bit, the Flirc), RC6 and Foxtel's - a Samsung BD-F6500, a Flirc and
+    a Foxtel that matched nothing now find their model.
 
 - **Every IR protocol IRDB and Flipper-IRDB use.** A command in a protocol Afterglow
   had no definition for was left out of the device, and IRDB's most common protocol,

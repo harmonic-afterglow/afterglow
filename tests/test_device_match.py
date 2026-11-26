@@ -261,3 +261,29 @@ def test_a_remote_that_keeps_its_devices_models_is_never_asked(qapp_or_skip, mon
         project = {"devices": [_many("Humax DVR")], "activities": [],
                    "settings": {"remote": remote}}
         assert not device_lookup.offer_after_import(None, project)
+
+
+def _samsung36(address: int, command: int, wobble: float = 1.0) -> list[int]:
+    """A Samsung36 frame: 4500/-4500, 16 bits, a 4500 us space between its halves."""
+    out = [round(4500 * wobble), -4500]
+    def bits(value, count):
+        for bit in range(count):
+            out.extend([round(500 * wobble), -1500 if value >> bit & 1 else -500])
+    bits(address, 16)
+    out.extend([500, -4500])
+    bits(command, 20)
+    return out + [500, -50000]
+
+
+def test_a_frame_split_in_two_is_keyed_by_its_pairs_the_same_however_drawn():
+    key = ir_recognise.fingerprint(_samsung36(0x0707, 0x2D))
+    assert key and key.startswith("g18-")
+    # a recording drawn a little longer is the same code; another command is not
+    assert ir_recognise.fingerprint(_samsung36(0x0707, 0x2D, wobble=1.02)) == key
+    assert ir_recognise.fingerprint(_samsung36(0x0707, 0x2E)) != key
+
+
+def test_a_code_the_first_rules_read_keeps_the_key_an_older_index_has():
+    # the archive's index built before pairs were keyed still answers these
+    assert not ir_recognise.fingerprint(_nec(8)).startswith("g")
+    assert ir_recognise.fingerprint([500, -500] * 3 + [500, -50000]) is None
