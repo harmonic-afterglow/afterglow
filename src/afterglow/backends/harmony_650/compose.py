@@ -310,12 +310,15 @@ class Image:
         self.blocks: dict[str, list[dict]] = {}      # drawing blocks, by piece name
         self.screens: list[dict] = []                # every screen: header, flag, slots
         self.timers: list[tuple] = []
-        from .devices import lowered_devices
+        from .devices import held_commands, lowered_devices
         self.devices = lowered_devices(project)
         for device in self.devices:
             for command in device["commands"]:
                 _press_alone(command)
         self.plan = activities.plan(project, self.devices)
+        # a held send gets a record of its own, its code repeated for that long, as the
+        # One's and 800's builds give it - the 650's object hold does not hold the IR
+        held_commands(project, self.devices, self.plan)
         self.acts = self.plan["activities"]
 
     # -- variables

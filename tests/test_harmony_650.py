@@ -1228,6 +1228,31 @@ def test_a_devices_inter_key_delay_holds_the_codes_help_sends(tmp_path):
     assert {device["label"]: device.get("press_interkey") for device in devices} == {
         "Soniq TV": 300, "Receiver": 0}
 
+
+def test_a_held_step_builds_a_record_of_its_own_held_that_long():
+    """A step that holds a command - a television that only turns off on a two-second
+    press - gets a record of its own, the code repeated for the hold, as the One's and
+    800's builds give it; a plain press of the same command gets none, and two steps
+    holding it as long share one."""
+    from afterglow.backends.harmony_650 import compose
+
+    def tv_records(*steps):
+        project = _household()
+        project["activities"][0]["soft_buttons"] = [
+            {"label": f"Off {n}", "macro": [step]} for n, step in enumerate(steps)]
+        image = compose.build(project, stamp_fields=(0, 0, 12, 0, 0, 2026))["image"]
+        return command_index.inspect(image)["devices"][0]["commands"]
+
+    off = ["command", "tv", "PowerOff"]
+    assert len(tv_records(off)) == len(TV)
+    held = tv_records(off + ["Press", 2000])
+    assert len(held) == len(TV) + 1                                  # a record of its own
+    pulses = held[-1]["waveforms"]["press"]["pulses_us"]
+    assert sum(abs(pulse) for pulse in pulses) >= 2_000_000
+    assert len(tv_records(off + ["Press", 2000], off + ["Press", 2000])) == len(TV) + 1
+    assert len(tv_records(off + ["Press", 2000], off + ["Press", 3000])) == len(TV) + 2
+
+
 def test_a_devices_other_states_build_and_come_back(tmp_path):
     """Logitech's two-level input, as a Dutch 650's television has it: an input sets the
     device's `Screen` - a route to each value - and its `TVInput` - stepped through - and
